@@ -71,6 +71,41 @@ BEGIN
  END IF;
 END $$;
 
+-- Cross-tenant sports insertion must be rejected by RLS.
+DO $
+DECLARE rejected boolean := false;
+BEGIN
+ BEGIN
+  INSERT INTO public.tenant_sports (id, tenant_id, sport)
+  VALUES ('00000000-0000-4000-8000-000000000223',
+          '00000000-0000-4000-8000-000000000202','FOOTBALL');
+ EXCEPTION WHEN insufficient_privilege OR unique_violation THEN
+  -- A unique violation alone is not sufficient proof of RLS isolation.
+  IF SQLSTATE = '42501' THEN
+   rejected := true;
+  END IF;
+ END;
+ IF NOT rejected THEN
+  RAISE EXCEPTION 'SECURITY FAILURE: cross-tenant sports insert not rejected by RLS';
+ END IF;
+END $;
+
+-- Cross-tenant audit insertion must be rejected by RLS.
+DO $
+DECLARE rejected boolean := false;
+BEGIN
+ BEGIN
+  INSERT INTO public.audit_logs (id, tenant_id, action, resource_type)
+  VALUES ('00000000-0000-4000-8000-000000000233',
+          '00000000-0000-4000-8000-000000000202','TAMPER','rls_test');
+ EXCEPTION WHEN insufficient_privilege THEN
+  rejected := true;
+ END;
+ IF NOT rejected THEN
+  RAISE EXCEPTION 'SECURITY FAILURE: cross-tenant audit insert permitted';
+ END IF;
+END $;
+
 UPDATE public.branches SET name='HACKED' WHERE code='B';
 DELETE FROM public.branches WHERE code='B';
 
