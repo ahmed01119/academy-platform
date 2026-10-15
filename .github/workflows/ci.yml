@@ -82,6 +82,16 @@ jobs:
           PGPASSWORD: academy
         run: psql -v ON_ERROR_STOP=1 -h localhost -U academy -d academy -f packages/database/tests/audit-append-only.sql
 
+      - name: Provision restricted CI runtime database role
+        env:
+          PGPASSWORD: academy
+        run: psql -v ON_ERROR_STOP=1 -h localhost -U academy -d academy -f packages/database/tests/runtime-role-setup.sql
+
+      - name: Test runtime database privilege boundaries
+        env:
+          PGPASSWORD: academy
+        run: psql -v ON_ERROR_STOP=1 -h localhost -U academy -d academy -f packages/database/tests/runtime-role-privileges.sql
+
       - name: Format check
         run: pnpm format:check
 
