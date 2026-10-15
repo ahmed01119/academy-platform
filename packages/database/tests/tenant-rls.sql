@@ -11,12 +11,24 @@ VALUES
  ('00000000-0000-4000-8000-000000000211','00000000-0000-4000-8000-000000000201','A','Branch A',now()),
  ('00000000-0000-4000-8000-000000000212','00000000-0000-4000-8000-000000000202','B','Branch B',now());
 
+INSERT INTO public.tenant_sports (id, tenant_id, sport, is_primary)
+VALUES
+ ('00000000-0000-4000-8000-000000000221','00000000-0000-4000-8000-000000000201','FOOTBALL',true),
+ ('00000000-0000-4000-8000-000000000222','00000000-0000-4000-8000-000000000202','FOOTBALL',true);
+
+INSERT INTO public.audit_logs (id, tenant_id, action, resource_type)
+VALUES
+ ('00000000-0000-4000-8000-000000000231','00000000-0000-4000-8000-000000000201','CREATE','rls_test'),
+ ('00000000-0000-4000-8000-000000000232','00000000-0000-4000-8000-000000000202','CREATE','rls_test');
+
 SET LOCAL ROLE academy_runtime_ci;
 
 DO $$
 BEGIN
- IF (SELECT count(*) FROM public.branches) <> 0 THEN
-   RAISE EXCEPTION 'SECURITY FAILURE: missing tenant context exposes branches';
+ IF (SELECT count(*) FROM public.branches) <> 0 OR
+    (SELECT count(*) FROM public.tenant_sports) <> 0 OR
+    (SELECT count(*) FROM public.audit_logs) <> 0 THEN
+   RAISE EXCEPTION 'SECURITY FAILURE: missing context exposes tenant records';
  END IF;
 END $$;
 
@@ -26,6 +38,10 @@ DO $$
 BEGIN
  IF (SELECT count(*) FROM public.branches) <> 1 THEN
    RAISE EXCEPTION 'SECURITY FAILURE: tenant A can see wrong branches';
+ END IF;
+ IF (SELECT count(*) FROM public.tenant_sports) <> 1 OR
+    (SELECT count(*) FROM public.audit_logs) <> 1 THEN
+   RAISE EXCEPTION 'SECURITY FAILURE: tenant A can see cross-tenant sports or logs';
  END IF;
  IF (SELECT count(*) FROM public.branches WHERE code = 'B') <> 0 THEN
    RAISE EXCEPTION 'SECURITY FAILURE: tenant B data visible to tenant A';
@@ -63,7 +79,9 @@ SELECT set_config('app.tenant_id','00000000-0000-4000-8000-000000000202',true);
 DO $$
 BEGIN
  IF (SELECT count(*) FROM public.branches) <> 1
-    OR (SELECT count(*) FROM public.branches WHERE code='A') <> 0 THEN
+    OR (SELECT count(*) FROM public.branches WHERE code='A') <> 0
+    OR (SELECT count(*) FROM public.tenant_sports) <> 1
+    OR (SELECT count(*) FROM public.audit_logs) <> 1 THEN
    RAISE EXCEPTION 'SECURITY FAILURE: tenant context switch leaks prior tenant rows';
  END IF;
 END $$;
@@ -72,7 +90,9 @@ END $$;
 SELECT set_config('app.tenant_id','',true);
 DO $$
 BEGIN
- IF (SELECT count(*) FROM public.branches) <> 0 THEN
+ IF (SELECT count(*) FROM public.branches) <> 0 OR
+    (SELECT count(*) FROM public.tenant_sports) <> 0 OR
+    (SELECT count(*) FROM public.audit_logs) <> 0 THEN
    RAISE EXCEPTION 'SECURITY FAILURE: cleared tenant context exposes rows';
  END IF;
 END $$;
