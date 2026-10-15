@@ -26,4 +26,5 @@ Commit the resulting `packages/database/prisma/migrations/<timestamp>_init_found
 5. Test that deleting a tenant with audit records fails, and test append-only protections once implemented.
 
 ## Important
+
 A successful schema validation is not proof that migrations run. No runtime checks have been executed by this document.

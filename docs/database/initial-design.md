@@ -10,28 +10,28 @@
 
 ### `tenants`
 
-| Column | Type | Notes |
-|--------|------|-------|
-| id | uuid PK | |
-| slug | text unique | Lowercase; app-enforced |
-| name | text | Display name |
-| status | enum | `PROVISIONING`, `ACTIVE`, `SUSPENDED` |
-| currency | char(3) | Default `EGP` |
-| timezone | text | Default `Africa/Cairo` |
-| created_at / updated_at | timestamptz | |
+| Column                  | Type        | Notes                                 |
+| ----------------------- | ----------- | ------------------------------------- |
+| id                      | uuid PK     |                                       |
+| slug                    | text unique | Lowercase; app-enforced               |
+| name                    | text        | Display name                          |
+| status                  | enum        | `PROVISIONING`, `ACTIVE`, `SUSPENDED` |
+| currency                | char(3)     | Default `EGP`                         |
+| timezone                | text        | Default `Africa/Cairo`                |
+| created_at / updated_at | timestamptz |                                       |
 
 ### `branches`
 
-| Column | Type | Notes |
-|--------|------|-------|
-| id | uuid PK | |
-| tenant_id | uuid FK | Cascade delete |
-| code | text | Unique per tenant |
-| name | text | |
-| status | enum | `ACTIVE`, `INACTIVE` |
-| city | text? | Non-PII location hint |
-| country | char(2) | Default `EG` |
-| created_at / updated_at | timestamptz | |
+| Column                  | Type        | Notes                 |
+| ----------------------- | ----------- | --------------------- |
+| id                      | uuid PK     |                       |
+| tenant_id               | uuid FK     | Cascade delete        |
+| code                    | text        | Unique per tenant     |
+| name                    | text        |                       |
+| status                  | enum        | `ACTIVE`, `INACTIVE`  |
+| city                    | text?       | Non-PII location hint |
+| country                 | char(2)     | Default `EG`          |
+| created_at / updated_at | timestamptz |                       |
 
 ### `tenant_sports`
 

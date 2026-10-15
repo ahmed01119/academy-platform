@@ -20,14 +20,14 @@ Multi-tenant, multi-branch, multi-sport academy management SaaS. Launch focus: f
 
 ## Packages
 
-| Package | Responsibility |
-|---------|----------------|
-| `@academy/web` | Staff/admin UI |
-| `@academy/api` | HTTP API, domain modules, jobs producers |
-| `@academy/shared` | Zod schemas, error model, shared constants |
-| `@academy/database` | Prisma schema, client factory |
-| `@academy/typescript-config` | Shared TS configs |
-| `@academy/eslint-config` | Shared ESLint configs |
+| Package                      | Responsibility                             |
+| ---------------------------- | ------------------------------------------ |
+| `@academy/web`               | Staff/admin UI                             |
+| `@academy/api`               | HTTP API, domain modules, jobs producers   |
+| `@academy/shared`            | Zod schemas, error model, shared constants |
+| `@academy/database`          | Prisma schema, client factory              |
+| `@academy/typescript-config` | Shared TS configs                          |
+| `@academy/eslint-config`     | Shared ESLint configs                      |
 
 ## Non-goals (Sprint 0)
 

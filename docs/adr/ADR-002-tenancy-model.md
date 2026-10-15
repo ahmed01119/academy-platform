@@ -38,7 +38,7 @@ Platform-level tables (e.g. global feature flags) may omit `tenant_id` and must 
 
 ## Alternatives Considered
 
-| Option | Why not chosen |
-|--------|----------------|
-| Database-per-tenant | High ops cost at early stage |
-| Schema-per-tenant | Migration complexity; revisit for residency mandates |
+| Option              | Why not chosen                                       |
+| ------------------- | ---------------------------------------------------- |
+| Database-per-tenant | High ops cost at early stage                         |
+| Schema-per-tenant   | Migration complexity; revisit for residency mandates |

@@ -3,6 +3,7 @@
 Status: In progress. Scope: foundation only, no business features.
 
 ## Verified from source inspection
+
 - Monorepo with pnpm/Turborepo, Next.js web and NestJS API.
 - CI declares formatting, lint, typecheck, tests and build.
 - Prisma schema defines Tenant, Branch, TenantSport and AuditLog.
@@ -13,6 +14,7 @@ Status: In progress. Scope: foundation only, no business features.
 ## Required gates before Sprint 1
 
 ### Database
+
 - [ ] Create and commit a reproducible initial Prisma migration.
 - [ ] Run migration on a fresh PostgreSQL database in CI.
 - [ ] Run prisma migrate status and validate schema in CI.
@@ -21,6 +23,7 @@ Status: In progress. Scope: foundation only, no business features.
 - [ ] Ensure migration role and application role have different privileges.
 
 ### Security
+
 - [ ] Restrict local database and Redis port bindings to loopback, or document an equivalent safe isolation approach.
 - [ ] Enforce environment validation for production secrets, URLs and allowed origins.
 - [ ] Define immutable/auditable event retention: application convention alone is not append-only enforcement.
@@ -28,6 +31,7 @@ Status: In progress. Scope: foundation only, no business features.
 - [ ] Ensure no production credentials are committed.
 
 ### Quality and operations
+
 - [ ] Confirm pnpm install --frozen-lockfile succeeds.
 - [ ] Confirm lint, typecheck, test and build pass; record GitHub Actions run URLs.
 - [ ] Add a smoke test for API health and readiness.
@@ -35,7 +39,9 @@ Status: In progress. Scope: foundation only, no business features.
 - [ ] Document Node/pnpm/Prisma version compatibility and pin reproducibly.
 
 ## Exit criteria
+
 Do not mark this sprint complete until all checks have evidence (test output, CI URL, migration, or documentation). Do not start auth or payment modules until critical blockers are closed.
 
 ## Working agreement
+
 All code changes go through feature branches and pull requests. Never claim runtime tests passed unless actually executed. Keep main stable.

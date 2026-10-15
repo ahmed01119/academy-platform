@@ -29,5 +29,5 @@ What did we choose?
 ## Alternatives Considered
 
 | Option | Why not chosen |
-|--------|----------------|
+| ------ | -------------- |
 |        |                |
