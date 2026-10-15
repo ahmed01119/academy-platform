@@ -60,26 +60,26 @@ DELETE FROM public.branches WHERE code='B';
 
 -- Simulate a new request with a different verified tenant context.
 SELECT set_config('app.tenant_id','00000000-0000-4000-8000-000000000202',true);
-DO $
+DO $$
 BEGIN
  IF (SELECT count(*) FROM public.branches) <> 1
     OR (SELECT count(*) FROM public.branches WHERE code='A') <> 0 THEN
    RAISE EXCEPTION 'SECURITY FAILURE: tenant context switch leaks prior tenant rows';
  END IF;
-END $;
+END $$;
 
 -- A missing context must fail closed even after a prior tenant request.
 SELECT set_config('app.tenant_id','',true);
-DO $
+DO $$
 BEGIN
  IF (SELECT count(*) FROM public.branches) <> 0 THEN
    RAISE EXCEPTION 'SECURITY FAILURE: cleared tenant context exposes rows';
  END IF;
-END $;
+END $$;
 
 RESET ROLE;
 
-DO $
+DO $$
 BEGIN
  IF (SELECT name FROM public.branches
      WHERE id='00000000-0000-4000-8000-000000000212') <> 'Branch B' THEN
