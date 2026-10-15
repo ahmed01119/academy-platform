@@ -92,6 +92,11 @@ jobs:
           PGPASSWORD: academy
         run: psql -v ON_ERROR_STOP=1 -h localhost -U academy -d academy -f packages/database/tests/runtime-role-privileges.sql
 
+      - name: Test tenant RLS isolation
+        env:
+          PGPASSWORD: academy
+        run: psql -v ON_ERROR_STOP=1 -h localhost -U academy -d academy -f packages/database/tests/tenant-rls.sql
+
       - name: Format check
         run: pnpm format:check
 
