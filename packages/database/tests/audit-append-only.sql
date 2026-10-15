@@ -1,6 +1,7 @@
 -- CI integration test: ensure audit logs cannot be updated or deleted.
 -- Run after prisma migrate deploy with a PostgreSQL role permitted to insert.
 BEGIN;
+SELECT set_config('app.tenant_id', '00000000-0000-4000-8000-000000000101', true);
 
 INSERT INTO tenants (id, slug, name, updated_at)
 VALUES ('00000000-0000-4000-8000-000000000101', 'ci-audit-test', 'CI Audit Test', now());
