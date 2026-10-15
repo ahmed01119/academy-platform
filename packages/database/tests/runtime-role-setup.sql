@@ -9,7 +9,9 @@ END $$;
 
 GRANT CONNECT ON DATABASE academy TO academy_runtime_ci;
 GRANT USAGE ON SCHEMA public TO academy_runtime_ci;
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.tenants, public.branches, public.tenant_sports TO academy_runtime_ci;
+GRANT SELECT, UPDATE ON TABLE public.tenants TO academy_runtime_ci;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.branches, public.tenant_sports TO academy_runtime_ci;
+REVOKE INSERT, DELETE, TRUNCATE ON TABLE public.tenants FROM academy_runtime_ci;
 GRANT SELECT, INSERT ON TABLE public.audit_logs TO academy_runtime_ci;
 REVOKE CREATE ON SCHEMA public FROM academy_runtime_ci;
 REVOKE UPDATE, DELETE, TRUNCATE ON TABLE public.audit_logs FROM academy_runtime_ci;
