@@ -1,0 +1,30 @@
+{
+  "name": "academy-platform",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Multi-tenant Sports Academy Management SaaS",
+  "packageManager": "pnpm@11.13.0",
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=11.0.0"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,mjs,cjs,json,md,yml,yaml,css}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,mjs,cjs,json,md,yml,yaml,css}\"",
+    "db:generate": "pnpm --filter @academy/database generate",
+    "db:migrate:dev": "pnpm --filter @academy/database migrate:dev",
+    "db:studio": "pnpm --filter @academy/database studio",
+    "clean": "turbo run clean && rimraf node_modules"
+  },
+  "devDependencies": {
+    "prettier": "^3.5.3",
+    "rimraf": "^6.0.1",
+    "turbo": "^2.5.4",
+    "typescript": "^5.8.3"
+  }
+}

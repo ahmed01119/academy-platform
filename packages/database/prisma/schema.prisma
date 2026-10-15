@@ -1,0 +1,103 @@
+// Sprint 0 foundational schema.
+// Business modules (auth sessions, billing, enrollments, etc.) are intentionally out of scope.
+// This models tenancy, branching, and audit primitives only.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TenantStatus {
+  ACTIVE
+  SUSPENDED
+  PROVISIONING
+}
+
+enum BranchStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum SportCode {
+  FOOTBALL
+  // Future sports are added explicitly; avoid free-form strings for core taxonomy.
+}
+
+/// Top-level tenant (academy organization / legal customer of the SaaS).
+model Tenant {
+  id        String       @id @default(uuid()) @db.Uuid
+  /// Lowercase slug enforced in application validation (unique per platform).
+  slug      String       @unique
+  name      String
+  status    TenantStatus @default(PROVISIONING)
+  /// ISO 4217; Egypt launch default is EGP.
+  currency  String       @default("EGP") @db.Char(3)
+  /// IANA timezone for operational defaults (e.g. Africa/Cairo).
+  timezone  String       @default("Africa/Cairo")
+  createdAt DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  branches Branch[]
+  sports   TenantSport[]
+  auditLogs AuditLog[]
+
+  @@map("tenants")
+}
+
+model Branch {
+  id        String       @id @default(uuid()) @db.Uuid
+  tenantId  String       @map("tenant_id") @db.Uuid
+  code      String
+  name      String
+  status    BranchStatus @default(ACTIVE)
+  /// Optional geographic metadata; keep PII out of this table.
+  city      String?
+  country   String       @default("EG") @db.Char(2)
+  createdAt DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@map("branches")
+}
+
+model TenantSport {
+  id        String    @id @default(uuid()) @db.Uuid
+  tenantId  String    @map("tenant_id") @db.Uuid
+  sport     SportCode
+  isPrimary Boolean   @default(false) @map("is_primary")
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, sport])
+  @@index([tenantId])
+  @@map("tenant_sports")
+}
+
+/// Append-only audit trail. Prefer inserting via application services, never updating rows.
+model AuditLog {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String?  @map("tenant_id") @db.Uuid
+  actorUserId  String?  @map("actor_user_id") @db.Uuid
+  action       String
+  resourceType String   @map("resource_type")
+  resourceId   String?  @map("resource_id")
+  /// Structured change payload; must not store secrets or raw payment credentials.
+  metadata     Json?
+  ipAddress    String?  @map("ip_address")
+  userAgent    String?  @map("user_agent")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, createdAt])
+  @@index([resourceType, resourceId])
+  @@map("audit_logs")
+}
