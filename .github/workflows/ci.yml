@@ -68,6 +68,15 @@ jobs:
       - name: Validate Prisma schema
         run: pnpm --filter @academy/database exec prisma validate
 
+      - name: Deploy Prisma migrations
+        run: pnpm --filter @academy/database exec prisma migrate deploy
+
+      - name: Verify migration status
+        run: pnpm --filter @academy/database exec prisma migrate status
+
+      - name: Validate schema drift
+        run: pnpm --filter @academy/database exec prisma migrate diff --from-schema-datamodel prisma/schema.prisma --to-schema-datasource prisma/schema.prisma --exit-code
+
       - name: Format check
         run: pnpm format:check
 

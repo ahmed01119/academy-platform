@@ -13,7 +13,6 @@ export const nestConfig = [
     },
     rules: {
       // NestJS relies on constructor DI and decorator metadata.
-      '@typescript-eslint/consistent-type-imports': 'off',
       '@typescript-eslint/no-unused-vars': [
         'error',
         {
