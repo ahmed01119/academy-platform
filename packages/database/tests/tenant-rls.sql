@@ -72,7 +72,7 @@ BEGIN
 END $$;
 
 -- Cross-tenant sports insertion must be rejected by RLS.
-DO $
+DO $$
 DECLARE rejected boolean := false;
 BEGIN
  BEGIN
@@ -88,10 +88,10 @@ BEGIN
  IF NOT rejected THEN
   RAISE EXCEPTION 'SECURITY FAILURE: cross-tenant sports insert not rejected by RLS';
  END IF;
-END $;
+END $$;
 
 -- Cross-tenant audit insertion must be rejected by RLS.
-DO $
+DO $$
 DECLARE rejected boolean := false;
 BEGIN
  BEGIN
@@ -104,7 +104,7 @@ BEGIN
  IF NOT rejected THEN
   RAISE EXCEPTION 'SECURITY FAILURE: cross-tenant audit insert permitted';
  END IF;
-END $;
+END $$;
 
 UPDATE public.branches SET name='HACKED' WHERE code='B';
 DELETE FROM public.branches WHERE code='B';
