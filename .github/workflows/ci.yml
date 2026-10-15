@@ -65,6 +65,9 @@ jobs:
       - name: Generate Prisma client
         run: pnpm db:generate
 
+      - name: Validate Prisma schema
+        run: pnpm --filter @academy/database exec prisma validate
+
       - name: Format check
         run: pnpm format:check
 
