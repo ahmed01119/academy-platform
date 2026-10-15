@@ -81,7 +81,8 @@ model TenantSport {
   @@map("tenant_sports")
 }
 
-/// Append-only audit trail. Prefer inserting via application services, never updating rows.
+/// Audit trail: prevent tenant deletion from detaching audit events.
+/// Append-only enforcement still requires database privileges/triggers and tests.
 model AuditLog {
   id           String   @id @default(uuid()) @db.Uuid
   tenantId     String?  @map("tenant_id") @db.Uuid
@@ -95,7 +96,7 @@ model AuditLog {
   userAgent    String?  @map("user_agent")
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
 
-  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Restrict)
 
   @@index([tenantId, createdAt])
   @@index([resourceType, resourceId])
