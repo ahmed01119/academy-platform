@@ -327,17 +327,20 @@ export class AuthService {
 
     const user = await this.prisma.user.findUniqueOrThrow({
       where: { id: userId },
-      include: {
-        memberships: {
-          include: {
-            tenant: true,
-            branch: true,
-          },
-        },
-      },
     });
 
-    const memberships: TenantMembershipSummary[] = user.memberships
+    // Refresh tokens authenticate the user, but must not bypass tenant RLS.
+    // Reload active memberships using the verified actor's discovery context.
+    const userMemberships = await this.prisma.withAuthLookupTransaction(
+      { actorUserId: userId },
+      (tx) =>
+        tx.tenantMembership.findMany({
+          where: { userId, status: 'ACTIVE' },
+          include: { tenant: true, branch: true },
+        }),
+    );
+
+    const memberships: TenantMembershipSummary[] = userMemberships
       .filter((m) => m.status === 'ACTIVE')
       .map((m) => ({
         id: m.id,
