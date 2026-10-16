@@ -123,6 +123,21 @@ BEGIN
   PERFORM set_config('app.tenant_id', '', true);
   PERFORM set_config('app.auth_context', '', true);
 
+  -- A tenant-scoped session still must not be able to create a new tenant.
+  -- Test the actual DML operation, not only the role metadata.
+  PERFORM set_config('app.tenant_id', '00000000-0000-4000-8000-000000000201', true);
+  allowed := false;
+  BEGIN
+    EXECUTE 'INSERT INTO public.tenants (slug, name) VALUES (''ci_tenant_context_forbidden'', ''Forbidden'')';
+    allowed := true;
+  EXCEPTION WHEN insufficient_privilege THEN
+    NULL;
+  END;
+  IF allowed THEN
+    RAISE EXCEPTION 'SECURITY FAILURE: tenant context allowed runtime provisioning';
+  END IF;
+  PERFORM set_config('app.tenant_id', '', true);
+
   -- Runtime identity must never provision or delete platform tenants.
   allowed := false;
   BEGIN
