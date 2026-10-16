@@ -164,6 +164,26 @@ describe('TenantGuard & PermissionsGuard', () => {
       );
     });
 
+    it('denies stale JWT membership when the database has no membership', async () => {
+      const findUnique = vi.fn().mockResolvedValue(null);
+      const withAuthLookupTransaction = vi
+        .fn()
+        .mockImplementation((_options, operation) => operation({ tenantMembership: { findUnique } }));
+      const dbGuard = new TenantGuard({ withAuthLookupTransaction } as unknown as PrismaService);
+      const ctx = createMockContext({
+        user: {
+          id: 'u1',
+          memberships: [{ tenantId: TENANT_A, status: 'ACTIVE', role: TenantRole.OWNER }],
+        },
+        headers: { 'x-tenant-id': TENANT_A },
+      });
+
+      await expect(dbGuard.canActivate(ctx)).rejects.toThrow(ForbiddenException);
+      expect(findUnique).toHaveBeenCalledWith({
+        where: { tenantId_userId: { tenantId: TENANT_A, userId: 'u1' } },
+      });
+    });
+
     it('queries database when PrismaService is injected', async () => {
       const findUnique = vi.fn().mockResolvedValue({
         id: 'm1',
