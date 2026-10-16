@@ -66,7 +66,7 @@ BEGIN
   IF allowed THEN
     RAISE EXCEPTION 'SECURITY FAILURE: runtime role can delete tenants';
   END IF;
-END $;
+END $$;
 
 RESET ROLE;
 ROLLBACK;
