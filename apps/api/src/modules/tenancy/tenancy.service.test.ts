@@ -188,9 +188,9 @@ describe('TenancyService', () => {
     it('rejects authenticated user with a different email', async () => {
       mockPrisma.invitation.findFirst.mockResolvedValue(invitation);
       mockPrisma.user.findUnique.mockResolvedValue({ email: 'attacker@example.com' });
-      await expect(service.acceptInvitation('attacker-id', { token: 'valid-token' })).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(
+        service.acceptInvitation('attacker-id', { token: 'valid-token' }),
+      ).rejects.toThrow(UnauthorizedException);
       expect(mockPrisma.tenantMembership.upsert).not.toHaveBeenCalled();
       expect(mockPrisma.invitation.update).not.toHaveBeenCalled();
     });
