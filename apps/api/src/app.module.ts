@@ -5,6 +5,7 @@ import { RedisModule } from './modules/redis/redis.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { TenancyModule } from './modules/tenancy/tenancy.module';
+import { AttendanceModule } from './modules/attendance/attendance.module';
 import { HealthModule } from './modules/health/health.module';
 
 /**
@@ -20,6 +21,7 @@ import { HealthModule } from './modules/health/health.module';
     AuditModule,
     AuthModule,
     TenancyModule,
+    AttendanceModule,
     HealthModule,
   ],
 })

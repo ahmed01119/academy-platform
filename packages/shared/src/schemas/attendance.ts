@@ -67,3 +67,14 @@ export const AttendanceCorrectionSchema = z.object({
 });
 
 export type AttendanceCorrection = z.infer<typeof AttendanceCorrectionSchema>;
+
+export const CreateAttendanceSessionSchema = z.object({
+  branchId: z.string().uuid(),
+  sport: z.enum(['FOOTBALL']).default('FOOTBALL'),
+  groupName: z.string().min(2).max(100),
+  sessionDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Must be YYYY-MM-DD format'),
+  startTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Must be HH:MM format'),
+  endTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Must be HH:MM format'),
+});
+
+export type CreateAttendanceSession = z.infer<typeof CreateAttendanceSessionSchema>;

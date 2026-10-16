@@ -6,4 +6,3 @@ export * from './schemas/attendance';
 export * from './schemas/auth';
 export * from './schemas/health';
 export * from './schemas/tenant-context';
-export * from './schemas/attendance';
