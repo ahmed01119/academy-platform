@@ -27,6 +27,7 @@ interface MockPrisma {
     findFirst: MockFn;
     create: MockFn;
     update: MockFn;
+    updateMany: MockFn;
   };
   user: {
     findUnique: MockFn;
@@ -77,6 +78,7 @@ describe('TenancyService', () => {
         findFirst: vi.fn(),
         create: vi.fn(),
         update: vi.fn(),
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
       },
       user: {
         findUnique: vi.fn(),
@@ -218,14 +220,28 @@ describe('TenancyService', () => {
           create: expect.objectContaining({ userId: 'verified-user', status: 'ACTIVE' }),
         }),
       );
-      expect(mockPrisma.invitation.update).toHaveBeenCalledWith({
-        where: { id: 'inv-1' },
+      expect(mockPrisma.invitation.updateMany).toHaveBeenCalledWith({
+        where: expect.objectContaining({ id: 'inv-1', status: 'PENDING' }),
         data: { status: 'ACCEPTED' },
       });
       expect(mockPrisma.withAuthLookupTransaction).toHaveBeenCalledWith(
         { context: 'invitation_lookup', actorUserId: 'verified-user' },
         expect.any(Function),
       );
+    });
+
+    it('rejects a concurrently consumed invitation before activating membership', async () => {
+      mockPrisma.invitation.findFirst.mockResolvedValue(invitation);
+      mockPrisma.user.findUnique.mockResolvedValue({
+        email: 'invited@example.com',
+        isEmailVerified: true,
+      });
+      mockPrisma.invitation.updateMany.mockResolvedValue({ count: 0 });
+
+      await expect(
+        service.acceptInvitation('verified-user', { token: 'valid-token' }),
+      ).rejects.toThrow();
+      expect(mockPrisma.tenantMembership.upsert).not.toHaveBeenCalled();
     });
 
     it('rejects an unverified account even if the invitation email matches', async () => {
