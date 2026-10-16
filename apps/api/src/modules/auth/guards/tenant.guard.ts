@@ -56,14 +56,7 @@ export class TenantGuard implements CanActivate {
     }
 
     // Verify user belongs to this tenant and membership is ACTIVE from a trusted source
-    const membership: {
-      id: string;
-      tenantId: string;
-      userId: string;
-      role: string;
-      status: string;
-      branchId: string | null;
-    } | null = await this.prisma.withAuthLookupTransaction(
+    const membership = await this.prisma.withAuthLookupTransaction(
       { actorUserId: user.id },
       (tx) =>
         tx.tenantMembership.findUnique({
