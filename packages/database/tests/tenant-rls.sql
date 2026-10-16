@@ -250,7 +250,7 @@ END $$;
 
 -- 7. Forged auth flags must not allow membership creation without a tenant context.
 SELECT set_config('app.auth_context','auth_discovery',true);
-DO $
+DO $$
 DECLARE rejected boolean := false;
 BEGIN
  BEGIN
@@ -264,12 +264,12 @@ BEGIN
  IF NOT rejected THEN
   RAISE EXCEPTION 'SECURITY FAILURE: auth discovery flag created cross-tenant membership';
  END IF;
-END $;
+END $$;
 
 -- 8. A revoked membership must not appear in actor-scoped discovery.
 SELECT set_config('app.auth_context','',true);
 SELECT set_config('app.actor_user_id','00000000-0000-4000-8000-000000000241',true);
-DO $
+DO $$
 BEGIN
  IF (SELECT count(*) FROM public.tenant_memberships WHERE status = 'ACTIVE') <> 1 THEN
   RAISE EXCEPTION 'SECURITY FAILURE: actor discovery cannot read own active membership';
@@ -278,7 +278,7 @@ BEGIN
    '00000000-0000-4000-8000-000000000242') <> 0 THEN
   RAISE EXCEPTION 'SECURITY FAILURE: actor discovery leaked another user membership';
  END IF;
-END $;
+END $$;
 
 RESET ROLE;
 
