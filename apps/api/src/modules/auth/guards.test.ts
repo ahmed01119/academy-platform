@@ -13,14 +13,33 @@ const BRANCH_2 = '00000000-0000-4000-8000-000000000212';
 
 describe('TenantGuard & PermissionsGuard', () => {
   describe('TenantGuard', () => {
-    const guard = new TenantGuard();
+    const mockPrisma = {
+      withAuthLookupTransaction: vi.fn().mockImplementation((_options, operation) =>
+        operation({
+          tenantMembership: {
+            findUnique: vi.fn().mockImplementation(({ where }) => {
+              const memberships = currentRequest?.user?.memberships ?? [];
+              return (
+                memberships.find(
+                  (m: { tenantId: string }) => m.tenantId === where.tenantId_userId.tenantId,
+                ) ?? null
+              );
+            }),
+          },
+        }),
+      ),
+    } as unknown as PrismaService;
+    const guard = new TenantGuard(mockPrisma);
+    let currentRequest: { user?: { memberships?: Array<{ tenantId: string }> } } | null = null;
 
-    const createMockContext = (req: Record<string, unknown>) =>
-      ({
+    const createMockContext = (req: Record<string, unknown>) => {
+      currentRequest = req;
+      return ({
         switchToHttp: () => ({
           getRequest: () => req,
         }),
       }) as unknown as ExecutionContext;
+    };
 
     it('throws ForbiddenException if unauthenticated', async () => {
       const ctx = createMockContext({ user: null });
