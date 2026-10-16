@@ -112,6 +112,20 @@ export const api = {
       });
     },
 
+    async verifyEmail(token: string): Promise<{ message: string }> {
+      return request('/auth/verify-email', {
+        method: 'POST',
+        body: JSON.stringify({ token }),
+      });
+    },
+
+    async resendVerification(email: string): Promise<{ message: string; debugToken?: string }> {
+      return request('/auth/resend-verification', {
+        method: 'POST',
+        body: JSON.stringify({ email }),
+      });
+    },
+
     async getMe(): Promise<{
       user: UserSummary;
       activeTenant?: TenantMembershipSummary;

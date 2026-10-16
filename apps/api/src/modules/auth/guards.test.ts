@@ -4,6 +4,12 @@ import { PermissionsGuard } from './guards/permissions.guard';
 import { Reflector } from '@nestjs/core';
 import { Permission, TenantRole } from '@academy/shared';
 import { BadRequestException, type ExecutionContext, ForbiddenException } from '@nestjs/common';
+import type { PrismaService } from '../database/prisma.service';
+
+const TENANT_A = '00000000-0000-4000-8000-000000000201';
+const TENANT_B = '00000000-0000-4000-8000-000000000202';
+const BRANCH_1 = '00000000-0000-4000-8000-000000000211';
+const BRANCH_2 = '00000000-0000-4000-8000-000000000212';
 
 describe('TenantGuard & PermissionsGuard', () => {
   describe('TenantGuard', () => {
@@ -16,94 +22,133 @@ describe('TenantGuard & PermissionsGuard', () => {
         }),
       }) as unknown as ExecutionContext;
 
-    it('throws ForbiddenException if unauthenticated', () => {
+    it('throws ForbiddenException if unauthenticated', async () => {
       const ctx = createMockContext({ user: null });
-      expect(() => guard.canActivate(ctx)).toThrow(ForbiddenException);
+      await expect(guard.canActivate(ctx)).rejects.toThrow(ForbiddenException);
     });
 
-    it('throws BadRequestException if tenant header is missing', () => {
+    it('throws BadRequestException if tenant header is missing', async () => {
       const ctx = createMockContext({
         user: { id: 'u1', memberships: [] },
         headers: {},
         query: {},
         params: {},
       });
-      expect(() => guard.canActivate(ctx)).toThrow(BadRequestException);
+      await expect(guard.canActivate(ctx)).rejects.toThrow(BadRequestException);
     });
 
-    it('throws ForbiddenException if user has no membership in requested tenant', () => {
+    it('throws ForbiddenException if user has no membership in requested tenant', async () => {
       const ctx = createMockContext({
         user: {
           id: 'u1',
-          memberships: [{ tenantId: 'tenant-other', status: 'ACTIVE', role: TenantRole.COACH }],
+          memberships: [{ tenantId: TENANT_B, status: 'ACTIVE', role: TenantRole.COACH }],
         },
-        headers: { 'x-tenant-id': 'tenant-target' },
+        headers: { 'x-tenant-id': TENANT_A },
         query: {},
         params: {},
       });
-      expect(() => guard.canActivate(ctx)).toThrow(ForbiddenException);
+      await expect(guard.canActivate(ctx)).rejects.toThrow(ForbiddenException);
     });
 
-    it('throws ForbiddenException if membership is REVOKED', () => {
+    it('throws ForbiddenException if membership is REVOKED', async () => {
       const ctx = createMockContext({
         user: {
           id: 'u1',
-          memberships: [{ tenantId: 'tenant-target', status: 'REVOKED', role: TenantRole.COACH }],
+          memberships: [{ tenantId: TENANT_A, status: 'REVOKED', role: TenantRole.COACH }],
         },
-        headers: { 'x-tenant-id': 'tenant-target' },
+        headers: { 'x-tenant-id': TENANT_A },
         query: {},
         params: {},
       });
-      expect(() => guard.canActivate(ctx)).toThrow(ForbiddenException);
+      await expect(guard.canActivate(ctx)).rejects.toThrow(ForbiddenException);
     });
 
-    it('throws ForbiddenException if branch-scoped role tries to access unauthorized branch', () => {
+    it('throws ForbiddenException if membership is SUSPENDED', async () => {
+      const ctx = createMockContext({
+        user: {
+          id: 'u1',
+          memberships: [{ tenantId: TENANT_A, status: 'SUSPENDED', role: TenantRole.COACH }],
+        },
+        headers: { 'x-tenant-id': TENANT_A },
+        query: {},
+        params: {},
+      });
+      await expect(guard.canActivate(ctx)).rejects.toThrow(ForbiddenException);
+    });
+
+    it('throws ForbiddenException if branch-scoped role tries to access unauthorized branch', async () => {
       const ctx = createMockContext({
         user: {
           id: 'u1',
           memberships: [
             {
-              tenantId: 'tenant-target',
+              tenantId: TENANT_A,
               status: 'ACTIVE',
               role: TenantRole.COACH,
-              branchId: 'branch-1',
+              branchId: BRANCH_1,
             },
           ],
         },
-        headers: { 'x-tenant-id': 'tenant-target', 'x-branch-id': 'branch-2' },
+        headers: { 'x-tenant-id': TENANT_A, 'x-branch-id': BRANCH_2 },
         query: {},
         params: {},
       });
-      expect(() => guard.canActivate(ctx)).toThrow(ForbiddenException);
+      await expect(guard.canActivate(ctx)).rejects.toThrow(ForbiddenException);
     });
 
-    it('activates and attaches tenantContext when membership and branch match', () => {
+    it('activates and attaches tenantContext when membership and branch match', async () => {
       const req: Record<string, unknown> = {
         user: {
           id: 'u1',
           memberships: [
             {
-              tenantId: 'tenant-target',
+              tenantId: TENANT_A,
               status: 'ACTIVE',
               role: TenantRole.COACH,
-              branchId: 'branch-1',
+              branchId: BRANCH_1,
             },
           ],
         },
-        headers: { 'x-tenant-id': 'tenant-target' },
+        headers: { 'x-tenant-id': TENANT_A },
         query: {},
         params: {},
       };
       const ctx = createMockContext(req);
 
-      const result = guard.canActivate(ctx);
+      const result = await guard.canActivate(ctx);
       expect(result).toBe(true);
       expect(req.tenantContext).toEqual({
-        tenantId: 'tenant-target',
-        branchId: 'branch-1',
+        tenantId: TENANT_A,
+        branchId: BRANCH_1,
         actorUserId: 'u1',
         locale: 'ar',
       });
+    });
+
+    it('queries database when PrismaService is injected', async () => {
+      const mockPrisma = {
+        tenantMembership: {
+          findUnique: async () => ({
+            id: 'm1',
+            tenantId: TENANT_A,
+            userId: 'u1',
+            role: 'OWNER',
+            status: 'ACTIVE',
+            branchId: null,
+          }),
+        },
+      } as unknown as PrismaService;
+
+      const dbGuard = new TenantGuard(mockPrisma);
+      const req: Record<string, unknown> = {
+        user: { id: 'u1' },
+        headers: { 'x-tenant-id': TENANT_A },
+      };
+      const ctx = createMockContext(req);
+
+      const result = await dbGuard.canActivate(ctx);
+      expect(result).toBe(true);
+      expect(req.tenantMembership).toBeDefined();
     });
   });
 

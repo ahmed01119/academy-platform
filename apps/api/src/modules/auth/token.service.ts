@@ -87,8 +87,9 @@ export class TokenService {
   }
 
   /**
-   * Rotates a refresh token with strict reuse detection.
-   * If a revoked token is used again, the entire family is compromised and revoked!
+   * Rotates a refresh token with strict reuse detection and atomic concurrency safety.
+   * Uses an isolated database transaction with conditional updates.
+   * If a revoked or racing token is used, the entire family is compromised and revoked!
    */
   async rotateRefreshToken(
     plainRefreshToken: string,
@@ -97,71 +98,120 @@ export class TokenService {
   ): Promise<{ tokens: GeneratedTokens; userId: string; email: string }> {
     const tokenHash = this.hashToken(plainRefreshToken);
 
-    const existingToken = await this.prisma.refreshToken.findUnique({
-      where: { tokenHash },
-      include: { user: true },
-    });
-
-    if (!existingToken) {
-      throw new UnauthorizedException({
-        code: ErrorCode.TOKEN_INVALID,
-        message: 'Invalid refresh token',
+    return this.prisma.$transaction(async (tx) => {
+      const existingToken = await tx.refreshToken.findUnique({
+        where: { tokenHash },
+        include: { user: true },
       });
-    }
 
-    // Reuse detection: If token was already revoked, someone is replaying it!
-    if (existingToken.isRevoked) {
-      // Invalidate the ENTIRE token family for this compromised session
-      await this.prisma.refreshToken.updateMany({
-        where: { familyId: existingToken.familyId },
+      if (!existingToken) {
+        throw new UnauthorizedException({
+          code: ErrorCode.TOKEN_INVALID,
+          message: 'Invalid refresh token',
+        });
+      }
+
+      // Reuse detection: If token was already revoked, someone is replaying it!
+      if (existingToken.isRevoked) {
+        // Invalidate the ENTIRE token family for this compromised session
+        await tx.refreshToken.updateMany({
+          where: { familyId: existingToken.familyId },
+          data: { isRevoked: true },
+        });
+
+        throw new UnauthorizedException({
+          code: ErrorCode.UNAUTHORIZED,
+          message: 'Compromised token detected. All sessions in this family have been revoked.',
+        });
+      }
+
+      if (existingToken.expiresAt < new Date()) {
+        throw new UnauthorizedException({
+          code: ErrorCode.TOKEN_EXPIRED,
+          message: 'Refresh token has expired',
+        });
+      }
+
+      // Atomic conditional update: only update if token is still NOT revoked.
+      // If a concurrent request rotated this token simultaneously, updateMany returns count: 0!
+      const updateResult = await tx.refreshToken.updateMany({
+        where: { id: existingToken.id, isRevoked: false },
         data: { isRevoked: true },
       });
 
-      throw new UnauthorizedException({
-        code: ErrorCode.UNAUTHORIZED,
-        message: 'Compromised token detected. All sessions in this family have been revoked.',
-      });
-    }
+      if (updateResult.count === 0) {
+        // Race condition: another concurrent process already rotated this token!
+        // Treat as reuse/replay and revoke the entire token family.
+        await tx.refreshToken.updateMany({
+          where: { familyId: existingToken.familyId },
+          data: { isRevoked: true },
+        });
 
-    if (existingToken.expiresAt < new Date()) {
-      throw new UnauthorizedException({
-        code: ErrorCode.TOKEN_EXPIRED,
-        message: 'Refresh token has expired',
-      });
-    }
+        throw new UnauthorizedException({
+          code: ErrorCode.UNAUTHORIZED,
+          message: 'Compromised token detected. All sessions in this family have been revoked.',
+        });
+      }
 
-    // Revoke the current token as it is being replaced
-    await this.prisma.refreshToken.update({
-      where: { id: existingToken.id },
-      data: { isRevoked: true },
+      // Generate new token pair in the SAME family within the same transaction
+      const payload: JwtPayload = {
+        sub: existingToken.userId,
+        email: existingToken.user.email,
+      };
+
+      const accessToken = await this.jwtService.signAsync(payload, {
+        secret: this.config.jwtSecret,
+        expiresIn: this.config.jwtExpiresIn as JwtSignOptions['expiresIn'],
+      });
+
+      const newPlainRefreshToken = this.generateSecureRandomString(40);
+      const newTokenHash = this.hashToken(newPlainRefreshToken);
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + this.config.refreshTokenExpiresDays);
+
+      await tx.refreshToken.create({
+        data: {
+          userId: existingToken.userId,
+          tokenHash: newTokenHash,
+          familyId: existingToken.familyId,
+          deviceInfo,
+          ipAddress,
+          expiresAt,
+        },
+      });
+
+      return {
+        tokens: {
+          accessToken,
+          refreshToken: newPlainRefreshToken,
+          expiresIn: 15 * 60, // 15 mins
+        },
+        userId: existingToken.userId,
+        email: existingToken.user.email,
+      };
     });
-
-    // Generate new token pair in the SAME family
-    const tokens = await this.generateTokens(
-      existingToken.userId,
-      existingToken.user.email,
-      undefined,
-      deviceInfo,
-      ipAddress,
-      existingToken.familyId,
-    );
-
-    return {
-      tokens,
-      userId: existingToken.userId,
-      email: existingToken.user.email,
-    };
   }
 
   /**
-   * Revokes a specific refresh token (used on logout).
+   * Revokes a specific refresh token session and its family (used on logout).
    */
   async revokeRefreshToken(plainRefreshToken: string): Promise<void> {
     const tokenHash = this.hashToken(plainRefreshToken);
-    await this.prisma.refreshToken.updateMany({
+    const existing = await this.prisma.refreshToken.findUnique({
       where: { tokenHash },
-      data: { isRevoked: true },
     });
+
+    if (existing) {
+      await this.prisma.refreshToken.updateMany({
+        where: { familyId: existing.familyId },
+        data: { isRevoked: true },
+      });
+    } else {
+      await this.prisma.refreshToken.updateMany({
+        where: { tokenHash },
+        data: { isRevoked: true },
+      });
+    }
   }
 
   /**

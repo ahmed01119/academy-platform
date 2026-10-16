@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -15,8 +16,10 @@ import { AuthService } from './auth.service';
 import { AppConfigService } from '../../config/app-config.service';
 import { Public } from './guards/public.decorator';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { CsrfGuard } from './guards/csrf.guard';
 import { CurrentUser } from './decorators/auth-user.decorator';
 import {
+  ErrorCode,
   ForgotPasswordRequestSchema,
   LoginRequestSchema,
   RegisterRequestSchema,
@@ -27,6 +30,15 @@ import {
   type RegisterRequest,
   type ResetPasswordRequest,
 } from '@academy/shared';
+import { z } from 'zod';
+
+const VerifyEmailSchema = z.object({
+  token: z.string().min(1, 'Token is required'),
+});
+
+const ResendVerificationSchema = z.object({
+  email: z.string().email(),
+});
 
 @Controller('auth')
 export class AuthController {
@@ -74,6 +86,7 @@ export class AuthController {
   }
 
   @Public()
+  @UseGuards(CsrfGuard)
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
   async register(
@@ -92,6 +105,7 @@ export class AuthController {
   }
 
   @Public()
+  @UseGuards(CsrfGuard)
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async login(
@@ -110,6 +124,7 @@ export class AuthController {
   }
 
   @Public()
+  @UseGuards(CsrfGuard)
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   async refresh(
@@ -122,7 +137,10 @@ export class AuthController {
     const userAgent = req.headers['user-agent'];
 
     if (!token) {
-      throw new Error('Refresh token is required');
+      throw new BadRequestException({
+        code: ErrorCode.VALIDATION_FAILED,
+        message: 'Refresh token is required',
+      });
     }
 
     const { response, rawTokens } = await this.authService.refresh(token, ipAddress, userAgent);
@@ -132,6 +150,7 @@ export class AuthController {
   }
 
   @Public()
+  @UseGuards(CsrfGuard)
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   async logout(
@@ -149,6 +168,7 @@ export class AuthController {
   }
 
   @Public()
+  @UseGuards(CsrfGuard)
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
   async forgotPassword(
@@ -163,6 +183,7 @@ export class AuthController {
   }
 
   @Public()
+  @UseGuards(CsrfGuard)
   @Post('reset-password')
   @HttpCode(HttpStatus.OK)
   async resetPassword(@Body() body: unknown, @Req() req: Request): Promise<{ message: string }> {
@@ -171,6 +192,33 @@ export class AuthController {
     const userAgent = req.headers['user-agent'];
 
     return this.authService.resetPassword(dto, ipAddress, userAgent);
+  }
+
+  @Public()
+  @UseGuards(CsrfGuard)
+  @Post('verify-email')
+  @HttpCode(HttpStatus.OK)
+  async verifyEmail(@Body() body: unknown, @Req() req: Request): Promise<{ message: string }> {
+    const dto = VerifyEmailSchema.parse(body);
+    const ipAddress = req.ip || req.socket.remoteAddress;
+    const userAgent = req.headers['user-agent'];
+
+    return this.authService.verifyEmail(dto.token, ipAddress, userAgent);
+  }
+
+  @Public()
+  @UseGuards(CsrfGuard)
+  @Post('resend-verification')
+  @HttpCode(HttpStatus.OK)
+  async resendVerification(
+    @Body() body: unknown,
+    @Req() req: Request,
+  ): Promise<{ message: string; debugToken?: string }> {
+    const dto = ResendVerificationSchema.parse(body);
+    const ipAddress = req.ip || req.socket.remoteAddress;
+    const userAgent = req.headers['user-agent'];
+
+    return this.authService.resendVerificationEmail(dto.email, ipAddress, userAgent);
   }
 
   @UseGuards(JwtAuthGuard)

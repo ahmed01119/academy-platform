@@ -3,7 +3,9 @@ import {
   type CanActivate,
   type ExecutionContext,
   ForbiddenException,
+  Inject,
   Injectable,
+  Optional,
 } from '@nestjs/common';
 import {
   ErrorCode,
@@ -11,10 +13,15 @@ import {
   type TenantContext,
   type TenantRole,
 } from '@academy/shared';
+import { PrismaService } from '../../database/prisma.service';
+
+const UUID_PATTERN = /^[\da-f]{8}(-[\da-f]{4}){3}-[\da-f]{12}$/i;
 
 @Injectable()
 export class TenantGuard implements CanActivate {
-  canActivate(context: ExecutionContext): boolean {
+  constructor(@Optional() @Inject(PrismaService) private readonly prisma?: PrismaService) {}
+
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
     const user = request.user;
 
@@ -29,8 +36,8 @@ export class TenantGuard implements CanActivate {
     const tenantIdHeader =
       request.headers['x-tenant-id'] ||
       (request.cookies && request.cookies.tenant_id) ||
-      request.query.tenantId ||
-      request.params.tenantId ||
+      request.query?.tenantId ||
+      request.params?.tenantId ||
       user.activeTenantId;
 
     if (!tenantIdHeader || typeof tenantIdHeader !== 'string') {
@@ -42,8 +49,37 @@ export class TenantGuard implements CanActivate {
 
     const tenantId = tenantIdHeader.trim();
 
-    // Verify user belongs to this tenant and membership is ACTIVE
-    const membership = user.memberships?.find((m: { tenantId: string }) => m.tenantId === tenantId);
+    if (!UUID_PATTERN.test(tenantId)) {
+      throw new BadRequestException({
+        code: ErrorCode.TENANT_REQUIRED,
+        message: 'Invalid tenant ID format',
+      });
+    }
+
+    // Verify user belongs to this tenant and membership is ACTIVE from a trusted source
+    let membership: {
+      id: string;
+      tenantId: string;
+      userId: string;
+      role: string;
+      status: string;
+      branchId: string | null;
+    } | null = null;
+
+    if (this.prisma) {
+      const dbMembership = await this.prisma.tenantMembership.findUnique({
+        where: {
+          tenantId_userId: {
+            tenantId,
+            userId: user.id,
+          },
+        },
+      });
+      membership = dbMembership;
+    } else {
+      membership =
+        user.memberships?.find((m: { tenantId: string }) => m.tenantId === tenantId) ?? null;
+    }
 
     if (!membership) {
       throw new ForbiddenException({
@@ -56,6 +92,13 @@ export class TenantGuard implements CanActivate {
       throw new ForbiddenException({
         code: ErrorCode.MEMBERSHIP_REVOKED,
         message: 'Your membership in this academy has been revoked',
+      });
+    }
+
+    if (membership.status === 'SUSPENDED') {
+      throw new ForbiddenException({
+        code: ErrorCode.MEMBERSHIP_REQUIRED,
+        message: 'Your membership in this academy is suspended',
       });
     }
 

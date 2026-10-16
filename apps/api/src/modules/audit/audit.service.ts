@@ -59,22 +59,32 @@ export class AuditService {
 
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
-  async logEvent(params: AuditEventParams): Promise<void> {
+  async logEvent(params: AuditEventParams, tx?: Prisma.TransactionClient): Promise<void> {
     try {
       const sanitizedMeta = params.metadata ? sanitizeMetadata(params.metadata) : undefined;
+      const data = {
+        tenantId: params.tenantId,
+        actorUserId: params.actorUserId,
+        action: params.action,
+        resourceType: params.resourceType,
+        resourceId: params.resourceId,
+        metadata: (sanitizedMeta as Prisma.InputJsonValue) ?? undefined,
+        ipAddress: params.ipAddress,
+        userAgent: params.userAgent,
+      };
 
-      await this.prisma.auditLog.create({
-        data: {
-          tenantId: params.tenantId,
-          actorUserId: params.actorUserId,
-          action: params.action,
-          resourceType: params.resourceType,
-          resourceId: params.resourceId,
-          metadata: (sanitizedMeta as Prisma.InputJsonValue) ?? undefined,
-          ipAddress: params.ipAddress,
-          userAgent: params.userAgent,
-        },
-      });
+      if (tx) {
+        await tx.auditLog.create({ data });
+      } else if (params.tenantId) {
+        await this.prisma.withTenantTransaction(
+          { tenantId: params.tenantId, actorUserId: params.actorUserId },
+          async (tenantTx) => {
+            await tenantTx.auditLog.create({ data });
+          },
+        );
+      } else {
+        await this.prisma.auditLog.create({ data });
+      }
     } catch (err) {
       // Never crash the primary operation because of secondary audit logging failure, but log error
       this.logger.error(

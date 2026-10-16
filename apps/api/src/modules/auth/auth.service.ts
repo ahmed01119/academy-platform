@@ -11,6 +11,7 @@ import { PasswordService } from './password.service';
 import { TokenService, type GeneratedTokens } from './token.service';
 import { RedisService } from '../redis/redis.service';
 import { AuditService } from '../audit/audit.service';
+import { AppConfigService } from '../../config/app-config.service';
 import {
   ErrorCode,
   TenantRole,
@@ -33,6 +34,7 @@ export class AuthService {
     @Inject(TokenService) private readonly tokenService: TokenService,
     @Inject(RedisService) private readonly redisService: RedisService,
     @Inject(AuditService) private readonly auditService: AuditService,
+    @Inject(AppConfigService) private readonly config: AppConfigService,
   ) {}
 
   private slugify(text: string): string {
@@ -384,7 +386,7 @@ export class AuthService {
   }
 
   /**
-   * Generates single-use expiring password reset token.
+   * Generates single-use expiring password reset token with brute-force rate limiting.
    * Returns a generic success message to prevent user enumeration.
    */
   async forgotPassword(
@@ -393,6 +395,21 @@ export class AuthService {
     userAgent?: string,
   ): Promise<{ message: string; debugToken?: string }> {
     const normalizedEmail = dto.email.toLowerCase().trim();
+    const rateLimitKey = `ratelimit:forgot-password:${ipAddress || 'unknown'}:${normalizedEmail}`;
+    const { count, remainingTime } = await this.redisService.incrementRateLimit(
+      rateLimitKey,
+      15 * 60,
+    );
+    if (count > 3) {
+      this.logger.warn(
+        `Rate limit exceeded for forgot-password on ${normalizedEmail} from ${ipAddress}`,
+      );
+      throw new BadRequestException({
+        code: ErrorCode.RATE_LIMIT_EXCEEDED,
+        message: `Too many password reset requests. Please try again in ${Math.ceil(remainingTime / 60)} minutes.`,
+      });
+    }
+
     const user = await this.prisma.user.findUnique({
       where: { email: normalizedEmail },
     });
@@ -421,8 +438,8 @@ export class AuthService {
         userAgent,
       });
 
-      // Expose debugToken only in development/test environments
-      if (process.env.NODE_ENV !== 'production') {
+      // Expose debugToken ONLY in non-production environments
+      if (this.config.nodeEnv !== 'production' && process.env.NODE_ENV !== 'production') {
         debugToken = rawToken;
       }
     }
@@ -487,7 +504,112 @@ export class AuthService {
   }
 
   /**
-   * Retrieves profile and memberships for current user.
+   * Verifies email address using single-use verification token.
+   */
+  async verifyEmail(
+    token: string,
+    ipAddress?: string,
+    userAgent?: string,
+  ): Promise<{ message: string }> {
+    const tokenHash = this.tokenService.hashToken(token);
+    const user = await this.prisma.user.findFirst({
+      where: {
+        emailVerificationToken: tokenHash,
+        emailVerificationExpiresAt: { gt: new Date() },
+      },
+    });
+
+    if (!user) {
+      throw new BadRequestException({
+        code: ErrorCode.TOKEN_INVALID,
+        message: 'Invalid or expired email verification token',
+      });
+    }
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        isEmailVerified: true,
+        emailVerificationToken: null,
+        emailVerificationExpiresAt: null,
+      },
+    });
+
+    await this.auditService.logEvent({
+      actorUserId: user.id,
+      action: 'AUTH_EMAIL_VERIFIED',
+      resourceType: 'User',
+      resourceId: user.id,
+      ipAddress,
+      userAgent,
+    });
+
+    return { message: 'Email address verified successfully' };
+  }
+
+  /**
+   * Resends email verification link with rate limiting.
+   */
+  async resendVerificationEmail(
+    email: string,
+    ipAddress?: string,
+    userAgent?: string,
+  ): Promise<{ message: string; debugToken?: string }> {
+    const normalizedEmail = email.toLowerCase().trim();
+    const rateLimitKey = `ratelimit:email-verify:${ipAddress || 'unknown'}:${normalizedEmail}`;
+    const { count, remainingTime } = await this.redisService.incrementRateLimit(
+      rateLimitKey,
+      15 * 60,
+    );
+    if (count > 3) {
+      throw new BadRequestException({
+        code: ErrorCode.RATE_LIMIT_EXCEEDED,
+        message: `Too many verification requests. Please try again in ${Math.ceil(remainingTime / 60)} minutes.`,
+      });
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { email: normalizedEmail },
+    });
+
+    let debugToken: string | undefined;
+
+    if (user && !user.isEmailVerified) {
+      const rawToken = this.tokenService.generateSecureRandomString(32);
+      const tokenHash = this.tokenService.hashToken(rawToken);
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          emailVerificationToken: tokenHash,
+          emailVerificationExpiresAt: expiresAt,
+        },
+      });
+
+      await this.auditService.logEvent({
+        actorUserId: user.id,
+        action: 'AUTH_EMAIL_VERIFICATION_RESENT',
+        resourceType: 'User',
+        resourceId: user.id,
+        ipAddress,
+        userAgent,
+      });
+
+      if (this.config.nodeEnv !== 'production' && process.env.NODE_ENV !== 'production') {
+        debugToken = rawToken;
+      }
+    }
+
+    return {
+      message:
+        'If that email address is registered and unverified, verification instructions have been sent.',
+      debugToken,
+    };
+  }
+
+  /**
+   * Retrieves profile and memberships for current user under authenticated discovery path.
    */
   async getMe(
     userId: string,
@@ -497,48 +619,50 @@ export class AuthService {
     activeTenant: TenantMembershipSummary | null;
     memberships: TenantMembershipSummary[];
   }> {
-    const user = await this.prisma.user.findUniqueOrThrow({
-      where: { id: userId },
-      include: {
-        memberships: {
-          include: {
-            tenant: true,
-            branch: true,
+    return this.prisma.withAuthLookupTransaction({ actorUserId: userId }, async (tx) => {
+      const user = await tx.user.findUniqueOrThrow({
+        where: { id: userId },
+        include: {
+          memberships: {
+            include: {
+              tenant: true,
+              branch: true,
+            },
           },
         },
-      },
+      });
+
+      const memberships: TenantMembershipSummary[] = user.memberships
+        .filter((m) => m.status === 'ACTIVE')
+        .map((m) => ({
+          id: m.id,
+          tenantId: m.tenantId,
+          tenantName: m.tenant.name,
+          tenantSlug: m.tenant.slug,
+          role: m.role as TenantRole,
+          status: m.status,
+          branchId: m.branchId,
+          branchName: m.branch?.name,
+        }));
+
+      const activeTenant = activeTenantId
+        ? (memberships.find((m) => m.tenantId === activeTenantId) ?? memberships[0] ?? null)
+        : (memberships[0] ?? null);
+
+      const userSummary: UserSummary = {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        phone: user.phone,
+        isEmailVerified: user.isEmailVerified,
+        createdAt: user.createdAt.toISOString(),
+      };
+
+      return {
+        user: userSummary,
+        activeTenant,
+        memberships,
+      };
     });
-
-    const memberships: TenantMembershipSummary[] = user.memberships
-      .filter((m) => m.status === 'ACTIVE')
-      .map((m) => ({
-        id: m.id,
-        tenantId: m.tenantId,
-        tenantName: m.tenant.name,
-        tenantSlug: m.tenant.slug,
-        role: m.role as TenantRole,
-        status: m.status,
-        branchId: m.branchId,
-        branchName: m.branch?.name,
-      }));
-
-    const activeTenant = activeTenantId
-      ? (memberships.find((m) => m.tenantId === activeTenantId) ?? memberships[0] ?? null)
-      : (memberships[0] ?? null);
-
-    const userSummary: UserSummary = {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      phone: user.phone,
-      isEmailVerified: user.isEmailVerified,
-      createdAt: user.createdAt.toISOString(),
-    };
-
-    return {
-      user: userSummary,
-      activeTenant,
-      memberships,
-    };
   }
 }

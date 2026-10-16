@@ -13,14 +13,24 @@ async function bootstrap() {
 
   app.use(cookieParser());
 
-  const origin = config.corsOrigin.includes(',')
+  const allowedOrigins = config.corsOrigin.includes(',')
     ? config.corsOrigin.split(',').map((o) => o.trim())
-    : config.corsOrigin === '*'
-      ? true
-      : config.corsOrigin;
+    : [config.corsOrigin.trim()];
 
   app.enableCors({
-    origin,
+    origin: (
+      requestOrigin: string | undefined,
+      callback: (err: Error | null, allow?: boolean) => void,
+    ) => {
+      // Allow server-to-server or non-browser requests with no origin header
+      if (!requestOrigin) {
+        return callback(null, true);
+      }
+      if (allowedOrigins.includes('*') || allowedOrigins.includes(requestOrigin)) {
+        return callback(null, true);
+      }
+      return callback(new Error('CORS origin not allowed by policy'));
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: [
@@ -29,6 +39,8 @@ async function bootstrap() {
       'x-tenant-id',
       'x-branch-id',
       'Accept-Language',
+      'Origin',
+      'Referer',
     ],
   });
 

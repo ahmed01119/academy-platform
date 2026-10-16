@@ -219,4 +219,39 @@ describe('AuthService', () => {
       }),
     ).rejects.toThrow(UnauthorizedException);
   });
+
+  it('omits debugToken in production for forgotPassword', async () => {
+    mockConfig.nodeEnv = 'production';
+    mockPrisma.user.findUnique.mockResolvedValue({
+      id: 'u-1',
+      email: 'prod-user@example.com',
+    });
+
+    const result = await authService.forgotPassword({
+      email: 'prod-user@example.com',
+    });
+
+    expect(result.debugToken).toBeUndefined();
+    expect(result.message).toContain('instructions have been sent');
+  });
+
+  it('verifies email with valid token', async () => {
+    mockPrisma.user.findFirst = vi.fn().mockResolvedValue({
+      id: 'u-verify',
+      email: 'unverified@example.com',
+      emailVerificationToken: 'hashed-token-value',
+      emailVerificationExpiresAt: new Date(Date.now() + 100000),
+    });
+
+    const result = await authService.verifyEmail('valid-raw-token');
+    expect(result.message).toBe('Email address verified successfully');
+    expect(mockPrisma.user.update).toHaveBeenCalledWith({
+      where: { id: 'u-verify' },
+      data: {
+        isEmailVerified: true,
+        emailVerificationToken: null,
+        emailVerificationExpiresAt: null,
+      },
+    });
+  });
 });

@@ -9,6 +9,7 @@ import { JwtStrategy } from './guards/jwt.strategy';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { TenantGuard } from './guards/tenant.guard';
 import { PermissionsGuard } from './guards/permissions.guard';
+import { CsrfGuard } from './guards/csrf.guard';
 
 @Module({
   imports: [PassportModule.register({ defaultStrategy: 'jwt' }), JwtModule.register({})],
@@ -21,6 +22,7 @@ import { PermissionsGuard } from './guards/permissions.guard';
     JwtAuthGuard,
     TenantGuard,
     PermissionsGuard,
+    CsrfGuard,
   ],
   exports: [
     AuthService,
@@ -29,6 +31,7 @@ import { PermissionsGuard } from './guards/permissions.guard';
     JwtAuthGuard,
     TenantGuard,
     PermissionsGuard,
+    CsrfGuard,
   ],
 })
 export class AuthModule {}

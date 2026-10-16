@@ -9,6 +9,7 @@ import { TenantRole } from '@academy/shared';
 type MockFn = ReturnType<typeof vi.fn>;
 
 interface MockPrisma {
+  $transaction: MockFn;
   refreshToken: {
     create: MockFn;
     findUnique: MockFn;
@@ -39,6 +40,7 @@ describe('TokenService', () => {
     };
 
     mockPrisma = {
+      $transaction: vi.fn(async (cb: (tx: unknown) => Promise<unknown>) => cb(mockPrisma)),
       refreshToken: {
         create: vi.fn().mockResolvedValue({}),
         findUnique: vi.fn(),
@@ -105,14 +107,15 @@ describe('TokenService', () => {
     };
 
     mockPrisma.refreshToken.findUnique.mockResolvedValue(existingSession);
+    mockPrisma.refreshToken.updateMany.mockResolvedValue({ count: 1 });
 
     const result = await tokenService.rotateRefreshToken(rawOldToken);
 
     expect(result.userId).toBe('user-123');
     expect(result.email).toBe('coach@example.com');
     expect(result.tokens.accessToken).toBe('mock.jwt.token');
-    expect(mockPrisma.refreshToken.update).toHaveBeenCalledWith({
-      where: { id: 'session-1' },
+    expect(mockPrisma.refreshToken.updateMany).toHaveBeenCalledWith({
+      where: { id: 'session-1', isRevoked: false },
       data: { isRevoked: true },
     });
     expect(mockPrisma.refreshToken.create).toHaveBeenCalledWith(
@@ -151,6 +154,81 @@ describe('TokenService', () => {
     // Verify all tokens in the compromised family were invalidated
     expect(mockPrisma.refreshToken.updateMany).toHaveBeenCalledWith({
       where: { familyId: 'family-compromised' },
+      data: { isRevoked: true },
+    });
+  });
+
+  it('detects concurrent rotation race condition and invalidates family', async () => {
+    const rawToken = 'racing-token';
+    const tokenHash = tokenService.hashToken(rawToken);
+
+    const session = {
+      id: 'session-racing',
+      tokenHash,
+      familyId: 'family-racing',
+      userId: 'user-race',
+      isRevoked: false,
+      expiresAt: new Date(Date.now() + 1000000),
+      user: {
+        email: 'race@example.com',
+      },
+    };
+
+    mockPrisma.refreshToken.findUnique.mockResolvedValue(session);
+    // Simulate losing the race: updateMany conditional update returned count 0
+    mockPrisma.refreshToken.updateMany.mockResolvedValueOnce({ count: 0 });
+
+    await expect(tokenService.rotateRefreshToken(rawToken)).rejects.toThrow(UnauthorizedException);
+
+    // Verify family was revoked due to race condition / suspected replay
+    expect(mockPrisma.refreshToken.updateMany).toHaveBeenCalledWith({
+      where: { familyId: 'family-racing' },
+      data: { isRevoked: true },
+    });
+  });
+
+  it('rejects expired refresh token', async () => {
+    const rawToken = 'expired-token';
+    const tokenHash = tokenService.hashToken(rawToken);
+
+    const expiredSession = {
+      id: 'session-expired',
+      tokenHash,
+      familyId: 'family-expired',
+      userId: 'user-expired',
+      isRevoked: false,
+      expiresAt: new Date(Date.now() - 10000), // in the past
+      user: { email: 'expired@example.com' },
+    };
+
+    mockPrisma.refreshToken.findUnique.mockResolvedValue(expiredSession);
+
+    await expect(tokenService.rotateRefreshToken(rawToken)).rejects.toThrow(UnauthorizedException);
+  });
+
+  it('revokes entire family on logout when token is found', async () => {
+    const rawToken = 'logout-token';
+    const tokenHash = tokenService.hashToken(rawToken);
+
+    mockPrisma.refreshToken.findUnique.mockResolvedValue({
+      id: 'session-logout',
+      tokenHash,
+      familyId: 'family-logout',
+    });
+
+    await tokenService.revokeRefreshToken(rawToken);
+
+    expect(mockPrisma.refreshToken.updateMany).toHaveBeenCalledWith({
+      where: { familyId: 'family-logout' },
+      data: { isRevoked: true },
+    });
+  });
+
+  it('revokes all sessions on password reset', async () => {
+    await tokenService.revokeAllUserTokens('user-reset-id');
+
+    expect(mockPrisma.refreshToken.updateMany).toHaveBeenCalledWith({
+      where: { userId: 'user-reset-id' },
       data: { isRevoked: true },
     });
   });
