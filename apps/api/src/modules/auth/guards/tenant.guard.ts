@@ -5,7 +5,6 @@ import {
   ForbiddenException,
   Inject,
   Injectable,
-  Optional,
 } from '@nestjs/common';
 import {
   ErrorCode,
@@ -19,7 +18,7 @@ const UUID_PATTERN = /^[\da-f]{8}(-[\da-f]{4}){3}-[\da-f]{12}$/i;
 
 @Injectable()
 export class TenantGuard implements CanActivate {
-  constructor(@Optional() @Inject(PrismaService) private readonly prisma?: PrismaService) {}
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
@@ -66,26 +65,19 @@ export class TenantGuard implements CanActivate {
       branchId: string | null;
     } | null = null;
 
-    if (this.prisma) {
-      // Never trust tenant IDs from request headers as an RLS authorization context.
-      // Resolve only the authenticated actor's membership first.
-      const dbMembership = await this.prisma.withAuthLookupTransaction(
-        { actorUserId: user.id },
-        (tx) =>
-          tx.tenantMembership.findUnique({
-            where: {
-              tenantId_userId: {
-                tenantId,
-                userId: user.id,
-              },
+    // Always verify membership against the database; never trust cached JWT claims.
+    membership = await this.prisma.withAuthLookupTransaction(
+      { actorUserId: user.id },
+      (tx) =>
+        tx.tenantMembership.findUnique({
+          where: {
+            tenantId_userId: {
+              tenantId,
+              userId: user.id,
             },
-          }),
-      );
-      membership = dbMembership;
-    } else {
-      membership =
-        user.memberships?.find((m: { tenantId: string }) => m.tenantId === tenantId) ?? null;
-    }
+          },
+        }),
+    );
 
     if (!membership) {
       throw new ForbiddenException({
