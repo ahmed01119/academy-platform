@@ -32,6 +32,12 @@ VALUES
  ('00000000-0000-4000-8000-000000000251','00000000-0000-4000-8000-000000000201','00000000-0000-4000-8000-000000000241','OWNER','ACTIVE','00000000-0000-4000-8000-000000000211',now()),
  ('00000000-0000-4000-8000-000000000252','00000000-0000-4000-8000-000000000202','00000000-0000-4000-8000-000000000242','OWNER','ACTIVE','00000000-0000-4000-8000-000000000212',now());
 
+-- Invitation fixtures for both tenants, created by the migration owner.
+INSERT INTO public.invitations (id, tenant_id, email, role, token, status, expires_at)
+VALUES
+ ('00000000-0000-4000-8000-000000000254','00000000-0000-4000-8000-000000000201','invite-a@ci.local','COACH','ci-hash-a','PENDING',now() + interval '1 day'),
+ ('00000000-0000-4000-8000-000000000255','00000000-0000-4000-8000-000000000202','invite-b@ci.local','COACH','ci-hash-b','PENDING',now() + interval '1 day');
+
 -- Attendance sessions, records, corrections fixtures
 INSERT INTO public.attendance_sessions (id, tenant_id, branch_id, group_name, session_date, start_time, end_time, status, updated_at)
 VALUES
@@ -279,6 +285,27 @@ BEGIN
   RAISE EXCEPTION 'SECURITY FAILURE: actor discovery leaked another user membership';
  END IF;
 END $$;
+
+-- 9. A forged invitation lookup flag cannot read or consume any invitation.
+SELECT set_config('app.actor_user_id','',true);
+SELECT set_config('app.auth_context','invitation_lookup',true);
+DO $
+BEGIN
+ IF (SELECT count(*) FROM public.invitations) <> 0 THEN
+  RAISE EXCEPTION 'SECURITY FAILURE: invitation lookup exposed tenant invitations';
+ END IF;
+ IF (SELECT count(*) FROM public.invitations WHERE token = 'ci-hash-b') <> 0 THEN
+  RAISE EXCEPTION 'SECURITY FAILURE: token lookup bypassed invitation RLS';
+ END IF;
+END $;
+
+DO $
+BEGIN
+ UPDATE public.invitations SET status = 'ACCEPTED' WHERE token = 'ci-hash-b';
+ IF FOUND THEN
+  RAISE EXCEPTION 'SECURITY FAILURE: invitation lookup consumed a foreign invitation';
+ END IF;
+END $;
 
 RESET ROLE;
 
