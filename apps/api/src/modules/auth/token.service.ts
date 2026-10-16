@@ -98,7 +98,7 @@ export class TokenService {
   ): Promise<{ tokens: GeneratedTokens; userId: string; email: string }> {
     const tokenHash = this.hashToken(plainRefreshToken);
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       const existingToken = await tx.refreshToken.findUnique({
         where: { tokenHash },
         include: { user: true },
@@ -119,10 +119,9 @@ export class TokenService {
           data: { isRevoked: true },
         });
 
-        throw new UnauthorizedException({
-          code: ErrorCode.UNAUTHORIZED,
-          message: 'Compromised token detected. All sessions in this family have been revoked.',
-        });
+        // Return a sentinel so the transaction COMMITS family revocation.
+        // Throwing here would roll back the security update.
+        return { compromised: true as const };
       }
 
       if (existingToken.expiresAt < new Date()) {
@@ -147,10 +146,9 @@ export class TokenService {
           data: { isRevoked: true },
         });
 
-        throw new UnauthorizedException({
-          code: ErrorCode.UNAUTHORIZED,
-          message: 'Compromised token detected. All sessions in this family have been revoked.',
-        });
+        // Return a sentinel so the transaction COMMITS family revocation.
+        // Throwing here would roll back the security update.
+        return { compromised: true as const };
       }
 
       // Generate new token pair in the SAME family within the same transaction
@@ -190,6 +188,15 @@ export class TokenService {
         email: existingToken.user.email,
       };
     });
+
+    if ('compromised' in result) {
+      throw new UnauthorizedException({
+        code: ErrorCode.UNAUTHORIZED,
+        message: 'Refresh token reuse detected; session family revoked',
+      });
+    }
+
+    return result;
   }
 
   /**
