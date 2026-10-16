@@ -164,6 +164,27 @@ describe('TenantGuard & PermissionsGuard', () => {
       );
     });
 
+    it('fails closed if the membership database lookup fails', async () => {
+      const withAuthLookupTransaction = vi.fn().mockRejectedValue(new Error('database unavailable'));
+      const dbGuard = new TenantGuard({ withAuthLookupTransaction } as unknown as PrismaService);
+      const req: Record<string, unknown> = {
+        user: {
+          id: 'u1',
+          memberships: [{ tenantId: TENANT_A, status: 'ACTIVE', role: TenantRole.OWNER }],
+        },
+        headers: { 'x-tenant-id': TENANT_A },
+      };
+
+      await expect(dbGuard.canActivate(createMockContext(req))).rejects.toThrow(
+        'database unavailable',
+      );
+      expect(req.tenantContext).toBeUndefined();
+      expect(withAuthLookupTransaction).toHaveBeenCalledWith(
+        { actorUserId: 'u1' },
+        expect.any(Function),
+      );
+    });
+
     it('denies stale JWT membership when the database has no membership', async () => {
       const findUnique = vi.fn().mockResolvedValue(null);
       const withAuthLookupTransaction = vi
