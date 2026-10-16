@@ -67,14 +67,20 @@ export class TenantGuard implements CanActivate {
     } | null = null;
 
     if (this.prisma) {
-      const dbMembership = await this.prisma.tenantMembership.findUnique({
-        where: {
-          tenantId_userId: {
-            tenantId,
-            userId: user.id,
-          },
-        },
-      });
+      // Never trust tenant IDs from request headers as an RLS authorization context.
+      // Resolve only the authenticated actor's membership first.
+      const dbMembership = await this.prisma.withAuthLookupTransaction(
+        { actorUserId: user.id },
+        (tx) =>
+          tx.tenantMembership.findUnique({
+            where: {
+              tenantId_userId: {
+                tenantId,
+                userId: user.id,
+              },
+            },
+          }),
+      );
       membership = dbMembership;
     } else {
       membership =
