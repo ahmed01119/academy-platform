@@ -43,7 +43,30 @@ BEGIN
   IF allowed THEN
     RAISE EXCEPTION 'SECURITY FAILURE: runtime role can delete audit logs';
   END IF;
-END $$;
+
+  -- Runtime identity must never provision or delete platform tenants.
+  allowed := false;
+  BEGIN
+    EXECUTE 'INSERT INTO public.tenants (slug, name) VALUES (''ci_forbidden'', ''Forbidden'')';
+    allowed := true;
+  EXCEPTION WHEN insufficient_privilege THEN
+    NULL;
+  END;
+  IF allowed THEN
+    RAISE EXCEPTION 'SECURITY FAILURE: runtime role can provision tenants';
+  END IF;
+
+  allowed := false;
+  BEGIN
+    EXECUTE 'DELETE FROM public.tenants WHERE false';
+    allowed := true;
+  EXCEPTION WHEN insufficient_privilege THEN
+    NULL;
+  END;
+  IF allowed THEN
+    RAISE EXCEPTION 'SECURITY FAILURE: runtime role can delete tenants';
+  END IF;
+END $;
 
 RESET ROLE;
 ROLLBACK;
