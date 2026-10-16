@@ -17,7 +17,6 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { TenantGuard } from '../auth/guards/tenant.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermissions } from '../auth/guards/require-permissions.decorator';
-import { Public } from '../auth/guards/public.decorator';
 import { CurrentUser, CurrentTenantContext } from '../auth/decorators/auth-user.decorator';
 import {
   AcceptInviteRequestSchema,
@@ -71,7 +70,7 @@ export class TenancyController {
     return this.tenancyService.inviteStaff(tenantContext, dto);
   }
 
-  @Public()
+  @UseGuards(JwtAuthGuard)
   @Post('invitations/accept')
   @HttpCode(HttpStatus.OK)
   async acceptInvitation(@Req() req: Request, @Body() body: unknown) {
