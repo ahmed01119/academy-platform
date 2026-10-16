@@ -24,7 +24,7 @@ export default function HomePage() {
         <aside className="bg-slate-900 p-6 text-white lg:min-h-screen lg:w-64">
           <h1 className="text-xl font-bold">⚽ Academy Platform</h1>
           <p className="mt-2 text-sm text-slate-300">إدارة الأكاديميات الرياضية</p>
-          <nav aria-label="القائمة الرئيسية" className="mt-8 flex gap-2 overflow-x-auto lg:flex-col">
+          <nav aria-label="القائمة الرئيسية" className="mt-8 flex gap-2 lg:flex-col">
             {navigation.map((item, index) => (
               <span
                 key={item}
@@ -51,7 +51,7 @@ export default function HomePage() {
               الحصص والحضور واللاعبون والاشتراكات والتقارير، بواجهة عربية واضحة.
             </p>
           </section>
-          <section aria-label="مؤشرات الأكاديمية" className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <section aria-label="مؤشرات الأكاديمية" className="mt-6 grid gap-4 sm:grid-cols-2">
             {summaries.map((item) => (
               <article key={item.label} className="rounded-2xl bg-white p-5 shadow-sm">
                 <h3 className="font-semibold">{item.label}</h3>
@@ -64,7 +64,6 @@ export default function HomePage() {
               <h3 className="text-xl font-bold">تسجيل حضور سريع</h3>
               <p className="mt-4 text-sm leading-7">
                 اختر الحصة وابحث عن اللاعب وسجل حالته بلمسة واحدة.
-                سيتم تفعيل الميزة بعد بناء المستخدمين والصلاحيات والحصص.
               </p>
             </article>
             <article className="rounded-2xl bg-white p-6 shadow-sm">
