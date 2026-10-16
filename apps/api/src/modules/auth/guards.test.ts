@@ -165,7 +165,9 @@ describe('TenantGuard & PermissionsGuard', () => {
     });
 
     it('fails closed if the membership database lookup fails', async () => {
-      const withAuthLookupTransaction = vi.fn().mockRejectedValue(new Error('database unavailable'));
+      const withAuthLookupTransaction = vi
+        .fn()
+        .mockRejectedValue(new Error('database unavailable'));
       const dbGuard = new TenantGuard({ withAuthLookupTransaction } as unknown as PrismaService);
       const req: Record<string, unknown> = {
         user: {
