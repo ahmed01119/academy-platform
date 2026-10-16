@@ -1,6 +1,5 @@
-// Sprint 0 foundational schema.
-// Business modules (auth sessions, billing, enrollments, etc.) are intentionally out of scope.
-// This models tenancy, branching, and audit primitives only.
+// Academy Platform - Prisma Schema
+// Multi-Tenant SaaS with Identity, Membership, RBAC, Auditing, and Attendance Foundation
 
 generator client {
   provider = "prisma-client-js"
@@ -24,7 +23,85 @@ enum BranchStatus {
 
 enum SportCode {
   FOOTBALL
-  // Future sports are added explicitly; avoid free-form strings for core taxonomy.
+}
+
+enum TenantRole {
+  OWNER
+  MANAGER
+  BRANCH_MANAGER
+  RECEPTIONIST
+  COACH
+  ACCOUNTANT
+  VIEWER
+}
+
+enum MembershipStatus {
+  INVITED
+  ACTIVE
+  SUSPENDED
+  REVOKED
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
+}
+
+enum AttendanceStatus {
+  PRESENT
+  LATE
+  ABSENT
+  EXCUSED
+  UNMARKED
+}
+
+enum SessionStatus {
+  SCHEDULED
+  IN_PROGRESS
+  CLOSED
+}
+
+/// Global user identity (one user can belong to multiple academies).
+model User {
+  id                         String    @id @default(uuid()) @db.Uuid
+  email                      String    @unique
+  passwordHash               String    @map("password_hash")
+  name                       String
+  phone                      String?
+  isEmailVerified            Boolean   @default(false) @map("is_email_verified")
+  emailVerificationToken     String?   @map("email_verification_token")
+  emailVerificationExpiresAt DateTime? @map("email_verification_expires_at") @db.Timestamptz(3)
+  passwordResetToken         String?   @map("password_reset_token")
+  passwordResetExpiresAt     DateTime? @map("password_reset_expires_at") @db.Timestamptz(3)
+  createdAt                  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  memberships        TenantMembership[]
+  refreshTokens      RefreshToken[]
+  sentInvitations    Invitation[]       @relation("UserSentInvitations")
+
+  @@map("users")
+}
+
+/// Refresh tokens supporting rotation, reuse detection, and device tracking.
+model RefreshToken {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  tokenHash  String   @unique @map("token_hash")
+  familyId   String   @map("family_id") @db.Uuid
+  deviceInfo String?  @map("device_info")
+  ipAddress  String?  @map("ip_address")
+  isRevoked  Boolean  @default(false) @map("is_revoked")
+  expiresAt  DateTime @map("expires_at") @db.Timestamptz(3)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([familyId])
+  @@map("refresh_tokens")
 }
 
 /// Top-level tenant (academy organization / legal customer of the SaaS).
@@ -41,11 +118,58 @@ model Tenant {
   createdAt DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  branches Branch[]
-  sports   TenantSport[]
-  auditLogs AuditLog[]
+  branches           Branch[]
+  sports             TenantSport[]
+  auditLogs          AuditLog[]
+  memberships        TenantMembership[]
+  invitations        Invitation[]
+  attendanceSessions AttendanceSession[]
 
   @@map("tenants")
+}
+
+/// Multi-tenant membership linking users to academies with granular roles.
+model TenantMembership {
+  id        String           @id @default(uuid()) @db.Uuid
+  tenantId  String           @map("tenant_id") @db.Uuid
+  userId    String           @map("user_id") @db.Uuid
+  role      TenantRole
+  status    MembershipStatus @default(ACTIVE)
+  branchId  String?          @map("branch_id") @db.Uuid
+  createdAt DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  tenant Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  branch Branch? @relation(fields: [branchId], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, userId])
+  @@index([tenantId])
+  @@index([userId])
+  @@index([branchId])
+  @@map("tenant_memberships")
+}
+
+/// Staff invitations to join an academy.
+model Invitation {
+  id              String           @id @default(uuid()) @db.Uuid
+  tenantId        String           @map("tenant_id") @db.Uuid
+  email           String
+  role            TenantRole
+  branchId        String?          @map("branch_id") @db.Uuid
+  token           String           @unique
+  status          InvitationStatus @default(PENDING)
+  invitedByUserId String?          @map("invited_by_user_id") @db.Uuid
+  expiresAt       DateTime         @map("expires_at") @db.Timestamptz(3)
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  tenant        Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch        Branch? @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  invitedByUser User?   @relation("UserSentInvitations", fields: [invitedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([email])
+  @@map("invitations")
 }
 
 model Branch {
@@ -60,7 +184,10 @@ model Branch {
   createdAt DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  memberships        TenantMembership[]
+  invitations        Invitation[]
+  attendanceSessions AttendanceSession[]
 
   @@unique([tenantId, code])
   @@index([tenantId])
@@ -82,7 +209,6 @@ model TenantSport {
 }
 
 /// Audit trail: prevent tenant deletion from detaching audit events.
-/// Append-only enforcement still requires database privileges/triggers and tests.
 model AuditLog {
   id           String   @id @default(uuid()) @db.Uuid
   tenantId     String?  @map("tenant_id") @db.Uuid
@@ -101,4 +227,69 @@ model AuditLog {
   @@index([tenantId, createdAt])
   @@index([resourceType, resourceId])
   @@map("audit_logs")
+}
+
+/// Attendance session model representing a training event in a branch.
+model AttendanceSession {
+  id             String        @id @default(uuid()) @db.Uuid
+  tenantId       String        @map("tenant_id") @db.Uuid
+  branchId       String        @map("branch_id") @db.Uuid
+  sport          SportCode     @default(FOOTBALL)
+  groupName      String        @map("group_name")
+  sessionDate    DateTime      @map("session_date") @db.Date
+  startTime      String        @map("start_time")
+  endTime        String        @map("end_time")
+  status         SessionStatus @default(SCHEDULED)
+  closedAt       DateTime?     @map("closed_at") @db.Timestamptz(3)
+  closedByUserId String?       @map("closed_by_user_id") @db.Uuid
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  tenant  Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch  Branch             @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  records AttendanceRecord[]
+
+  @@index([tenantId, sessionDate])
+  @@index([branchId])
+  @@map("attendance_sessions")
+}
+
+/// Individual player attendance record with optimistic concurrency.
+model AttendanceRecord {
+  id             String           @id @default(uuid()) @db.Uuid
+  tenantId       String           @map("tenant_id") @db.Uuid
+  sessionId      String           @map("session_id") @db.Uuid
+  playerId       String           @map("player_id") @db.Uuid
+  status         AttendanceStatus @default(UNMARKED)
+  checkInTime    DateTime?        @map("check_in_time") @db.Timestamptz(3)
+  markedByUserId String?          @map("marked_by_user_id") @db.Uuid
+  remarks        String?
+  version        Int              @default(1)
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  session     AttendanceSession      @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  corrections AttendanceCorrection[]
+
+  @@unique([sessionId, playerId])
+  @@index([tenantId])
+  @@map("attendance_records")
+}
+
+/// Auditable attendance correction history.
+model AttendanceCorrection {
+  id                 String           @id @default(uuid()) @db.Uuid
+  tenantId           String           @map("tenant_id") @db.Uuid
+  recordId           String           @map("record_id") @db.Uuid
+  previousStatus     AttendanceStatus @map("previous_status")
+  newStatus          AttendanceStatus @map("new_status")
+  reason             String
+  correctedByUserId String           @map("corrected_by_user_id") @db.Uuid
+  createdAt          DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  record AttendanceRecord @relation(fields: [recordId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([recordId])
+  @@map("attendance_corrections")
 }
