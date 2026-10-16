@@ -346,8 +346,12 @@ export class TenancyService {
           data: { status: 'REVOKED' },
         });
 
-        // Revoke all refresh tokens for that user
-        await this.tokenService.revokeAllUserTokens(membership.userId);
+        // Keep session revocation atomic with the membership change and audit event.
+        // A separate Prisma transaction could revoke sessions even if this one rolls back.
+        await tx.refreshToken.updateMany({
+          where: { userId: membership.userId, isRevoked: false },
+          data: { isRevoked: true },
+        });
 
         await this.auditService.logEvent(
           {
