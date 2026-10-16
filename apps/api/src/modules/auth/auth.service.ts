@@ -207,16 +207,9 @@ export class AuthService {
       });
     }
 
+    // Credential lookup must not depend on tenant-scoped RLS visibility.
     const user = await this.prisma.user.findUnique({
       where: { email: normalizedEmail },
-      include: {
-        memberships: {
-          include: {
-            tenant: true,
-            branch: true,
-          },
-        },
-      },
     });
 
     // Timing-attack prevention: If user does not exist, run a dummy hash verification
@@ -246,8 +239,19 @@ export class AuthService {
     // Reset rate limit counter upon successful credentials verification
     await this.redisService.resetRateLimit(rateLimitKey);
 
+    // Only discover tenant memberships AFTER successful password verification.
+    // Actor-bound, transaction-local context keeps unrelated tenants invisible.
+    const userMemberships = await this.prisma.withAuthLookupTransaction(
+      { actorUserId: user.id },
+      (tx) =>
+        tx.tenantMembership.findMany({
+          where: { userId: user.id, status: 'ACTIVE' },
+          include: { tenant: true, branch: true },
+        }),
+    );
+
     // Map memberships
-    const memberships: TenantMembershipSummary[] = user.memberships
+    const memberships: TenantMembershipSummary[] = userMemberships
       .filter((m) => m.status === 'ACTIVE')
       .map((m) => ({
         id: m.id,
