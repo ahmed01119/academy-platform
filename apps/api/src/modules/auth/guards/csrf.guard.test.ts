@@ -70,4 +70,19 @@ describe('CsrfGuard', () => {
     const ctx = createMockContext('POST', { access_token: 'valid' }, {});
     expect(() => guard.canActivate(ctx)).toThrow(ForbiddenException);
   });
+  it('rejects wildcard CORS as a CSRF bypass', () => {
+    const wildcardGuard = new CsrfGuard({ corsOrigin: '*' } as AppConfigService);
+    const ctx = createMockContext(
+      'POST',
+      { refresh_token: 'valid' },
+      { origin: 'https://evil-attacker.com' },
+    );
+    expect(() => wildcardGuard.canActivate(ctx)).toThrow(ForbiddenException);
+  });
+
+  it('rejects invalid allowlist entries instead of trusting them', () => {
+    const invalidGuard = new CsrfGuard({ corsOrigin: 'null, *' } as AppConfigService);
+    const ctx = createMockContext('DELETE', { access_token: 'valid' }, { origin: 'null' });
+    expect(() => invalidGuard.canActivate(ctx)).toThrow(ForbiddenException);
+  });
 });
