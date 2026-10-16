@@ -209,6 +209,8 @@ model TenantSport {
 }
 
 /// Audit trail: prevent tenant deletion from detaching audit events.
+/// A PostgreSQL migration installs an UPDATE/DELETE rejection trigger.
+/// Verify its behavior in CI and use a separate, unprivileged application DB role.
 model AuditLog {
   id           String   @id @default(uuid()) @db.Uuid
   tenantId     String?  @map("tenant_id") @db.Uuid

@@ -23,5 +23,21 @@ export function validateEnv(config: Record<string, unknown>): AppEnv {
       .join('; ');
     throw new Error(`Invalid environment configuration: ${details}`);
   }
+  if (parsed.data.NODE_ENV === 'production') {
+    if (!parsed.data.DATABASE_URL) {
+      throw new Error('DATABASE_URL is required in production');
+    }
+
+    const databaseUrl = new URL(parsed.data.DATABASE_URL);
+    if (!['postgresql:', 'postgres:'].includes(databaseUrl.protocol)) {
+      throw new Error('Production DATABASE_URL must use PostgreSQL');
+    }
+
+    const username = decodeURIComponent(databaseUrl.username).toLowerCase();
+    if (!username || ['postgres', 'academy', 'root'].includes(username)) {
+      throw new Error('Production DATABASE_URL must use a dedicated unprivileged runtime role');
+    }
+  }
+
   return parsed.data;
 }

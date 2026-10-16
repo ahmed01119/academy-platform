@@ -4,7 +4,15 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Navbar } from '../components/Navbar';
 import { useAuth } from '../lib/auth-context';
-import { Building2, Trophy, Sparkles, Lock, Database, Activity, ChevronLeft } from 'lucide-react';
+import {
+  Building2,
+  Trophy,
+  Sparkles,
+  Lock,
+  Database,
+  Activity,
+  ChevronLeft,
+} from 'lucide-react';
 
 export default function HomePage() {
   const { user } = useAuth();
@@ -46,8 +54,7 @@ export default function HomePage() {
               {/* Description */}
               <p className="text-base sm:text-lg text-[#9bb5a8] leading-relaxed max-w-2xl mx-auto">
                 منصة سحابية متقدمة متعددة المستأجرين (Multi-Tenant SaaS) تدعم كرة القدم، البادل،
-                السباحة والرياضات المتعددة، مع أمان مصرفي وعزل تام للبيانات على مستوى قاعدة
-                البيانات.
+                السباحة والرياضات المتعددة، مع أمان مصرفي وعزل تام للبيانات على مستوى قاعدة البيانات.
               </p>
 
               {/* CTA Buttons */}
@@ -115,9 +122,7 @@ export default function HomePage() {
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#2f9e6b]/20 text-[#45c387] mb-5">
                 <Database className="h-6 w-6" />
               </div>
-              <h2 className="text-lg font-bold text-white mb-2">
-                عزل بيانات كامل (PostgreSQL RLS)
-              </h2>
+              <h2 className="text-lg font-bold text-white mb-2">عزل بيانات كامل (PostgreSQL RLS)</h2>
               <p className="text-xs text-[#9bb5a8] leading-relaxed">
                 كل استعلام يتم تنفيذه في سياق المستأجر النشط، مما يضمن استحالة وصول أي أكاديمية
                 لبيانات أكاديمية أخرى أو تسريب بيانات اللاعبين والمدربين.
@@ -129,9 +134,7 @@ export default function HomePage() {
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#2f9e6b]/20 text-[#45c387] mb-5">
                 <Lock className="h-6 w-6" />
               </div>
-              <h2 className="text-lg font-bold text-white mb-2">
-                تشفير متطور (Argon2id & JWT Rotation)
-              </h2>
+              <h2 className="text-lg font-bold text-white mb-2">تشفير متطور (Argon2id & JWT Rotation)</h2>
               <p className="text-xs text-[#9bb5a8] leading-relaxed">
                 حماية الحسابات بتشفير Argon2id المقاوم لأجهزة التعدين، مع نظام تدوير تلقائي لعائلات
                 رموز التحديث واكتشاف فوري لمحاولات إعادة الاستخدام.
@@ -143,9 +146,7 @@ export default function HomePage() {
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#2f9e6b]/20 text-[#45c387] mb-5">
                 <Building2 className="h-6 w-6" />
               </div>
-              <h2 className="text-lg font-bold text-white mb-2">
-                إدارة الفروع والصلاحيات المنضبطة
-              </h2>
+              <h2 className="text-lg font-bold text-white mb-2">إدارة الفروع والصلاحيات المنضبطة</h2>
               <p className="text-xs text-[#9bb5a8] leading-relaxed">
                 توزيع دقيق للأدوار بين المالك، مديري الفروع، المحاسب، والمدربين، مع حصر الصلاحيات
                 حسب الفرع وتتبع كامل للعمليات عبر سجل التدقيق (Audit Log).

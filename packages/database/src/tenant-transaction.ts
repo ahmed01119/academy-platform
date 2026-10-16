@@ -1,4 +1,4 @@
-import type { PrismaClient, Prisma } from '@prisma/client';
+import type { Prisma, PrismaClient } from '@prisma/client';
 
 export interface TenantTransactionOptions {
   tenantId: string;
@@ -7,34 +7,45 @@ export interface TenantTransactionOptions {
 
 export type TenantTransactionClient = Prisma.TransactionClient;
 
+const UUID_PATTERN = /^[\da-f]{8}(-[\da-f]{4}){3}-[\da-f]{12}$/i;
+
 /**
- * Executes a callback within an isolated PostgreSQL transaction where the session
- * variable `app.current_tenant_id` is set locally for the transaction (`is_local = true`).
+ * Execute tenant-owned queries in one database transaction.
  *
- * Requirements:
- * - Fail closed if tenantId is missing or empty string.
- * - Sets `app.current_tenant_id` in PostgreSQL for transaction-level RLS.
- * - Sets `app.current_actor_user_id` if provided for audit/policy context.
- * - All queries inside the callback execute on the isolated transaction client `tx`.
+ * The tenant ID MUST come from a verified server-side authorization decision,
+ * never directly from an untrusted request header, body, or query parameter.
+ *
+ * Transaction-local PostgreSQL settings prevent tenant context from leaking
+ * between requests on pooled connections.
  */
 export async function withTenantTransaction<T>(
-  prisma: PrismaClient,
-  options: TenantTransactionOptions,
-  callback: (tx: TenantTransactionClient) => Promise<T>,
+  client: PrismaClient,
+  tenantIdOrOptions: string | TenantTransactionOptions,
+  operation: (tx: Prisma.TransactionClient) => Promise<T>,
 ): Promise<T> {
-  const { tenantId, actorUserId } = options;
+  const tenantId =
+    typeof tenantIdOrOptions === 'string'
+      ? tenantIdOrOptions
+      : tenantIdOrOptions?.tenantId;
+  const actorUserId =
+    typeof tenantIdOrOptions === 'object' && tenantIdOrOptions !== null
+      ? tenantIdOrOptions.actorUserId
+      : undefined;
 
-  if (!tenantId || typeof tenantId !== 'string' || tenantId.trim() === '') {
-    throw new Error('Tenant context is required for tenant-scoped operations (INV-T2 fail-closed)');
+  if (!tenantId || typeof tenantId !== 'string' || !UUID_PATTERN.test(tenantId.trim())) {
+    throw new Error('A valid authorized tenant ID is required');
   }
 
-  return prisma.$transaction(async (tx) => {
-    // Set transaction-local session variables for PostgreSQL RLS
-    await tx.$executeRaw`SELECT set_config('app.current_tenant_id', ${tenantId.trim()}, true)`;
+  const cleanTenantId = tenantId.trim();
+
+  return client.$transaction(async (tx) => {
+    // Set PostgreSQL transaction-local session variables for RLS and audit tracking
+    await tx.$executeRaw`SELECT set_config('app.tenant_id', ${cleanTenantId}, true)`;
+    await tx.$executeRaw`SELECT set_config('app.current_tenant_id', ${cleanTenantId}, true)`;
     if (actorUserId && typeof actorUserId === 'string' && actorUserId.trim() !== '') {
       await tx.$executeRaw`SELECT set_config('app.current_actor_user_id', ${actorUserId.trim()}, true)`;
     }
 
-    return callback(tx);
+    return operation(tx);
   });
 }
