@@ -15,9 +15,7 @@ export async function withTenantTransaction<T>(
   operation: (tx: Prisma.TransactionClient) => Promise<T>,
 ): Promise<T> {
   if (
-    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-      authorizedTenantId,
-    )
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(authorizedTenantId)
   ) {
     throw new Error('A valid authorized tenant ID is required');
   }
