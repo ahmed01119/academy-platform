@@ -234,7 +234,10 @@ export class AttendanceService {
    * Bulk records attendance for multiple players in a session.
    * Enforces idempotency and ensures no unregistered players are marked.
    */
-  async bulkRecordAttendance(_tenantContext: TenantContext, _dto: BulkAttendanceSubmission): Promise<never> {
+  async bulkRecordAttendance(
+    _tenantContext: TenantContext,
+    _dto: BulkAttendanceSubmission,
+  ): Promise<never> {
     // Fail closed: there is no verified player registry or session enrollment yet.
     throw new ServiceUnavailableException(
       'Attendance marking requires verified player enrollment and session roster',
