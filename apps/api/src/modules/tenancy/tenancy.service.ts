@@ -240,17 +240,33 @@ export class TenancyService {
         }
         const targetUserId = currentUserId;
 
-        // Upsert membership
+        // Consume the token conditionally so concurrent requests cannot both succeed.
+        // A zero-row update rejects an already redeemed, revoked or expired invitation.
+        const consumed = await tx.invitation.updateMany({
+          where: {
+            id: invitation.id,
+            status: 'PENDING',
+            expiresAt: { gt: new Date() },
+          },
+          data: { status: 'ACCEPTED' },
+        });
+        if (consumed.count !== 1) {
+          throw new BadRequestException({
+            code: ErrorCode.TOKEN_INVALID,
+            message: 'Invalid or expired invitation token',
+          });
+        }
+
         await tx.tenantMembership.upsert({
           where: {
             tenantId_userId: {
               tenantId: invitation.tenantId,
-              userId: targetUserId!,
+              userId: targetUserId,
             },
           },
           create: {
             tenantId: invitation.tenantId,
-            userId: targetUserId!,
+            userId: targetUserId,
             role: invitation.role,
             branchId: invitation.branchId,
             status: 'ACTIVE',
@@ -260,11 +276,6 @@ export class TenancyService {
             branchId: invitation.branchId,
             status: 'ACTIVE',
           },
-        });
-
-        await tx.invitation.update({
-          where: { id: invitation.id },
-          data: { status: 'ACCEPTED' },
         });
 
         await this.auditService.logEvent(
