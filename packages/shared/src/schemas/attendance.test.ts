@@ -21,8 +21,7 @@ describe('attendance mutation validation', () => {
 
   it('requires a valid idempotency key', () => {
     expect(
-      AttendanceMutationSchema.safeParse({ ...validMutation, idempotencyKey: 'duplicate' })
-        .success,
+      AttendanceMutationSchema.safeParse({ ...validMutation, idempotencyKey: 'duplicate' }).success,
     ).toBe(false);
   });
 
