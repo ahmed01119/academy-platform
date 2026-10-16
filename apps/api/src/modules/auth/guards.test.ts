@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { TenantGuard } from './guards/tenant.guard';
 import { PermissionsGuard } from './guards/permissions.guard';
 import { Reflector } from '@nestjs/core';
@@ -126,18 +126,18 @@ describe('TenantGuard & PermissionsGuard', () => {
     });
 
     it('queries database when PrismaService is injected', async () => {
-      const mockPrisma = {
-        tenantMembership: {
-          findUnique: async () => ({
-            id: 'm1',
-            tenantId: TENANT_A,
-            userId: 'u1',
-            role: 'OWNER',
-            status: 'ACTIVE',
-            branchId: null,
-          }),
-        },
-      } as unknown as PrismaService;
+      const findUnique = vi.fn().mockResolvedValue({
+        id: 'm1',
+        tenantId: TENANT_A,
+        userId: 'u1',
+        role: 'OWNER',
+        status: 'ACTIVE',
+        branchId: null,
+      });
+      const withAuthLookupTransaction = vi.fn().mockImplementation((_options, operation) =>
+        operation({ tenantMembership: { findUnique } }),
+      );
+      const mockPrisma = { withAuthLookupTransaction } as unknown as PrismaService;
 
       const dbGuard = new TenantGuard(mockPrisma);
       const req: Record<string, unknown> = {
@@ -149,6 +149,13 @@ describe('TenantGuard & PermissionsGuard', () => {
       const result = await dbGuard.canActivate(ctx);
       expect(result).toBe(true);
       expect(req.tenantMembership).toBeDefined();
+      expect(withAuthLookupTransaction).toHaveBeenCalledWith(
+        { actorUserId: 'u1' },
+        expect.any(Function),
+      );
+      expect(findUnique).toHaveBeenCalledWith({
+        where: { tenantId_userId: { tenantId: TENANT_A, userId: 'u1' } },
+      });
     });
   });
 
