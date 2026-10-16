@@ -75,7 +75,10 @@ export default function HomePage() {
 
             <section aria-label="مؤشرات الأكاديمية" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
               {summaries.map((item) => (
-                <article key={item.label} className={`rounded-2xl border-t-4 bg-white p-5 shadow-sm ${item.accent}`}>
+                <article
+                  key={item.label}
+                  className={`rounded-2xl border-t-4 bg-white p-5 shadow-sm ${item.accent}`}
+                >
                   <h3 className="text-sm font-semibold text-slate-600">{item.label}</h3>
                   <p className="mt-4 text-sm text-slate-400">{item.detail}</p>
                 </article>
