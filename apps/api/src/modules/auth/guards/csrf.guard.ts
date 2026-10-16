@@ -39,10 +39,27 @@ export class CsrfGuard implements CanActivate {
       });
     }
 
-    const allowedOrigins = this.config.corsOrigin.split(',').map((o) => o.trim());
+    // Wildcard CORS is not a valid CSRF trust boundary, even in development.
+    // Only explicitly configured, well-formed HTTP(S) origins are trusted.
+    const allowedOrigins = this.config.corsOrigin
+      .split(',')
+      .map((value) => value.trim())
+      .filter((value) => {
+        try {
+          const url = new URL(value);
+          return (
+            (url.protocol === 'https:' || url.protocol === 'http:') &&
+            url.origin === value &&
+            !url.username &&
+            !url.password
+          );
+        } catch {
+          return false;
+        }
+      });
 
     if (origin) {
-      const isAllowed = allowedOrigins.includes('*') || allowedOrigins.includes(origin);
+      const isAllowed = allowedOrigins.includes(origin);
       if (!isAllowed) {
         throw new ForbiddenException({
           code: ErrorCode.FORBIDDEN,
@@ -55,7 +72,7 @@ export class CsrfGuard implements CanActivate {
     if (referer) {
       try {
         const refererOrigin = new URL(referer).origin;
-        const isAllowed = allowedOrigins.includes('*') || allowedOrigins.includes(refererOrigin);
+        const isAllowed = allowedOrigins.includes(refererOrigin);
         if (!isAllowed) {
           throw new ForbiddenException({
             code: ErrorCode.FORBIDDEN,
