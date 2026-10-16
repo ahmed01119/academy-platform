@@ -1,6 +1,10 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { AttendanceService } from './attendance.service';
-import { BadRequestException, ForbiddenException, ServiceUnavailableException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import type { PrismaService } from '../database/prisma.service';
 import type { AuditService } from '../audit/audit.service';
 import type { TenantContext } from '@academy/shared';
