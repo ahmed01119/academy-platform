@@ -227,6 +227,27 @@ BEGIN
  END IF;
 END $$;
 
+-- 6. Untrusted auth context flags must not bypass tenant isolation.
+SELECT set_config('app.actor_user_id','',true);
+SELECT set_config('app.auth_context','auth_discovery',true);
+DO $
+BEGIN
+ IF (SELECT count(*) FROM public.tenants) <> 0
+    OR (SELECT count(*) FROM public.branches) <> 0
+    OR (SELECT count(*) FROM public.tenant_memberships) <> 0 THEN
+  RAISE EXCEPTION 'SECURITY FAILURE: auth_discovery GUC bypasses RLS';
+ END IF;
+END $;
+
+SELECT set_config('app.auth_context','invitation_lookup',true);
+DO $
+BEGIN
+ IF (SELECT count(*) FROM public.tenants) <> 0
+    OR (SELECT count(*) FROM public.invitations) <> 0 THEN
+  RAISE EXCEPTION 'SECURITY FAILURE: invitation_lookup GUC bypasses RLS';
+ END IF;
+END $;
+
 RESET ROLE;
 
 ROLLBACK;
