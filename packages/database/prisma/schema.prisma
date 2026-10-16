@@ -142,7 +142,7 @@ model TenantMembership {
 
   tenant Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  branch Branch? @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  branch Branch? @relation(fields: [tenantId, branchId], references: [tenantId, id], onDelete: Restrict)
 
   @@unique([tenantId, userId])
   @@index([tenantId])
@@ -165,7 +165,7 @@ model Invitation {
   createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
 
   tenant        Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  branch        Branch? @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  branch        Branch? @relation(fields: [tenantId, branchId], references: [tenantId, id], onDelete: Restrict)
   invitedByUser User?   @relation("UserSentInvitations", fields: [invitedByUserId], references: [id], onDelete: SetNull)
 
   @@index([tenantId])
@@ -250,7 +250,7 @@ model AttendanceSession {
   updatedAt      DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   tenant  Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  branch              Branch                  @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  branch              Branch                  @relation(fields: [tenantId, branchId], references: [tenantId, id], onDelete: Cascade)
   records             AttendanceRecord[]
   idempotencyRecords  AttendanceIdempotency[]
 
@@ -274,7 +274,7 @@ model AttendanceRecord {
   createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  session     AttendanceSession      @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  session     AttendanceSession      @relation(fields: [tenantId, sessionId], references: [tenantId, id], onDelete: Cascade)
   corrections AttendanceCorrection[]
 
   @@unique([sessionId, playerId])
@@ -294,7 +294,7 @@ model AttendanceCorrection {
   correctedByUserId String           @map("corrected_by_user_id") @db.Uuid
   createdAt          DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
 
-  record AttendanceRecord @relation(fields: [recordId], references: [id], onDelete: Cascade)
+  record AttendanceRecord @relation(fields: [tenantId, recordId], references: [tenantId, id], onDelete: Cascade)
 
   @@index([tenantId])
   @@index([recordId])
@@ -311,7 +311,7 @@ model AttendanceIdempotency {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
 
   tenant  Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  session AttendanceSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  session AttendanceSession @relation(fields: [tenantId, sessionId], references: [tenantId, id], onDelete: Cascade)
 
   @@unique([tenantId, key])
   @@index([tenantId])
