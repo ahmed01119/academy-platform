@@ -107,6 +107,22 @@ BEGIN
     RAISE EXCEPTION 'SECURITY FAILURE: runtime role can delete attendance corrections';
   END IF;
 
+  -- Invitation redemption must not gain cross-tenant visibility by toggling a GUC.
+  PERFORM set_config('app.tenant_id', '', true);
+  PERFORM set_config('app.actor_user_id', '', true);
+  PERFORM set_config('app.auth_context', 'invitation_lookup', true);
+  IF EXISTS (SELECT 1 FROM public.invitations) THEN
+    RAISE EXCEPTION 'SECURITY FAILURE: invitation lookup flag exposed invitations';
+  END IF;
+
+  -- Even a syntactically valid tenant ID cannot authorize provisioning.
+  PERFORM set_config('app.tenant_id', '00000000-0000-4000-8000-000000000201', true);
+  IF has_table_privilege(current_user, 'public.tenants', 'INSERT') THEN
+    RAISE EXCEPTION 'SECURITY FAILURE: runtime tenant provisioning privilege was granted';
+  END IF;
+  PERFORM set_config('app.tenant_id', '', true);
+  PERFORM set_config('app.auth_context', '', true);
+
   -- Runtime identity must never provision or delete platform tenants.
   allowed := false;
   BEGIN
