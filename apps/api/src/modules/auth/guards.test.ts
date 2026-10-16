@@ -134,9 +134,11 @@ describe('TenantGuard & PermissionsGuard', () => {
         status: 'REVOKED',
         branchId: BRANCH_1,
       });
-      const withAuthLookupTransaction = vi.fn().mockImplementation((_options, operation) =>
-        operation({ tenantMembership: { findUnique } }),
-      );
+      const withAuthLookupTransaction = vi
+        .fn()
+        .mockImplementation((_options, operation) =>
+          operation({ tenantMembership: { findUnique } }),
+        );
       const dbGuard = new TenantGuard({ withAuthLookupTransaction } as unknown as PrismaService);
       const ctx = createMockContext({
         user: {
@@ -162,9 +164,11 @@ describe('TenantGuard & PermissionsGuard', () => {
         status: 'ACTIVE',
         branchId: null,
       });
-      const withAuthLookupTransaction = vi.fn().mockImplementation((_options, operation) =>
-        operation({ tenantMembership: { findUnique } }),
-      );
+      const withAuthLookupTransaction = vi
+        .fn()
+        .mockImplementation((_options, operation) =>
+          operation({ tenantMembership: { findUnique } }),
+        );
       const mockPrisma = { withAuthLookupTransaction } as unknown as PrismaService;
 
       const dbGuard = new TenantGuard(mockPrisma);
