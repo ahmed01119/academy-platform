@@ -24,8 +24,7 @@ body {
 body {
   background:
     radial-gradient(1200px 600px at 10% -10%, rgba(47, 158, 107, 0.22), transparent 55%),
-    radial-gradient(900px 500px at 90% 0%, rgba(34, 92, 70, 0.35), transparent 50%),
-    var(--color-bg);
+    radial-gradient(900px 500px at 90% 0%, rgba(34, 92, 70, 0.35), transparent 50%), var(--color-bg);
   color: var(--color-fg);
   font-family: var(--font-body);
 }

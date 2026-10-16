@@ -18,6 +18,7 @@
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,mjs,cjs,json,md,yml,yaml,css}\"",
     "db:generate": "pnpm --filter @academy/database generate",
     "db:migrate:dev": "pnpm --filter @academy/database migrate:dev",
+    "db:migrate:deploy": "pnpm --filter @academy/database migrate:deploy",
     "db:studio": "pnpm --filter @academy/database studio",
     "clean": "turbo run clean && rimraf node_modules"
   },
