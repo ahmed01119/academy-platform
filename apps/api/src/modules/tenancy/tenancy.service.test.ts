@@ -201,6 +201,33 @@ describe('TenancyService', () => {
       expect(mockPrisma.invitation.update).not.toHaveBeenCalled();
     });
 
+    it('accepts only a verified matching account and records membership atomically', async () => {
+      mockPrisma.invitation.findFirst.mockResolvedValue(invitation);
+      mockPrisma.user.findUnique.mockResolvedValue({
+        email: 'invited@example.com',
+        isEmailVerified: true,
+      });
+      mockPrisma.tenantMembership.upsert.mockResolvedValue({ id: 'membership-1' });
+      mockPrisma.invitation.update.mockResolvedValue({ id: 'inv-1', status: 'ACCEPTED' });
+
+      const result = await service.acceptInvitation('verified-user', { token: 'valid-token' });
+
+      expect(result.tenantId).toBe('tenant-1');
+      expect(mockPrisma.tenantMembership.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          create: expect.objectContaining({ userId: 'verified-user', status: 'ACTIVE' }),
+        }),
+      );
+      expect(mockPrisma.invitation.update).toHaveBeenCalledWith({
+        where: { id: 'inv-1' },
+        data: { status: 'ACCEPTED' },
+      });
+      expect(mockPrisma.withAuthLookupTransaction).toHaveBeenCalledWith(
+        { context: 'invitation_lookup', actorUserId: 'verified-user' },
+        expect.any(Function),
+      );
+    });
+
     it('rejects an unverified account even if the invitation email matches', async () => {
       mockPrisma.invitation.findFirst.mockResolvedValue(invitation);
       mockPrisma.user.findUnique.mockResolvedValue({
