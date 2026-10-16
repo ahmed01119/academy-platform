@@ -124,6 +124,7 @@ model Tenant {
   memberships        TenantMembership[]
   invitations        Invitation[]
   attendanceSessions AttendanceSession[]
+  attendanceIdempotencies AttendanceIdempotency[]
 
   @@map("tenants")
 }
@@ -190,6 +191,7 @@ model Branch {
   attendanceSessions AttendanceSession[]
 
   @@unique([tenantId, code])
+  @@unique([tenantId, id])
   @@index([tenantId])
   @@map("branches")
 }
@@ -248,9 +250,11 @@ model AttendanceSession {
   updatedAt      DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   tenant  Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  branch  Branch             @relation(fields: [branchId], references: [id], onDelete: Cascade)
-  records AttendanceRecord[]
+  branch              Branch                  @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  records             AttendanceRecord[]
+  idempotencyRecords  AttendanceIdempotency[]
 
+  @@unique([tenantId, id])
   @@index([tenantId, sessionDate])
   @@index([branchId])
   @@map("attendance_sessions")
@@ -274,6 +278,7 @@ model AttendanceRecord {
   corrections AttendanceCorrection[]
 
   @@unique([sessionId, playerId])
+  @@unique([tenantId, id])
   @@index([tenantId])
   @@map("attendance_records")
 }
@@ -295,3 +300,22 @@ model AttendanceCorrection {
   @@index([recordId])
   @@map("attendance_corrections")
 }
+
+/// Persisted and enforced idempotency records for attendance mutations.
+model AttendanceIdempotency {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  key       String
+  sessionId String   @map("session_id") @db.Uuid
+  response  Json?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  tenant  Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  session AttendanceSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, key])
+  @@index([tenantId])
+  @@index([sessionId])
+  @@map("attendance_idempotency")
+}
+

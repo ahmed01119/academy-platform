@@ -24,9 +24,7 @@ export async function withTenantTransaction<T>(
   operation: (tx: Prisma.TransactionClient) => Promise<T>,
 ): Promise<T> {
   const tenantId =
-    typeof tenantIdOrOptions === 'string'
-      ? tenantIdOrOptions
-      : tenantIdOrOptions?.tenantId;
+    typeof tenantIdOrOptions === 'string' ? tenantIdOrOptions : tenantIdOrOptions?.tenantId;
   const actorUserId =
     typeof tenantIdOrOptions === 'object' && tenantIdOrOptions !== null
       ? tenantIdOrOptions.actorUserId
@@ -43,9 +41,36 @@ export async function withTenantTransaction<T>(
     await tx.$executeRaw`SELECT set_config('app.tenant_id', ${cleanTenantId}, true)`;
     await tx.$executeRaw`SELECT set_config('app.current_tenant_id', ${cleanTenantId}, true)`;
     if (actorUserId && typeof actorUserId === 'string' && actorUserId.trim() !== '') {
+      await tx.$executeRaw`SELECT set_config('app.actor_user_id', ${actorUserId.trim()}, true)`;
       await tx.$executeRaw`SELECT set_config('app.current_actor_user_id', ${actorUserId.trim()}, true)`;
     }
 
+    return operation(tx);
+  });
+}
+
+export interface AuthLookupOptions {
+  actorUserId?: string;
+  context?: 'auth_discovery' | 'invitation_lookup';
+}
+
+/**
+ * Execute discovery and invitation lookup queries under controlled auth context.
+ */
+export async function withAuthLookupTransaction<T>(
+  client: PrismaClient,
+  options: AuthLookupOptions,
+  operation: (tx: Prisma.TransactionClient) => Promise<T>,
+): Promise<T> {
+  const actorUserId = options.actorUserId?.trim();
+  const context = options.context ?? 'auth_discovery';
+
+  return client.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT set_config('app.auth_context', ${context}, true)`;
+    if (actorUserId && UUID_PATTERN.test(actorUserId)) {
+      await tx.$executeRaw`SELECT set_config('app.actor_user_id', ${actorUserId}, true)`;
+      await tx.$executeRaw`SELECT set_config('app.current_actor_user_id', ${actorUserId}, true)`;
+    }
     return operation(tx);
   });
 }

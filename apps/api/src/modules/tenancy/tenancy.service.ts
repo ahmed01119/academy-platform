@@ -29,48 +29,55 @@ export class TenancyService {
   ) {}
 
   /**
-   * Lists all active memberships for a user.
+   * Lists all active memberships for a user under authenticated discovery path.
    */
   async listUserMemberships(userId: string): Promise<TenantMembershipSummary[]> {
-    const memberships = await this.prisma.tenantMembership.findMany({
-      where: {
-        userId,
-        status: 'ACTIVE',
-      },
-      include: {
-        tenant: true,
-        branch: true,
-      },
-      orderBy: { createdAt: 'asc' },
-    });
+    return this.prisma.withAuthLookupTransaction({ actorUserId: userId }, async (tx) => {
+      const memberships = await tx.tenantMembership.findMany({
+        where: {
+          userId,
+          status: 'ACTIVE',
+        },
+        include: {
+          tenant: true,
+          branch: true,
+        },
+        orderBy: { createdAt: 'asc' },
+      });
 
-    return memberships.map((m) => ({
-      id: m.id,
-      tenantId: m.tenantId,
-      tenantName: m.tenant.name,
-      tenantSlug: m.tenant.slug,
-      role: m.role as TenantRole,
-      status: m.status,
-      branchId: m.branchId,
-      branchName: m.branch?.name,
-    }));
+      return memberships.map((m) => ({
+        id: m.id,
+        tenantId: m.tenantId,
+        tenantName: m.tenant.name,
+        tenantSlug: m.tenant.slug,
+        role: m.role as TenantRole,
+        status: m.status,
+        branchId: m.branchId,
+        branchName: m.branch?.name,
+      }));
+    });
   }
 
   /**
    * Switches tenant context and verifies active membership.
    */
   async switchTenant(userId: string, targetTenantId: string): Promise<TenantMembershipSummary> {
-    const membership = await this.prisma.tenantMembership.findFirst({
-      where: {
-        userId,
-        tenantId: targetTenantId,
-        status: 'ACTIVE',
+    const membership = await this.prisma.withAuthLookupTransaction(
+      { actorUserId: userId },
+      async (tx) => {
+        return tx.tenantMembership.findFirst({
+          where: {
+            userId,
+            tenantId: targetTenantId,
+            status: 'ACTIVE',
+          },
+          include: {
+            tenant: true,
+            branch: true,
+          },
+        });
       },
-      include: {
-        tenant: true,
-        branch: true,
-      },
-    });
+    );
 
     if (!membership) {
       throw new ForbiddenException({
@@ -101,6 +108,7 @@ export class TenancyService {
 
   /**
    * Invites a staff member to the academy (staff.manage permission required).
+   * Runs within isolated tenant transaction.
    */
   async inviteStaff(
     tenantContext: TenantContext,
@@ -108,70 +116,78 @@ export class TenancyService {
   ): Promise<{ id: string; email: string; role: TenantRole; token: string; expiresAt: string }> {
     const normalizedEmail = dto.email.toLowerCase().trim();
 
-    // Check if user is already an active member of this tenant
-    const existingMember = await this.prisma.tenantMembership.findFirst({
-      where: {
-        tenantId: tenantContext.tenantId,
-        user: { email: normalizedEmail },
-      },
-    });
-
-    if (existingMember && existingMember.status === 'ACTIVE') {
-      throw new ConflictException({
-        code: ErrorCode.CONFLICT,
-        message: 'This user is already an active member of this academy',
-      });
-    }
-
-    if (dto.branchId) {
-      const branch = await this.prisma.branch.findFirst({
-        where: { id: dto.branchId, tenantId: tenantContext.tenantId },
-      });
-      if (!branch) {
-        throw new NotFoundException({
-          code: ErrorCode.NOT_FOUND,
-          message: 'Branch not found in this academy',
+    return this.prisma.withTenantTransaction(
+      { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
+      async (tx) => {
+        // Check if user is already an active member of this tenant
+        const existingMember = await tx.tenantMembership.findFirst({
+          where: {
+            tenantId: tenantContext.tenantId,
+            user: { email: normalizedEmail },
+          },
         });
-      }
-    }
 
-    const rawToken = this.tokenService.generateSecureRandomString(32);
-    const tokenHash = this.tokenService.hashToken(rawToken);
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+        if (existingMember && existingMember.status === 'ACTIVE') {
+          throw new ConflictException({
+            code: ErrorCode.CONFLICT,
+            message: 'This user is already an active member of this academy',
+          });
+        }
 
-    const invitation = await this.prisma.invitation.create({
-      data: {
-        tenantId: tenantContext.tenantId,
-        email: normalizedEmail,
-        role: dto.role,
-        branchId: dto.branchId,
-        token: tokenHash,
-        status: 'PENDING',
-        invitedByUserId: tenantContext.actorUserId,
-        expiresAt,
+        if (dto.branchId) {
+          const branch = await tx.branch.findFirst({
+            where: { id: dto.branchId, tenantId: tenantContext.tenantId },
+          });
+          if (!branch) {
+            throw new NotFoundException({
+              code: ErrorCode.NOT_FOUND,
+              message: 'Branch not found in this academy',
+            });
+          }
+        }
+
+        const rawToken = this.tokenService.generateSecureRandomString(32);
+        const tokenHash = this.tokenService.hashToken(rawToken);
+        const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
+        const invitation = await tx.invitation.create({
+          data: {
+            tenantId: tenantContext.tenantId,
+            email: normalizedEmail,
+            role: dto.role,
+            branchId: dto.branchId,
+            token: tokenHash,
+            status: 'PENDING',
+            invitedByUserId: tenantContext.actorUserId,
+            expiresAt,
+          },
+        });
+
+        await this.auditService.logEvent(
+          {
+            tenantId: tenantContext.tenantId,
+            actorUserId: tenantContext.actorUserId,
+            action: 'MEMBERSHIP_INVITED',
+            resourceType: 'Invitation',
+            resourceId: invitation.id,
+            metadata: { email: normalizedEmail, role: dto.role, branchId: dto.branchId },
+          },
+          tx,
+        );
+
+        return {
+          id: invitation.id,
+          email: invitation.email,
+          role: invitation.role as TenantRole,
+          token: rawToken,
+          expiresAt: invitation.expiresAt.toISOString(),
+        };
       },
-    });
-
-    await this.auditService.logEvent({
-      tenantId: tenantContext.tenantId,
-      actorUserId: tenantContext.actorUserId,
-      action: 'MEMBERSHIP_INVITED',
-      resourceType: 'Invitation',
-      resourceId: invitation.id,
-      metadata: { email: normalizedEmail, role: dto.role, branchId: dto.branchId },
-    });
-
-    return {
-      id: invitation.id,
-      email: invitation.email,
-      role: invitation.role as TenantRole,
-      token: rawToken,
-      expiresAt: invitation.expiresAt.toISOString(),
-    };
+    );
   }
 
   /**
-   * Accepts an academy invitation.
+   * Accepts an academy invitation under controlled invitation lookup context.
    */
   async acceptInvitation(
     currentUserId: string | undefined,
@@ -179,178 +195,202 @@ export class TenancyService {
   ): Promise<{ message: string; tenantId: string }> {
     const tokenHash = this.tokenService.hashToken(dto.token);
 
-    const invitation = await this.prisma.invitation.findFirst({
-      where: {
-        token: tokenHash,
-        status: 'PENDING',
-        expiresAt: { gt: new Date() },
-      },
-      include: { tenant: true },
-    });
+    return this.prisma.withAuthLookupTransaction(
+      { context: 'invitation_lookup', actorUserId: currentUserId },
+      async (tx) => {
+        const invitation = await tx.invitation.findFirst({
+          where: {
+            token: tokenHash,
+            status: 'PENDING',
+            expiresAt: { gt: new Date() },
+          },
+          include: { tenant: true },
+        });
 
-    if (!invitation) {
-      throw new BadRequestException({
-        code: ErrorCode.TOKEN_INVALID,
-        message: 'Invalid or expired invitation token',
-      });
-    }
-
-    let targetUserId = currentUserId;
-
-    if (!targetUserId) {
-      // If user is not logged in, check if user exists by email
-      const existingUser = await this.prisma.user.findUnique({
-        where: { email: invitation.email },
-      });
-
-      if (existingUser) {
-        targetUserId = existingUser.id;
-      } else {
-        if (!dto.password) {
+        if (!invitation) {
           throw new BadRequestException({
-            code: ErrorCode.VALIDATION_FAILED,
-            message: 'Password is required to create a new account for this invitation',
+            code: ErrorCode.TOKEN_INVALID,
+            message: 'Invalid or expired invitation token',
           });
         }
 
-        const passwordHash = await this.passwordService.hash(dto.password);
-        const newUser = await this.prisma.user.create({
-          data: {
-            email: invitation.email,
-            passwordHash,
-            name: dto.name || invitation.email.split('@')[0] || 'User',
-            isEmailVerified: true,
-          },
-        });
-        targetUserId = newUser.id;
-      }
-    }
+        let targetUserId = currentUserId;
 
-    // Upsert membership
-    await this.prisma.$transaction(async (tx) => {
-      await tx.tenantMembership.upsert({
-        where: {
-          tenantId_userId: {
+        if (!targetUserId) {
+          const existingUser = await tx.user.findUnique({
+            where: { email: invitation.email },
+          });
+
+          if (existingUser) {
+            targetUserId = existingUser.id;
+          } else {
+            if (!dto.password) {
+              throw new BadRequestException({
+                code: ErrorCode.VALIDATION_FAILED,
+                message: 'Password is required to create a new account for this invitation',
+              });
+            }
+
+            const passwordHash = await this.passwordService.hash(dto.password);
+            const newUser = await tx.user.create({
+              data: {
+                email: invitation.email,
+                passwordHash,
+                name: dto.name || invitation.email.split('@')[0] || 'User',
+                isEmailVerified: true,
+              },
+            });
+            targetUserId = newUser.id;
+          }
+        }
+
+        // Upsert membership
+        await tx.tenantMembership.upsert({
+          where: {
+            tenantId_userId: {
+              tenantId: invitation.tenantId,
+              userId: targetUserId!,
+            },
+          },
+          create: {
             tenantId: invitation.tenantId,
             userId: targetUserId!,
+            role: invitation.role,
+            branchId: invitation.branchId,
+            status: 'ACTIVE',
           },
-        },
-        create: {
+          update: {
+            role: invitation.role,
+            branchId: invitation.branchId,
+            status: 'ACTIVE',
+          },
+        });
+
+        await tx.invitation.update({
+          where: { id: invitation.id },
+          data: { status: 'ACCEPTED' },
+        });
+
+        await this.auditService.logEvent(
+          {
+            tenantId: invitation.tenantId,
+            actorUserId: targetUserId,
+            action: 'MEMBERSHIP_ACCEPTED',
+            resourceType: 'Invitation',
+            resourceId: invitation.id,
+          },
+          tx,
+        );
+
+        return {
+          message: `Successfully joined ${invitation.tenant.name}`,
           tenantId: invitation.tenantId,
-          userId: targetUserId!,
-          role: invitation.role,
-          branchId: invitation.branchId,
-          status: 'ACTIVE',
-        },
-        update: {
-          role: invitation.role,
-          branchId: invitation.branchId,
-          status: 'ACTIVE',
-        },
-      });
-
-      await tx.invitation.update({
-        where: { id: invitation.id },
-        data: { status: 'ACCEPTED' },
-      });
-    });
-
-    await this.auditService.logEvent({
-      tenantId: invitation.tenantId,
-      actorUserId: targetUserId,
-      action: 'MEMBERSHIP_ACCEPTED',
-      resourceType: 'Invitation',
-      resourceId: invitation.id,
-    });
-
-    return {
-      message: `Successfully joined ${invitation.tenant.name}`,
-      tenantId: invitation.tenantId,
-    };
+        };
+      },
+    );
   }
 
   /**
    * Immediately revokes a membership.
+   * Runs within isolated tenant transaction.
    */
   async revokeMembership(
     tenantContext: TenantContext,
     membershipId: string,
   ): Promise<{ message: string }> {
-    const membership = await this.prisma.tenantMembership.findFirst({
-      where: {
-        id: membershipId,
-        tenantId: tenantContext.tenantId,
+    return this.prisma.withTenantTransaction(
+      { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
+      async (tx) => {
+        const membership = await tx.tenantMembership.findFirst({
+          where: {
+            id: membershipId,
+            tenantId: tenantContext.tenantId,
+          },
+        });
+
+        if (!membership) {
+          throw new NotFoundException({
+            code: ErrorCode.NOT_FOUND,
+            message: 'Membership not found in this academy',
+          });
+        }
+
+        if (membership.role === TenantRole.OWNER) {
+          throw new ForbiddenException({
+            code: ErrorCode.FORBIDDEN,
+            message: 'Cannot revoke academy owner membership',
+          });
+        }
+
+        await tx.tenantMembership.update({
+          where: { id: membership.id },
+          data: { status: 'REVOKED' },
+        });
+
+        // Revoke all refresh tokens for that user
+        await this.tokenService.revokeAllUserTokens(membership.userId);
+
+        await this.auditService.logEvent(
+          {
+            tenantId: tenantContext.tenantId,
+            actorUserId: tenantContext.actorUserId,
+            action: 'MEMBERSHIP_REVOKED',
+            resourceType: 'TenantMembership',
+            resourceId: membership.id,
+            metadata: { targetUserId: membership.userId, role: membership.role },
+          },
+          tx,
+        );
+
+        return { message: 'Membership revoked successfully' };
       },
-    });
-
-    if (!membership) {
-      throw new NotFoundException({
-        code: ErrorCode.NOT_FOUND,
-        message: 'Membership not found in this academy',
-      });
-    }
-
-    if (membership.role === TenantRole.OWNER) {
-      throw new ForbiddenException({
-        code: ErrorCode.FORBIDDEN,
-        message: 'Cannot revoke academy owner membership',
-      });
-    }
-
-    await this.prisma.tenantMembership.update({
-      where: { id: membership.id },
-      data: { status: 'REVOKED' },
-    });
-
-    // Revoke all refresh tokens for that user
-    await this.tokenService.revokeAllUserTokens(membership.userId);
-
-    await this.auditService.logEvent({
-      tenantId: tenantContext.tenantId,
-      actorUserId: tenantContext.actorUserId,
-      action: 'MEMBERSHIP_REVOKED',
-      resourceType: 'TenantMembership',
-      resourceId: membership.id,
-      metadata: { targetUserId: membership.userId, role: membership.role },
-    });
-
-    return { message: 'Membership revoked successfully' };
+    );
   }
 
   /**
-   * Lists staff members in current academy.
+   * Lists staff members in current academy within isolated tenant transaction.
    */
   async listStaff(tenantContext: TenantContext) {
-    return this.prisma.tenantMembership.findMany({
-      where: { tenantId: tenantContext.tenantId },
-      include: {
-        user: {
-          select: {
-            id: true,
-            email: true,
-            name: true,
-            phone: true,
+    return this.prisma.withTenantTransaction(
+      { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
+      async (tx) => {
+        return tx.tenantMembership.findMany({
+          where: { tenantId: tenantContext.tenantId },
+          include: {
+            user: {
+              select: {
+                id: true,
+                email: true,
+                name: true,
+                phone: true,
+              },
+            },
+            branch: {
+              select: {
+                id: true,
+                name: true,
+                code: true,
+              },
+            },
           },
-        },
-        branch: {
-          select: {
-            id: true,
-            name: true,
-            code: true,
-          },
-        },
+          orderBy: { createdAt: 'asc' },
+        });
       },
-      orderBy: { createdAt: 'asc' },
-    });
+    );
   }
 
   /**
-   * Lists branches in current academy.
+   * Lists branches in current academy within isolated tenant transaction.
    */
   async listBranches(tenantContext: TenantContext) {
-    return this.prisma.branch.findMany({
-      where: { tenantId: tenantContext.tenantId },
-      orderBy: { name: 'asc' },
-    });
+    return this.prisma.withTenantTransaction(
+      { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
+      async (tx) => {
+        return tx.branch.findMany({
+          where: { tenantId: tenantContext.tenantId },
+          orderBy: { name: 'asc' },
+        });
+      },
+    );
   }
 }

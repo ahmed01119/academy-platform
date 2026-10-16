@@ -81,7 +81,7 @@ describe('withTenantTransaction', () => {
 
     expect(result).toEqual({ success: true });
     expect(mockPrisma.$transaction).toHaveBeenCalledOnce();
-    expect(mockTx.$executeRaw).toHaveBeenCalledTimes(3); // app.tenant_id, app.current_tenant_id, and actorUserId
+    expect(mockTx.$executeRaw).toHaveBeenCalledTimes(4); // app.tenant_id, app.current_tenant_id, app.actor_user_id, app.current_actor_user_id
   });
 
   it('propagates transaction errors instead of returning partial results', async () => {
@@ -98,5 +98,28 @@ describe('withTenantTransaction', () => {
         throw new Error('Database connection failed midway');
       }),
     ).rejects.toThrow('Database connection failed midway');
+  });
+
+  it('sets auth discovery context in withAuthLookupTransaction', async () => {
+    const tx = { $executeRaw: vi.fn(async () => 1) };
+    const client = {
+      $transaction: vi.fn(async (callback: (transaction: typeof tx) => Promise<unknown>) =>
+        callback(tx),
+      ),
+    } as unknown as PrismaClient;
+
+    const actorUserId = '11111111-2222-3333-4444-555555555555';
+    await (
+      await import('./tenant-transaction')
+    ).withAuthLookupTransaction(
+      client,
+      { actorUserId, context: 'auth_discovery' },
+      async (transaction) => {
+        expect(transaction).toBe(tx);
+        return 'ok';
+      },
+    );
+
+    expect(tx.$executeRaw).toHaveBeenCalledTimes(3); // auth_context, actor_user_id, current_actor_user_id
   });
 });

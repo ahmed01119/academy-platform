@@ -30,6 +30,8 @@ interface MockPrisma {
     create: MockFn;
   };
   $transaction: MockFn;
+  withTenantTransaction: MockFn;
+  withAuthLookupTransaction: MockFn;
 }
 
 interface MockToken {
@@ -75,6 +77,8 @@ describe('TenancyService', () => {
         create: vi.fn(),
       },
       $transaction: vi.fn().mockImplementation((fn) => fn(mockPrisma)),
+      withTenantTransaction: vi.fn().mockImplementation((_opts, fn) => fn(mockPrisma)),
+      withAuthLookupTransaction: vi.fn().mockImplementation((_opts, fn) => fn(mockPrisma)),
     };
 
     mockToken = {
