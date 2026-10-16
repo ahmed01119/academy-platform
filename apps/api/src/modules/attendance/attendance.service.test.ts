@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { AttendanceService } from './attendance.service';
-import { BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, ServiceUnavailableException } from '@nestjs/common';
 import type { PrismaService } from '../database/prisma.service';
 import type { AuditService } from '../audit/audit.service';
 import type { TenantContext } from '@academy/shared';
@@ -152,100 +152,35 @@ describe('AttendanceService', () => {
     });
   });
 
-  describe('recordAttendance', () => {
-    it('returns cached result when idempotency key was previously processed', async () => {
-      const cachedResponse = { id: 'rec-1', status: 'PRESENT' };
-      mockPrisma.attendanceIdempotency.findUnique.mockResolvedValue({
-        response: cachedResponse,
-      });
+  describe('attendance mutations fail closed until enrollment is implemented', () => {
+    const request = {
+      sessionId: 'session-1',
+      playerId: '00000000-0000-4000-8000-000000000301',
+      status: 'PRESENT' as const,
+      idempotencyKey: '00000000-0000-4000-8000-000000000401',
+    };
 
-      const result = await service.recordAttendance(tenantContext, {
-        sessionId: 'session-1',
-        playerId: '00000000-0000-4000-8000-000000000301',
-        status: 'PRESENT',
-        idempotencyKey: '00000000-0000-4000-8000-000000000401',
-      });
-
-      expect(result).toBe(cachedResponse);
+    it('rejects individual marking without verified player roster', async () => {
+      await expect(service.recordAttendance(tenantContext, request)).rejects.toThrow(
+        ServiceUnavailableException,
+      );
+      expect(mockPrisma.withTenantTransaction).not.toHaveBeenCalled();
       expect(mockPrisma.attendanceRecord.create).not.toHaveBeenCalled();
       expect(mockPrisma.attendanceRecord.update).not.toHaveBeenCalled();
+      expect(mockAudit.logEvent).not.toHaveBeenCalled();
     });
 
-    it('rejects direct attendance modification when session is CLOSED', async () => {
-      mockPrisma.attendanceSession.findUnique.mockResolvedValue({
-        id: 'session-1',
-        branchId: tenantContext.branchId,
-        status: 'CLOSED',
-      });
-
+    it('rejects bulk marking without verified player roster', async () => {
       await expect(
-        service.recordAttendance(tenantContext, {
-          sessionId: 'session-1',
-          playerId: '00000000-0000-4000-8000-000000000301',
-          status: 'PRESENT',
-          idempotencyKey: '00000000-0000-4000-8000-000000000401',
+        service.bulkRecordAttendance(tenantContext, {
+          sessionId: request.sessionId,
+          records: [{ playerId: request.playerId, status: 'PRESENT' }],
+          idempotencyKey: request.idempotencyKey,
         }),
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('rejects update on optimistic concurrency version conflict', async () => {
-      mockPrisma.attendanceSession.findUnique.mockResolvedValue({
-        id: 'session-1',
-        branchId: tenantContext.branchId,
-        status: 'SCHEDULED',
-      });
-      mockPrisma.attendanceRecord.findUnique.mockResolvedValue({
-        id: 'rec-1',
-        version: 3, // Current DB version is 3
-        status: 'PRESENT',
-      });
-
-      await expect(
-        service.recordAttendance(tenantContext, {
-          sessionId: 'session-1',
-          playerId: '00000000-0000-4000-8000-000000000301',
-          status: 'LATE',
-          expectedVersion: 2, // Client expects version 2 (stale!)
-          idempotencyKey: '00000000-0000-4000-8000-000000000402',
-        }),
-      ).rejects.toThrow(ConflictException);
-    });
-
-    it('updates record and increments version upon valid mutation', async () => {
-      mockPrisma.attendanceSession.findUnique.mockResolvedValue({
-        id: 'session-1',
-        branchId: tenantContext.branchId,
-        status: 'SCHEDULED',
-      });
-      mockPrisma.attendanceRecord.findUnique.mockResolvedValue({
-        id: 'rec-1',
-        version: 1,
-        status: 'UNMARKED',
-      });
-      mockPrisma.attendanceRecord.update.mockResolvedValue({
-        id: 'rec-1',
-        version: 2,
-        status: 'PRESENT',
-      });
-
-      const result = (await service.recordAttendance(tenantContext, {
-        sessionId: 'session-1',
-        playerId: '00000000-0000-4000-8000-000000000301',
-        status: 'PRESENT',
-        expectedVersion: 1,
-        idempotencyKey: '00000000-0000-4000-8000-000000000403',
-      })) as { id: string; version: number; status: string };
-
-      expect(result.version).toBe(2);
-      expect(mockPrisma.attendanceRecord.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            version: 2,
-            status: 'PRESENT',
-          }),
-        }),
-      );
-      expect(mockPrisma.attendanceIdempotency.create).toHaveBeenCalled();
+      ).rejects.toThrow(ServiceUnavailableException);
+      expect(mockPrisma.withTenantTransaction).not.toHaveBeenCalled();
+      expect(mockPrisma.attendanceRecord.create).not.toHaveBeenCalled();
+      expect(mockPrisma.attendanceRecord.update).not.toHaveBeenCalled();
     });
   });
 
