@@ -15,13 +15,10 @@ describe('TenantGuard & PermissionsGuard', () => {
   describe('TenantGuard', () => {
     let currentRequest: Record<string, unknown> | null = null;
     const findUnique = vi.fn().mockImplementation(({ where }) => {
-      const user = currentRequest?.user as
-        | { memberships?: Array<{ tenantId: string }> }
-        | undefined;
+      const request = currentRequest as Record<string, unknown> | null;
+      const user = request?.user as { memberships?: Array<{ tenantId: string }> } | undefined;
       return (
-        user?.memberships?.find(
-          (m) => m.tenantId === where.tenantId_userId.tenantId,
-        ) ?? null
+        user?.memberships?.find((m) => m.tenantId === where.tenantId_userId.tenantId) ?? null
       );
     });
     const withAuthLookupTransaction = vi
@@ -34,9 +31,7 @@ describe('TenantGuard & PermissionsGuard', () => {
     const createMockContext = (req: Record<string, unknown>) => {
       currentRequest = req;
       return {
-        switchToHttp: () => ({
-          getRequest: () => req,
-        }),
+        switchToHttp: () => ({ getRequest: () => req }),
       } as unknown as ExecutionContext;
     };
 
