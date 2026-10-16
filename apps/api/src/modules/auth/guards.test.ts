@@ -168,7 +168,9 @@ describe('TenantGuard & PermissionsGuard', () => {
       const findUnique = vi.fn().mockResolvedValue(null);
       const withAuthLookupTransaction = vi
         .fn()
-        .mockImplementation((_options, operation) => operation({ tenantMembership: { findUnique } }));
+        .mockImplementation((_options, operation) =>
+          operation({ tenantMembership: { findUnique } }),
+        );
       const dbGuard = new TenantGuard({ withAuthLookupTransaction } as unknown as PrismaService);
       const ctx = createMockContext({
         user: {
