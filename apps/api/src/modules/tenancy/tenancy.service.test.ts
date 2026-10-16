@@ -201,6 +201,29 @@ describe('TenancyService', () => {
       expect(mockPrisma.invitation.update).not.toHaveBeenCalled();
     });
 
+    it('rejects an unverified account even if the invitation email matches', async () => {
+      mockPrisma.invitation.findFirst.mockResolvedValue(invitation);
+      mockPrisma.user.findUnique.mockResolvedValue({
+        email: 'invited@example.com',
+        isEmailVerified: false,
+      });
+      await expect(
+        service.acceptInvitation('unverified-user', { token: 'valid-token' }),
+      ).rejects.toThrow(UnauthorizedException);
+      expect(mockPrisma.tenantMembership.upsert).not.toHaveBeenCalled();
+      expect(mockPrisma.invitation.update).not.toHaveBeenCalled();
+    });
+
+    it('rejects anonymous claims before creating a new account', async () => {
+      mockPrisma.invitation.findFirst.mockResolvedValue(invitation);
+      mockPrisma.user.findUnique.mockResolvedValue(null);
+      await expect(
+        service.acceptInvitation(undefined, { token: 'valid-token', password: 'new-password' }),
+      ).rejects.toThrow(UnauthorizedException);
+      expect(mockPrisma.user.create).not.toHaveBeenCalled();
+      expect(mockPrisma.tenantMembership.upsert).not.toHaveBeenCalled();
+    });
+
     it('rejects anonymous acceptance for an existing account', async () => {
       mockPrisma.invitation.findFirst.mockResolvedValue(invitation);
       mockPrisma.user.findUnique.mockResolvedValue({ id: 'existing-user' });
