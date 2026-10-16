@@ -5,6 +5,7 @@ import {
   Inject,
   Injectable,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { TokenService } from '../auth/token.service';
@@ -214,34 +215,52 @@ export class TenancyService {
           });
         }
 
+        // A valid invitation token is NOT proof of ownership of an existing account.
+        // An authenticated user must match the invitation's intended email.
+        // An anonymous claimant may only create a NEW account, never take over an existing one.
         let targetUserId = currentUserId;
-
-        if (!targetUserId) {
+        if (targetUserId) {
+          const authenticatedUser = await tx.user.findUnique({
+            where: { id: targetUserId },
+            select: { email: true },
+          });
+          if (
+            !authenticatedUser ||
+            authenticatedUser.email.toLowerCase().trim() !== invitation.email.toLowerCase().trim()
+          ) {
+            throw new UnauthorizedException({
+              code: ErrorCode.UNAUTHORIZED,
+              message: 'Sign in with the email address that received this invitation',
+            });
+          }
+        } else {
           const existingUser = await tx.user.findUnique({
             where: { email: invitation.email },
+            select: { id: true },
           });
-
           if (existingUser) {
-            targetUserId = existingUser.id;
-          } else {
-            if (!dto.password) {
-              throw new BadRequestException({
-                code: ErrorCode.VALIDATION_FAILED,
-                message: 'Password is required to create a new account for this invitation',
-              });
-            }
-
-            const passwordHash = await this.passwordService.hash(dto.password);
-            const newUser = await tx.user.create({
-              data: {
-                email: invitation.email,
-                passwordHash,
-                name: dto.name || invitation.email.split('@')[0] || 'User',
-                isEmailVerified: true,
-              },
+            throw new UnauthorizedException({
+              code: ErrorCode.UNAUTHORIZED,
+              message: 'Sign in to your existing account before accepting this invitation',
             });
-            targetUserId = newUser.id;
           }
+          if (!dto.password) {
+            throw new BadRequestException({
+              code: ErrorCode.VALIDATION_FAILED,
+              message: 'Password is required to create a new account for this invitation',
+            });
+          }
+
+          const passwordHash = await this.passwordService.hash(dto.password);
+          const newUser = await tx.user.create({
+            data: {
+              email: invitation.email,
+              passwordHash,
+              name: dto.name || invitation.email.split('@')[0] || 'User',
+              isEmailVerified: false,
+            },
+          });
+          targetUserId = newUser.id;
         }
 
         // Upsert membership
