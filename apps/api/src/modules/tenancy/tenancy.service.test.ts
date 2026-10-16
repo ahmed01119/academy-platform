@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { TenancyService } from './tenancy.service';
-import { ConflictException, ForbiddenException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { TenantRole } from '@academy/shared';
 import type { PrismaService } from '../database/prisma.service';
 import type { TokenService } from '../auth/token.service';
@@ -172,6 +172,37 @@ describe('TenancyService', () => {
           }),
         }),
       );
+    });
+  });
+
+  describe('acceptInvitation identity binding', () => {
+    const invitation = {
+      id: 'inv-1',
+      email: 'invited@example.com',
+      tenantId: 'tenant-1',
+      role: TenantRole.COACH,
+      branchId: null,
+      tenant: { name: 'Academy' },
+    };
+
+    it('rejects authenticated user with a different email', async () => {
+      mockPrisma.invitation.findFirst.mockResolvedValue(invitation);
+      mockPrisma.user.findUnique.mockResolvedValue({ email: 'attacker@example.com' });
+      await expect(service.acceptInvitation('attacker-id', { token: 'valid-token' })).rejects.toThrow(
+        UnauthorizedException,
+      );
+      expect(mockPrisma.tenantMembership.upsert).not.toHaveBeenCalled();
+      expect(mockPrisma.invitation.update).not.toHaveBeenCalled();
+    });
+
+    it('rejects anonymous acceptance for an existing account', async () => {
+      mockPrisma.invitation.findFirst.mockResolvedValue(invitation);
+      mockPrisma.user.findUnique.mockResolvedValue({ id: 'existing-user' });
+      await expect(
+        service.acceptInvitation(undefined, { token: 'valid-token', password: 'new-password' }),
+      ).rejects.toThrow(UnauthorizedException);
+      expect(mockPrisma.user.create).not.toHaveBeenCalled();
+      expect(mockPrisma.tenantMembership.upsert).not.toHaveBeenCalled();
     });
   });
 
