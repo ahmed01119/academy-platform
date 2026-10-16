@@ -17,15 +17,11 @@ describe('TenantGuard & PermissionsGuard', () => {
     const findUnique = vi.fn().mockImplementation(({ where }) => {
       const request = currentRequest as Record<string, unknown> | null;
       const user = request?.user as { memberships?: Array<{ tenantId: string }> } | undefined;
-      return (
-        user?.memberships?.find((m) => m.tenantId === where.tenantId_userId.tenantId) ?? null
-      );
+      return user?.memberships?.find((m) => m.tenantId === where.tenantId_userId.tenantId) ?? null;
     });
     const withAuthLookupTransaction = vi
       .fn()
-      .mockImplementation((_options, operation) =>
-        operation({ tenantMembership: { findUnique } }),
-      );
+      .mockImplementation((_options, operation) => operation({ tenantMembership: { findUnique } }));
     const guard = new TenantGuard({ withAuthLookupTransaction } as unknown as PrismaService);
 
     const createMockContext = (req: Record<string, unknown>) => {
