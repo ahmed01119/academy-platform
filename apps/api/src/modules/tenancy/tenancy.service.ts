@@ -215,53 +215,30 @@ export class TenancyService {
           });
         }
 
-        // A valid invitation token is NOT proof of ownership of an existing account.
-        // An authenticated user must match the invitation's intended email.
-        // An anonymous claimant may only create a NEW account, never take over an existing one.
-        let targetUserId = currentUserId;
-        if (targetUserId) {
-          const authenticatedUser = await tx.user.findUnique({
-            where: { id: targetUserId },
-            select: { email: true },
+        // An invitation token alone does not establish email ownership.
+        // Only an authenticated, email-verified account matching the invitee may join.
+        // New-account redemption stays disabled until email verification is implemented.
+        if (!currentUserId) {
+          throw new UnauthorizedException({
+            code: ErrorCode.UNAUTHORIZED,
+            message: 'Sign in with a verified account matching the invitation email',
           });
-          if (
-            !authenticatedUser ||
-            authenticatedUser.email.toLowerCase().trim() !== invitation.email.toLowerCase().trim()
-          ) {
-            throw new UnauthorizedException({
-              code: ErrorCode.UNAUTHORIZED,
-              message: 'Sign in with the email address that received this invitation',
-            });
-          }
-        } else {
-          const existingUser = await tx.user.findUnique({
-            where: { email: invitation.email },
-            select: { id: true },
-          });
-          if (existingUser) {
-            throw new UnauthorizedException({
-              code: ErrorCode.UNAUTHORIZED,
-              message: 'Sign in to your existing account before accepting this invitation',
-            });
-          }
-          if (!dto.password) {
-            throw new BadRequestException({
-              code: ErrorCode.VALIDATION_FAILED,
-              message: 'Password is required to create a new account for this invitation',
-            });
-          }
-
-          const passwordHash = await this.passwordService.hash(dto.password);
-          const newUser = await tx.user.create({
-            data: {
-              email: invitation.email,
-              passwordHash,
-              name: dto.name || invitation.email.split('@')[0] || 'User',
-              isEmailVerified: false,
-            },
-          });
-          targetUserId = newUser.id;
         }
+
+        const authenticatedUser = await tx.user.findUnique({
+          where: { id: currentUserId },
+          select: { email: true, isEmailVerified: true },
+        });
+        if (
+          !authenticatedUser?.isEmailVerified ||
+          authenticatedUser.email.toLowerCase().trim() !== invitation.email.toLowerCase().trim()
+        ) {
+          throw new UnauthorizedException({
+            code: ErrorCode.UNAUTHORIZED,
+            message: 'Verify and sign in with the email address that received this invitation',
+          });
+        }
+        const targetUserId = currentUserId;
 
         // Upsert membership
         await tx.tenantMembership.upsert({
