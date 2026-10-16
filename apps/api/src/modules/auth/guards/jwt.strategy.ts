@@ -34,17 +34,15 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
   async validate(payload: JwtPayload) {
     // JWT identity is verified by Passport; discover memberships only for this actor.
-    const user = await this.prisma.withAuthLookupTransaction(
-      { actorUserId: payload.sub },
-      (tx) =>
-        tx.user.findUnique({
-          where: { id: payload.sub },
-          include: {
-            memberships: {
-              include: { tenant: true, branch: true },
-            },
+    const user = await this.prisma.withAuthLookupTransaction({ actorUserId: payload.sub }, (tx) =>
+      tx.user.findUnique({
+        where: { id: payload.sub },
+        include: {
+          memberships: {
+            include: { tenant: true, branch: true },
           },
-        }),
+        },
+      }),
     );
 
     if (!user) {
