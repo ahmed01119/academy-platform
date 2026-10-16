@@ -12,6 +12,37 @@ BEGIN
     RAISE EXCEPTION 'SECURITY FAILURE: runtime role has elevated role flags';
   END IF;
 
+  -- Verify the effective privilege boundary, not just the role name.
+  IF EXISTS (
+    SELECT 1 FROM pg_class AS c
+    JOIN pg_namespace AS n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public'
+      AND c.relname IN ('tenants', 'branches', 'tenant_sports', 'audit_logs')
+      AND c.relowner = (SELECT oid FROM pg_roles WHERE rolname = current_user)
+  ) THEN
+    RAISE EXCEPTION 'SECURITY FAILURE: runtime role owns application tables';
+  END IF;
+
+  IF has_schema_privilege(current_user, 'public', 'CREATE') THEN
+    RAISE EXCEPTION 'SECURITY FAILURE: runtime role has schema CREATE privilege';
+  END IF;
+
+  IF has_table_privilege(current_user, 'public.tenants', 'INSERT')
+    OR has_table_privilege(current_user, 'public.tenants', 'DELETE')
+    OR has_table_privilege(current_user, 'public.tenants', 'TRUNCATE')
+    OR has_table_privilege(current_user, 'public.audit_logs', 'UPDATE')
+    OR has_table_privilege(current_user, 'public.audit_logs', 'DELETE')
+    OR has_table_privilege(current_user, 'public.audit_logs', 'TRUNCATE') THEN
+    RAISE EXCEPTION 'SECURITY FAILURE: runtime role has forbidden table privileges';
+  END IF;
+
+  IF NOT has_table_privilege(current_user, 'public.tenants', 'SELECT')
+    OR NOT has_table_privilege(current_user, 'public.branches', 'SELECT')
+    OR NOT has_table_privilege(current_user, 'public.tenant_sports', 'SELECT')
+    OR NOT has_table_privilege(current_user, 'public.audit_logs', 'INSERT') THEN
+    RAISE EXCEPTION 'SECURITY FAILURE: runtime role is missing expected permissions';
+  END IF;
+
   BEGIN
     EXECUTE 'CREATE TABLE public.ci_runtime_forbidden (id int)';
     allowed := true;
