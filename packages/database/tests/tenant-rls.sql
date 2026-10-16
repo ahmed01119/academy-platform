@@ -289,7 +289,7 @@ END $$;
 -- 9. A forged invitation lookup flag cannot read or consume any invitation.
 SELECT set_config('app.actor_user_id','',true);
 SELECT set_config('app.auth_context','invitation_lookup',true);
-DO $
+DO $$
 BEGIN
  IF (SELECT count(*) FROM public.invitations) <> 0 THEN
   RAISE EXCEPTION 'SECURITY FAILURE: invitation lookup exposed tenant invitations';
@@ -297,15 +297,15 @@ BEGIN
  IF (SELECT count(*) FROM public.invitations WHERE token = 'ci-hash-b') <> 0 THEN
   RAISE EXCEPTION 'SECURITY FAILURE: token lookup bypassed invitation RLS';
  END IF;
-END $;
+END $$;
 
-DO $
+DO $$
 BEGIN
  UPDATE public.invitations SET status = 'ACCEPTED' WHERE token = 'ci-hash-b';
  IF FOUND THEN
   RAISE EXCEPTION 'SECURITY FAILURE: invitation lookup consumed a foreign invitation';
  END IF;
-END $;
+END $$;
 
 RESET ROLE;
 
