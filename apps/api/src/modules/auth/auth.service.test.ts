@@ -236,6 +236,34 @@ describe('AuthService', () => {
     );
   });
 
+  it('reloads active memberships in actor-scoped context on token refresh', async () => {
+    mockToken.rotateRefreshToken.mockResolvedValue({
+      tokens: { accessToken: 'new-access', refreshToken: 'new-refresh', expiresIn: 900 },
+      userId: 'user-1',
+      email: 'coach@example.com',
+    });
+    mockPrisma.user.findUniqueOrThrow = vi.fn().mockResolvedValue({
+      id: 'user-1',
+      email: 'coach@example.com',
+      name: 'Coach',
+      phone: null,
+      isEmailVerified: true,
+      createdAt: new Date(),
+    });
+    mockPrisma.tenantMembership.findMany.mockResolvedValue([]);
+
+    const result = await authService.refresh('refresh-secret');
+
+    expect(result.response.memberships).toEqual([]);
+    expect(mockPrisma.withAuthLookupTransaction).toHaveBeenCalledWith(
+      { actorUserId: 'user-1' },
+      expect.any(Function),
+    );
+    expect(mockPrisma.tenantMembership.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { userId: 'user-1', status: 'ACTIVE' } }),
+    );
+  });
+
   it('blocks login when rate limit is exceeded', async () => {
     mockRedis.incrementRateLimit.mockResolvedValue({
       count: 10, // Exceeded max 5
