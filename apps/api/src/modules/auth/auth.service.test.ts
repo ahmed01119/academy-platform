@@ -31,6 +31,7 @@ interface MockPrisma {
     findMany: MockFn;
   };
   $transaction: MockFn;
+  withAuthLookupTransaction: MockFn;
 }
 
 interface MockPassword {
@@ -91,6 +92,7 @@ describe('AuthService', () => {
         findMany: vi.fn(),
       },
       $transaction: vi.fn().mockImplementation((fn) => fn(mockPrisma)),
+      withAuthLookupTransaction: vi.fn().mockImplementation((_opts, fn) => fn(mockPrisma)),
     };
 
     mockPassword = {
@@ -204,6 +206,34 @@ describe('AuthService', () => {
 
     // Verify constant-time dummy verify was called to protect against timing attacks
     expect(mockPassword.verify).toHaveBeenCalled();
+  });
+
+  it('loads memberships only after valid credentials in actor-scoped discovery', async () => {
+    mockPrisma.user.findUnique.mockResolvedValue({
+      id: 'user-1',
+      email: 'coach@example.com',
+      passwordHash: 'stored-hash',
+      name: 'Coach',
+      phone: null,
+      isEmailVerified: true,
+      createdAt: new Date(),
+    });
+    mockPassword.verify.mockResolvedValue(true);
+    mockPrisma.tenantMembership.findMany.mockResolvedValue([]);
+
+    const result = await authService.login({
+      email: 'coach@example.com',
+      password: 'correct-password',
+    });
+
+    expect(result.response.memberships).toEqual([]);
+    expect(mockPrisma.withAuthLookupTransaction).toHaveBeenCalledWith(
+      { actorUserId: 'user-1' },
+      expect.any(Function),
+    );
+    expect(mockPrisma.tenantMembership.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { userId: 'user-1', status: 'ACTIVE' } }),
+    );
   });
 
   it('blocks login when rate limit is exceeded', async () => {
