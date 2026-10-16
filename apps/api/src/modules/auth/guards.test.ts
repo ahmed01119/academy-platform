@@ -13,32 +13,31 @@ const BRANCH_2 = '00000000-0000-4000-8000-000000000212';
 
 describe('TenantGuard & PermissionsGuard', () => {
   describe('TenantGuard', () => {
-    const mockPrisma = {
-      withAuthLookupTransaction: vi.fn().mockImplementation((_options, operation) =>
-        operation({
-          tenantMembership: {
-            findUnique: vi.fn().mockImplementation(({ where }) => {
-              const memberships = currentRequest?.user?.memberships ?? [];
-              return (
-                memberships.find(
-                  (m: { tenantId: string }) => m.tenantId === where.tenantId_userId.tenantId,
-                ) ?? null
-              );
-            }),
-          },
-        }),
-      ),
-    } as unknown as PrismaService;
-    const guard = new TenantGuard(mockPrisma);
-    let currentRequest: { user?: { memberships?: Array<{ tenantId: string }> } } | null = null;
+    let currentRequest: Record<string, unknown> | null = null;
+    const findUnique = vi.fn().mockImplementation(({ where }) => {
+      const user = currentRequest?.user as
+        | { memberships?: Array<{ tenantId: string }> }
+        | undefined;
+      return (
+        user?.memberships?.find(
+          (m) => m.tenantId === where.tenantId_userId.tenantId,
+        ) ?? null
+      );
+    });
+    const withAuthLookupTransaction = vi
+      .fn()
+      .mockImplementation((_options, operation) =>
+        operation({ tenantMembership: { findUnique } }),
+      );
+    const guard = new TenantGuard({ withAuthLookupTransaction } as unknown as PrismaService);
 
     const createMockContext = (req: Record<string, unknown>) => {
       currentRequest = req;
-      return ({
+      return {
         switchToHttp: () => ({
           getRequest: () => req,
         }),
-      }) as unknown as ExecutionContext;
+      } as unknown as ExecutionContext;
     };
 
     it('throws ForbiddenException if unauthenticated', async () => {
