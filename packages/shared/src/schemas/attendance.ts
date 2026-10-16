@@ -1,12 +1,6 @@
 import { z } from 'zod';
 
-export const AttendanceStatusSchema = z.enum([
-  'UNMARKED',
-  'PRESENT',
-  'LATE',
-  'ABSENT',
-  'EXCUSED',
-]);
+export const AttendanceStatusSchema = z.enum(['UNMARKED', 'PRESENT', 'LATE', 'ABSENT', 'EXCUSED']);
 
 export const AttendanceMutationSchema = z.object({
   sessionId: z.string().uuid(),
