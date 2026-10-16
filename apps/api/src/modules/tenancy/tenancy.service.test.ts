@@ -16,6 +16,9 @@ interface MockPrisma {
     update: MockFn;
     upsert: MockFn;
   };
+  refreshToken: {
+    updateMany: MockFn;
+  };
   branch: {
     findFirst: MockFn;
     findMany: MockFn;
@@ -62,6 +65,9 @@ describe('TenancyService', () => {
         findFirst: vi.fn(),
         update: vi.fn(),
         upsert: vi.fn(),
+      },
+      refreshToken: {
+        updateMany: vi.fn(),
       },
       branch: {
         findFirst: vi.fn(),
@@ -237,7 +243,11 @@ describe('TenancyService', () => {
         where: { id: 'mem-coach' },
         data: { status: 'REVOKED' },
       });
-      expect(mockToken.revokeAllUserTokens).toHaveBeenCalledWith('coach-1');
+      expect(mockPrisma.refreshToken.updateMany).toHaveBeenCalledWith({
+        where: { userId: 'coach-1', isRevoked: false },
+        data: { isRevoked: true },
+      });
+      expect(mockToken.revokeAllUserTokens).not.toHaveBeenCalled();
     });
   });
 });
