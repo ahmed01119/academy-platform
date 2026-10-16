@@ -5,6 +5,7 @@ import {
   Inject,
   Injectable,
   NotFoundException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { AuditService } from '../audit/audit.service';
@@ -223,6 +224,12 @@ export class AttendanceService {
    * Records attendance for a single player with idempotency and optimistic concurrency.
    */
   async recordAttendance(tenantContext: TenantContext, dto: AttendanceMutation) {
+    // Fail closed until a tenant-scoped player registry and session roster exist.
+    // Accepting arbitrary player UUIDs would create unverifiable attendance records.
+    throw new ServiceUnavailableException(
+      'Attendance marking is unavailable until player enrollment and roster validation are implemented',
+    );
+
     return this.prisma.withTenantTransaction(
       { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
       async (tx) => {
@@ -339,6 +346,12 @@ export class AttendanceService {
    * Enforces idempotency and ensures no unregistered players are marked.
    */
   async bulkRecordAttendance(tenantContext: TenantContext, dto: BulkAttendanceSubmission) {
+    // Fail closed until a tenant-scoped player registry and session roster exist.
+    // Accepting arbitrary player UUIDs would create unverifiable attendance records.
+    throw new ServiceUnavailableException(
+      'Attendance marking is unavailable until player enrollment and roster validation are implemented',
+    );
+
     return this.prisma.withTenantTransaction(
       { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
       async (tx) => {
