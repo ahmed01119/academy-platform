@@ -24,6 +24,7 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
+#variable_conflict use_column
 DECLARE
   v_user_email text;
   v_tenant_id uuid := gen_random_uuid();
@@ -138,6 +139,7 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
+#variable_conflict use_column
 DECLARE
   v_user_email text;
   v_user_verified boolean;
@@ -269,6 +271,7 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
+#variable_conflict use_column
 BEGIN
   IF trim(COALESCE(p_token_hash, '')) = '' THEN
     RAISE EXCEPTION 'TOKEN_REQUIRED' USING ERRCODE = '22023';
