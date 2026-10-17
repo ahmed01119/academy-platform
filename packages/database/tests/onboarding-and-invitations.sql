@@ -14,8 +14,10 @@ DECLARE
   v_preview record;
   v_invitation_id uuid := '00000000-0000-4000-8000-000000000951';
   v_expired_inv_id uuid := '00000000-0000-4000-8000-000000000952';
+  v_unverified_inv_id uuid := '00000000-0000-4000-8000-000000000953';
   v_token_hash text := 'ci_test_token_hash_coach_001';
   v_expired_token_hash text := 'ci_test_token_hash_expired_002';
+  v_unverified_token_hash text := 'ci_test_token_hash_unverified_003';
   v_tenant_id uuid;
   v_failed boolean := false;
 BEGIN
@@ -97,6 +99,7 @@ BEGIN
   -- 7. Create invitation under Tenant A context
   PERFORM set_config('app.tenant_id', v_tenant_id::text, true);
 
+  -- Invitation 1: For verified coach D
   INSERT INTO public.invitations (
     id, tenant_id, email, role, token, status, expires_at
   )
@@ -110,6 +113,21 @@ BEGIN
     now() + interval '7 days'
   );
 
+  -- Invitation 2: For unverified coach B
+  INSERT INTO public.invitations (
+    id, tenant_id, email, role, token, status, expires_at
+  )
+  VALUES (
+    v_unverified_inv_id,
+    v_tenant_id,
+    'coach_b@example.com',
+    'COACH',
+    v_unverified_token_hash,
+    'PENDING',
+    now() + interval '7 days'
+  );
+
+  -- Invitation 3: Expired invitation
   INSERT INTO public.invitations (
     id, tenant_id, email, role, token, status, expires_at
   )
@@ -132,9 +150,9 @@ BEGIN
     RAISE EXCEPTION 'FAILURE: inspect_invitation_preview returned unexpected data';
   END IF;
 
-  -- 9. Create users for redemption testing
+  -- 9. Create users for redemption testing (all with distinct unique emails)
   INSERT INTO public.users (id, email, password_hash, name, is_email_verified, updated_at)
-  VALUES (v_user_b_unverified_id, 'coach_d@example.com', '$argon2id$mock', 'Unverified Coach', false, now());
+  VALUES (v_user_b_unverified_id, 'coach_b@example.com', '$argon2id$mock', 'Unverified Coach', false, now());
 
   INSERT INTO public.users (id, email, password_hash, name, is_email_verified, updated_at)
   VALUES (v_user_c_mismatch_id, 'attacker@example.com', '$argon2id$mock', 'Attacker', true, now());
@@ -145,7 +163,7 @@ BEGIN
   -- 10. Test unverified email rejection
   v_failed := false;
   BEGIN
-    PERFORM public.redeem_invitation_and_activate_membership(v_user_b_unverified_id, v_token_hash);
+    PERFORM public.redeem_invitation_and_activate_membership(v_user_b_unverified_id, v_unverified_token_hash);
     v_failed := true;
   EXCEPTION WHEN insufficient_privilege THEN
     NULL;
