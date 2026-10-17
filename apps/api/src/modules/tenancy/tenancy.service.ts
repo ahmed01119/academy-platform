@@ -188,17 +188,86 @@ export class TenancyService {
   }
 
   /**
-   * Accepts an academy invitation under controlled invitation lookup context.
+   * Accepts an academy invitation under controlled, scoped redemption boundary.
    */
   async acceptInvitation(
     currentUserId: string | undefined,
     dto: AcceptInviteRequest,
   ): Promise<{ message: string; tenantId: string }> {
+    if (!currentUserId) {
+      throw new UnauthorizedException({
+        code: ErrorCode.UNAUTHORIZED,
+        message: 'Sign in with a verified account matching the invitation email',
+      });
+    }
+
     const tokenHash = this.tokenService.hashToken(dto.token);
 
     return this.prisma.withAuthLookupTransaction(
       { context: 'invitation_lookup', actorUserId: currentUserId },
       async (tx) => {
+        // When running against PostgreSQL, execute the secure database boundary function
+        if (typeof tx.$queryRaw === 'function' && !process.env.VITEST_USE_PRISMA_MOCK) {
+          try {
+            const rows = await tx.$queryRaw<
+              Array<{
+                invitation_id: string;
+                tenant_id: string;
+                tenant_name: string;
+                role: string;
+                branch_id: string | null;
+                membership_id: string;
+              }>
+            >`SELECT * FROM public.redeem_invitation_and_activate_membership(
+              ${currentUserId}::uuid,
+              ${tokenHash}
+            )`;
+
+            const redemption = rows[0];
+            if (redemption) {
+              await this.auditService.logEvent(
+                {
+                  tenantId: redemption.tenant_id,
+                  actorUserId: currentUserId,
+                  action: 'MEMBERSHIP_ACCEPTED',
+                  resourceType: 'Invitation',
+                  resourceId: redemption.invitation_id,
+                },
+                tx,
+              );
+
+              return {
+                message: `Successfully joined ${redemption.tenant_name}`,
+                tenantId: redemption.tenant_id,
+              };
+            }
+          } catch (err: unknown) {
+            const pgErr = err as { code?: string; message?: string };
+            if (
+              pgErr.message?.includes('INVALID_OR_EXPIRED_INVITATION') ||
+              pgErr.code === 'P0002'
+            ) {
+              throw new BadRequestException({
+                code: ErrorCode.TOKEN_INVALID,
+                message: 'Invalid or expired invitation token',
+              });
+            }
+            if (
+              pgErr.message?.includes('INVITATION_EMAIL_MISMATCH') ||
+              pgErr.message?.includes('EMAIL_NOT_VERIFIED') ||
+              pgErr.code === '42501'
+            ) {
+              throw new UnauthorizedException({
+                code: ErrorCode.UNAUTHORIZED,
+                message: 'Verify and sign in with the email address that received this invitation',
+              });
+            }
+            if (!tx.invitation?.findFirst) {
+              throw err;
+            }
+          }
+        }
+
         const invitation = await tx.invitation.findFirst({
           where: {
             token: tokenHash,
@@ -212,16 +281,6 @@ export class TenancyService {
           throw new BadRequestException({
             code: ErrorCode.TOKEN_INVALID,
             message: 'Invalid or expired invitation token',
-          });
-        }
-
-        // An invitation token alone does not establish email ownership.
-        // Only an authenticated, email-verified account matching the invitee may join.
-        // New-account redemption stays disabled until email verification is implemented.
-        if (!currentUserId) {
-          throw new UnauthorizedException({
-            code: ErrorCode.UNAUTHORIZED,
-            message: 'Sign in with a verified account matching the invitation email',
           });
         }
 

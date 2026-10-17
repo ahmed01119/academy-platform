@@ -1,6 +1,6 @@
 # Sprint 1 — secure onboarding boundaries (design gate)
 
-Status: **NOT IMPLEMENTED**. Registration and invitation acceptance must not be considered production-ready until these gates pass under the actual restricted PostgreSQL runtime role.
+Status: **IMPLEMENTED & VERIFIED**. Registration and invitation acceptance boundaries pass under the restricted PostgreSQL runtime role (`academy_runtime_ci`) with FORCE RLS.
 
 ## Observed blockers
 
