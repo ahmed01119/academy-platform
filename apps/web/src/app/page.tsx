@@ -1,83 +1,182 @@
-const navigation = [
-  'نظرة عامة',
-  'الحضور والغياب',
-  'اللاعبون',
-  'المجموعات والحصص',
-  'الاشتراكات',
-  'المدفوعات',
-  'المدربون',
-  'التقارير',
-  'الإعدادات',
-];
+'use client';
 
-const summaries = [
-  { label: 'إجمالي اللاعبين', detail: 'سيظهر بعد إضافة اللاعبين' },
-  { label: 'حضور اليوم', detail: 'مرتبط بالحصص المسجلة' },
-  { label: 'اشتراكات تحتاج متابعة', detail: 'يظهر بعد تفعيل الاشتراكات' },
-  { label: 'تحصيلات اليوم', detail: 'يظهر بعد تفعيل المدفوعات' },
-];
+import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { Navbar } from '../components/Navbar';
+import { useAuth } from '../lib/auth-context';
+import { Building2, Trophy, Sparkles, Lock, Database, Activity, ChevronLeft } from 'lucide-react';
 
 export default function HomePage() {
+  const { user } = useAuth();
+  const [apiHealth, setApiHealth] = useState<'checking' | 'healthy' | 'offline'>('checking');
+
+  useEffect(() => {
+    fetch('http://localhost:3001/v1/health')
+      .then((res) => (res.ok ? setApiHealth('healthy') : setApiHealth('offline')))
+      .catch(() => setApiHealth('offline'));
+  }, []);
+
   return (
-    <main className="min-h-screen bg-slate-100 text-slate-900">
-      <div className="mx-auto flex max-w-7xl flex-col lg:flex-row">
-        <aside className="bg-slate-900 p-6 text-white lg:min-h-screen lg:w-64">
-          <h1 className="text-xl font-bold">⚽ Academy Platform</h1>
-          <p className="mt-2 text-sm text-slate-300">إدارة الأكاديميات الرياضية</p>
-          <nav aria-label="القائمة الرئيسية" className="mt-8 flex gap-2 lg:flex-col">
-            {navigation.map((item, index) => (
-              <span
-                key={item}
-                aria-current={index === 0 ? 'page' : undefined}
-                className="shrink-0 rounded-lg bg-slate-800 px-4 py-3 text-sm"
-              >
-                {item}
-              </span>
-            ))}
-          </nav>
-          <p className="mt-8 text-xs text-slate-400">القائمة معاينة وليست روابط مفعلة.</p>
-        </aside>
-        <div className="min-w-0 flex-1 p-6 md:p-10">
-          <header className="flex flex-wrap items-center justify-between gap-4">
-            <h2 className="text-2xl font-bold">لوحة التحكم</h2>
-            <span className="rounded-full bg-amber-100 px-4 py-2 text-xs text-amber-900">
-              معاينة تصميم — بدون بيانات حقيقية
-            </span>
-          </header>
-          <section className="mt-8 rounded-3xl bg-teal-800 p-8 text-white">
-            <p className="text-sm">إدارة أبسط. متابعة أدق.</p>
-            <h3 className="mt-3 text-3xl font-bold">كل تفاصيل أكاديميتك في مكان واحد</h3>
-            <p className="mt-4 text-sm leading-7">
-              الحصص والحضور واللاعبون والاشتراكات والتقارير، بواجهة عربية واضحة.
-            </p>
-          </section>
-          <section aria-label="مؤشرات الأكاديمية" className="mt-6 grid gap-4 sm:grid-cols-2">
-            {summaries.map((item) => (
-              <article key={item.label} className="rounded-2xl bg-white p-5 shadow-sm">
-                <h3 className="font-semibold">{item.label}</h3>
-                <p className="mt-4 text-sm text-slate-500">{item.detail}</p>
-              </article>
-            ))}
-          </section>
-          <section className="mt-6 grid gap-5 xl:grid-cols-2">
-            <article className="rounded-2xl bg-slate-800 p-6 text-white">
-              <h3 className="text-xl font-bold">تسجيل حضور سريع</h3>
-              <p className="mt-4 text-sm leading-7">
-                اختر الحصة وابحث عن اللاعب وسجل حالته بلمسة واحدة.
+    <div className="min-h-screen bg-[#0f1c18] text-[#e8f0ec] flex flex-col selection:bg-[#2f9e6b] selection:text-[#062016]">
+      <Navbar />
+
+      <main className="flex-1">
+        {/* Hero Section */}
+        <section className="relative overflow-hidden pt-12 pb-20 sm:pt-20 sm:pb-32">
+          {/* Background ambient glowing spheres */}
+          <div className="absolute top-1/4 -right-20 h-96 w-96 rounded-full bg-[#2f9e6b]/15 blur-3xl pointer-events-none" />
+          <div className="absolute top-1/2 -left-20 h-96 w-96 rounded-full bg-[#36b379]/10 blur-3xl pointer-events-none" />
+
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
+            <div className="text-center max-w-3xl mx-auto space-y-6">
+              {/* Badge */}
+              <div className="inline-flex items-center gap-2 rounded-full border border-[#2f9e6b]/30 bg-[#2f9e6b]/10 px-4 py-1.5 text-xs font-semibold text-[#45c387] shadow-sm backdrop-blur-md">
+                <Sparkles className="h-4 w-4" />
+                <span>الجيل الجديد لإدارة الأكاديميات الرياضية بمصر والعالم العربي</span>
+              </div>
+
+              {/* Title */}
+              <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-white leading-tight">
+                إدارة احترافية متكاملة <br />
+                <span className="bg-gradient-to-r from-[#2f9e6b] via-[#45c387] to-[#7be4b0] bg-clip-text text-transparent">
+                  لأكاديميتك الرياضية وفروعها
+                </span>
+              </h1>
+
+              {/* Description */}
+              <p className="text-base sm:text-lg text-[#9bb5a8] leading-relaxed max-w-2xl mx-auto">
+                منصة سحابية متقدمة متعددة المستأجرين (Multi-Tenant SaaS) تدعم كرة القدم، البادل،
+                السباحة والرياضات المتعددة، مع أمان مصرفي وعزل تام للبيانات على مستوى قاعدة
+                البيانات.
               </p>
-            </article>
-            <article className="rounded-2xl bg-white p-6 shadow-sm">
-              <h3 className="text-xl font-bold">حصص اليوم</h3>
-              <p className="mt-4 text-sm text-slate-500">
-                ستظهر الحصص هنا بعد إعداد الأكاديمية. لا توجد بيانات تجريبية مزيفة.
+
+              {/* CTA Buttons */}
+              <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
+                {user ? (
+                  <Link
+                    href="/dashboard"
+                    className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#2f9e6b] to-[#36b379] px-6 py-3.5 text-sm font-bold text-[#062016] shadow-xl shadow-[#2f9e6b]/30 hover:brightness-110 active:scale-95 transition-all"
+                  >
+                    <span>لوحة تحكم الأكاديمية</span>
+                    <ChevronLeft className="h-4 w-4" />
+                  </Link>
+                ) : (
+                  <>
+                    <Link
+                      href="/register"
+                      className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#2f9e6b] to-[#36b379] px-6 py-3.5 text-sm font-bold text-[#062016] shadow-xl shadow-[#2f9e6b]/30 hover:brightness-110 active:scale-95 transition-all"
+                    >
+                      <Trophy className="h-4 w-4" />
+                      <span>تسجيل أكاديمية جديدة مجاناً</span>
+                      <ChevronLeft className="h-4 w-4" />
+                    </Link>
+
+                    <Link
+                      href="/login"
+                      className="flex items-center gap-2 rounded-xl border border-[#2b4c3e] bg-[#162821]/80 px-6 py-3.5 text-sm font-semibold text-[#e8f0ec] hover:border-[#2f9e6b] hover:text-[#45c387] transition-all"
+                    >
+                      <span>تسجيل الدخول</span>
+                    </Link>
+                  </>
+                )}
+              </div>
+
+              {/* Live Backend Health Indicator */}
+              <div className="pt-6 flex items-center justify-center gap-2 text-xs text-[#9bb5a8]">
+                <Activity
+                  className={`h-4 w-4 ${
+                    apiHealth === 'healthy'
+                      ? 'text-[#45c387]'
+                      : apiHealth === 'checking'
+                        ? 'text-amber-400 animate-pulse'
+                        : 'text-rose-400'
+                  }`}
+                />
+                <span>
+                  حالة خادم الـ API:{' '}
+                  {apiHealth === 'healthy' ? (
+                    <strong className="text-[#45c387]">متصل ونشط (NestJS 11 + Redis)</strong>
+                  ) : apiHealth === 'checking' ? (
+                    <strong className="text-amber-400">جارٍ التحقق...</strong>
+                  ) : (
+                    <strong className="text-rose-400">غير متصل محلياً (3001)</strong>
+                  )}
+                </span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Features / Sprint 1 Pillar Grid */}
+        <section className="mx-auto max-w-7xl px-4 pb-24 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Pillar 1 */}
+            <div className="rounded-2xl border border-[#234235] bg-[#162821]/70 p-6 backdrop-blur-md hover:border-[#2f9e6b]/50 transition-colors">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#2f9e6b]/20 text-[#45c387] mb-5">
+                <Database className="h-6 w-6" />
+              </div>
+              <h2 className="text-lg font-bold text-white mb-2">
+                عزل بيانات كامل (PostgreSQL RLS)
+              </h2>
+              <p className="text-xs text-[#9bb5a8] leading-relaxed">
+                كل استعلام يتم تنفيذه في سياق المستأجر النشط، مما يضمن استحالة وصول أي أكاديمية
+                لبيانات أكاديمية أخرى أو تسريب بيانات اللاعبين والمدربين.
               </p>
-            </article>
-          </section>
-          <p className="mt-6 text-xs text-slate-500">
-            هذه واجهة تأسيسية وليست نظام حضور متصلًا بقاعدة البيانات.
-          </p>
+            </div>
+
+            {/* Pillar 2 */}
+            <div className="rounded-2xl border border-[#234235] bg-[#162821]/70 p-6 backdrop-blur-md hover:border-[#2f9e6b]/50 transition-colors">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#2f9e6b]/20 text-[#45c387] mb-5">
+                <Lock className="h-6 w-6" />
+              </div>
+              <h2 className="text-lg font-bold text-white mb-2">
+                تشفير متطور (Argon2id & JWT Rotation)
+              </h2>
+              <p className="text-xs text-[#9bb5a8] leading-relaxed">
+                حماية الحسابات بتشفير Argon2id المقاوم لأجهزة التعدين، مع نظام تدوير تلقائي لعائلات
+                رموز التحديث واكتشاف فوري لمحاولات إعادة الاستخدام.
+              </p>
+            </div>
+
+            {/* Pillar 3 */}
+            <div className="rounded-2xl border border-[#234235] bg-[#162821]/70 p-6 backdrop-blur-md hover:border-[#2f9e6b]/50 transition-colors">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#2f9e6b]/20 text-[#45c387] mb-5">
+                <Building2 className="h-6 w-6" />
+              </div>
+              <h2 className="text-lg font-bold text-white mb-2">
+                إدارة الفروع والصلاحيات المنضبطة
+              </h2>
+              <p className="text-xs text-[#9bb5a8] leading-relaxed">
+                توزيع دقيق للأدوار بين المالك، مديري الفروع، المحاسب، والمدربين، مع حصر الصلاحيات
+                حسب الفرع وتتبع كامل للعمليات عبر سجل التدقيق (Audit Log).
+              </p>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      {/* Footer */}
+      <footer className="border-t border-[#234235] bg-[#0c1714] py-8 text-center text-xs text-[#9bb5a8]">
+        <div className="mx-auto max-w-7xl px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p>© 2026 منصة إدارة الأكاديميات الرياضية (Academy Platform). جميع الحقوق محفوظة.</p>
+          <div className="flex items-center gap-4">
+            <Link href="/login" className="hover:text-white transition-colors">
+              تسجيل الدخول
+            </Link>
+            <Link href="/register" className="hover:text-white transition-colors">
+              تسجيل أكاديمية
+            </Link>
+            <a
+              href="http://localhost:3001/v1/health"
+              target="_blank"
+              rel="noreferrer"
+              className="text-[#45c387] hover:underline"
+            >
+              فحص الـ API
+            </a>
+          </div>
         </div>
-      </div>
-    </main>
+      </footer>
+    </div>
   );
 }

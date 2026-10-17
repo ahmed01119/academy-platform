@@ -17,7 +17,11 @@ BEGIN
     SELECT 1 FROM pg_class AS c
     JOIN pg_namespace AS n ON n.oid = c.relnamespace
     WHERE n.nspname = 'public'
-      AND c.relname IN ('tenants', 'branches', 'tenant_sports', 'audit_logs')
+      AND c.relname IN (
+        'tenants', 'branches', 'tenant_sports', 'audit_logs',
+        'users', 'refresh_tokens', 'tenant_memberships', 'invitations',
+        'attendance_sessions', 'attendance_records', 'attendance_corrections', 'attendance_idempotency'
+      )
       AND c.relowner = (SELECT oid FROM pg_roles WHERE rolname = current_user)
   ) THEN
     RAISE EXCEPTION 'SECURITY FAILURE: runtime role owns application tables';
@@ -32,14 +36,20 @@ BEGIN
     OR has_table_privilege(current_user, 'public.tenants', 'TRUNCATE')
     OR has_table_privilege(current_user, 'public.audit_logs', 'UPDATE')
     OR has_table_privilege(current_user, 'public.audit_logs', 'DELETE')
-    OR has_table_privilege(current_user, 'public.audit_logs', 'TRUNCATE') THEN
+    OR has_table_privilege(current_user, 'public.audit_logs', 'TRUNCATE')
+    OR has_table_privilege(current_user, 'public.attendance_corrections', 'UPDATE')
+    OR has_table_privilege(current_user, 'public.attendance_corrections', 'DELETE')
+    OR has_table_privilege(current_user, 'public.attendance_corrections', 'TRUNCATE') THEN
     RAISE EXCEPTION 'SECURITY FAILURE: runtime role has forbidden table privileges';
   END IF;
 
   IF NOT has_table_privilege(current_user, 'public.tenants', 'SELECT')
     OR NOT has_table_privilege(current_user, 'public.branches', 'SELECT')
     OR NOT has_table_privilege(current_user, 'public.tenant_sports', 'SELECT')
-    OR NOT has_table_privilege(current_user, 'public.audit_logs', 'INSERT') THEN
+    OR NOT has_table_privilege(current_user, 'public.audit_logs', 'INSERT')
+    OR NOT has_table_privilege(current_user, 'public.attendance_sessions', 'SELECT')
+    OR NOT has_table_privilege(current_user, 'public.attendance_records', 'SELECT')
+    OR NOT has_table_privilege(current_user, 'public.attendance_corrections', 'INSERT') THEN
     RAISE EXCEPTION 'SECURITY FAILURE: runtime role is missing expected permissions';
   END IF;
 
@@ -74,6 +84,59 @@ BEGIN
   IF allowed THEN
     RAISE EXCEPTION 'SECURITY FAILURE: runtime role can delete audit logs';
   END IF;
+
+  allowed := false;
+  BEGIN
+    EXECUTE 'UPDATE public.attendance_corrections SET reason = ''tamper'' WHERE false';
+    allowed := true;
+  EXCEPTION WHEN insufficient_privilege THEN
+    NULL;
+  END;
+  IF allowed THEN
+    RAISE EXCEPTION 'SECURITY FAILURE: runtime role can update attendance corrections';
+  END IF;
+
+  allowed := false;
+  BEGIN
+    EXECUTE 'DELETE FROM public.attendance_corrections WHERE false';
+    allowed := true;
+  EXCEPTION WHEN insufficient_privilege THEN
+    NULL;
+  END;
+  IF allowed THEN
+    RAISE EXCEPTION 'SECURITY FAILURE: runtime role can delete attendance corrections';
+  END IF;
+
+  -- Invitation redemption must not gain cross-tenant visibility by toggling a GUC.
+  PERFORM set_config('app.tenant_id', '', true);
+  PERFORM set_config('app.actor_user_id', '', true);
+  PERFORM set_config('app.auth_context', 'invitation_lookup', true);
+  IF EXISTS (SELECT 1 FROM public.invitations) THEN
+    RAISE EXCEPTION 'SECURITY FAILURE: invitation lookup flag exposed invitations';
+  END IF;
+
+  -- Even a syntactically valid tenant ID cannot authorize provisioning.
+  PERFORM set_config('app.tenant_id', '00000000-0000-4000-8000-000000000201', true);
+  IF has_table_privilege(current_user, 'public.tenants', 'INSERT') THEN
+    RAISE EXCEPTION 'SECURITY FAILURE: runtime tenant provisioning privilege was granted';
+  END IF;
+  PERFORM set_config('app.tenant_id', '', true);
+  PERFORM set_config('app.auth_context', '', true);
+
+  -- A tenant-scoped session still must not be able to create a new tenant.
+  -- Test the actual DML operation, not only the role metadata.
+  PERFORM set_config('app.tenant_id', '00000000-0000-4000-8000-000000000201', true);
+  allowed := false;
+  BEGIN
+    EXECUTE 'INSERT INTO public.tenants (slug, name) VALUES (''ci_tenant_context_forbidden'', ''Forbidden'')';
+    allowed := true;
+  EXCEPTION WHEN insufficient_privilege THEN
+    NULL;
+  END;
+  IF allowed THEN
+    RAISE EXCEPTION 'SECURITY FAILURE: tenant context allowed runtime provisioning';
+  END IF;
+  PERFORM set_config('app.tenant_id', '', true);
 
   -- Runtime identity must never provision or delete platform tenants.
   allowed := false;
