@@ -30,17 +30,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [memberships, setMemberships] = useState<TenantMembershipSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const applyAuthState = useCallback((data: {
-    user: UserSummary;
-    activeTenant?: TenantMembershipSummary;
-    memberships: TenantMembershipSummary[];
-  }) => {
-    const selectedTenant = data.activeTenant ?? data.memberships[0] ?? null;
-    setUser(data.user);
-    setActiveTenant(selectedTenant);
-    setMemberships(data.memberships);
-    setActiveTenantIdHeader(selectedTenant?.tenantId ?? null);
-  }, []);
+  const applyAuthState = useCallback(
+    (data: {
+      user: UserSummary;
+      activeTenant?: TenantMembershipSummary;
+      memberships: TenantMembershipSummary[];
+    }) => {
+      const selectedTenant = data.activeTenant ?? data.memberships[0] ?? null;
+      setUser(data.user);
+      setActiveTenant(selectedTenant);
+      setMemberships(data.memberships);
+      setActiveTenantIdHeader(selectedTenant?.tenantId ?? null);
+    },
+    [],
+  );
 
   const refreshUser = useCallback(async () => {
     try {
