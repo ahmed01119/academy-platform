@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger, type OnModuleDestroy } from '@nestjs/common';
+import { Inject, Injectable, Logger, ServiceUnavailableException, type OnModuleDestroy } from '@nestjs/common';
 import Redis from 'ioredis';
 import { AppConfigService } from '../../config/app-config.service';
 
@@ -12,6 +12,16 @@ export class RedisService implements OnModuleDestroy {
   private readonly logger = new Logger(RedisService.name);
   private client: Redis | null = null;
   private memoryStore = new Map<string, MemoryRateLimitEntry>();
+
+  private get requiresRedis(): boolean {
+    return this.config.nodeEnv === 'production';
+  }
+
+  private assertFallbackAllowed(): void {
+    if (this.requiresRedis) {
+      throw new ServiceUnavailableException('Authentication rate limiting is temporarily unavailable');
+    }
+  }
 
   constructor(@Inject(AppConfigService) private readonly config: AppConfigService) {
     const redisUrl = this.config.redisUrl;
@@ -60,6 +70,10 @@ export class RedisService implements OnModuleDestroy {
   ): Promise<{ count: number; remainingTime: number }> {
     const now = Date.now();
 
+    if (!this.client) {
+      this.assertFallbackAllowed();
+    }
+
     if (this.client) {
       try {
         const count = await this.client.incr(key);
@@ -69,11 +83,12 @@ export class RedisService implements OnModuleDestroy {
         const ttl = await this.client.ttl(key);
         return { count, remainingTime: Math.max(0, ttl) };
       } catch (err) {
-        this.logger.warn(`Redis incr error: ${(err as Error).message}. Fallback to memory.`);
+        this.logger.warn(`Redis incr error: ${(err as Error).message}.`);
+        this.assertFallbackAllowed();
       }
     }
 
-    // In-memory fallback
+    // Development/test-only fallback. Production must not bypass shared rate limits.
     const entry = this.memoryStore.get(key);
     if (!entry || now > entry.resetAt) {
       this.memoryStore.set(key, { count: 1, resetAt: now + windowSeconds * 1000 });
@@ -93,6 +108,7 @@ export class RedisService implements OnModuleDestroy {
         // ignore
       }
     }
+    this.assertFallbackAllowed();
     this.memoryStore.delete(key);
   }
 }
