@@ -10,9 +10,7 @@ const productionConfig = {
 
 describe('production database configuration', () => {
   it('requires a database connection in production', () => {
-    expect(() => validateEnv(productionConfig)).toThrow(
-      'DATABASE_URL is required in production',
-    );
+    expect(() => validateEnv(productionConfig)).toThrow('DATABASE_URL is required in production');
   });
 
   it.each(['postgres', 'academy', 'root'])('rejects privileged username %s', (username) => {
@@ -39,14 +37,17 @@ describe('production database configuration', () => {
   });
 
   it('requires shared Redis in production', () => {
-    expect(() =>
-      validateEnv({ ...productionConfig, REDIS_URL: undefined }),
-    ).toThrow('REDIS_URL is required');
+    expect(() => validateEnv({ ...productionConfig, REDIS_URL: undefined })).toThrow(
+      'REDIS_URL is required',
+    );
   });
 
   it('rejects the development JWT secret in production', () => {
     expect(() =>
-      validateEnv({ ...productionConfig, JWT_SECRET: 'academy-platform-jwt-super-secret-key-32-chars!' }),
+      validateEnv({
+        ...productionConfig,
+        JWT_SECRET: 'academy-platform-jwt-super-secret-key-32-chars!',
+      }),
     ).toThrow('must not use the development default');
   });
 
