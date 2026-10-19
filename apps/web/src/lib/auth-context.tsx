@@ -33,7 +33,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const applyAuthState = useCallback(
     (data: {
       user: UserSummary;
-      activeTenant?: TenantMembershipSummary;
+      activeTenant?: TenantMembershipSummary | null;
       memberships: TenantMembershipSummary[];
     }) => {
       const selectedTenant = data.activeTenant ?? data.memberships[0] ?? null;
