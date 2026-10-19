@@ -305,6 +305,11 @@ REVOKE ALL ON FUNCTION public.provision_tenant_onboarding(uuid, text, text, text
 REVOKE ALL ON FUNCTION public.redeem_invitation_and_activate_membership(uuid, text, text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.inspect_invitation_preview(text) FROM PUBLIC;
 
-GRANT EXECUTE ON FUNCTION public.provision_tenant_onboarding(uuid, text, text, text, text, text, text) TO academy_runtime_ci;
-GRANT EXECUTE ON FUNCTION public.redeem_invitation_and_activate_membership(uuid, text, text) TO academy_runtime_ci;
-GRANT EXECUTE ON FUNCTION public.inspect_invitation_preview(text) TO academy_runtime_ci;
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'academy_runtime_ci') THEN
+    GRANT EXECUTE ON FUNCTION public.provision_tenant_onboarding(uuid, text, text, text, text, text, text) TO academy_runtime_ci;
+    GRANT EXECUTE ON FUNCTION public.redeem_invitation_and_activate_membership(uuid, text, text) TO academy_runtime_ci;
+    GRANT EXECUTE ON FUNCTION public.inspect_invitation_preview(text) TO academy_runtime_ci;
+  END IF;
+END $$;
