@@ -14,6 +14,7 @@ import {
 import type { Request, Response } from 'express';
 import { TenancyService } from './tenancy.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CsrfGuard } from '../auth/guards/csrf.guard';
 import { TenantGuard } from '../auth/guards/tenant.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermissions } from '../auth/guards/require-permissions.decorator';
@@ -30,6 +31,7 @@ import {
 } from '@academy/shared';
 
 @Controller('tenants')
+@UseGuards(CsrfGuard)
 export class TenancyController {
   constructor(@Inject(TenancyService) private readonly tenancyService: TenancyService) {}
 
