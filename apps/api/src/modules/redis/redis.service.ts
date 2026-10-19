@@ -1,4 +1,10 @@
-import { Inject, Injectable, Logger, ServiceUnavailableException, type OnModuleDestroy } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+  type OnModuleDestroy,
+} from '@nestjs/common';
 import Redis from 'ioredis';
 import { AppConfigService } from '../../config/app-config.service';
 
@@ -19,7 +25,9 @@ export class RedisService implements OnModuleDestroy {
 
   private assertFallbackAllowed(): void {
     if (this.requiresRedis) {
-      throw new ServiceUnavailableException('Authentication rate limiting is temporarily unavailable');
+      throw new ServiceUnavailableException(
+        'Authentication rate limiting is temporarily unavailable',
+      );
     }
   }
 
