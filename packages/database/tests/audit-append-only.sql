@@ -38,7 +38,7 @@ BEGIN
   BEGIN
     DELETE FROM tenants
     WHERE id = '00000000-0000-4000-8000-000000000101';
-  EXCEPTION WHEN foreign_key_violation THEN
+  EXCEPTION WHEN foreign_key_violation OR restrict_violation THEN
     blocked := true;
   END;
   IF NOT blocked THEN

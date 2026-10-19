@@ -17,8 +17,23 @@ REVOKE CREATE ON SCHEMA public FROM academy_runtime_ci;
 REVOKE UPDATE, DELETE, TRUNCATE ON TABLE public.audit_logs FROM academy_runtime_ci;
 
 -- Global identity tables
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.users, public.refresh_tokens TO academy_runtime_ci;
-REVOKE TRUNCATE ON TABLE public.users, public.refresh_tokens FROM academy_runtime_ci;
+-- Column-level privilege restriction on public.users: runtime role must never UPDATE onboarding_token or redemption_challenge
+GRANT SELECT, INSERT, DELETE ON TABLE public.users TO academy_runtime_ci;
+GRANT UPDATE (
+  name,
+  phone,
+  password_hash,
+  is_email_verified,
+  email_verification_token,
+  email_verification_expires_at,
+  password_reset_token,
+  password_reset_expires_at,
+  updated_at
+) ON TABLE public.users TO academy_runtime_ci;
+REVOKE TRUNCATE ON TABLE public.users FROM academy_runtime_ci;
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.refresh_tokens TO academy_runtime_ci;
+REVOKE TRUNCATE ON TABLE public.refresh_tokens FROM academy_runtime_ci;
 
 -- Tenant-owned operational tables
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.tenant_memberships, public.invitations, public.attendance_sessions, public.attendance_records, public.attendance_idempotency TO academy_runtime_ci;

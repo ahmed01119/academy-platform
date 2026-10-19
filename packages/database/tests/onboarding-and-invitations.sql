@@ -9,6 +9,7 @@ DECLARE
   v_user_b_unverified_id uuid := '00000000-0000-4000-8000-000000000902';
   v_user_c_mismatch_id uuid := '00000000-0000-4000-8000-000000000903';
   v_user_d_verified_id uuid := '00000000-0000-4000-8000-000000000904';
+  v_user_e_expired_id uuid := '00000000-0000-4000-8000-000000000905';
   v_onboarding record;
   v_redemption record;
   v_preview record;
@@ -22,6 +23,8 @@ DECLARE
   v_onboarding_token_hash text := encode(sha256('raw_secret_onboarding_token_32_bytes_user_a'::bytea), 'hex');
   v_redemption_challenge text := 'raw_secret_redemption_challenge_32_bytes_user_d';
   v_redemption_challenge_hash text := encode(sha256('raw_secret_redemption_challenge_32_bytes_user_d'::bytea), 'hex');
+  v_expired_user_challenge text := 'raw_secret_challenge_expired_user_e';
+  v_expired_user_challenge_hash text := encode(sha256('raw_secret_challenge_expired_user_e'::bytea), 'hex');
   v_unverified_challenge text := 'raw_secret_challenge_unverified_b';
   v_unverified_challenge_hash text := encode(sha256('raw_secret_challenge_unverified_b'::bytea), 'hex');
   v_mismatch_challenge text := 'raw_secret_challenge_mismatch_c';
@@ -171,7 +174,7 @@ BEGIN
   VALUES (
     v_expired_inv_id,
     v_tenant_id,
-    'coach_d@example.com',
+    'coach_e@example.com',
     'COACH',
     v_expired_token_hash,
     'PENDING',
@@ -213,6 +216,15 @@ BEGIN
   VALUES (
     v_user_d_verified_id, 'coach_d@example.com', '$argon2id$mock', 'Verified Coach', true,
     v_redemption_challenge_hash, now() + interval '5 minutes', now()
+  );
+
+  INSERT INTO public.users (
+    id, email, password_hash, name, is_email_verified,
+    redemption_challenge, redemption_expires_at, updated_at
+  )
+  VALUES (
+    v_user_e_expired_id, 'coach_e@example.com', '$argon2id$mock', 'Expired Coach', true,
+    v_expired_user_challenge_hash, now() + interval '5 minutes', now()
   );
 
   -- 11. Test unverified email rejection
@@ -264,17 +276,12 @@ BEGIN
   END IF;
 
   -- 14. Test expired invitation rejection
-  -- Refresh challenge for user D to test expired invitation
-  UPDATE public.users
-  SET redemption_challenge = v_redemption_challenge_hash, redemption_expires_at = now() + interval '5 minutes'
-  WHERE id = v_user_d_verified_id;
-
   v_failed := false;
   BEGIN
     PERFORM public.redeem_invitation_and_activate_membership(
-      v_user_d_verified_id,
+      v_user_e_expired_id,
       v_expired_token_hash,
-      v_redemption_challenge
+      v_expired_user_challenge
     );
     v_failed := true;
   EXCEPTION WHEN no_data_found THEN
@@ -284,11 +291,30 @@ BEGIN
     RAISE EXCEPTION 'SECURITY FAILURE: expired invitation was redeemed';
   END IF;
 
-  -- 15. Test valid invitation redemption with valid challenge
-  UPDATE public.users
-  SET redemption_challenge = v_redemption_challenge_hash, redemption_expires_at = now() + interval '5 minutes'
-  WHERE id = v_user_d_verified_id;
+  -- 14b. Verify runtime role cannot directly overwrite anti-impersonation tokens on public.users
+  v_failed := false;
+  BEGIN
+    UPDATE public.users SET onboarding_token = 'forged_token' WHERE id = v_user_a_id;
+    v_failed := true;
+  EXCEPTION WHEN insufficient_privilege THEN
+    NULL;
+  END;
+  IF v_failed THEN
+    RAISE EXCEPTION 'SECURITY FAILURE: runtime role was able to directly update onboarding_token';
+  END IF;
 
+  v_failed := false;
+  BEGIN
+    UPDATE public.users SET redemption_challenge = 'forged_challenge' WHERE id = v_user_d_verified_id;
+    v_failed := true;
+  EXCEPTION WHEN insufficient_privilege THEN
+    NULL;
+  END;
+  IF v_failed THEN
+    RAISE EXCEPTION 'SECURITY FAILURE: runtime role was able to directly update redemption_challenge';
+  END IF;
+
+  -- 15. Test valid invitation redemption with valid challenge
   SELECT * INTO v_redemption FROM public.redeem_invitation_and_activate_membership(
     v_user_d_verified_id,
     v_token_hash,

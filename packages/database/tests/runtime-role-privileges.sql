@@ -160,6 +160,36 @@ BEGIN
   IF allowed THEN
     RAISE EXCEPTION 'SECURITY FAILURE: runtime role can delete tenants';
   END IF;
+
+  -- Runtime role must NEVER be able to update anti-impersonation tokens on public.users
+  allowed := false;
+  BEGIN
+    EXECUTE 'UPDATE public.users SET onboarding_token = ''forged'' WHERE false';
+    allowed := true;
+  EXCEPTION WHEN insufficient_privilege THEN
+    NULL;
+  END;
+  IF allowed THEN
+    RAISE EXCEPTION 'SECURITY FAILURE: runtime role can update onboarding_token';
+  END IF;
+
+  allowed := false;
+  BEGIN
+    EXECUTE 'UPDATE public.users SET redemption_challenge = ''forged'' WHERE false';
+    allowed := true;
+  EXCEPTION WHEN insufficient_privilege THEN
+    NULL;
+  END;
+  IF allowed THEN
+    RAISE EXCEPTION 'SECURITY FAILURE: runtime role can update redemption_challenge';
+  END IF;
+
+  -- Runtime role MUST be able to update permitted user columns
+  BEGIN
+    EXECUTE 'UPDATE public.users SET name = ''Allowed Name'', is_email_verified = true WHERE false';
+  EXCEPTION WHEN insufficient_privilege THEN
+    RAISE EXCEPTION 'SECURITY FAILURE: runtime role cannot update permitted user columns';
+  END;
 END $$;
 
 RESET ROLE;
