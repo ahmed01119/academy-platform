@@ -42,7 +42,9 @@ export class RedisService implements OnModuleDestroy {
           retryStrategy: () => null,
         });
         this.client.on('error', (err) => {
-          this.logger.warn(`Redis client error (${err.message}). Shared rate limiting may be unavailable.`);
+          this.logger.warn(
+            `Redis client error (${err.message}). Shared rate limiting may be unavailable.`,
+          );
           this.client = null;
         });
         this.client.connect().catch((err) => {
@@ -57,7 +59,9 @@ export class RedisService implements OnModuleDestroy {
         this.client = null;
       }
     } else {
-      this.logger.log('No REDIS_URL configured. Development-only in-memory rate limiting.');
+      this.logger.log(
+        'No REDIS_URL configured. Development-only in-memory rate limiting.',
+      );
     }
   }
 
