@@ -42,22 +42,22 @@ export class RedisService implements OnModuleDestroy {
           retryStrategy: () => null,
         });
         this.client.on('error', (err) => {
-          this.logger.warn(`Redis client error (${err.message}). Falling back to memory store.`);
+          this.logger.warn(`Redis client error (${err.message}). Shared rate limiting may be unavailable.`);
           this.client = null;
         });
         this.client.connect().catch((err) => {
           this.logger.warn(
-            `Redis connection failed (${err.message}). Falling back to memory store.`,
+            `Redis connection failed (${err.message}). Shared rate limiting may be unavailable.`,
           );
           this.client = null;
         });
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
-        this.logger.warn(`Failed to initialize Redis (${msg}). Using memory store.`);
+        this.logger.warn(`Failed to initialize Redis (${msg}).`);
         this.client = null;
       }
     } else {
-      this.logger.log('No REDIS_URL configured. Using high-performance in-memory rate limiting.');
+      this.logger.log('No REDIS_URL configured. Development-only in-memory rate limiting.');
     }
   }
 

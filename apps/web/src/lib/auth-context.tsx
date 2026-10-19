@@ -93,7 +93,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const updatedMembership = await api.tenancy.switchTenant(tenantId);
     setActiveTenant(updatedMembership);
     setActiveTenantIdHeader(tenantId);
-    await refreshUser();
   };
 
   return (

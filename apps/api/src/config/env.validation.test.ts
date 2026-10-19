@@ -6,6 +6,7 @@ const productionConfig = {
   REDIS_URL: 'redis://localhost:6379',
   JWT_SECRET: 'a-production-only-secret-with-sufficient-entropy',
   CORS_ORIGIN: 'https://academy.example.com',
+  COOKIE_SECURE: true,
 };
 
 describe('production database configuration', () => {
@@ -34,6 +35,18 @@ describe('production database configuration', () => {
       DATABASE_URL: 'postgresql://academy_runtime:example@localhost:5432/academy',
     });
     expect(env.NODE_ENV).toBe('production');
+  });
+
+  it('rejects insecure production cookies', () => {
+    expect(() => validateEnv({ ...productionConfig, COOKIE_SECURE: false })).toThrow(
+      'COOKIE_SECURE must be enabled',
+    );
+  });
+
+  it('parses the string false as false instead of truthy', () => {
+    expect(validateEnv({ NODE_ENV: 'development', COOKIE_SECURE: 'false' }).COOKIE_SECURE).toBe(
+      false,
+    );
   });
 
   it('requires shared Redis in production', () => {

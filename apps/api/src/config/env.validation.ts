@@ -10,7 +10,10 @@ const EnvSchema = z.object({
   JWT_EXPIRES_IN: z.string().default('15m'),
   REFRESH_TOKEN_EXPIRES_DAYS: z.coerce.number().int().positive().default(7),
   CORS_ORIGIN: z.string().default('http://localhost:3000'),
-  COOKIE_SECURE: z.coerce.boolean().default(false),
+  COOKIE_SECURE: z
+    .union([z.boolean(), z.enum(['true', 'false'])])
+    .transform((value) => value === true || value === 'true')
+    .default(false),
 });
 
 export type AppEnv = z.infer<typeof EnvSchema>;
@@ -24,6 +27,9 @@ export function validateEnv(config: Record<string, unknown>): AppEnv {
     throw new Error(`Invalid environment configuration: ${details}`);
   }
   if (parsed.data.NODE_ENV === 'production') {
+    if (!parsed.data.COOKIE_SECURE) {
+      throw new Error('COOKIE_SECURE must be enabled in production');
+    }
     if (!parsed.data.REDIS_URL) {
       throw new Error('REDIS_URL is required in production for shared rate limiting');
     }
