@@ -59,9 +59,7 @@ export class RedisService implements OnModuleDestroy {
         this.client = null;
       }
     } else {
-      this.logger.log(
-        'No REDIS_URL configured. Development-only in-memory rate limiting.',
-      );
+      this.logger.log('No REDIS_URL configured. Development-only in-memory rate limiting.');
     }
   }
 
