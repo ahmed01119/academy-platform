@@ -30,15 +30,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [memberships, setMemberships] = useState<TenantMembershipSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  const applyAuthState = useCallback((data: {
+    user: UserSummary;
+    activeTenant?: TenantMembershipSummary;
+    memberships: TenantMembershipSummary[];
+  }) => {
+    const selectedTenant = data.activeTenant ?? data.memberships[0] ?? null;
+    setUser(data.user);
+    setActiveTenant(selectedTenant);
+    setMemberships(data.memberships);
+    setActiveTenantIdHeader(selectedTenant?.tenantId ?? null);
+  }, []);
+
   const refreshUser = useCallback(async () => {
     try {
       const data = await api.auth.getMe();
-      setUser(data.user);
-      setActiveTenant(data.activeTenant ?? data.memberships[0] ?? null);
-      setMemberships(data.memberships);
-      if (data.activeTenant?.tenantId) {
-        setActiveTenantIdHeader(data.activeTenant.tenantId);
-      }
+      applyAuthState(data);
     } catch {
       setUser(null);
       setActiveTenant(null);
@@ -47,7 +54,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [applyAuthState]);
 
   useEffect(() => {
     void refreshUser();
@@ -55,22 +62,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (data: LoginRequest) => {
     const res = await api.auth.login(data);
-    setUser(res.user);
-    setActiveTenant(res.activeTenant ?? res.memberships[0] ?? null);
-    setMemberships(res.memberships);
-    if (res.activeTenant?.tenantId) {
-      setActiveTenantIdHeader(res.activeTenant.tenantId);
-    }
+    applyAuthState(res);
   };
 
   const register = async (data: RegisterRequest) => {
     const res = await api.auth.register(data);
-    setUser(res.user);
-    setActiveTenant(res.activeTenant ?? res.memberships[0] ?? null);
-    setMemberships(res.memberships);
-    if (res.activeTenant?.tenantId) {
-      setActiveTenantIdHeader(res.activeTenant.tenantId);
-    }
+    applyAuthState(res);
   };
 
   const logout = async () => {
@@ -86,12 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshToken = async (token?: string) => {
     const res = await api.auth.refresh(token);
-    setUser(res.user);
-    setActiveTenant(res.activeTenant ?? res.memberships[0] ?? null);
-    setMemberships(res.memberships);
-    if (res.activeTenant?.tenantId) {
-      setActiveTenantIdHeader(res.activeTenant.tenantId);
-    }
+    applyAuthState(res);
   };
 
   const switchTenant = async (tenantId: string) => {
