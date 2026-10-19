@@ -166,11 +166,17 @@ export default function HomePage() {
             <Link href="/register" className="hover:text-white transition-colors">
               تسجيل أكاديمية
             </Link>
+            <Link
+              href="/auth-test"
+              className="text-[#45c387] hover:underline transition-colors font-medium"
+            >
+              فحص الأمان (Auth Test)
+            </Link>
             <a
               href="http://localhost:3001/v1/health"
               target="_blank"
               rel="noreferrer"
-              className="text-[#45c387] hover:underline"
+              className="hover:text-white transition-colors"
             >
               فحص الـ API
             </a>

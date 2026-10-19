@@ -17,6 +17,7 @@ interface AuthContextValue {
   login: (data: LoginRequest) => Promise<void>;
   register: (data: RegisterRequest) => Promise<void>;
   logout: () => Promise<void>;
+  refreshToken: (token?: string) => Promise<void>;
   switchTenant: (tenantId: string) => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -83,6 +84,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const refreshToken = async (token?: string) => {
+    const res = await api.auth.refresh(token);
+    setUser(res.user);
+    setActiveTenant(res.activeTenant ?? res.memberships[0] ?? null);
+    setMemberships(res.memberships);
+    if (res.activeTenant?.tenantId) {
+      setActiveTenantIdHeader(res.activeTenant.tenantId);
+    }
+  };
+
   const switchTenant = async (tenantId: string) => {
     const updatedMembership = await api.tenancy.switchTenant(tenantId);
     setActiveTenant(updatedMembership);
@@ -100,6 +111,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         login,
         register,
         logout,
+        refreshToken,
         switchTenant,
         refreshUser,
       }}

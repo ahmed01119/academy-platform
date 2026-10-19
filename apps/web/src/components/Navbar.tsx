@@ -10,6 +10,7 @@ import {
   ChevronDown,
   User as UserIcon,
   Sparkles,
+  Activity,
 } from 'lucide-react';
 
 const ROLE_LABELS_AR: Record<string, string> = {
@@ -47,6 +48,14 @@ export function Navbar() {
 
         {/* Right side controls */}
         <div className="flex items-center gap-3">
+          <Link
+            href="/auth-test"
+            className="flex items-center gap-1.5 rounded-lg border border-[#234235] bg-[#162821]/60 px-3 py-1.5 text-xs font-medium text-[#45c387] hover:border-[#2f9e6b] hover:bg-[#162821] transition-all"
+          >
+            <Activity className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">فحص الأمان (Auth Test)</span>
+          </Link>
+
           {user ? (
             <div className="flex items-center gap-3">
               {/* Active Academy Dropdown / Switcher */}

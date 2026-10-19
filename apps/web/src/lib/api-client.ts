@@ -8,7 +8,10 @@ import type {
   UserSummary,
 } from '@academy/shared';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/v1';
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  'http://localhost:3001/v1';
 
 export class ApiError extends Error {
   constructor(
@@ -93,6 +96,17 @@ export const api = {
         method: 'POST',
       });
       setActiveTenantIdHeader(null);
+      return res;
+    },
+
+    async refresh(refreshToken?: string): Promise<AuthResponse> {
+      const res = await request<AuthResponse>('/auth/refresh', {
+        method: 'POST',
+        body: JSON.stringify(refreshToken ? { refreshToken } : {}),
+      });
+      if (res.activeTenant?.tenantId) {
+        setActiveTenantIdHeader(res.activeTenant.tenantId);
+      }
       return res;
     },
 
