@@ -29,13 +29,19 @@ Multi-tenant, multi-branch, multi-sport academy management SaaS. Launch focus: f
 | `@academy/typescript-config` | Shared TS configs                          |
 | `@academy/eslint-config`     | Shared ESLint configs                      |
 
-## Non-goals (Sprint 0)
+## Shipped in Sprint 1
 
-- Authentication / authorization implementation
-- Billing / payments
-- Enrollment, attendance, or player CRM features
-- Flutter app
+- Full Authentication (Argon2id hashing, secure JWT access + rotating refresh tokens with reuse family revocation, email verification, password reset)
+- Multi-Tenancy & Tenant Switching (actor-scoped membership discovery, cookie/header persistence, revoked context auto-drop)
+- Scoped Onboarding & Anti-Impersonation Boundaries (`provision_tenant_onboarding`, column-level runtime privilege enforcement)
+- Secure Staff Invitations (`inviteStaff`, `acceptInvitation`, single-use verification)
+- Attendance Session Foundation (sessions, records, idempotent recording, append-only corrections)
+- Security Hardening (FORCE RLS on all tenant tables, append-only audit protection, production fail-closed Redis rate limiting)
+- Interactive Verification UI (`/auth-test` page in Arabic RTL with live flow runner)
 
-## Open product questions
+## Non-goals (Sprint 2 & Future Roadmap)
 
-See `docs/architecture/open-requirements.md`.
+- Billing / subscriptions / Stripe & Paymob integration (Sprint 2)
+- Comprehensive player CRM and advanced enrollment management (Sprint 2+)
+- Mobile client (Flutter app)
+- Parent/player public portal

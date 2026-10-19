@@ -36,11 +36,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       activeTenant?: TenantMembershipSummary | null;
       memberships: TenantMembershipSummary[];
     }) => {
-      const selectedTenant = data.activeTenant ?? data.memberships[0] ?? null;
+      const activeMemberships = data.memberships.filter((m) => m.status === 'ACTIVE');
+      const resolvedActive =
+        (data.activeTenant && data.activeTenant.status === 'ACTIVE'
+          ? activeMemberships.find((m) => m.tenantId === data.activeTenant?.tenantId)
+          : null) ??
+        activeMemberships[0] ??
+        null;
+
       setUser(data.user);
-      setActiveTenant(selectedTenant);
-      setMemberships(data.memberships);
-      setActiveTenantIdHeader(selectedTenant?.tenantId ?? null);
+      setActiveTenant(resolvedActive);
+      setMemberships(activeMemberships);
+      if (resolvedActive?.tenantId) {
+        setActiveTenantIdHeader(resolvedActive.tenantId);
+      } else {
+        setActiveTenantIdHeader(null);
+      }
     },
     [],
   );
@@ -91,8 +102,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const switchTenant = async (tenantId: string) => {
     const updatedMembership = await api.tenancy.switchTenant(tenantId);
-    setActiveTenant(updatedMembership);
-    setActiveTenantIdHeader(tenantId);
+    if (updatedMembership.status === 'ACTIVE') {
+      setActiveTenant(updatedMembership);
+      setActiveTenantIdHeader(tenantId);
+    } else {
+      setActiveTenant(null);
+      setActiveTenantIdHeader(null);
+    }
+    await refreshUser();
   };
 
   return (

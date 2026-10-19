@@ -25,10 +25,40 @@ export class ApiError extends Error {
   }
 }
 
-let activeTenantIdCache: string | null = null;
+function getInitialActiveTenantId(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const saved = localStorage.getItem('academy_active_tenant_id');
+    if (saved) return saved;
+  } catch {
+    // Ignore storage read error
+  }
+  try {
+    const match = document.cookie.match(/(?:^|;\s*)tenant_id=([^;]+)/);
+    if (match?.[1]) return decodeURIComponent(match[1]);
+  } catch {
+    // Ignore cookie read error
+  }
+  return null;
+}
+
+let activeTenantIdCache: string | null = getInitialActiveTenantId();
 
 export function setActiveTenantIdHeader(tenantId: string | null): void {
   activeTenantIdCache = tenantId;
+  if (typeof window !== 'undefined') {
+    try {
+      if (tenantId) {
+        localStorage.setItem('academy_active_tenant_id', tenantId);
+        document.cookie = `tenant_id=${encodeURIComponent(tenantId)}; path=/; max-age=2592000; SameSite=Lax`;
+      } else {
+        localStorage.removeItem('academy_active_tenant_id');
+        document.cookie = 'tenant_id=; path=/; max-age=0; SameSite=Lax';
+      }
+    } catch {
+      // Ignore storage write error
+    }
+  }
 }
 
 export function getActiveTenantIdHeader(): string | null {
