@@ -117,9 +117,11 @@ export class RedisService implements OnModuleDestroy {
         return;
       } catch (err) {
         this.logger.warn(`Redis reset error: ${(err as Error).message}.`);
+        this.assertFallbackAllowed();
       }
+    } else {
+      this.assertFallbackAllowed();
     }
-    this.assertFallbackAllowed();
     this.memoryStore.delete(key);
   }
 }

@@ -206,18 +206,6 @@ export class TenancyService {
     return this.prisma.withAuthLookupTransaction(
       { context: 'invitation_lookup', actorUserId: currentUserId },
       async (tx) => {
-        const redemptionChallenge = this.tokenService.generateSecureRandomString(32);
-        const redemptionChallengeHash = this.tokenService.hashToken(redemptionChallenge);
-
-        // Bind single-use redemption challenge to the authenticated actor user
-        await tx.user.update({
-          where: { id: currentUserId },
-          data: {
-            redemptionChallenge: redemptionChallengeHash,
-            redemptionExpiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5 mins
-          },
-        });
-
         try {
           const rows = await tx.$queryRaw<
             Array<{
@@ -230,8 +218,7 @@ export class TenancyService {
             }>
           >`SELECT * FROM public.redeem_invitation_and_activate_membership(
             ${currentUserId}::uuid,
-            ${tokenHash},
-            ${redemptionChallenge}
+            ${tokenHash}
           )`;
 
           const redemption = rows[0];

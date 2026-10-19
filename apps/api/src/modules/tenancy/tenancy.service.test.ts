@@ -234,14 +234,8 @@ describe('TenancyService', () => {
       const result = await service.acceptInvitation('verified-user', { token: 'valid-token' });
 
       expect(result.tenantId).toBe('tenant-1');
-      expect(mockPrisma.user.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { id: 'verified-user' },
-          data: expect.objectContaining({
-            redemptionChallenge: expect.any(String),
-          }),
-        }),
-      );
+      expect(mockPrisma.user.update).not.toHaveBeenCalled();
+      expect(mockPrisma.$queryRaw).toHaveBeenCalled();
       expect(mockAudit.logEvent).toHaveBeenCalledWith(
         expect.objectContaining({
           action: 'MEMBERSHIP_ACCEPTED',
