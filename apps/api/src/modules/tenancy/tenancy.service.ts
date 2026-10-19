@@ -206,152 +206,79 @@ export class TenancyService {
     return this.prisma.withAuthLookupTransaction(
       { context: 'invitation_lookup', actorUserId: currentUserId },
       async (tx) => {
-        // When running against PostgreSQL, execute the secure database boundary function
-        if (typeof tx.$queryRaw === 'function' && !process.env.VITEST_USE_PRISMA_MOCK) {
-          try {
-            const rows = await tx.$queryRaw<
-              Array<{
-                invitation_id: string;
-                tenant_id: string;
-                tenant_name: string;
-                role: string;
-                branch_id: string | null;
-                membership_id: string;
-              }>
-            >`SELECT * FROM public.redeem_invitation_and_activate_membership(
-              ${currentUserId}::uuid,
-              ${tokenHash}
-            )`;
+        const redemptionChallenge = this.tokenService.generateSecureRandomString(32);
+        const redemptionChallengeHash = this.tokenService.hashToken(redemptionChallenge);
 
-            const redemption = rows[0];
-            if (redemption) {
-              await this.auditService.logEvent(
-                {
-                  tenantId: redemption.tenant_id,
-                  actorUserId: currentUserId,
-                  action: 'MEMBERSHIP_ACCEPTED',
-                  resourceType: 'Invitation',
-                  resourceId: redemption.invitation_id,
-                },
-                tx,
-              );
-
-              return {
-                message: `Successfully joined ${redemption.tenant_name}`,
-                tenantId: redemption.tenant_id,
-              };
-            }
-          } catch (err: unknown) {
-            const pgErr = err as { code?: string; message?: string };
-            if (
-              pgErr.message?.includes('INVALID_OR_EXPIRED_INVITATION') ||
-              pgErr.code === 'P0002'
-            ) {
-              throw new BadRequestException({
-                code: ErrorCode.TOKEN_INVALID,
-                message: 'Invalid or expired invitation token',
-              });
-            }
-            if (
-              pgErr.message?.includes('INVITATION_EMAIL_MISMATCH') ||
-              pgErr.message?.includes('EMAIL_NOT_VERIFIED') ||
-              pgErr.code === '42501'
-            ) {
-              throw new UnauthorizedException({
-                code: ErrorCode.UNAUTHORIZED,
-                message: 'Verify and sign in with the email address that received this invitation',
-              });
-            }
-            if (!tx.invitation?.findFirst) {
-              throw err;
-            }
-          }
-        }
-
-        const invitation = await tx.invitation.findFirst({
-          where: {
-            token: tokenHash,
-            status: 'PENDING',
-            expiresAt: { gt: new Date() },
-          },
-          include: { tenant: true },
-        });
-
-        if (!invitation) {
-          throw new BadRequestException({
-            code: ErrorCode.TOKEN_INVALID,
-            message: 'Invalid or expired invitation token',
-          });
-        }
-
-        const authenticatedUser = await tx.user.findUnique({
+        // Bind single-use redemption challenge to the authenticated actor user
+        await tx.user.update({
           where: { id: currentUserId },
-          select: { email: true, isEmailVerified: true },
-        });
-        if (
-          !authenticatedUser?.isEmailVerified ||
-          authenticatedUser.email.toLowerCase().trim() !== invitation.email.toLowerCase().trim()
-        ) {
-          throw new UnauthorizedException({
-            code: ErrorCode.UNAUTHORIZED,
-            message: 'Verify and sign in with the email address that received this invitation',
-          });
-        }
-        const targetUserId = currentUserId;
-
-        // Consume the token conditionally so concurrent requests cannot both succeed.
-        // A zero-row update rejects an already redeemed, revoked or expired invitation.
-        const consumed = await tx.invitation.updateMany({
-          where: {
-            id: invitation.id,
-            status: 'PENDING',
-            expiresAt: { gt: new Date() },
+          data: {
+            redemptionChallenge: redemptionChallengeHash,
+            redemptionExpiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5 mins
           },
-          data: { status: 'ACCEPTED' },
         });
-        if (consumed.count !== 1) {
-          throw new BadRequestException({
-            code: ErrorCode.TOKEN_INVALID,
-            message: 'Invalid or expired invitation token',
-          });
-        }
 
-        await tx.tenantMembership.upsert({
-          where: {
-            tenantId_userId: {
-              tenantId: invitation.tenantId,
-              userId: targetUserId,
+        try {
+          const rows = await tx.$queryRaw<
+            Array<{
+              invitation_id: string;
+              tenant_id: string;
+              tenant_name: string;
+              role: string;
+              branch_id: string | null;
+              membership_id: string;
+            }>
+          >`SELECT * FROM public.redeem_invitation_and_activate_membership(
+            ${currentUserId}::uuid,
+            ${tokenHash},
+            ${redemptionChallenge}
+          )`;
+
+          const redemption = rows[0];
+          if (!redemption) {
+            throw new BadRequestException({
+              code: ErrorCode.TOKEN_INVALID,
+              message: 'Invalid or expired invitation token',
+            });
+          }
+
+          await this.auditService.logEvent(
+            {
+              tenantId: redemption.tenant_id,
+              actorUserId: currentUserId,
+              action: 'MEMBERSHIP_ACCEPTED',
+              resourceType: 'Invitation',
+              resourceId: redemption.invitation_id,
             },
-          },
-          create: {
-            tenantId: invitation.tenantId,
-            userId: targetUserId,
-            role: invitation.role,
-            branchId: invitation.branchId,
-            status: 'ACTIVE',
-          },
-          update: {
-            role: invitation.role,
-            branchId: invitation.branchId,
-            status: 'ACTIVE',
-          },
-        });
+            tx,
+          );
 
-        await this.auditService.logEvent(
-          {
-            tenantId: invitation.tenantId,
-            actorUserId: targetUserId,
-            action: 'MEMBERSHIP_ACCEPTED',
-            resourceType: 'Invitation',
-            resourceId: invitation.id,
-          },
-          tx,
-        );
-
-        return {
-          message: `Successfully joined ${invitation.tenant.name}`,
-          tenantId: invitation.tenantId,
-        };
+          return {
+            message: `Successfully joined ${redemption.tenant_name}`,
+            tenantId: redemption.tenant_id,
+          };
+        } catch (err: unknown) {
+          const pgErr = err as { code?: string; message?: string };
+          if (pgErr.message?.includes('INVALID_OR_EXPIRED_INVITATION') || pgErr.code === 'P0002') {
+            throw new BadRequestException({
+              code: ErrorCode.TOKEN_INVALID,
+              message: 'Invalid or expired invitation token',
+            });
+          }
+          if (
+            pgErr.message?.includes('INVITATION_EMAIL_MISMATCH') ||
+            pgErr.message?.includes('EMAIL_NOT_VERIFIED') ||
+            pgErr.message?.includes('INVALID_REDEMPTION_CHALLENGE') ||
+            pgErr.code === '42501'
+          ) {
+            throw new UnauthorizedException({
+              code: ErrorCode.UNAUTHORIZED,
+              message: 'Verify and sign in with the email address that received this invitation',
+            });
+          }
+          // Fail closed on any other unexpected error
+          throw err;
+        }
       },
     );
   }

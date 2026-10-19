@@ -1,6 +1,11 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { TenancyService } from './tenancy.service';
-import { ConflictException, ForbiddenException, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { TenantRole } from '@academy/shared';
 import type { PrismaService } from '../database/prisma.service';
 import type { TokenService } from '../auth/token.service';
@@ -32,7 +37,9 @@ interface MockPrisma {
   user: {
     findUnique: MockFn;
     create: MockFn;
+    update: MockFn;
   };
+  $queryRaw: MockFn;
   $transaction: MockFn;
   withTenantTransaction: MockFn;
   withAuthLookupTransaction: MockFn;
@@ -83,7 +90,18 @@ describe('TenancyService', () => {
       user: {
         findUnique: vi.fn(),
         create: vi.fn(),
+        update: vi.fn().mockResolvedValue({}),
       },
+      $queryRaw: vi.fn().mockResolvedValue([
+        {
+          invitation_id: 'inv-1',
+          tenant_id: 'tenant-1',
+          tenant_name: 'Academy',
+          role: 'COACH',
+          branch_id: null,
+          membership_id: 'membership-1',
+        },
+      ]),
       $transaction: vi.fn().mockImplementation((fn) => fn(mockPrisma)),
       withTenantTransaction: vi.fn().mockImplementation((_opts, fn) => fn(mockPrisma)),
       withAuthLookupTransaction: vi.fn().mockImplementation((_opts, fn) => fn(mockPrisma)),
@@ -194,67 +212,69 @@ describe('TenancyService', () => {
     };
 
     it('rejects authenticated user with a different email', async () => {
-      mockPrisma.invitation.findFirst.mockResolvedValue(invitation);
-      mockPrisma.user.findUnique.mockResolvedValue({ email: 'attacker@example.com' });
+      mockPrisma.$queryRaw.mockRejectedValue(new Error('INVITATION_EMAIL_MISMATCH'));
       await expect(
         service.acceptInvitation('attacker-id', { token: 'valid-token' }),
       ).rejects.toThrow(UnauthorizedException);
       expect(mockPrisma.tenantMembership.upsert).not.toHaveBeenCalled();
-      expect(mockPrisma.invitation.update).not.toHaveBeenCalled();
     });
 
     it('accepts only a verified matching account and records membership atomically', async () => {
-      mockPrisma.invitation.findFirst.mockResolvedValue(invitation);
-      mockPrisma.user.findUnique.mockResolvedValue({
-        email: 'invited@example.com',
-        isEmailVerified: true,
-      });
-      mockPrisma.tenantMembership.upsert.mockResolvedValue({ id: 'membership-1' });
-      mockPrisma.invitation.update.mockResolvedValue({ id: 'inv-1', status: 'ACCEPTED' });
+      mockPrisma.$queryRaw.mockResolvedValue([
+        {
+          invitation_id: 'inv-1',
+          tenant_id: 'tenant-1',
+          tenant_name: 'Academy',
+          role: 'COACH',
+          branch_id: null,
+          membership_id: 'membership-1',
+        },
+      ]);
 
       const result = await service.acceptInvitation('verified-user', { token: 'valid-token' });
 
       expect(result.tenantId).toBe('tenant-1');
-      expect(mockPrisma.tenantMembership.upsert).toHaveBeenCalledWith(
+      expect(mockPrisma.user.update).toHaveBeenCalledWith(
         expect.objectContaining({
-          create: expect.objectContaining({ userId: 'verified-user', status: 'ACTIVE' }),
+          where: { id: 'verified-user' },
+          data: expect.objectContaining({
+            redemptionChallenge: expect.any(String),
+          }),
         }),
       );
-      expect(mockPrisma.invitation.updateMany).toHaveBeenCalledWith({
-        where: expect.objectContaining({ id: 'inv-1', status: 'PENDING' }),
-        data: { status: 'ACCEPTED' },
-      });
-      expect(mockPrisma.withAuthLookupTransaction).toHaveBeenCalledWith(
-        { context: 'invitation_lookup', actorUserId: 'verified-user' },
-        expect.any(Function),
+      expect(mockAudit.logEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'MEMBERSHIP_ACCEPTED',
+          resourceType: 'Invitation',
+          resourceId: 'inv-1',
+        }),
+        expect.anything(),
       );
     });
 
     it('rejects a concurrently consumed invitation before activating membership', async () => {
-      mockPrisma.invitation.findFirst.mockResolvedValue(invitation);
-      mockPrisma.user.findUnique.mockResolvedValue({
-        email: 'invited@example.com',
-        isEmailVerified: true,
-      });
-      mockPrisma.invitation.updateMany.mockResolvedValue({ count: 0 });
+      mockPrisma.$queryRaw.mockRejectedValue(new Error('INVALID_OR_EXPIRED_INVITATION'));
 
       await expect(
         service.acceptInvitation('verified-user', { token: 'valid-token' }),
-      ).rejects.toThrow();
+      ).rejects.toThrow(BadRequestException);
       expect(mockPrisma.tenantMembership.upsert).not.toHaveBeenCalled();
     });
 
     it('rejects an unverified account even if the invitation email matches', async () => {
-      mockPrisma.invitation.findFirst.mockResolvedValue(invitation);
-      mockPrisma.user.findUnique.mockResolvedValue({
-        email: 'invited@example.com',
-        isEmailVerified: false,
-      });
+      mockPrisma.$queryRaw.mockRejectedValue(new Error('EMAIL_NOT_VERIFIED'));
       await expect(
         service.acceptInvitation('unverified-user', { token: 'valid-token' }),
       ).rejects.toThrow(UnauthorizedException);
       expect(mockPrisma.tenantMembership.upsert).not.toHaveBeenCalled();
-      expect(mockPrisma.invitation.update).not.toHaveBeenCalled();
+    });
+
+    it('fails closed and does not trigger legacy writes if redemption database function fails unexpectedly', async () => {
+      mockPrisma.$queryRaw.mockRejectedValue(new Error('UNEXPECTED_DATABASE_FAILURE'));
+      await expect(
+        service.acceptInvitation('verified-user', { token: 'valid-token' }),
+      ).rejects.toThrow('UNEXPECTED_DATABASE_FAILURE');
+      expect(mockPrisma.tenantMembership.upsert).not.toHaveBeenCalled();
     });
 
     it('rejects anonymous claims before creating a new account', async () => {

@@ -1,8 +1,10 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Inject,
   Injectable,
+  InternalServerErrorException,
   Logger,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -76,6 +78,9 @@ export class AuthService {
     // Atomically create User, Tenant, Branch, Sport, and Membership
     // Uses the scoped database onboarding boundary when running against PostgreSQL with restricted runtime role
     const result = await this.prisma.$transaction(async (tx) => {
+      const onboardingToken = this.tokenService.generateSecureRandomString(32);
+      const onboardingTokenHash = this.tokenService.hashToken(onboardingToken);
+
       const user = await tx.user.create({
         data: {
           email: dto.email.toLowerCase().trim(),
@@ -83,114 +88,78 @@ export class AuthService {
           name: dto.name.trim(),
           phone: dto.phone?.trim(),
           isEmailVerified: false,
+          onboardingToken: onboardingTokenHash,
+          onboardingExpiresAt: new Date(Date.now() + 15 * 60 * 1000),
         },
       });
 
-      if (typeof tx.$queryRaw === 'function' && !process.env.VITEST_USE_PRISMA_MOCK) {
-        try {
-          const provisionedRows = await tx.$queryRaw<
-            Array<{
-              tenant_id: string;
-              tenant_name: string;
-              tenant_slug: string;
-              branch_id: string;
-              branch_name: string;
-              membership_id: string;
-            }>
-          >`SELECT * FROM public.provision_tenant_onboarding(
-            ${user.id}::uuid,
-            ${dto.academyName.trim()},
-            ${finalSlug},
-            ${'الفرع الرئيسي'},
-            ${'MAIN'},
-            ${dto.sport || 'FOOTBALL'}
-          )`;
+      try {
+        const provisionedRows = await tx.$queryRaw<
+          Array<{
+            tenant_id: string;
+            tenant_name: string;
+            tenant_slug: string;
+            branch_id: string;
+            branch_name: string;
+            membership_id: string;
+          }>
+        >`SELECT * FROM public.provision_tenant_onboarding(
+          ${user.id}::uuid,
+          ${dto.academyName.trim()},
+          ${finalSlug},
+          ${'الفرع الرئيسي'},
+          ${'MAIN'},
+          ${dto.sport || 'FOOTBALL'},
+          ${onboardingToken}
+        )`;
 
-          const provisioned = provisionedRows[0];
-          if (provisioned) {
-            return {
-              user,
-              tenant: {
-                id: provisioned.tenant_id,
-                name: provisioned.tenant_name,
-                slug: provisioned.tenant_slug,
-              },
-              branch: {
-                id: provisioned.branch_id,
-                name: provisioned.branch_name,
-              },
-              membership: {
-                id: provisioned.membership_id,
-                role: TenantRole.OWNER,
-                status: 'ACTIVE' as const,
-              },
-            };
-          }
-        } catch (err: unknown) {
-          const pgErr = err as { code?: string; message?: string };
-          if (pgErr.code === '23505' || pgErr.message?.includes('tenants_slug_key')) {
-            throw new ConflictException({
-              code: ErrorCode.CONFLICT,
-              message: 'An academy with this slug already exists',
-            });
-          }
-          if (pgErr.code === '23505' || pgErr.message?.includes('users_email_key')) {
-            throw new ConflictException({
-              code: ErrorCode.EMAIL_ALREADY_EXISTS,
-              message: 'An account with this email address already exists',
-            });
-          }
-          if (!tx.tenant?.create) {
-            throw err;
-          }
+        const provisioned = provisionedRows[0];
+        if (!provisioned) {
+          throw new InternalServerErrorException({
+            code: ErrorCode.INTERNAL_ERROR,
+            message: 'Tenant onboarding failed to return provisioned entity identifiers',
+          });
         }
-      }
 
-      const tenant = await tx.tenant.create({
-        data: {
-          name: dto.academyName.trim(),
-          slug: finalSlug,
-          status: 'ACTIVE',
-          currency: 'EGP',
-          timezone: 'Africa/Cairo',
-        },
-      });
-
-      const branch = await tx.branch.create({
-        data: {
-          tenantId: tenant.id,
-          code: 'MAIN',
-          name: 'الفرع الرئيسي',
-          city: 'Cairo',
-          country: 'EG',
-          status: 'ACTIVE',
-        },
-      });
-
-      if (tx.tenantSport?.create) {
-        await tx.tenantSport.create({
-          data: {
-            tenantId: tenant.id,
-            sport: 'FOOTBALL',
-            isPrimary: true,
+        return {
+          user,
+          tenant: {
+            id: provisioned.tenant_id,
+            name: provisioned.tenant_name,
+            slug: provisioned.tenant_slug,
           },
-        });
+          branch: {
+            id: provisioned.branch_id,
+            name: provisioned.branch_name,
+          },
+          membership: {
+            id: provisioned.membership_id,
+            role: TenantRole.OWNER,
+            status: 'ACTIVE' as const,
+          },
+        };
+      } catch (err: unknown) {
+        const pgErr = err as { code?: string; message?: string };
+        if (pgErr.code === '23505' || pgErr.message?.includes('tenants_slug_key')) {
+          throw new ConflictException({
+            code: ErrorCode.CONFLICT,
+            message: 'An academy with this slug already exists',
+          });
+        }
+        if (pgErr.code === '23505' || pgErr.message?.includes('users_email_key')) {
+          throw new ConflictException({
+            code: ErrorCode.EMAIL_ALREADY_EXISTS,
+            message: 'An account with this email address already exists',
+          });
+        }
+        if (pgErr.code === '42501' || pgErr.message?.includes('ONBOARDING_NOT_AUTHORIZED')) {
+          throw new ForbiddenException({
+            code: ErrorCode.FORBIDDEN,
+            message: 'Unauthorized tenant onboarding attempt',
+          });
+        }
+        throw err;
       }
-
-      const membership = await tx.tenantMembership.create({
-        data: {
-          tenantId: tenant.id,
-          userId: user.id,
-          role: TenantRole.OWNER,
-          status: 'ACTIVE',
-        },
-        include: {
-          tenant: true,
-          branch: true,
-        },
-      });
-
-      return { user, tenant, branch, membership };
     });
 
     const activeTenant: TenantMembershipSummary = {

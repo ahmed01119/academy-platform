@@ -21,6 +21,11 @@ export class RedisService implements OnModuleDestroy {
           lazyConnect: true,
           enableOfflineQueue: false,
           maxRetriesPerRequest: 1,
+          retryStrategy: () => null,
+        });
+        this.client.on('error', (err) => {
+          this.logger.warn(`Redis client error (${err.message}). Falling back to memory store.`);
+          this.client = null;
         });
         this.client.connect().catch((err) => {
           this.logger.warn(

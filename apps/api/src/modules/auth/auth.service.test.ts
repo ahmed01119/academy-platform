@@ -30,6 +30,7 @@ interface MockPrisma {
     create: MockFn;
     findMany: MockFn;
   };
+  $queryRaw: MockFn;
   $transaction: MockFn;
   withAuthLookupTransaction: MockFn;
 }
@@ -91,6 +92,16 @@ describe('AuthService', () => {
         create: vi.fn(),
         findMany: vi.fn(),
       },
+      $queryRaw: vi.fn().mockResolvedValue([
+        {
+          tenant_id: 'tenant-1',
+          tenant_name: 'Nankatsu SC',
+          tenant_slug: 'nankatsu-sc',
+          branch_id: 'branch-1',
+          branch_name: 'الفرع الرئيسي',
+          membership_id: 'membership-1',
+        },
+      ]),
       $transaction: vi.fn().mockImplementation((fn) => fn(mockPrisma)),
       withAuthLookupTransaction: vi.fn().mockImplementation((_opts, fn) => fn(mockPrisma)),
     };
@@ -191,6 +202,31 @@ describe('AuthService', () => {
         action: 'AUTH_REGISTER',
       }),
     );
+  });
+
+  it('fails closed and does not trigger legacy tenant create if onboarding database function fails', async () => {
+    mockPrisma.user.findUnique.mockResolvedValue(null);
+    mockPrisma.user.create.mockResolvedValue({
+      id: 'user-1',
+      email: 'captain@example.com',
+      name: 'Captain Tsubasa',
+      isEmailVerified: true,
+      createdAt: new Date(),
+    });
+    mockPrisma.$queryRaw.mockRejectedValue(new Error('DATABASE_OUTAGE_ONBOARDING_FAILURE'));
+
+    await expect(
+      authService.register({
+        name: 'Captain Tsubasa',
+        email: 'captain@example.com',
+        password: 'Password123!',
+        academyName: 'Nankatsu SC',
+        sport: 'FOOTBALL',
+      }),
+    ).rejects.toThrow('DATABASE_OUTAGE_ONBOARDING_FAILURE');
+
+    expect(mockPrisma.tenant.create).not.toHaveBeenCalled();
+    expect(mockPrisma.tenantMembership.create).not.toHaveBeenCalled();
   });
 
   it('fails login on invalid credentials with constant-time dummy verification', async () => {

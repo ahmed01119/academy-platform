@@ -75,6 +75,10 @@ model User {
   emailVerificationExpiresAt DateTime? @map("email_verification_expires_at") @db.Timestamptz(3)
   passwordResetToken         String?   @map("password_reset_token")
   passwordResetExpiresAt     DateTime? @map("password_reset_expires_at") @db.Timestamptz(3)
+  onboardingToken            String?   @map("onboarding_token")
+  onboardingExpiresAt        DateTime? @map("onboarding_expires_at") @db.Timestamptz(3)
+  redemptionChallenge        String?   @map("redemption_challenge")
+  redemptionExpiresAt        DateTime? @map("redemption_expires_at") @db.Timestamptz(3)
   createdAt                  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt                  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
