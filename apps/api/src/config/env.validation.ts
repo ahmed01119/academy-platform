@@ -24,6 +24,15 @@ export function validateEnv(config: Record<string, unknown>): AppEnv {
     throw new Error(`Invalid environment configuration: ${details}`);
   }
   if (parsed.data.NODE_ENV === 'production') {
+    if (!parsed.data.REDIS_URL) {
+      throw new Error('REDIS_URL is required in production for shared rate limiting');
+    }
+    if (parsed.data.JWT_SECRET === 'academy-platform-jwt-super-secret-key-32-chars!') {
+      throw new Error('Production JWT_SECRET must not use the development default');
+    }
+    if (parsed.data.CORS_ORIGIN.split(',').some((origin) => origin.trim() === '*')) {
+      throw new Error('Production CORS_ORIGIN must not contain wildcard origins');
+    }
     if (!parsed.data.DATABASE_URL) {
       throw new Error('DATABASE_URL is required in production');
     }
