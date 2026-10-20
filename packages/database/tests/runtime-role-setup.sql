@@ -45,8 +45,8 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.refresh_tokens TO academy_r
 REVOKE TRUNCATE ON TABLE public.refresh_tokens FROM academy_runtime_ci;
 
 -- Tenant-owned operational tables
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.tenant_memberships, public.invitations, public.attendance_sessions, public.attendance_records, public.attendance_idempotency TO academy_runtime_ci;
-REVOKE TRUNCATE ON TABLE public.tenant_memberships, public.invitations, public.attendance_sessions, public.attendance_records, public.attendance_idempotency FROM academy_runtime_ci;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.tenant_memberships, public.invitations, public.attendance_sessions, public.attendance_records, public.attendance_idempotency, public.players, public.guardians, public.player_enrollments TO academy_runtime_ci;
+REVOKE TRUNCATE ON TABLE public.tenant_memberships, public.invitations, public.attendance_sessions, public.attendance_records, public.attendance_idempotency, public.players, public.guardians, public.player_enrollments FROM academy_runtime_ci;
 
 -- Append-only attendance corrections: SELECT and INSERT only. Never UPDATE, DELETE, or TRUNCATE!
 GRANT SELECT, INSERT ON TABLE public.attendance_corrections TO academy_runtime_ci;

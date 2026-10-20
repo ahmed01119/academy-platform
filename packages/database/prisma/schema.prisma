@@ -63,6 +63,33 @@ enum SessionStatus {
   CLOSED
 }
 
+enum PlayerGender {
+  MALE
+  FEMALE
+}
+
+enum PlayerStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  GRADUATED
+}
+
+enum GuardianRelationship {
+  FATHER
+  MOTHER
+  GUARDIAN
+  RELATIVE
+  OTHER
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  PAUSED
+  CANCELLED
+  COMPLETED
+}
+
 /// Global user identity (one user can belong to multiple academies).
 model User {
   id                         String    @id @default(uuid()) @db.Uuid
@@ -85,6 +112,7 @@ model User {
   memberships        TenantMembership[]
   refreshTokens      RefreshToken[]
   sentInvitations    Invitation[]       @relation("UserSentInvitations")
+  managedBranches    Branch[]           @relation("BranchManagerUser")
 
   @@map("users")
 }
@@ -119,6 +147,10 @@ model Tenant {
   currency  String       @default("EGP") @db.Char(3)
   /// IANA timezone for operational defaults (e.g. Africa/Cairo).
   timezone  String       @default("Africa/Cairo")
+  phone     String?
+  email     String?
+  address   String?
+  logoUrl   String?      @map("logo_url")
   createdAt DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -129,6 +161,9 @@ model Tenant {
   invitations        Invitation[]
   attendanceSessions AttendanceSession[]
   attendanceIdempotencies AttendanceIdempotency[]
+  players            Player[]
+  guardians          Guardian[]
+  playerEnrollments  PlayerEnrollment[]
 
   @@map("tenants")
 }
@@ -184,15 +219,21 @@ model Branch {
   name      String
   status    BranchStatus @default(ACTIVE)
   /// Optional geographic metadata; keep PII out of this table.
-  city      String?
-  country   String       @default("EG") @db.Char(2)
-  createdAt DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+  city          String?
+  country       String       @default("EG") @db.Char(2)
+  address       String?
+  phone         String?
+  capacity      Int?
+  managerUserId String?      @map("manager_user_id") @db.Uuid
+  createdAt     DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  managerUser        User?               @relation("BranchManagerUser", fields: [managerUserId], references: [id], onDelete: SetNull)
   memberships        TenantMembership[]
   invitations        Invitation[]
   attendanceSessions AttendanceSession[]
+  playerEnrollments  PlayerEnrollment[]
 
   @@unique([tenantId, code])
   @@unique([tenantId, id])
@@ -321,5 +362,82 @@ model AttendanceIdempotency {
   @@index([tenantId])
   @@index([sessionId])
   @@map("attendance_idempotency")
+}
+
+/// Player registered in an academy.
+model Player {
+  id                    String        @id @default(uuid()) @db.Uuid
+  tenantId              String        @map("tenant_id") @db.Uuid
+  firstName             String        @map("first_name")
+  lastName              String        @map("last_name")
+  gender                PlayerGender  @default(MALE)
+  dateOfBirth           DateTime      @map("date_of_birth") @db.Date
+  nationalId            String?       @map("national_id")
+  photoUrl              String?       @map("photo_url")
+  emergencyContactName  String        @map("emergency_contact_name")
+  emergencyContactPhone String        @map("emergency_contact_phone")
+  medicalNotes          String?       @map("medical_notes")
+  status                PlayerStatus  @default(ACTIVE)
+  createdAt             DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt             DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  tenant      Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  guardians   Guardian[]
+  enrollments PlayerEnrollment[]
+
+  @@unique([tenantId, id])
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([tenantId, lastName, firstName])
+  @@map("players")
+}
+
+/// Guardian/parent responsible for a player.
+model Guardian {
+  id           String               @id @default(uuid()) @db.Uuid
+  tenantId     String               @map("tenant_id") @db.Uuid
+  playerId     String               @map("player_id") @db.Uuid
+  firstName    String               @map("first_name")
+  lastName     String               @map("last_name")
+  relationship GuardianRelationship @default(FATHER)
+  phone        String
+  email        String?
+  isPrimary    Boolean              @default(true) @map("is_primary")
+  createdAt    DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime             @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  player Player @relation(fields: [tenantId, playerId], references: [tenantId, id], onDelete: Cascade)
+
+  @@unique([tenantId, id])
+  @@index([tenantId])
+  @@index([playerId])
+  @@map("guardians")
+}
+
+/// Enrollment tracking a player's membership in a specific branch and sport.
+model PlayerEnrollment {
+  id        String           @id @default(uuid()) @db.Uuid
+  tenantId  String           @map("tenant_id") @db.Uuid
+  playerId  String           @map("player_id") @db.Uuid
+  branchId  String           @map("branch_id") @db.Uuid
+  sport     SportCode        @default(FOOTBALL)
+  status    EnrollmentStatus @default(ACTIVE)
+  startDate DateTime         @default(now()) @map("start_date") @db.Date
+  endDate   DateTime?        @map("end_date") @db.Date
+  notes     String?
+  createdAt DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  player Player @relation(fields: [tenantId, playerId], references: [tenantId, id], onDelete: Cascade)
+  branch Branch @relation(fields: [tenantId, branchId], references: [tenantId, id], onDelete: Restrict)
+
+  @@unique([tenantId, id])
+  @@index([tenantId])
+  @@index([playerId])
+  @@index([branchId])
+  @@index([tenantId, status])
+  @@map("player_enrollments")
 }
 

@@ -59,6 +59,22 @@ VALUES
  ('00000000-0000-4000-8000-000000000295','00000000-0000-4000-8000-000000000201','idem-key-a','00000000-0000-4000-8000-000000000261'),
  ('00000000-0000-4000-8000-000000000296','00000000-0000-4000-8000-000000000202','idem-key-b','00000000-0000-4000-8000-000000000262');
 
+-- Sprint 2: Player, Guardian, and Enrollment fixtures for both tenants
+INSERT INTO public.players (id, tenant_id, first_name, last_name, gender, date_of_birth, national_id, emergency_contact_name, emergency_contact_phone, status, updated_at)
+VALUES
+ ('00000000-0000-4000-8000-000000000301','00000000-0000-4000-8000-000000000201','Tsubasa','Ozora','MALE','2012-05-10','12345678901234','Natsuko Ozora','+201000000010','ACTIVE',now()),
+ ('00000000-0000-4000-8000-000000000302','00000000-0000-4000-8000-000000000202','Kojiro','Hyuga','MALE','2012-08-15','12345678901235','Kozo Hyuga','+201000000020','ACTIVE',now());
+
+INSERT INTO public.guardians (id, tenant_id, player_id, first_name, last_name, relationship, phone, is_primary, updated_at)
+VALUES
+ ('00000000-0000-4000-8000-000000000311','00000000-0000-4000-8000-000000000201','00000000-0000-4000-8000-000000000301','Natsuko','Ozora','MOTHER','+201000000010',true,now()),
+ ('00000000-0000-4000-8000-000000000312','00000000-0000-4000-8000-000000000202','00000000-0000-4000-8000-000000000302','Kozo','Hyuga','FATHER','+201000000020',true,now());
+
+INSERT INTO public.player_enrollments (id, tenant_id, player_id, branch_id, sport, status, start_date, updated_at)
+VALUES
+ ('00000000-0000-4000-8000-000000000321','00000000-0000-4000-8000-000000000201','00000000-0000-4000-8000-000000000301','00000000-0000-4000-8000-000000000211','FOOTBALL','ACTIVE',CURRENT_DATE,now()),
+ ('00000000-0000-4000-8000-000000000322','00000000-0000-4000-8000-000000000202','00000000-0000-4000-8000-000000000302','00000000-0000-4000-8000-000000000212','FOOTBALL','ACTIVE',CURRENT_DATE,now());
+
 SET LOCAL ROLE academy_runtime_ci;
 
 -- 1. Missing context: must fail closed for all tenant-scoped tables
@@ -72,7 +88,10 @@ BEGIN
     (SELECT count(*) FROM public.attendance_sessions) <> 0 OR
     (SELECT count(*) FROM public.attendance_records) <> 0 OR
     (SELECT count(*) FROM public.attendance_corrections) <> 0 OR
-    (SELECT count(*) FROM public.attendance_idempotency) <> 0 THEN
+    (SELECT count(*) FROM public.attendance_idempotency) <> 0 OR
+    (SELECT count(*) FROM public.players) <> 0 OR
+    (SELECT count(*) FROM public.guardians) <> 0 OR
+    (SELECT count(*) FROM public.player_enrollments) <> 0 THEN
    RAISE EXCEPTION 'SECURITY FAILURE: missing context exposes tenant records';
  END IF;
 END $$;
@@ -92,7 +111,10 @@ BEGIN
     (SELECT count(*) FROM public.attendance_sessions) <> 1 OR
     (SELECT count(*) FROM public.attendance_records) <> 1 OR
     (SELECT count(*) FROM public.attendance_corrections) <> 1 OR
-    (SELECT count(*) FROM public.attendance_idempotency) <> 1 THEN
+    (SELECT count(*) FROM public.attendance_idempotency) <> 1 OR
+    (SELECT count(*) FROM public.players) <> 1 OR
+    (SELECT count(*) FROM public.guardians) <> 1 OR
+    (SELECT count(*) FROM public.player_enrollments) <> 1 THEN
    RAISE EXCEPTION 'SECURITY FAILURE: tenant A can see cross-tenant rows or count mismatch';
  END IF;
  IF (SELECT count(*) FROM public.branches WHERE code = 'B') <> 0 THEN
@@ -101,6 +123,10 @@ BEGIN
  IF (SELECT count(*) FROM public.attendance_sessions WHERE tenant_id =
    '00000000-0000-4000-8000-000000000202') <> 0 THEN
    RAISE EXCEPTION 'SECURITY FAILURE: tenant B sessions visible to tenant A';
+ END IF;
+ IF (SELECT count(*) FROM public.players WHERE tenant_id =
+   '00000000-0000-4000-8000-000000000202') <> 0 THEN
+   RAISE EXCEPTION 'SECURITY FAILURE: tenant B players visible to tenant A';
  END IF;
 END $$;
 
@@ -185,6 +211,39 @@ BEGIN
  END IF;
 END $$;
 
+-- Cross-tenant player insert rejection
+DO $$
+DECLARE rejected boolean := false;
+BEGIN
+ BEGIN
+  INSERT INTO public.players (id, tenant_id, first_name, last_name, date_of_birth, emergency_contact_name, emergency_contact_phone, updated_at)
+  VALUES ('00000000-0000-4000-8000-000000000303',
+    '00000000-0000-4000-8000-000000000202','Misaki','Taro','2012-05-05','Ichiro Misaki','+201000000030',now());
+ EXCEPTION WHEN insufficient_privilege THEN
+  rejected := true;
+ END;
+ IF NOT rejected THEN
+  RAISE EXCEPTION 'SECURITY FAILURE: cross-tenant player insert permitted';
+ END IF;
+END $$;
+
+-- Cross-branch enrollment composite foreign key protection:
+-- Attempting to enroll Tenant A's player into Branch B (Tenant B's branch) must fail!
+DO $$
+DECLARE rejected boolean := false;
+BEGIN
+ BEGIN
+  INSERT INTO public.player_enrollments (id, tenant_id, player_id, branch_id, sport, status, start_date, updated_at)
+  VALUES ('00000000-0000-4000-8000-000000000323',
+    '00000000-0000-4000-8000-000000000201','00000000-0000-4000-8000-000000000301','00000000-0000-4000-8000-000000000212','FOOTBALL','ACTIVE',CURRENT_DATE,now());
+ EXCEPTION WHEN foreign_key_violation THEN
+  rejected := true;
+ END;
+ IF NOT rejected THEN
+  RAISE EXCEPTION 'SECURITY FAILURE: cross-tenant enrollment referencing other tenant branch was permitted';
+ END IF;
+END $$;
+
 -- 3. Switch context to Tenant B
 SELECT set_config('app.tenant_id','00000000-0000-4000-8000-000000000202',true);
 DO $$
@@ -198,7 +257,10 @@ BEGIN
     OR (SELECT count(*) FROM public.attendance_sessions) <> 1
     OR (SELECT count(*) FROM public.attendance_records) <> 1
     OR (SELECT count(*) FROM public.attendance_corrections) <> 1
-    OR (SELECT count(*) FROM public.attendance_idempotency) <> 1 THEN
+    OR (SELECT count(*) FROM public.attendance_idempotency) <> 1
+    OR (SELECT count(*) FROM public.players) <> 1
+    OR (SELECT count(*) FROM public.guardians) <> 1
+    OR (SELECT count(*) FROM public.player_enrollments) <> 1 THEN
    RAISE EXCEPTION 'SECURITY FAILURE: tenant context switch leaks prior tenant rows';
  END IF;
 END $$;
@@ -215,7 +277,10 @@ BEGIN
     (SELECT count(*) FROM public.attendance_sessions) <> 0 OR
     (SELECT count(*) FROM public.attendance_records) <> 0 OR
     (SELECT count(*) FROM public.attendance_corrections) <> 0 OR
-    (SELECT count(*) FROM public.attendance_idempotency) <> 0 THEN
+    (SELECT count(*) FROM public.attendance_idempotency) <> 0 OR
+    (SELECT count(*) FROM public.players) <> 0 OR
+    (SELECT count(*) FROM public.guardians) <> 0 OR
+    (SELECT count(*) FROM public.player_enrollments) <> 0 THEN
    RAISE EXCEPTION 'SECURITY FAILURE: cleared tenant context exposes rows';
  END IF;
 END $$;

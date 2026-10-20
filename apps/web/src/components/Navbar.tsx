@@ -11,6 +11,10 @@ import {
   User as UserIcon,
   Sparkles,
   Activity,
+  LayoutDashboard,
+  Users,
+  GitBranch,
+  Settings,
 } from 'lucide-react';
 
 const ROLE_LABELS_AR: Record<string, string> = {
@@ -28,32 +32,72 @@ export function Navbar() {
   const [isTenantMenuOpen, setIsTenantMenuOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-[#234235] bg-[#0f1c18]/85 backdrop-blur-md">
+    <header className="sticky top-0 z-50 w-full border-b border-[#234235] bg-[#0f1c18]/90 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        {/* Brand */}
-        <Link href="/" className="flex items-center gap-3 group">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-[#2f9e6b] to-[#45c387] shadow-lg shadow-[#2f9e6b]/20 group-hover:scale-105 transition-transform duration-200">
-            <ShieldCheck className="h-6 w-6 text-[#062016]" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-bold tracking-tight text-lg text-white">منصة الأكاديمية</span>
-              <span className="rounded-full bg-[#2f9e6b]/15 px-2 py-0.5 text-xs font-medium text-[#45c387] border border-[#2f9e6b]/30">
-                Sprint 1
-              </span>
+        {/* Brand & Nav */}
+        <div className="flex items-center gap-8">
+          <Link href="/" className="flex items-center gap-3 group">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-[#2f9e6b] to-[#45c387] shadow-lg shadow-[#2f9e6b]/20 group-hover:scale-105 transition-transform duration-200">
+              <ShieldCheck className="h-6 w-6 text-[#062016]" />
             </div>
-            <p className="text-xs text-[#9bb5a8]">Academy Management Cloud</p>
-          </div>
-        </Link>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-bold tracking-tight text-lg text-white">منصة الأكاديمية</span>
+                <span className="rounded-full bg-[#2f9e6b]/20 px-2 py-0.5 text-xs font-semibold text-[#45c387] border border-[#2f9e6b]/40">
+                  Sprint 2
+                </span>
+              </div>
+              <p className="text-xs text-[#9bb5a8]">Academy Management Cloud</p>
+            </div>
+          </Link>
+
+          {user && (
+            <nav className="hidden md:flex items-center gap-1">
+              <Link
+                href="/dashboard"
+                id="nav-link-dashboard"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-[#e8f0ec] hover:text-[#45c387] hover:bg-[#162821] transition-all"
+              >
+                <LayoutDashboard className="h-4 w-4 text-[#2f9e6b]" />
+                <span>لوحة التحكم</span>
+              </Link>
+              <Link
+                href="/players"
+                id="nav-link-players"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-[#e8f0ec] hover:text-[#45c387] hover:bg-[#162821] transition-all"
+              >
+                <Users className="h-4 w-4 text-[#2f9e6b]" />
+                <span>اللاعبين</span>
+              </Link>
+              <Link
+                href="/branches"
+                id="nav-link-branches"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-[#e8f0ec] hover:text-[#45c387] hover:bg-[#162821] transition-all"
+              >
+                <GitBranch className="h-4 w-4 text-[#2f9e6b]" />
+                <span>الفروع</span>
+              </Link>
+              <Link
+                href="/settings"
+                id="nav-link-settings"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-[#e8f0ec] hover:text-[#45c387] hover:bg-[#162821] transition-all"
+              >
+                <Settings className="h-4 w-4 text-[#2f9e6b]" />
+                <span>الإعدادات</span>
+              </Link>
+            </nav>
+          )}
+        </div>
 
         {/* Right side controls */}
         <div className="flex items-center gap-3">
           <Link
             href="/auth-test"
+            id="nav-link-auth-test"
             className="flex items-center gap-1.5 rounded-lg border border-[#234235] bg-[#162821]/60 px-3 py-1.5 text-xs font-medium text-[#45c387] hover:border-[#2f9e6b] hover:bg-[#162821] transition-all"
           >
             <Activity className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">فحص الأمان (Auth Test)</span>
+            <span className="hidden sm:inline">فحص الأمان</span>
           </Link>
 
           {user ? (

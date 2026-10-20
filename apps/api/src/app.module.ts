@@ -7,6 +7,9 @@ import { AuthModule } from './modules/auth/auth.module';
 import { TenancyModule } from './modules/tenancy/tenancy.module';
 import { AttendanceModule } from './modules/attendance/attendance.module';
 import { HealthModule } from './modules/health/health.module';
+import { BranchesModule } from './modules/branches/branches.module';
+import { PlayersModule } from './modules/players/players.module';
+import { EnrollmentsModule } from './modules/enrollments/enrollments.module';
 
 /**
  * Root module for the modular monolith.
@@ -23,6 +26,9 @@ import { HealthModule } from './modules/health/health.module';
     TenancyModule,
     AttendanceModule,
     HealthModule,
+    BranchesModule,
+    PlayersModule,
+    EnrollmentsModule,
   ],
 })
 export class AppModule {}
