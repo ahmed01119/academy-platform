@@ -39,9 +39,7 @@ describe('RedisService', () => {
       await expect(service.incrementRateLimit('prod-key', 60)).rejects.toThrow(
         ServiceUnavailableException,
       );
-      await expect(service.resetRateLimit('prod-key')).rejects.toThrow(
-        ServiceUnavailableException,
-      );
+      await expect(service.resetRateLimit('prod-key')).rejects.toThrow(ServiceUnavailableException);
     });
 
     it('fails closed when Redis client throws error during increment in production', async () => {
@@ -60,9 +58,7 @@ describe('RedisService', () => {
       await expect(service.incrementRateLimit('prod-key', 60)).rejects.toThrow(
         ServiceUnavailableException,
       );
-      await expect(service.resetRateLimit('prod-key')).rejects.toThrow(
-        ServiceUnavailableException,
-      );
+      await expect(service.resetRateLimit('prod-key')).rejects.toThrow(ServiceUnavailableException);
     });
 
     it('returns rate limit count when Redis operations succeed in production', async () => {
