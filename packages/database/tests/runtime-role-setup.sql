@@ -16,20 +16,29 @@ GRANT SELECT, INSERT ON TABLE public.audit_logs TO academy_runtime_ci;
 REVOKE CREATE ON SCHEMA public FROM academy_runtime_ci;
 REVOKE UPDATE, DELETE, TRUNCATE ON TABLE public.audit_logs FROM academy_runtime_ci;
 
--- Global identity tables
--- Column-level privilege restriction on public.users: runtime role must never UPDATE onboarding_token or redemption_challenge
-GRANT SELECT, INSERT, DELETE ON TABLE public.users TO academy_runtime_ci;
+-- Global identity tables: Enforce strict least-privilege boundary on public.users
+-- Table-level INSERT and UPDATE revoked to prevent identity spoofing or arbitrary verification
+REVOKE ALL ON TABLE public.users FROM academy_runtime_ci;
+GRANT SELECT, DELETE ON TABLE public.users TO academy_runtime_ci;
+
+-- Column-level INSERT permitted ONLY on non-privileged identity registration fields
+GRANT INSERT (
+  id,
+  email,
+  password_hash,
+  name,
+  phone,
+  created_at,
+  updated_at
+) ON TABLE public.users TO academy_runtime_ci;
+
+-- Column-level UPDATE permitted ONLY on standard user profile fields
 GRANT UPDATE (
   name,
   phone,
-  password_hash,
-  is_email_verified,
-  email_verification_token,
-  email_verification_expires_at,
-  password_reset_token,
-  password_reset_expires_at,
   updated_at
 ) ON TABLE public.users TO academy_runtime_ci;
+
 REVOKE TRUNCATE ON TABLE public.users FROM academy_runtime_ci;
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.refresh_tokens TO academy_runtime_ci;
@@ -43,7 +52,13 @@ REVOKE TRUNCATE ON TABLE public.tenant_memberships, public.invitations, public.a
 GRANT SELECT, INSERT ON TABLE public.attendance_corrections TO academy_runtime_ci;
 REVOKE UPDATE, DELETE, TRUNCATE ON TABLE public.attendance_corrections FROM academy_runtime_ci;
 
--- Scoped onboarding and invitation redemption boundary execution
+-- Scoped onboarding, invitation redemption and identity transition boundary execution
+GRANT EXECUTE ON FUNCTION public.issue_user_onboarding_token(uuid, text, timestamptz) TO academy_runtime_ci;
+GRANT EXECUTE ON FUNCTION public.issue_user_redemption_challenge(uuid, text, timestamptz) TO academy_runtime_ci;
 GRANT EXECUTE ON FUNCTION public.provision_tenant_onboarding(uuid, text, text, text, text, text, text) TO academy_runtime_ci;
 GRANT EXECUTE ON FUNCTION public.redeem_invitation_and_activate_membership(uuid, text, text) TO academy_runtime_ci;
 GRANT EXECUTE ON FUNCTION public.inspect_invitation_preview(text) TO academy_runtime_ci;
+GRANT EXECUTE ON FUNCTION public.verify_user_email(text) TO academy_runtime_ci;
+GRANT EXECUTE ON FUNCTION public.request_email_verification(text, text, timestamptz) TO academy_runtime_ci;
+GRANT EXECUTE ON FUNCTION public.request_password_reset(text, text, timestamptz) TO academy_runtime_ci;
+GRANT EXECUTE ON FUNCTION public.complete_password_reset(text, text) TO academy_runtime_ci;

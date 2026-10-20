@@ -13,29 +13,37 @@ Status: **IMPLEMENTED & VERIFIED**. Registration, tenant provisioning, staff inv
 
 ### 2. Runtime Role Column-Level Privilege Restrictions on `public.users`
 
-- A critical privilege escalation vulnerability was resolved by replacing broad table-level `UPDATE` on `public.users` with column-level `UPDATE` grants for the runtime role:
+- Table-level `INSERT` and `UPDATE` on `public.users` are revoked from the runtime role (`academy_runtime_ci`).
+- Column-level grants are strictly constrained to non-sensitive fields:
   ```sql
-  GRANT SELECT, INSERT, DELETE ON TABLE public.users TO academy_runtime_ci;
-  GRANT UPDATE (
-    name,
-    phone,
-    password_hash,
-    is_email_verified,
-    email_verification_token,
-    email_verification_expires_at,
-    password_reset_token,
-    password_reset_expires_at,
-    updated_at
-  ) ON TABLE public.users TO academy_runtime_ci;
+  REVOKE INSERT, UPDATE ON TABLE public.users FROM academy_runtime_ci;
+  GRANT SELECT, DELETE ON TABLE public.users TO academy_runtime_ci;
+  GRANT INSERT (id, email, password_hash, name, phone, created_at, updated_at) ON TABLE public.users TO academy_runtime_ci;
+  GRANT UPDATE (name, phone, updated_at) ON TABLE public.users TO academy_runtime_ci;
   ```
-- **Security Invariant**: Any runtime SQL caller attempting `UPDATE public.users SET onboarding_token = ...` or `SET redemption_challenge = ...` is blocked with PostgreSQL error `42501 (insufficient_privilege)`. Attackers cannot manufacture identity challenges or forge ownership.
+- All sensitive authentication tokens and verification flags are completely untouchable by direct runtime DML:
+  - `onboarding_token`, `onboarding_expires_at`
+  - `redemption_challenge`, `redemption_expires_at`
+  - `is_email_verified`
+  - `email_verification_token`, `email_verification_expires_at`
+  - `password_reset_token`, `password_reset_expires_at`
+- **Security Invariant**: Any direct SQL caller attempting `INSERT` or `UPDATE` on these protected columns is blocked with PostgreSQL error `42501 (insufficient_privilege)`.
+- Identity lifecycle state changes are mediated strictly through audited `SECURITY DEFINER` procedures:
+  - `public.issue_user_onboarding_token(p_user_id, p_token_hash)`
+  - `public.issue_user_redemption_challenge(p_user_id, p_challenge_hash)`
+  - `public.verify_user_email(p_token_hash)`
+  - `public.request_email_verification(p_user_id, p_token_hash)`
+  - `public.request_password_reset(p_email, p_token_hash)`
+  - `public.complete_password_reset(p_token_hash, p_new_password_hash)`
 
 ### 3. Invitation Redemption Security Boundary (`redeem_invitation_and_activate_membership`)
 
 - Invitation tokens are never stored in plaintext in the database: `invitations.token` stores `sha256(raw_token)`.
-- Redemption requires the authentic raw token from the invitation email and an authenticated, verified user account (`is_email_verified = true`).
-- The database function asserts `lower(trim(invitation.email)) = lower(trim(user.email))` and consumes the invitation conditionally with row locking (`FOR UPDATE`) to prevent concurrent consumption.
-- Direct runtime writes to `public.users` during redemption are eliminated, ensuring strict adherence to the column privilege model.
+- Redemption requires the authentic raw token from the invitation email and an active, verified user account (`is_email_verified = true`).
+- Enforces cryptographic challenge validation: caller must present a valid redemption challenge hash previously issued via `issue_user_redemption_challenge`.
+- The database function asserts `lower(trim(invitation.email)) = lower(trim(user.email))` and consumes the invitation conditionally with row locking (`FOR UPDATE`) to prevent concurrent consumption or race conditions.
+- Immediately consumes and clears the redemption challenge upon activation to prevent replay.
+- Direct runtime writes to `public.users` during redemption are completely eliminated.
 
 ### 4. Actor-Scoped Context Discovery
 

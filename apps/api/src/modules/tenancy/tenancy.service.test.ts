@@ -102,6 +102,7 @@ describe('TenancyService', () => {
           membership_id: 'membership-1',
         },
       ]),
+      $executeRaw: vi.fn().mockResolvedValue(1),
       $transaction: vi.fn().mockImplementation((fn) => fn(mockPrisma)),
       withTenantTransaction: vi.fn().mockImplementation((_opts, fn) => fn(mockPrisma)),
       withAuthLookupTransaction: vi.fn().mockImplementation((_opts, fn) => fn(mockPrisma)),

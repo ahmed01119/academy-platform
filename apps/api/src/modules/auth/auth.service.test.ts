@@ -30,6 +30,7 @@ interface MockPrisma {
     findMany: MockFn;
   };
   $queryRaw: MockFn;
+  $executeRaw: MockFn;
   $transaction: MockFn;
   withAuthLookupTransaction: MockFn;
 }
@@ -93,6 +94,7 @@ describe('AuthService', () => {
           membership_id: 'membership-1',
         },
       ]),
+      $executeRaw: vi.fn().mockResolvedValue(1),
       $transaction: vi.fn().mockImplementation((fn) => fn(mockPrisma)),
       withAuthLookupTransaction: vi.fn().mockImplementation((_opts, fn) => fn(mockPrisma)),
     };
@@ -178,18 +180,18 @@ describe('AuthService', () => {
       expect(result.response.activeTenant?.tenantId).toBe('tenant-1');
       expect(result.rawTokens.accessToken).toBe('mock.access.token');
 
-      // Assert user was created with cryptographic single-use onboarding challenge
+      // Assert user was created without direct token assignment (handled by security definer)
       expect(mockPrisma.user.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
             email: 'captain@example.com',
-            onboardingToken: 'hashed-token-value',
-            onboardingExpiresAt: expect.any(Date),
+            name: 'Captain Tsubasa',
           }),
         }),
       );
 
-      // Assert database boundary function was executed
+      // Assert security definer onboarding token issuance and boundary function were executed
+      expect(mockPrisma.$executeRaw).toHaveBeenCalled();
       expect(mockPrisma.$queryRaw).toHaveBeenCalled();
 
       // Assert audit log event
@@ -440,15 +442,7 @@ describe('AuthService', () => {
       });
 
       expect(result.debugToken).toBe('mock-secure-random-token-12345');
-      expect(mockPrisma.user.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { id: 'u-dev' },
-          data: expect.objectContaining({
-            passwordResetToken: 'hashed-token-value',
-            passwordResetExpiresAt: expect.any(Date),
-          }),
-        }),
-      );
+      expect(mockPrisma.$executeRaw).toHaveBeenCalled();
     });
 
     it('blocks forgot-password when rate limit is exceeded', async () => {
@@ -464,16 +458,13 @@ describe('AuthService', () => {
 
       const result = await authService.forgotPassword({ email: 'unknown@example.com' });
       expect(result.message).toContain('instructions have been sent');
-      expect(mockPrisma.user.update).not.toHaveBeenCalled();
+      expect(mockPrisma.$executeRaw).not.toHaveBeenCalled();
     });
   });
 
   describe('resetPassword', () => {
     it('resets password, clears reset token, revokes all user sessions, and logs audit event', async () => {
-      mockPrisma.user.findFirst.mockResolvedValue({
-        id: 'u-reset',
-        email: 'user@example.com',
-      });
+      mockPrisma.$queryRaw.mockResolvedValue([{ complete_password_reset: 'u-reset' }]);
 
       const result = await authService.resetPassword({
         token: 'valid-reset-token',
@@ -481,14 +472,6 @@ describe('AuthService', () => {
       });
 
       expect(result.message).toContain('Password has been successfully reset');
-      expect(mockPrisma.user.update).toHaveBeenCalledWith({
-        where: { id: 'u-reset' },
-        data: {
-          passwordHash: 'argon2id$mock$hash',
-          passwordResetToken: null,
-          passwordResetExpiresAt: null,
-        },
-      });
       expect(mockToken.revokeAllUserTokens).toHaveBeenCalledWith('u-reset');
       expect(mockAudit.logEvent).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -499,7 +482,7 @@ describe('AuthService', () => {
     });
 
     it('rejects invalid or expired reset token', async () => {
-      mockPrisma.user.findFirst.mockResolvedValue(null);
+      mockPrisma.$queryRaw.mockResolvedValue([]);
 
       await expect(
         authService.resetPassword({
@@ -512,23 +495,10 @@ describe('AuthService', () => {
 
   describe('verifyEmail', () => {
     it('verifies email with valid token and clears verification token', async () => {
-      mockPrisma.user.findFirst.mockResolvedValue({
-        id: 'u-verify',
-        email: 'unverified@example.com',
-        emailVerificationToken: 'hashed-token-value',
-        emailVerificationExpiresAt: new Date(Date.now() + 100000),
-      });
+      mockPrisma.$queryRaw.mockResolvedValue([{ verify_user_email: 'u-verify' }]);
 
       const result = await authService.verifyEmail('valid-raw-token');
       expect(result.message).toBe('Email address verified successfully');
-      expect(mockPrisma.user.update).toHaveBeenCalledWith({
-        where: { id: 'u-verify' },
-        data: {
-          isEmailVerified: true,
-          emailVerificationToken: null,
-          emailVerificationExpiresAt: null,
-        },
-      });
       expect(mockAudit.logEvent).toHaveBeenCalledWith(
         expect.objectContaining({
           actorUserId: 'u-verify',
@@ -538,7 +508,7 @@ describe('AuthService', () => {
     });
 
     it('rejects invalid or expired verification token', async () => {
-      mockPrisma.user.findFirst.mockResolvedValue(null);
+      mockPrisma.$queryRaw.mockResolvedValue([]);
 
       await expect(authService.verifyEmail('invalid-token')).rejects.toThrow(BadRequestException);
     });
@@ -557,15 +527,7 @@ describe('AuthService', () => {
 
       const result = await authService.resendVerificationEmail('unverified@example.com');
       expect(result.debugToken).toBe('mock-secure-random-token-12345');
-      expect(mockPrisma.user.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { id: 'u-resend' },
-          data: expect.objectContaining({
-            emailVerificationToken: 'hashed-token-value',
-            emailVerificationExpiresAt: expect.any(Date),
-          }),
-        }),
-      );
+      expect(mockPrisma.$executeRaw).toHaveBeenCalled();
       expect(mockAudit.logEvent).toHaveBeenCalledWith(
         expect.objectContaining({
           actorUserId: 'u-resend',
@@ -583,7 +545,7 @@ describe('AuthService', () => {
 
       const result = await authService.resendVerificationEmail('verified@example.com');
       expect(result.debugToken).toBeUndefined();
-      expect(mockPrisma.user.update).not.toHaveBeenCalled();
+      expect(mockPrisma.$executeRaw).not.toHaveBeenCalled();
     });
 
     it('blocks resend-verification when rate limit is exceeded', async () => {

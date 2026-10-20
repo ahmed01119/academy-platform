@@ -87,11 +87,15 @@ export class AuthService {
           passwordHash,
           name: dto.name.trim(),
           phone: dto.phone?.trim(),
-          isEmailVerified: false,
-          onboardingToken: onboardingTokenHash,
-          onboardingExpiresAt: new Date(Date.now() + 15 * 60 * 1000),
         },
       });
+
+      await tx.$executeRaw`
+        SELECT public.issue_user_onboarding_token(
+          ${user.id}::uuid,
+          ${onboardingTokenHash}
+        )
+      `;
 
       try {
         const provisionedRows = await tx.$queryRaw<
@@ -223,6 +227,7 @@ export class AuthService {
     dto: LoginRequest,
     ipAddress?: string,
     userAgent?: string,
+    activeTenantId?: string,
   ): Promise<{ response: AuthResponse; rawTokens: GeneratedTokens }> {
     const normalizedEmail = dto.email.toLowerCase().trim();
     const rateLimitKey = `ratelimit:login:${ipAddress || 'unknown'}:${normalizedEmail}`;
@@ -296,8 +301,10 @@ export class AuthService {
         branchName: m.branch?.name,
       }));
 
-    // Choose first active membership as default active tenant
-    const activeTenant = memberships[0] ?? null;
+    // Choose active tenant: prefer requested activeTenantId if valid, otherwise default to first active membership
+    const activeTenant = activeTenantId
+      ? (memberships.find((m) => m.tenantId === activeTenantId) ?? memberships[0] ?? null)
+      : (memberships[0] ?? null);
 
     const tokens = await this.tokenService.generateTokens(
       user.id,
@@ -350,6 +357,7 @@ export class AuthService {
     refreshToken: string,
     ipAddress?: string,
     userAgent?: string,
+    activeTenantId?: string,
   ): Promise<{ response: AuthResponse; rawTokens: GeneratedTokens }> {
     const { tokens, userId, email } = await this.tokenService.rotateRefreshToken(
       refreshToken,
@@ -385,7 +393,10 @@ export class AuthService {
         branchName: m.branch?.name,
       }));
 
-    const activeTenant = memberships[0] ?? null;
+    // Choose active tenant: prefer requested activeTenantId if valid, otherwise default to first active membership
+    const activeTenant = activeTenantId
+      ? (memberships.find((m) => m.tenantId === activeTenantId) ?? memberships[0] ?? null)
+      : (memberships[0] ?? null);
 
     const userSummary: UserSummary = {
       id: user.id,
@@ -460,13 +471,13 @@ export class AuthService {
       const tokenHash = this.tokenService.hashToken(rawToken);
       const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
-      await this.prisma.user.update({
-        where: { id: user.id },
-        data: {
-          passwordResetToken: tokenHash,
-          passwordResetExpiresAt: expiresAt,
-        },
-      });
+      await this.prisma.$executeRaw`
+        SELECT public.request_password_reset(
+          ${normalizedEmail},
+          ${tokenHash},
+          ${expiresAt}
+        )
+      `;
 
       await this.auditService.logEvent({
         actorUserId: user.id,
@@ -499,47 +510,44 @@ export class AuthService {
     userAgent?: string,
   ): Promise<{ message: string }> {
     const tokenHash = this.tokenService.hashToken(dto.token);
+    const passwordHash = await this.passwordService.hash(dto.newPassword);
 
-    const user = await this.prisma.user.findFirst({
-      where: {
-        passwordResetToken: tokenHash,
-        passwordResetExpiresAt: { gt: new Date() },
-      },
-    });
+    try {
+      const rows = await this.prisma.$queryRaw<Array<{ complete_password_reset: string }>>`
+        SELECT public.complete_password_reset(
+          ${tokenHash},
+          ${passwordHash}
+        )
+      `;
 
-    if (!user) {
+      const userId = rows[0]?.complete_password_reset;
+      if (!userId) {
+        throw new BadRequestException({
+          code: ErrorCode.TOKEN_INVALID,
+          message: 'Invalid or expired password reset token',
+        });
+      }
+
+      await this.tokenService.revokeAllUserTokens(userId);
+
+      await this.auditService.logEvent({
+        actorUserId: userId,
+        action: 'AUTH_PASSWORD_RESET_COMPLETED',
+        resourceType: 'User',
+        resourceId: userId,
+        ipAddress,
+        userAgent,
+      });
+
+      return {
+        message: 'Password has been successfully reset. You may now log in with your new password.',
+      };
+    } catch {
       throw new BadRequestException({
         code: ErrorCode.TOKEN_INVALID,
         message: 'Invalid or expired password reset token',
       });
     }
-
-    const passwordHash = await this.passwordService.hash(dto.newPassword);
-
-    // Update password, clear token, and revoke all existing sessions
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: {
-        passwordHash,
-        passwordResetToken: null,
-        passwordResetExpiresAt: null,
-      },
-    });
-
-    await this.tokenService.revokeAllUserTokens(user.id);
-
-    await this.auditService.logEvent({
-      actorUserId: user.id,
-      action: 'AUTH_PASSWORD_RESET_COMPLETED',
-      resourceType: 'User',
-      resourceId: user.id,
-      ipAddress,
-      userAgent,
-    });
-
-    return {
-      message: 'Password has been successfully reset. You may now log in with your new password.',
-    };
   }
 
   /**
@@ -551,39 +559,36 @@ export class AuthService {
     userAgent?: string,
   ): Promise<{ message: string }> {
     const tokenHash = this.tokenService.hashToken(token);
-    const user = await this.prisma.user.findFirst({
-      where: {
-        emailVerificationToken: tokenHash,
-        emailVerificationExpiresAt: { gt: new Date() },
-      },
-    });
 
-    if (!user) {
+    try {
+      const rows = await this.prisma.$queryRaw<Array<{ verify_user_email: string }>>`
+        SELECT public.verify_user_email(${tokenHash})
+      `;
+
+      const userId = rows[0]?.verify_user_email;
+      if (!userId) {
+        throw new BadRequestException({
+          code: ErrorCode.TOKEN_INVALID,
+          message: 'Invalid or expired email verification token',
+        });
+      }
+
+      await this.auditService.logEvent({
+        actorUserId: userId,
+        action: 'AUTH_EMAIL_VERIFIED',
+        resourceType: 'User',
+        resourceId: userId,
+        ipAddress,
+        userAgent,
+      });
+
+      return { message: 'Email address verified successfully' };
+    } catch {
       throw new BadRequestException({
         code: ErrorCode.TOKEN_INVALID,
         message: 'Invalid or expired email verification token',
       });
     }
-
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: {
-        isEmailVerified: true,
-        emailVerificationToken: null,
-        emailVerificationExpiresAt: null,
-      },
-    });
-
-    await this.auditService.logEvent({
-      actorUserId: user.id,
-      action: 'AUTH_EMAIL_VERIFIED',
-      resourceType: 'User',
-      resourceId: user.id,
-      ipAddress,
-      userAgent,
-    });
-
-    return { message: 'Email address verified successfully' };
   }
 
   /**
@@ -618,13 +623,13 @@ export class AuthService {
       const tokenHash = this.tokenService.hashToken(rawToken);
       const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
-      await this.prisma.user.update({
-        where: { id: user.id },
-        data: {
-          emailVerificationToken: tokenHash,
-          emailVerificationExpiresAt: expiresAt,
-        },
-      });
+      await this.prisma.$executeRaw`
+        SELECT public.request_email_verification(
+          ${normalizedEmail},
+          ${tokenHash},
+          ${expiresAt}
+        )
+      `;
 
       await this.auditService.logEvent({
         actorUserId: user.id,

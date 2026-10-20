@@ -116,8 +116,14 @@ export class AuthController {
     const dto: LoginRequest = LoginRequestSchema.parse(body);
     const ipAddress = req.ip || req.socket.remoteAddress;
     const userAgent = req.headers['user-agent'];
+    const activeTenantId = (req.headers['x-tenant-id'] as string) || req.cookies?.tenant_id;
 
-    const { response, rawTokens } = await this.authService.login(dto, ipAddress, userAgent);
+    const { response, rawTokens } = await this.authService.login(
+      dto,
+      ipAddress,
+      userAgent,
+      activeTenantId,
+    );
     this.setAuthCookies(res, rawTokens);
 
     return response;
@@ -135,6 +141,7 @@ export class AuthController {
     const token = req.cookies?.refresh_token || body?.refreshToken;
     const ipAddress = req.ip || req.socket.remoteAddress;
     const userAgent = req.headers['user-agent'];
+    const activeTenantId = (req.headers['x-tenant-id'] as string) || req.cookies?.tenant_id;
 
     if (!token) {
       throw new BadRequestException({
@@ -143,7 +150,12 @@ export class AuthController {
       });
     }
 
-    const { response, rawTokens } = await this.authService.refresh(token, ipAddress, userAgent);
+    const { response, rawTokens } = await this.authService.refresh(
+      token,
+      ipAddress,
+      userAgent,
+      activeTenantId,
+    );
     this.setAuthCookies(res, rawTokens);
 
     return response;

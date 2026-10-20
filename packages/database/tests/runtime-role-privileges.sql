@@ -184,11 +184,76 @@ BEGIN
     RAISE EXCEPTION 'SECURITY FAILURE: runtime role can update redemption_challenge';
   END IF;
 
+  -- Runtime role must NEVER be able to forge email verification via UPDATE
+  allowed := false;
+  BEGIN
+    EXECUTE 'UPDATE public.users SET is_email_verified = true WHERE false';
+    allowed := true;
+  EXCEPTION WHEN insufficient_privilege THEN
+    NULL;
+  END;
+  IF allowed THEN
+    RAISE EXCEPTION 'SECURITY FAILURE: runtime role can update is_email_verified';
+  END IF;
+
+  -- Runtime role must NEVER be able to replace credentials via UPDATE
+  allowed := false;
+  BEGIN
+    EXECUTE 'UPDATE public.users SET password_hash = ''forged_hash'' WHERE false';
+    allowed := true;
+  EXCEPTION WHEN insufficient_privilege THEN
+    NULL;
+  END;
+  IF allowed THEN
+    RAISE EXCEPTION 'SECURITY FAILURE: runtime role can update password_hash';
+  END IF;
+
+  -- Runtime role must NEVER be able to insert privileged onboarding or challenge columns
+  allowed := false;
+  BEGIN
+    EXECUTE 'INSERT INTO public.users (id, email, password_hash, name, is_email_verified) VALUES (''00000000-0000-4000-8000-000000000099''::uuid, ''ci_forged@example.com'', ''hash'', ''Forged'', true)';
+    allowed := true;
+  EXCEPTION WHEN insufficient_privilege THEN
+    NULL;
+  END;
+  IF allowed THEN
+    RAISE EXCEPTION 'SECURITY FAILURE: runtime role can insert with is_email_verified = true';
+  END IF;
+
+  allowed := false;
+  BEGIN
+    EXECUTE 'INSERT INTO public.users (id, email, password_hash, name, onboarding_token) VALUES (''00000000-0000-4000-8000-000000000099''::uuid, ''ci_forged@example.com'', ''hash'', ''Forged'', ''forged_token'')';
+    allowed := true;
+  EXCEPTION WHEN insufficient_privilege THEN
+    NULL;
+  END;
+  IF allowed THEN
+    RAISE EXCEPTION 'SECURITY FAILURE: runtime role can insert onboarding_token';
+  END IF;
+
+  allowed := false;
+  BEGIN
+    EXECUTE 'INSERT INTO public.users (id, email, password_hash, name, redemption_challenge) VALUES (''00000000-0000-4000-8000-000000000099''::uuid, ''ci_forged@example.com'', ''hash'', ''Forged'', ''forged_challenge'')';
+    allowed := true;
+  EXCEPTION WHEN insufficient_privilege THEN
+    NULL;
+  END;
+  IF allowed THEN
+    RAISE EXCEPTION 'SECURITY FAILURE: runtime role can insert redemption_challenge';
+  END IF;
+
   -- Runtime role MUST be able to update permitted user columns
   BEGIN
-    EXECUTE 'UPDATE public.users SET name = ''Allowed Name'', is_email_verified = true WHERE false';
+    EXECUTE 'UPDATE public.users SET name = ''Allowed Name'', phone = ''+201000000000'' WHERE false';
   EXCEPTION WHEN insufficient_privilege THEN
     RAISE EXCEPTION 'SECURITY FAILURE: runtime role cannot update permitted user columns';
+  END;
+
+  -- Runtime role MUST be able to insert permitted user registration columns
+  BEGIN
+    EXECUTE 'INSERT INTO public.users (id, email, password_hash, name, phone, updated_at) VALUES (gen_random_uuid(), ''ci_allowed_'' || md5(random()::text) || ''@example.com'', ''hash'', ''Allowed'', ''+201000000000'', now())';
+  EXCEPTION WHEN insufficient_privilege THEN
+    RAISE EXCEPTION 'SECURITY FAILURE: runtime role cannot insert permitted user registration columns';
   END;
 END $$;
 

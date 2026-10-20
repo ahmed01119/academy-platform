@@ -51,13 +51,12 @@ BEGIN
 
   -- 3. Create global user A (owner) with valid onboarding challenge hash
   INSERT INTO public.users (
-    id, email, password_hash, name, phone, is_email_verified,
-    onboarding_token, onboarding_expires_at, updated_at
+    id, email, password_hash, name, phone, updated_at
   )
   VALUES (
-    v_user_a_id, 'owner_a@example.com', '$argon2id$mock', 'Owner A', '+201000000001', true,
-    v_onboarding_token_hash, now() + interval '15 minutes', now()
+    v_user_a_id, 'owner_a@example.com', '$argon2id$mock', 'Owner A', '+201000000001', now()
   );
+  PERFORM public.issue_user_onboarding_token(v_user_a_id, v_onboarding_token_hash);
 
   -- 4. Test anti-impersonation: attempt onboarding without valid token MUST FAIL
   v_failed := false;
@@ -190,42 +189,27 @@ BEGIN
     RAISE EXCEPTION 'FAILURE: inspect_invitation_preview returned unexpected data';
   END IF;
 
-  -- 10. Create users for redemption testing with challenge hashes
-  INSERT INTO public.users (
-    id, email, password_hash, name, is_email_verified,
-    redemption_challenge, redemption_expires_at, updated_at
-  )
-  VALUES (
-    v_user_b_unverified_id, 'coach_b@example.com', '$argon2id$mock', 'Unverified Coach', false,
-    v_unverified_challenge_hash, now() + interval '5 minutes', now()
-  );
+  -- 10. Create users for redemption testing with permitted columns and verified via security definer
+  INSERT INTO public.users (id, email, password_hash, name, updated_at)
+  VALUES (v_user_b_unverified_id, 'coach_b@example.com', '$argon2id$mock', 'Unverified Coach', now());
 
-  INSERT INTO public.users (
-    id, email, password_hash, name, is_email_verified,
-    redemption_challenge, redemption_expires_at, updated_at
-  )
-  VALUES (
-    v_user_c_mismatch_id, 'attacker@example.com', '$argon2id$mock', 'Attacker', true,
-    v_mismatch_challenge_hash, now() + interval '5 minutes', now()
-  );
+  INSERT INTO public.users (id, email, password_hash, name, updated_at)
+  VALUES (v_user_c_mismatch_id, 'attacker@example.com', '$argon2id$mock', 'Attacker', now());
+  PERFORM public.request_email_verification('attacker@example.com', 'tok_verify_c', now() + interval '1 hour');
+  PERFORM public.verify_user_email('tok_verify_c');
+  PERFORM public.issue_user_redemption_challenge(v_user_c_mismatch_id, v_mismatch_challenge_hash, now() + interval '5 minutes');
 
-  INSERT INTO public.users (
-    id, email, password_hash, name, is_email_verified,
-    redemption_challenge, redemption_expires_at, updated_at
-  )
-  VALUES (
-    v_user_d_verified_id, 'coach_d@example.com', '$argon2id$mock', 'Verified Coach', true,
-    v_redemption_challenge_hash, now() + interval '5 minutes', now()
-  );
+  INSERT INTO public.users (id, email, password_hash, name, updated_at)
+  VALUES (v_user_d_verified_id, 'coach_d@example.com', '$argon2id$mock', 'Verified Coach', now());
+  PERFORM public.request_email_verification('coach_d@example.com', 'tok_verify_d', now() + interval '1 hour');
+  PERFORM public.verify_user_email('tok_verify_d');
+  PERFORM public.issue_user_redemption_challenge(v_user_d_verified_id, v_redemption_challenge_hash, now() + interval '5 minutes');
 
-  INSERT INTO public.users (
-    id, email, password_hash, name, is_email_verified,
-    redemption_challenge, redemption_expires_at, updated_at
-  )
-  VALUES (
-    v_user_e_expired_id, 'coach_e@example.com', '$argon2id$mock', 'Expired Coach', true,
-    v_expired_user_challenge_hash, now() + interval '5 minutes', now()
-  );
+  INSERT INTO public.users (id, email, password_hash, name, updated_at)
+  VALUES (v_user_e_expired_id, 'coach_e@example.com', '$argon2id$mock', 'Expired Coach', now());
+  PERFORM public.request_email_verification('coach_e@example.com', 'tok_verify_e', now() + interval '1 hour');
+  PERFORM public.verify_user_email('tok_verify_e');
+  PERFORM public.issue_user_redemption_challenge(v_user_e_expired_id, v_expired_user_challenge_hash, now() + interval '5 minutes');
 
   -- 11. Test unverified email rejection
   v_failed := false;
@@ -275,6 +259,37 @@ BEGIN
     RAISE EXCEPTION 'SECURITY FAILURE: invitation redeemed without valid user challenge (impersonation flaw)';
   END IF;
 
+  -- 13b. Test missing redemption challenge rejection (required fix from audit)
+  v_failed := false;
+  BEGIN
+    PERFORM public.redeem_invitation_and_activate_membership(
+      v_user_d_verified_id,
+      v_token_hash,
+      NULL
+    );
+    v_failed := true;
+  EXCEPTION WHEN insufficient_privilege THEN
+    NULL;
+  END;
+  IF v_failed THEN
+    RAISE EXCEPTION 'SECURITY FAILURE: invitation redeemed with missing redemption challenge';
+  END IF;
+
+  v_failed := false;
+  BEGIN
+    PERFORM public.redeem_invitation_and_activate_membership(
+      v_user_d_verified_id,
+      v_token_hash,
+      ''
+    );
+    v_failed := true;
+  EXCEPTION WHEN insufficient_privilege THEN
+    NULL;
+  END;
+  IF v_failed THEN
+    RAISE EXCEPTION 'SECURITY FAILURE: invitation redeemed with empty redemption challenge';
+  END IF;
+
   -- 14. Test expired invitation rejection
   v_failed := false;
   BEGIN
@@ -291,7 +306,7 @@ BEGIN
     RAISE EXCEPTION 'SECURITY FAILURE: expired invitation was redeemed';
   END IF;
 
-  -- 14b. Verify runtime role cannot directly overwrite anti-impersonation tokens on public.users
+  -- 14b. Verify runtime role cannot directly overwrite sensitive columns on public.users
   v_failed := false;
   BEGIN
     UPDATE public.users SET onboarding_token = 'forged_token' WHERE id = v_user_a_id;
@@ -312,6 +327,40 @@ BEGIN
   END;
   IF v_failed THEN
     RAISE EXCEPTION 'SECURITY FAILURE: runtime role was able to directly update redemption_challenge';
+  END IF;
+
+  v_failed := false;
+  BEGIN
+    UPDATE public.users SET is_email_verified = true WHERE id = v_user_b_unverified_id;
+    v_failed := true;
+  EXCEPTION WHEN insufficient_privilege THEN
+    NULL;
+  END;
+  IF v_failed THEN
+    RAISE EXCEPTION 'SECURITY FAILURE: runtime role was able to directly update is_email_verified';
+  END IF;
+
+  v_failed := false;
+  BEGIN
+    UPDATE public.users SET password_hash = 'forged_hash' WHERE id = v_user_b_unverified_id;
+    v_failed := true;
+  EXCEPTION WHEN insufficient_privilege THEN
+    NULL;
+  END;
+  IF v_failed THEN
+    RAISE EXCEPTION 'SECURITY FAILURE: runtime role was able to directly update password_hash';
+  END IF;
+
+  v_failed := false;
+  BEGIN
+    INSERT INTO public.users (id, email, password_hash, name, is_email_verified, updated_at)
+    VALUES (gen_random_uuid(), 'forged@test.com', 'hash', 'Forged', true, now());
+    v_failed := true;
+  EXCEPTION WHEN insufficient_privilege THEN
+    NULL;
+  END;
+  IF v_failed THEN
+    RAISE EXCEPTION 'SECURITY FAILURE: runtime role was able to directly insert is_email_verified = true';
   END IF;
 
   -- 15. Test valid invitation redemption with valid challenge

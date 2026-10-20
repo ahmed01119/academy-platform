@@ -7,7 +7,7 @@ import type {
   TenantMembershipSummary,
   UserSummary,
 } from '@academy/shared';
-import { api, setActiveTenantIdHeader } from './api-client';
+import { api, setActiveTenantIdHeader, getActiveTenantIdHeader } from './api-client';
 
 interface AuthContextValue {
   user: UserSummary | null;
@@ -37,7 +37,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       memberships: TenantMembershipSummary[];
     }) => {
       const activeMemberships = data.memberships.filter((m) => m.status === 'ACTIVE');
+      const cachedTenantId = getActiveTenantIdHeader();
+
+      // Maintain consistency:
+      // 1. If user previously selected a tenant that is still an ACTIVE membership, keep it!
+      // 2. Otherwise use server-provided active tenant if valid.
+      // 3. Otherwise fall back to first active membership or null.
       const resolvedActive =
+        (cachedTenantId ? activeMemberships.find((m) => m.tenantId === cachedTenantId) : null) ??
         (data.activeTenant && data.activeTenant.status === 'ACTIVE'
           ? activeMemberships.find((m) => m.tenantId === data.activeTenant?.tenantId)
           : null) ??
