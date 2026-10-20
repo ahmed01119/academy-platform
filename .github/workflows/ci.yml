@@ -97,6 +97,11 @@ jobs:
           PGPASSWORD: academy
         run: psql -v ON_ERROR_STOP=1 -h localhost -U academy -d academy -f packages/database/tests/tenant-rls.sql
 
+      - name: Test onboarding and invitation security boundaries
+        env:
+          PGPASSWORD: academy
+        run: psql -v ON_ERROR_STOP=1 -h localhost -U academy -d academy -f packages/database/tests/onboarding-and-invitations.sql
+
       - name: Format check
         run: pnpm format:check
 
