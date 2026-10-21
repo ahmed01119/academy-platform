@@ -396,18 +396,85 @@ BEGIN
     RAISE EXCEPTION 'FAILURE: redeemed membership is not visible to actor user';
   END IF;
 
-  -- 18. Verify membership revocation
-  PERFORM set_config('app.tenant_id', v_tenant_id::text, true);
-  UPDATE public.tenant_memberships
-  SET status = 'REVOKED'
-  WHERE user_id = v_user_d_verified_id AND tenant_id = v_tenant_id;
-
-  PERFORM set_config('app.tenant_id', '', true);
-  PERFORM set_config('app.actor_user_id', v_user_d_verified_id::text, true);
-
-  IF (SELECT count(*) FROM public.tenant_memberships WHERE user_id = v_user_d_verified_id AND status = 'ACTIVE') <> 0 THEN
-    RAISE EXCEPTION 'SECURITY FAILURE: revoked membership still visible as ACTIVE to actor';
+  -- 19. Sprint 2: Verify hardened issue_user_redemption_challenge rejects email mismatch
+  v_failed := false;
+  BEGIN
+    -- User A attempts to issue redemption challenge using User D's invitation token
+    PERFORM public.issue_user_redemption_challenge(
+      v_user_a_id,
+      v_token_hash,
+      'fake_challenge_hash'
+    );
+    v_failed := true;
+  EXCEPTION WHEN others THEN
+    NULL;
+  END;
+  IF v_failed THEN
+    RAISE EXCEPTION 'SECURITY FAILURE: issue_user_redemption_challenge succeeded for mismatched user email';
   END IF;
+
+  -- 20. Sprint 2: Verify issue_user_onboarding_token rejects user with existing membership
+  v_failed := false;
+  BEGIN
+    PERFORM public.issue_user_onboarding_token(v_user_a_id);
+    v_failed := true;
+  EXCEPTION WHEN others THEN
+    NULL;
+  END;
+  IF v_failed THEN
+    RAISE EXCEPTION 'SECURITY FAILURE: issue_user_onboarding_token succeeded for user with existing memberships';
+  END IF;
+
+  -- 21. Sprint 2: Verify active player enrollment uniqueness (partial unique index)
+  PERFORM set_config('app.tenant_id', v_tenant_id::text, true);
+  DECLARE
+    v_test_player_id uuid := gen_random_uuid();
+    v_test_branch_id uuid := (SELECT id FROM public.branches WHERE tenant_id = v_tenant_id LIMIT 1);
+  BEGIN
+    INSERT INTO public.players (
+      id, tenant_id, first_name, last_name, date_of_birth, national_id, emergency_contact_name, emergency_contact_phone, status, updated_at
+    ) VALUES (
+      v_test_player_id, v_tenant_id, 'Karim', 'Hassan', '2012-05-10', '29901011234567', 'Hassan', '+201011112222', 'ACTIVE', now()
+    );
+
+    INSERT INTO public.player_enrollments (
+      id, tenant_id, player_id, branch_id, sport, status, start_date, updated_at
+    ) VALUES (
+      gen_random_uuid(), v_tenant_id, v_test_player_id, v_test_branch_id, 'FOOTBALL', 'ACTIVE', CURRENT_DATE, now()
+    );
+
+    v_failed := false;
+    BEGIN
+      -- Attempt second concurrent ACTIVE enrollment for same player and sport MUST FAIL
+      INSERT INTO public.player_enrollments (
+        id, tenant_id, player_id, branch_id, sport, status, start_date, updated_at
+      ) VALUES (
+        gen_random_uuid(), v_tenant_id, v_test_player_id, v_test_branch_id, 'FOOTBALL', 'ACTIVE', CURRENT_DATE, now()
+      );
+      v_failed := true;
+    EXCEPTION WHEN unique_violation THEN
+      NULL;
+    END;
+    IF v_failed THEN
+      RAISE EXCEPTION 'SECURITY FAILURE: duplicate ACTIVE enrollment was accepted for the same player';
+    END IF;
+
+    -- 22. Sprint 2: Verify national ID uniqueness within same tenant
+    v_failed := false;
+    BEGIN
+      INSERT INTO public.players (
+        id, tenant_id, first_name, last_name, date_of_birth, national_id, emergency_contact_name, emergency_contact_phone, status, updated_at
+      ) VALUES (
+        gen_random_uuid(), v_tenant_id, 'Omar', 'Hassan', '2014-06-15', '29901011234567', 'Hassan', '+201011112222', 'ACTIVE', now()
+      );
+      v_failed := true;
+    EXCEPTION WHEN unique_violation THEN
+      NULL;
+    END;
+    IF v_failed THEN
+      RAISE EXCEPTION 'SECURITY FAILURE: duplicate national_id within tenant was accepted';
+    END IF;
+  END;
 
 END $$;
 

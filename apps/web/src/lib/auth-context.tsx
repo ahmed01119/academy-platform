@@ -82,11 +82,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [refreshUser]);
 
   const login = async (data: LoginRequest) => {
+    setActiveTenantIdHeader(null);
     const res = await api.auth.login(data);
     applyAuthState(res);
   };
 
   const register = async (data: RegisterRequest) => {
+    setActiveTenantIdHeader(null);
     const res = await api.auth.register(data);
     applyAuthState(res);
   };

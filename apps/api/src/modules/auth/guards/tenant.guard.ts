@@ -9,6 +9,7 @@ import {
 import {
   ErrorCode,
   isBranchScopedRole,
+  ROLE_PERMISSIONS,
   type TenantContext,
   type TenantRole,
 } from '@academy/shared';
@@ -122,6 +123,8 @@ export class TenantGuard implements CanActivate {
       branchId: effectiveBranchId,
       actorUserId: user.id,
       locale: request.headers['accept-language']?.startsWith('en') ? 'en' : 'ar',
+      role: membership.role as TenantRole,
+      permissions: [...(ROLE_PERMISSIONS[membership.role as TenantRole] ?? [])],
     };
 
     request.tenantContext = tenantContext;

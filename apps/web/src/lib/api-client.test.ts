@@ -114,4 +114,83 @@ describe('api-client', () => {
       ApiError,
     );
   });
+
+  it('calls branches.list and branches.create correctly', async () => {
+    const mockBranches = [
+      { id: 'b1', name: 'فرع المعادي', code: 'MAADI', status: 'ACTIVE', _count: { players: 10 } },
+    ];
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: true,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      json: async () => mockBranches,
+    } as Response);
+
+    const list = await api.branches.list({ search: 'معادي', status: 'ACTIVE' });
+    expect(list).toEqual(mockBranches);
+    expect(fetchSpy).toHaveBeenCalledWith(
+      expect.stringContaining('/branches?search=%D9%85%D8%B9%D8%A7%D8%AF%D9%8A&status=ACTIVE'),
+      expect.objectContaining({ method: 'GET' }),
+    );
+
+    const newBranch = { name: 'فرع التجمع', city: 'القاهرة' };
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: true,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      json: async () => ({ id: 'b2', ...newBranch }),
+    } as Response);
+
+    const created = await api.branches.create(newBranch);
+    expect(created.id).toBe('b2');
+  });
+
+  it('calls players.list and players.get correctly', async () => {
+    const mockPlayers = {
+      items: [{ id: 'p1', firstName: 'كريم', lastName: 'حسام', status: 'ACTIVE' }],
+      total: 1,
+      page: 1,
+      limit: 20,
+      totalPages: 1,
+    };
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: true,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      json: async () => mockPlayers,
+    } as Response);
+
+    const result = await api.players.list({ search: 'كريم', page: 1, limit: 20 });
+    expect(result.items).toHaveLength(1);
+    expect(fetchSpy).toHaveBeenCalledWith(
+      expect.stringContaining('/players?search=%D9%83%D8%B1%D9%8A%D9%85&page=1&limit=20'),
+      expect.objectContaining({ method: 'GET' }),
+    );
+  });
+
+  it('calls enrollments.transfer and tenancy.getProfile correctly', async () => {
+    const mockTransfer = { id: 'e1', branchId: 'b2', status: 'ACTIVE' };
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: true,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      json: async () => mockTransfer,
+    } as Response);
+
+    const transferred = await api.enrollments.transfer('e1', {
+      targetBranchId: 'b2',
+      notes: 'نقل فرع',
+    });
+    expect(transferred.branchId).toBe('b2');
+    expect(fetchSpy).toHaveBeenCalledWith(
+      expect.stringContaining('/enrollments/e1/transfer'),
+      expect.objectContaining({ method: 'POST' }),
+    );
+
+    const mockProfile = { id: 't1', name: 'أكاديمية النجوم', slug: 'stars' };
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: true,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      json: async () => mockProfile,
+    } as Response);
+
+    const profile = await api.tenancy.getProfile();
+    expect(profile.name).toBe('أكاديمية النجوم');
+  });
 });
