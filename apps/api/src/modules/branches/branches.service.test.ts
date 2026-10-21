@@ -148,6 +148,7 @@ describe('BranchesService', () => {
           resourceType: 'Branch',
           resourceId: 'branch-new-1',
         }),
+        expect.anything(),
       );
     });
 
@@ -202,6 +203,7 @@ describe('BranchesService', () => {
           action: 'BRANCH_UPDATE',
           resourceId: 'branch-1',
         }),
+        expect.anything(),
       );
     });
 

@@ -69,6 +69,17 @@ export const UpdatePlayerSchema = z.object({
 });
 export type UpdatePlayerRequest = z.infer<typeof UpdatePlayerSchema>;
 
+export const PlayerQuerySchema = z.object({
+  search: z.string().trim().max(100).optional(),
+  branchId: z.string().uuid().optional(),
+  status: PlayerStatusSchema.optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+});
+export type PlayerQuery = z.infer<typeof PlayerQuerySchema>;
+
+export const UuidParamSchema = z.string().uuid('Invalid UUID parameter');
+
 export interface GuardianSummary {
   id: string;
   firstName: string;

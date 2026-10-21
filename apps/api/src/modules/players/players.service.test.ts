@@ -1,9 +1,14 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { PlayersService } from './players.service';
-import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import type { PrismaService } from '../database/prisma.service';
 import type { AuditService } from '../audit/audit.service';
-import type { TenantContext } from '@academy/shared';
+import { Permission, type TenantContext } from '@academy/shared';
 
 type MockFn = ReturnType<typeof vi.fn>;
 
@@ -21,6 +26,7 @@ interface MockPrisma {
   };
   playerEnrollment: {
     create: MockFn;
+    count: MockFn;
   };
   branch: {
     findUnique: MockFn;
@@ -41,6 +47,7 @@ describe('PlayersService', () => {
     tenantId: '00000000-0000-4000-8000-000000000001',
     actorUserId: '00000000-0000-4000-8000-000000000099',
     locale: 'ar',
+    permissions: [Permission.PLAYERS_SENSITIVE_READ],
   };
 
   beforeEach(() => {
@@ -58,6 +65,7 @@ describe('PlayersService', () => {
       },
       playerEnrollment: {
         create: vi.fn(),
+        count: vi.fn().mockResolvedValue(0),
       },
       branch: {
         findUnique: vi.fn(),
@@ -82,6 +90,7 @@ describe('PlayersService', () => {
         name: 'الفرع الرئيسي',
         code: 'MAIN',
         status: 'ACTIVE',
+        capacity: 100,
       });
       mockPrisma.player.findFirst.mockResolvedValue(null);
 
@@ -160,7 +169,37 @@ describe('PlayersService', () => {
           resourceType: 'Player',
           resourceId: 'player-1',
         }),
+        expect.anything(),
       );
+    });
+
+    it('rejects player creation if branch is at capacity', async () => {
+      mockPrisma.branch.findUnique.mockResolvedValue({
+        id: 'branch-1',
+        status: 'ACTIVE',
+        capacity: 10,
+      });
+      mockPrisma.playerEnrollment.count.mockResolvedValue(10);
+
+      await expect(
+        service.createPlayer(mockTenantContext, {
+          firstName: 'Cap',
+          lastName: 'Full',
+          gender: 'MALE',
+          dateOfBirth: '2014-05-10',
+          emergencyContactName: 'Contact',
+          emergencyContactPhone: '+201000000000',
+          primaryGuardian: {
+            firstName: 'G',
+            lastName: 'L',
+            relationship: 'FATHER',
+            phone: '+201000000000',
+            isPrimary: true,
+          },
+          initialBranchId: 'branch-1',
+          sport: 'FOOTBALL',
+        }),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('rejects player creation if nationalId is already registered in tenant', async () => {
@@ -277,6 +316,141 @@ describe('PlayersService', () => {
       await expect(service.getPlayerById(mockTenantContext, 'missing-id')).rejects.toThrow(
         NotFoundException,
       );
+    });
+
+    it('minimizes sensitive data (nationalId, medicalNotes) when user lacks PLAYERS_SENSITIVE_READ', async () => {
+      const restrictedContext: TenantContext = {
+        tenantId: mockTenantContext.tenantId,
+        actorUserId: 'coach-user-id',
+        permissions: [],
+      };
+
+      mockPrisma.player.findUnique.mockResolvedValue({
+        id: 'player-1',
+        tenantId: mockTenantContext.tenantId,
+        firstName: 'Tsubasa',
+        lastName: 'Ozora',
+        gender: 'MALE',
+        dateOfBirth: new Date('2014-05-10T00:00:00Z'),
+        nationalId: '29901011234567',
+        medicalNotes: 'Asthma inhaler required',
+        emergencyContactName: 'Natsuko',
+        emergencyContactPhone: '+201000000000',
+        status: 'ACTIVE',
+        guardians: [],
+        enrollments: [],
+        createdAt: new Date('2026-01-01T00:00:00Z'),
+        updatedAt: new Date('2026-01-01T00:00:00Z'),
+      });
+
+      const player = await service.getPlayerById(restrictedContext, 'player-1');
+      expect(player.nationalId).toBeNull();
+      expect(player.medicalNotes).toBeNull();
+      expect(player.firstName).toBe('Tsubasa');
+    });
+
+    it('returns sensitive data when user has PLAYERS_SENSITIVE_READ', async () => {
+      mockPrisma.player.findUnique.mockResolvedValue({
+        id: 'player-1',
+        tenantId: mockTenantContext.tenantId,
+        firstName: 'Tsubasa',
+        lastName: 'Ozora',
+        gender: 'MALE',
+        dateOfBirth: new Date('2014-05-10T00:00:00Z'),
+        nationalId: '29901011234567',
+        medicalNotes: 'Asthma inhaler required',
+        emergencyContactName: 'Natsuko',
+        emergencyContactPhone: '+201000000000',
+        status: 'ACTIVE',
+        guardians: [],
+        enrollments: [],
+        createdAt: new Date('2026-01-01T00:00:00Z'),
+        updatedAt: new Date('2026-01-01T00:00:00Z'),
+      });
+
+      const player = await service.getPlayerById(mockTenantContext, 'player-1');
+      expect(player.nationalId).toBe('29901011234567');
+      expect(player.medicalNotes).toBe('Asthma inhaler required');
+    });
+
+    it('rejects branch-scoped user access if player only had a historical/transferred enrollment in their branch', async () => {
+      const branchScopedContext: TenantContext = {
+        tenantId: mockTenantContext.tenantId,
+        actorUserId: 'staff-branch-1',
+        branchId: 'branch-1',
+        permissions: [],
+      };
+
+      mockPrisma.player.findUnique.mockResolvedValue({
+        id: 'player-1',
+        tenantId: mockTenantContext.tenantId,
+        firstName: 'Tsubasa',
+        lastName: 'Ozora',
+        status: 'ACTIVE',
+        guardians: [],
+        enrollments: [
+          {
+            id: 'old-enr',
+            branchId: 'branch-1',
+            status: 'TRANSFERRED', // Historical, not active
+            branch: { id: 'branch-1', name: 'Branch 1', code: 'B1' },
+          },
+          {
+            id: 'current-enr',
+            branchId: 'branch-2',
+            status: 'ACTIVE',
+            branch: { id: 'branch-2', name: 'Branch 2', code: 'B2' },
+          },
+        ],
+        createdAt: new Date('2026-01-01T00:00:00Z'),
+        updatedAt: new Date('2026-01-01T00:00:00Z'),
+      });
+
+      await expect(service.getPlayerById(branchScopedContext, 'player-1')).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+  });
+
+  describe('updatePlayer', () => {
+    it('rejects modifying medicalNotes when actor lacks PLAYERS_SENSITIVE_READ', async () => {
+      const restrictedContext: TenantContext = {
+        tenantId: mockTenantContext.tenantId,
+        actorUserId: 'staff-user',
+        permissions: [],
+      };
+
+      mockPrisma.player.findUnique.mockResolvedValue({
+        id: 'player-1',
+        tenantId: mockTenantContext.tenantId,
+        medicalNotes: 'Original notes',
+        enrollments: [],
+      });
+
+      await expect(
+        service.updatePlayer(restrictedContext, 'player-1', {
+          medicalNotes: 'Altered notes',
+        }),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('rejects update if nationalId belongs to another player in tenant', async () => {
+      mockPrisma.player.findUnique.mockResolvedValue({
+        id: 'player-1',
+        tenantId: mockTenantContext.tenantId,
+        nationalId: '11111111111111',
+        enrollments: [],
+      });
+
+      mockPrisma.player.findFirst.mockResolvedValue({
+        id: 'player-2-other',
+      });
+
+      await expect(
+        service.updatePlayer(mockTenantContext, 'player-1', {
+          nationalId: '22222222222222',
+        }),
+      ).rejects.toThrow(ConflictException);
     });
   });
 });

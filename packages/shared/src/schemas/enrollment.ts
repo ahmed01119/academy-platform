@@ -32,6 +32,13 @@ export const TransferBranchSchema = z.object({
 });
 export type TransferBranchRequest = z.infer<typeof TransferBranchSchema>;
 
+export const EnrollmentQuerySchema = z.object({
+  playerId: z.string().uuid().optional(),
+  branchId: z.string().uuid().optional(),
+  status: EnrollmentStatusSchema.optional(),
+});
+export type EnrollmentQuery = z.infer<typeof EnrollmentQuerySchema>;
+
 export interface EnrollmentSummary {
   id: string;
   tenantId: string;

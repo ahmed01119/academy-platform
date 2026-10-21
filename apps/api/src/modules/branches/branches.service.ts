@@ -236,19 +236,22 @@ export class BranchesService {
           },
         });
 
-        await this.auditService.logEvent({
-          tenantId: tenantContext.tenantId,
-          actorUserId: tenantContext.actorUserId,
-          action: 'BRANCH_CREATE',
-          resourceType: 'Branch',
-          resourceId: branch.id,
-          metadata: {
-            name: branch.name,
-            code: branch.code,
-            city: branch.city,
-            capacity: branch.capacity,
+        await this.auditService.logEvent(
+          {
+            tenantId: tenantContext.tenantId,
+            actorUserId: tenantContext.actorUserId,
+            action: 'BRANCH_CREATE',
+            resourceType: 'Branch',
+            resourceId: branch.id,
+            metadata: {
+              name: branch.name,
+              code: branch.code,
+              city: branch.city,
+              capacity: branch.capacity,
+            },
           },
-        });
+          tx,
+        );
 
         return {
           id: branch.id,
@@ -382,16 +385,19 @@ export class BranchesService {
           },
         });
 
-        await this.auditService.logEvent({
-          tenantId: tenantContext.tenantId,
-          actorUserId: tenantContext.actorUserId,
-          action: 'BRANCH_UPDATE',
-          resourceType: 'Branch',
-          resourceId: updated.id,
-          metadata: {
-            changedFields: Object.keys(updateData),
+        await this.auditService.logEvent(
+          {
+            tenantId: tenantContext.tenantId,
+            actorUserId: tenantContext.actorUserId,
+            action: 'BRANCH_UPDATE',
+            resourceType: 'Branch',
+            resourceId: updated.id,
+            metadata: {
+              changedFields: Object.keys(updateData),
+            },
           },
-        });
+          tx,
+        );
 
         return {
           id: updated.id,

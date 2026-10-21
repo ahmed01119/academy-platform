@@ -388,6 +388,7 @@ model Player {
   @@unique([tenantId, id])
   @@index([tenantId])
   @@index([tenantId, status])
+  @@index([tenantId, nationalId])
   @@index([tenantId, lastName, firstName])
   @@map("players")
 }

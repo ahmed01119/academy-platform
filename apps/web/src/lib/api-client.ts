@@ -80,11 +80,24 @@ export function getActiveTenantIdHeader(): string | null {
   return activeTenantIdCache;
 }
 
+const AUTH_ENDPOINTS_WITHOUT_TENANT_HEADER = [
+  '/auth/login',
+  '/auth/register',
+  '/auth/forgot-password',
+  '/auth/reset-password',
+  '/auth/verify-email',
+  '/auth/resend-verification',
+];
+
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const headers = new Headers(options.headers || {});
   headers.set('Content-Type', 'application/json');
 
-  if (activeTenantIdCache && !headers.has('x-tenant-id')) {
+  const isAuthEndpoint = AUTH_ENDPOINTS_WITHOUT_TENANT_HEADER.some((path) =>
+    endpoint.startsWith(path),
+  );
+
+  if (activeTenantIdCache && !headers.has('x-tenant-id') && !isAuthEndpoint) {
     headers.set('x-tenant-id', activeTenantIdCache);
   }
 

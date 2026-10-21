@@ -30,6 +30,14 @@ const REDACTED_KEYS = new Set([
   'cardnumber',
   'cvv',
   'pan',
+  'medicalnotes',
+  'medical_notes',
+  'nationalid',
+  'national_id',
+  'guardianphone',
+  'guardian_phone',
+  'emergencycontactphone',
+  'emergency_contact_phone',
 ]);
 
 function sanitizeMetadata(obj: unknown): unknown {

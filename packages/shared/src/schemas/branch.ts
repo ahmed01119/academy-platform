@@ -32,6 +32,12 @@ export const UpdateBranchSchema = CreateBranchSchema.partial().extend({
 
 export type UpdateBranchRequest = z.infer<typeof UpdateBranchSchema>;
 
+export const BranchQuerySchema = z.object({
+  search: z.string().trim().max(100).optional(),
+  status: BranchStatusSchema.optional(),
+});
+export type BranchQuery = z.infer<typeof BranchQuerySchema>;
+
 export interface BranchSummary {
   id: string;
   tenantId: string;

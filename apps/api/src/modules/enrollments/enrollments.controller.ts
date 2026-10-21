@@ -19,12 +19,13 @@ import { RequirePermissions } from '../auth/guards/require-permissions.decorator
 import { CurrentTenantContext } from '../auth/decorators/auth-user.decorator';
 import {
   CreateEnrollmentSchema,
+  EnrollmentQuerySchema,
   Permission,
   TransferBranchSchema,
+  UuidParamSchema,
   type CreateEnrollmentRequest,
   type TenantContext,
   type TransferBranchRequest,
-  type EnrollmentStatus,
 } from '@academy/shared';
 
 @Controller('enrollments')
@@ -38,15 +39,10 @@ export class EnrollmentsController {
   @Get()
   async listEnrollments(
     @CurrentTenantContext() tenantContext: TenantContext,
-    @Query('playerId') playerId?: string,
-    @Query('branchId') branchId?: string,
-    @Query('status') status?: string,
+    @Query() query: unknown,
   ) {
-    return this.enrollmentsService.listEnrollments(tenantContext, {
-      playerId,
-      branchId,
-      status: status as EnrollmentStatus,
-    });
+    const validated = EnrollmentQuerySchema.parse(query);
+    return this.enrollmentsService.listEnrollments(tenantContext, validated);
   }
 
   @RequirePermissions(Permission.PLAYERS_CREATE)
@@ -65,9 +61,10 @@ export class EnrollmentsController {
   @HttpCode(HttpStatus.OK)
   async transferBranch(
     @CurrentTenantContext() tenantContext: TenantContext,
-    @Param('id') enrollmentId: string,
+    @Param('id') rawId: string,
     @Body() body: unknown,
   ) {
+    const enrollmentId = UuidParamSchema.parse(rawId);
     const dto: TransferBranchRequest = TransferBranchSchema.parse(body);
     return this.enrollmentsService.transferBranch(tenantContext, enrollmentId, dto);
   }

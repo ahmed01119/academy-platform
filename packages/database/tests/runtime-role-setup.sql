@@ -53,7 +53,9 @@ GRANT SELECT, INSERT ON TABLE public.attendance_corrections TO academy_runtime_c
 REVOKE UPDATE, DELETE, TRUNCATE ON TABLE public.attendance_corrections FROM academy_runtime_ci;
 
 -- Scoped onboarding, invitation redemption and identity transition boundary execution
+GRANT EXECUTE ON FUNCTION public.issue_user_onboarding_token(uuid) TO academy_runtime_ci;
 GRANT EXECUTE ON FUNCTION public.issue_user_onboarding_token(uuid, text, timestamptz) TO academy_runtime_ci;
+GRANT EXECUTE ON FUNCTION public.issue_user_redemption_challenge(uuid, text, text) TO academy_runtime_ci;
 GRANT EXECUTE ON FUNCTION public.issue_user_redemption_challenge(uuid, text, timestamptz) TO academy_runtime_ci;
 GRANT EXECUTE ON FUNCTION public.provision_tenant_onboarding(uuid, text, text, text, text, text, text) TO academy_runtime_ci;
 GRANT EXECUTE ON FUNCTION public.redeem_invitation_and_activate_membership(uuid, text, text) TO academy_runtime_ci;

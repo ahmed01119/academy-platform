@@ -35,6 +35,11 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
   const router = useRouter();
   const { user, activeTenant, isLoading } = useAuth();
 
+  const canViewSensitive =
+    activeTenant?.role === 'OWNER' ||
+    activeTenant?.role === 'MANAGER' ||
+    activeTenant?.role === 'BRANCH_MANAGER';
+
   const [player, setPlayer] = useState<PlayerDetails | null>(null);
   const [branches, setBranches] = useState<BranchSummary[]>([]);
   const [isFetching, setIsFetching] = useState(true);
@@ -147,8 +152,8 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
         lastName: editLastName.trim(),
         emergencyContactName: editEmergencyName.trim(),
         emergencyContactPhone: editEmergencyPhone.trim(),
-        medicalNotes: editMedicalNotes.trim() || null,
         status: editStatus,
+        ...(canViewSensitive ? { medicalNotes: editMedicalNotes.trim() || null } : {}),
       };
 
       await api.players.update(playerId, updatePayload);
@@ -257,13 +262,19 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
                   <span className="text-white font-mono">{player.dateOfBirth.slice(0, 10)}</span> •
                   الجنس:{' '}
                   <span className="text-white">{player.gender === 'MALE' ? 'ذكر' : 'أنثى'}</span>
-                  {player.nationalId && (
+                  {player.nationalId ? (
                     <>
                       {' '}
                       • الرقم القومي:{' '}
                       <span className="text-white font-mono">{player.nationalId}</span>
                     </>
-                  )}
+                  ) : !canViewSensitive ? (
+                    <>
+                      {' '}
+                      • الرقم القومي:{' '}
+                      <span className="text-[#9bb5a8] italic text-[11px]">محجوب للخصوصية</span>
+                    </>
+                  ) : null}
                 </p>
               </div>
             </div>
@@ -454,7 +465,9 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
                 <div className="rounded-xl border border-[#234235] bg-[#0f1c18]/60 p-3.5">
                   <span className="text-[11px] text-[#9bb5a8] block mb-1">الملاحظات الطبية:</span>
                   <div className="text-white">
-                    {player.medicalNotes || 'لا توجد ملاحظات طبية أو حساسية مسجلة'}
+                    {canViewSensitive
+                      ? player.medicalNotes || 'لا توجد ملاحظات طبية أو حساسية مسجلة'
+                      : 'محجوبة (لا تملك صلاحية الاطلاع على البيانات الحساسة)'}
                   </div>
                 </div>
               </div>
@@ -640,17 +653,23 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
                   </select>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-[#9bb5a8] mb-1">
-                    الملاحظات الطبية
-                  </label>
-                  <textarea
-                    rows={2}
-                    value={editMedicalNotes}
-                    onChange={(e) => setEditMedicalNotes(e.target.value)}
-                    className="w-full rounded-xl border border-[#2b4c3e] bg-[#0f1c18] px-3.5 py-2 text-xs text-[#e8f0ec] focus:border-[#2f9e6b] focus:outline-none"
-                  />
-                </div>
+                {canViewSensitive ? (
+                  <div>
+                    <label className="block text-xs font-semibold text-[#9bb5a8] mb-1">
+                      الملاحظات الطبية
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={editMedicalNotes}
+                      onChange={(e) => setEditMedicalNotes(e.target.value)}
+                      className="w-full rounded-xl border border-[#2b4c3e] bg-[#0f1c18] px-3.5 py-2 text-xs text-[#e8f0ec] focus:border-[#2f9e6b] focus:outline-none"
+                    />
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-[#234235] bg-[#0f1c18]/40 p-3 text-[11px] text-[#9bb5a8]">
+                    الملاحظات الطبية محجوبة ولا يمكن تعديلها إلا من قِبل مديري الأكاديمية أو الفروع.
+                  </div>
+                )}
 
                 <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#234235]">
                   <button

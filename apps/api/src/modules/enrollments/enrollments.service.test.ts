@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { EnrollmentsService } from './enrollments.service';
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ConflictException } from '@nestjs/common';
 import type { PrismaService } from '../database/prisma.service';
 import type { AuditService } from '../audit/audit.service';
 import type { TenantContext } from '@academy/shared';
@@ -11,6 +11,8 @@ interface MockPrisma {
   playerEnrollment: {
     findMany: MockFn;
     findUnique: MockFn;
+    findFirst: MockFn;
+    count: MockFn;
     create: MockFn;
     update: MockFn;
   };
@@ -43,6 +45,8 @@ describe('EnrollmentsService', () => {
       playerEnrollment: {
         findMany: vi.fn(),
         findUnique: vi.fn(),
+        findFirst: vi.fn().mockResolvedValue(null),
+        count: vi.fn().mockResolvedValue(0),
         create: vi.fn(),
         update: vi.fn(),
       },
@@ -71,11 +75,13 @@ describe('EnrollmentsService', () => {
         id: 'player-1',
         firstName: 'Tsubasa',
         lastName: 'Ozora',
+        status: 'ACTIVE',
       });
       mockPrisma.branch.findUnique.mockResolvedValue({
         id: 'branch-1',
         name: 'الفرع الرئيسي',
         status: 'ACTIVE',
+        capacity: 50,
       });
       mockPrisma.playerEnrollment.create.mockResolvedValue({
         id: 'enrollment-1',
@@ -115,7 +121,67 @@ describe('EnrollmentsService', () => {
           resourceType: 'PlayerEnrollment',
           resourceId: 'enrollment-1',
         }),
+        expect.anything(),
       );
+    });
+
+    it('rejects enrollment if player is inactive or suspended', async () => {
+      mockPrisma.player.findUnique.mockResolvedValue({
+        id: 'player-1',
+        status: 'SUSPENDED',
+      });
+
+      await expect(
+        service.createEnrollment(mockTenantContext, {
+          playerId: 'player-1',
+          branchId: 'branch-1',
+          sport: 'FOOTBALL',
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejects enrollment if player already has an active enrollment', async () => {
+      mockPrisma.player.findUnique.mockResolvedValue({
+        id: 'player-1',
+        status: 'ACTIVE',
+      });
+      mockPrisma.branch.findUnique.mockResolvedValue({
+        id: 'branch-1',
+        status: 'ACTIVE',
+      });
+      mockPrisma.playerEnrollment.findFirst.mockResolvedValue({
+        id: 'existing-active-enrollment',
+      });
+
+      await expect(
+        service.createEnrollment(mockTenantContext, {
+          playerId: 'player-1',
+          branchId: 'branch-1',
+          sport: 'FOOTBALL',
+        }),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('rejects enrollment if branch has reached capacity', async () => {
+      mockPrisma.player.findUnique.mockResolvedValue({
+        id: 'player-1',
+        status: 'ACTIVE',
+      });
+      mockPrisma.playerEnrollment.findFirst.mockResolvedValue(null);
+      mockPrisma.branch.findUnique.mockResolvedValue({
+        id: 'branch-1',
+        status: 'ACTIVE',
+        capacity: 10,
+      });
+      mockPrisma.playerEnrollment.count.mockResolvedValue(10);
+
+      await expect(
+        service.createEnrollment(mockTenantContext, {
+          playerId: 'player-1',
+          branchId: 'branch-1',
+          sport: 'FOOTBALL',
+        }),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 
@@ -130,14 +196,16 @@ describe('EnrollmentsService', () => {
         status: 'ACTIVE',
         notes: 'Initial enrollment',
         branch: { id: 'branch-source-1', name: 'الفرع القديم' },
-        player: { firstName: 'Tsubasa', lastName: 'Ozora' },
+        player: { firstName: 'Tsubasa', lastName: 'Ozora', status: 'ACTIVE' },
       });
 
       mockPrisma.branch.findUnique.mockResolvedValue({
         id: 'branch-target-2',
         name: 'فرع المعادي',
         status: 'ACTIVE',
+        capacity: 100,
       });
+      mockPrisma.playerEnrollment.count.mockResolvedValue(20);
 
       mockPrisma.playerEnrollment.update.mockResolvedValue({});
       mockPrisma.playerEnrollment.create.mockResolvedValue({
@@ -191,7 +259,35 @@ describe('EnrollmentsService', () => {
             toBranchId: 'branch-target-2',
           }),
         }),
+        expect.anything(),
       );
+    });
+
+    it('rejects transfer if target branch is at full capacity', async () => {
+      mockPrisma.playerEnrollment.findUnique.mockResolvedValue({
+        id: 'enrollment-source-1',
+        tenantId: mockTenantContext.tenantId,
+        playerId: 'player-1',
+        branchId: 'branch-source-1',
+        sport: 'FOOTBALL',
+        status: 'ACTIVE',
+        branch: { id: 'branch-source-1', name: 'الفرع القديم' },
+        player: { firstName: 'Tsubasa', lastName: 'Ozora', status: 'ACTIVE' },
+      });
+
+      mockPrisma.branch.findUnique.mockResolvedValue({
+        id: 'branch-target-2',
+        name: 'فرع المعادي',
+        status: 'ACTIVE',
+        capacity: 15,
+      });
+      mockPrisma.playerEnrollment.count.mockResolvedValue(15);
+
+      await expect(
+        service.transferBranch(mockTenantContext, 'enrollment-source-1', {
+          targetBranchId: 'branch-target-2',
+        }),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('rejects transfer if source enrollment is not active', async () => {

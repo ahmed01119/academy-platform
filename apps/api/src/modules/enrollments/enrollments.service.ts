@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Inject,
   Injectable,
@@ -142,6 +143,13 @@ export class EnrollmentsService {
           });
         }
 
+        if (player.status !== 'ACTIVE') {
+          throw new BadRequestException({
+            code: ErrorCode.VALIDATION_FAILED,
+            message: 'لا يمكن تسجيل لاعب غير نشط (Cannot enroll an inactive or suspended player)',
+          });
+        }
+
         // Verify branch belongs to tenant and is active
         const branch = await tx.branch.findUnique({
           where: {
@@ -156,6 +164,40 @@ export class EnrollmentsService {
           throw new NotFoundException({
             code: ErrorCode.NOT_FOUND,
             message: 'Branch not found or inactive',
+          });
+        }
+
+        // Branch capacity enforcement
+        if (branch.capacity !== null && branch.capacity !== undefined) {
+          const activeCount = await tx.playerEnrollment.count({
+            where: {
+              tenantId: tenantContext.tenantId,
+              branchId: branch.id,
+              status: 'ACTIVE',
+            },
+          });
+          if (activeCount >= branch.capacity) {
+            throw new BadRequestException({
+              code: ErrorCode.VALIDATION_FAILED,
+              message: 'بلغ الفرع طاقته الاستيعابية القصوى (Branch has reached maximum capacity)',
+            });
+          }
+        }
+
+        // Active enrollment uniqueness check
+        const existingActive = await tx.playerEnrollment.findFirst({
+          where: {
+            tenantId: tenantContext.tenantId,
+            playerId: player.id,
+            sport: dto.sport,
+            status: 'ACTIVE',
+          },
+        });
+        if (existingActive) {
+          throw new ConflictException({
+            code: ErrorCode.CONFLICT,
+            message:
+              'اللاعب مسجل بالفعل في فرع نشط (Player already has an active enrollment. Use branch transfer instead)',
           });
         }
 
@@ -188,20 +230,23 @@ export class EnrollmentsService {
           },
         });
 
-        await this.auditService.logEvent({
-          tenantId: tenantContext.tenantId,
-          actorUserId: tenantContext.actorUserId,
-          action: 'ENROLLMENT_CREATE',
-          resourceType: 'PlayerEnrollment',
-          resourceId: enrollment.id,
-          metadata: {
-            playerId: player.id,
-            playerName: `${player.firstName} ${player.lastName}`,
-            branchId: branch.id,
-            branchName: branch.name,
-            sport: enrollment.sport,
+        await this.auditService.logEvent(
+          {
+            tenantId: tenantContext.tenantId,
+            actorUserId: tenantContext.actorUserId,
+            action: 'ENROLLMENT_CREATE',
+            resourceType: 'PlayerEnrollment',
+            resourceId: enrollment.id,
+            metadata: {
+              playerId: player.id,
+              playerName: `${player.firstName} ${player.lastName}`,
+              branchId: branch.id,
+              branchName: branch.name,
+              sport: enrollment.sport,
+            },
           },
-        });
+          tx,
+        );
 
         return {
           id: enrollment.id,
@@ -286,6 +331,13 @@ export class EnrollmentsService {
           });
         }
 
+        if (sourceEnrollment.player.status !== 'ACTIVE') {
+          throw new BadRequestException({
+            code: ErrorCode.VALIDATION_FAILED,
+            message: 'لا يمكن نقل لاعب غير نشط (Cannot transfer an inactive or suspended player)',
+          });
+        }
+
         // Verify target branch exists and is active
         const targetBranch = await tx.branch.findUnique({
           where: {
@@ -301,6 +353,24 @@ export class EnrollmentsService {
             code: ErrorCode.NOT_FOUND,
             message: 'Target branch not found or inactive',
           });
+        }
+
+        // Target branch capacity enforcement
+        if (targetBranch.capacity !== null && targetBranch.capacity !== undefined) {
+          const activeCount = await tx.playerEnrollment.count({
+            where: {
+              tenantId: tenantContext.tenantId,
+              branchId: targetBranch.id,
+              status: 'ACTIVE',
+            },
+          });
+          if (activeCount >= targetBranch.capacity) {
+            throw new BadRequestException({
+              code: ErrorCode.VALIDATION_FAILED,
+              message:
+                'بلغ الفرع المنقول إليه طاقته الاستيعابية القصوى (Target branch has reached maximum capacity)',
+            });
+          }
         }
 
         const effectiveDate = dto.effectiveDate ? new Date(dto.effectiveDate) : new Date();
@@ -352,22 +422,25 @@ export class EnrollmentsService {
           },
         });
 
-        await this.auditService.logEvent({
-          tenantId: tenantContext.tenantId,
-          actorUserId: tenantContext.actorUserId,
-          action: 'PLAYER_BRANCH_TRANSFER',
-          resourceType: 'PlayerEnrollment',
-          resourceId: newEnrollment.id,
-          metadata: {
-            playerId: sourceEnrollment.playerId,
-            playerName: `${sourceEnrollment.player.firstName} ${sourceEnrollment.player.lastName}`,
-            fromBranchId: sourceEnrollment.branchId,
-            fromBranchName: sourceEnrollment.branch.name,
-            toBranchId: targetBranch.id,
-            toBranchName: targetBranch.name,
-            effectiveDate: effectiveDate.toISOString(),
+        await this.auditService.logEvent(
+          {
+            tenantId: tenantContext.tenantId,
+            actorUserId: tenantContext.actorUserId,
+            action: 'PLAYER_BRANCH_TRANSFER',
+            resourceType: 'PlayerEnrollment',
+            resourceId: newEnrollment.id,
+            metadata: {
+              playerId: sourceEnrollment.playerId,
+              playerName: `${sourceEnrollment.player.firstName} ${sourceEnrollment.player.lastName}`,
+              fromBranchId: sourceEnrollment.branchId,
+              fromBranchName: sourceEnrollment.branch.name,
+              toBranchId: targetBranch.id,
+              toBranchName: targetBranch.name,
+              effectiveDate: effectiveDate.toISOString(),
+            },
           },
-        });
+          tx,
+        );
 
         return {
           id: newEnrollment.id,

@@ -214,6 +214,7 @@ export class TenancyService {
           await tx.$executeRaw`
             SELECT public.issue_user_redemption_challenge(
               ${currentUserId}::uuid,
+              ${tokenHash},
               ${challengeHash}
             )
           `;

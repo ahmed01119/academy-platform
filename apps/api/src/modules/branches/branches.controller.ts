@@ -19,13 +19,14 @@ import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermissions } from '../auth/guards/require-permissions.decorator';
 import { CurrentTenantContext } from '../auth/decorators/auth-user.decorator';
 import {
+  BranchQuerySchema,
   CreateBranchSchema,
   Permission,
   UpdateBranchSchema,
+  UuidParamSchema,
   type CreateBranchRequest,
   type TenantContext,
   type UpdateBranchRequest,
-  type BranchStatus,
 } from '@academy/shared';
 
 @Controller('branches')
@@ -37,21 +38,19 @@ export class BranchesController {
   @Get()
   async listBranches(
     @CurrentTenantContext() tenantContext: TenantContext,
-    @Query('search') search?: string,
-    @Query('status') status?: string,
+    @Query() query: unknown,
   ) {
-    return this.branchesService.listBranches(tenantContext, {
-      search,
-      status: status as BranchStatus,
-    });
+    const validated = BranchQuerySchema.parse(query);
+    return this.branchesService.listBranches(tenantContext, validated);
   }
 
   @RequirePermissions(Permission.BRANCHES_READ)
   @Get(':id')
   async getBranchById(
     @CurrentTenantContext() tenantContext: TenantContext,
-    @Param('id') branchId: string,
+    @Param('id') rawId: string,
   ) {
+    const branchId = UuidParamSchema.parse(rawId);
     return this.branchesService.getBranchById(tenantContext, branchId);
   }
 
@@ -67,9 +66,10 @@ export class BranchesController {
   @Patch(':id')
   async updateBranch(
     @CurrentTenantContext() tenantContext: TenantContext,
-    @Param('id') branchId: string,
+    @Param('id') rawId: string,
     @Body() body: unknown,
   ) {
+    const branchId = UuidParamSchema.parse(rawId);
     const dto: UpdateBranchRequest = UpdateBranchSchema.parse(body);
     return this.branchesService.updateBranch(tenantContext, branchId, dto);
   }

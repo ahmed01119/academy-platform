@@ -21,11 +21,12 @@ import { CurrentTenantContext } from '../auth/decorators/auth-user.decorator';
 import {
   CreatePlayerSchema,
   Permission,
+  PlayerQuerySchema,
   UpdatePlayerSchema,
+  UuidParamSchema,
   type CreatePlayerRequest,
   type TenantContext,
   type UpdatePlayerRequest,
-  type PlayerStatus,
 } from '@academy/shared';
 
 @Controller('players')
@@ -35,29 +36,18 @@ export class PlayersController {
 
   @RequirePermissions(Permission.PLAYERS_READ)
   @Get()
-  async listPlayers(
-    @CurrentTenantContext() tenantContext: TenantContext,
-    @Query('search') search?: string,
-    @Query('branchId') branchId?: string,
-    @Query('status') status?: string,
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
-  ) {
-    return this.playersService.listPlayers(tenantContext, {
-      search,
-      branchId,
-      status: status as PlayerStatus,
-      page: page ? parseInt(page, 10) : undefined,
-      limit: limit ? parseInt(limit, 10) : undefined,
-    });
+  async listPlayers(@CurrentTenantContext() tenantContext: TenantContext, @Query() query: unknown) {
+    const validated = PlayerQuerySchema.parse(query);
+    return this.playersService.listPlayers(tenantContext, validated);
   }
 
   @RequirePermissions(Permission.PLAYERS_READ)
   @Get(':id')
   async getPlayerById(
     @CurrentTenantContext() tenantContext: TenantContext,
-    @Param('id') playerId: string,
+    @Param('id') rawId: string,
   ) {
+    const playerId = UuidParamSchema.parse(rawId);
     return this.playersService.getPlayerById(tenantContext, playerId);
   }
 
@@ -73,9 +63,10 @@ export class PlayersController {
   @Patch(':id')
   async updatePlayer(
     @CurrentTenantContext() tenantContext: TenantContext,
-    @Param('id') playerId: string,
+    @Param('id') rawId: string,
     @Body() body: unknown,
   ) {
+    const playerId = UuidParamSchema.parse(rawId);
     const dto: UpdatePlayerRequest = UpdatePlayerSchema.parse(body);
     return this.playersService.updatePlayer(tenantContext, playerId, dto);
   }

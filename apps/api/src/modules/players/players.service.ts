@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Inject,
@@ -10,6 +11,8 @@ import type { Prisma } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
 import {
   ErrorCode,
+  Permission,
+  hasPermission,
   type CreatePlayerRequest,
   type PlayerDetails,
   type PlayerSummary,
@@ -214,16 +217,22 @@ export class PlayersService {
         }
 
         if (tenantContext.branchId) {
-          const hasBranchEnrollment = p.enrollments.some(
-            (e) => e.branchId === tenantContext.branchId,
+          const hasActiveBranchEnrollment = p.enrollments.some(
+            (e) => e.branchId === tenantContext.branchId && e.status === 'ACTIVE',
           );
-          if (!hasBranchEnrollment) {
+          if (!hasActiveBranchEnrollment) {
             throw new ForbiddenException({
               code: ErrorCode.FORBIDDEN,
-              message: 'Access restricted: player is not enrolled in your assigned branch',
+              message: 'Access restricted: player is not actively enrolled in your assigned branch',
             });
           }
         }
+
+        const canViewSensitive = Boolean(
+          tenantContext.permissions?.includes(Permission.PLAYERS_SENSITIVE_READ) ||
+          (tenantContext.role &&
+            hasPermission(tenantContext.role, Permission.PLAYERS_SENSITIVE_READ)),
+        );
 
         const primaryGuardian = p.guardians.find((g) => g.isPrimary) || p.guardians[0] || null;
         const activeEnrollment = p.enrollments.find((e) => e.status === 'ACTIVE') || null;
@@ -235,11 +244,11 @@ export class PlayersService {
           lastName: p.lastName,
           gender: p.gender as PlayerGender,
           dateOfBirth: p.dateOfBirth.toISOString().slice(0, 10),
-          nationalId: p.nationalId,
+          nationalId: canViewSensitive ? p.nationalId : null,
           photoUrl: p.photoUrl,
           emergencyContactName: p.emergencyContactName,
           emergencyContactPhone: p.emergencyContactPhone,
-          medicalNotes: p.medicalNotes,
+          medicalNotes: canViewSensitive ? p.medicalNotes : null,
           status: p.status as PlayerStatus,
           currentBranch: activeEnrollment
             ? {
@@ -324,6 +333,36 @@ export class PlayersService {
           });
         }
 
+        // Branch capacity enforcement
+        if (branch.capacity !== null && branch.capacity !== undefined) {
+          const activeCount = await tx.playerEnrollment.count({
+            where: {
+              tenantId: tenantContext.tenantId,
+              branchId: branch.id,
+              status: 'ACTIVE',
+            },
+          });
+          if (activeCount >= branch.capacity) {
+            throw new BadRequestException({
+              code: ErrorCode.VALIDATION_FAILED,
+              message: 'بلغ الفرع طاقته الاستيعابية القصوى (Branch has reached maximum capacity)',
+            });
+          }
+        }
+
+        // Sensitive data check
+        const hasSensitivePerm = Boolean(
+          tenantContext.permissions?.includes(Permission.PLAYERS_SENSITIVE_READ) ||
+          (tenantContext.role &&
+            hasPermission(tenantContext.role, Permission.PLAYERS_SENSITIVE_READ)),
+        );
+        if (dto.medicalNotes && !hasSensitivePerm) {
+          throw new ForbiddenException({
+            code: ErrorCode.FORBIDDEN,
+            message: 'You do not have permission to record sensitive medical notes',
+          });
+        }
+
         // Check national ID collision within tenant if provided
         if (dto.nationalId) {
           const existingNationalId = await tx.player.findFirst({
@@ -392,19 +431,22 @@ export class PlayersService {
           },
         });
 
-        await this.auditService.logEvent({
-          tenantId: tenantContext.tenantId,
-          actorUserId: tenantContext.actorUserId,
-          action: 'PLAYER_REGISTER',
-          resourceType: 'Player',
-          resourceId: player.id,
-          metadata: {
-            playerName: `${player.firstName} ${player.lastName}`,
-            branchId: branch.id,
-            branchName: branch.name,
-            guardianName: `${guardian.firstName} ${guardian.lastName}`,
+        await this.auditService.logEvent(
+          {
+            tenantId: tenantContext.tenantId,
+            actorUserId: tenantContext.actorUserId,
+            action: 'PLAYER_REGISTER',
+            resourceType: 'Player',
+            resourceId: player.id,
+            metadata: {
+              playerName: `${player.firstName} ${player.lastName}`,
+              branchId: branch.id,
+              branchName: branch.name,
+              guardianName: `${guardian.firstName} ${guardian.lastName}`,
+            },
           },
-        });
+          tx,
+        );
 
         return {
           id: player.id,
@@ -511,6 +553,39 @@ export class PlayersService {
           }
         }
 
+        const hasSensitivePerm = Boolean(
+          tenantContext.permissions?.includes(Permission.PLAYERS_SENSITIVE_READ) ||
+          (tenantContext.role &&
+            hasPermission(tenantContext.role, Permission.PLAYERS_SENSITIVE_READ)),
+        );
+
+        if (
+          dto.medicalNotes !== undefined &&
+          dto.medicalNotes !== existing.medicalNotes &&
+          !hasSensitivePerm
+        ) {
+          throw new ForbiddenException({
+            code: ErrorCode.FORBIDDEN,
+            message: 'You do not have permission to modify sensitive medical notes',
+          });
+        }
+
+        if (dto.nationalId && dto.nationalId.trim() !== (existing.nationalId || '')) {
+          const collision = await tx.player.findFirst({
+            where: {
+              tenantId: tenantContext.tenantId,
+              nationalId: dto.nationalId.trim(),
+              NOT: { id: playerId },
+            },
+          });
+          if (collision) {
+            throw new ConflictException({
+              code: ErrorCode.CONFLICT,
+              message: 'A player with this National ID is already registered in this academy',
+            });
+          }
+        }
+
         const updateData: Prisma.PlayerUpdateInput = {};
         if (dto.firstName !== undefined) updateData.firstName = dto.firstName.trim();
         if (dto.lastName !== undefined) updateData.lastName = dto.lastName.trim();
@@ -558,17 +633,25 @@ export class PlayersService {
           },
         });
 
-        await this.auditService.logEvent({
-          tenantId: tenantContext.tenantId,
-          actorUserId: tenantContext.actorUserId,
-          action: 'PLAYER_UPDATE',
-          resourceType: 'Player',
-          resourceId: updated.id,
-          metadata: {
-            changedFields: Object.keys(updateData),
+        await this.auditService.logEvent(
+          {
+            tenantId: tenantContext.tenantId,
+            actorUserId: tenantContext.actorUserId,
+            action: 'PLAYER_UPDATE',
+            resourceType: 'Player',
+            resourceId: updated.id,
+            metadata: {
+              changedFields: Object.keys(updateData),
+            },
           },
-        });
+          tx,
+        );
 
+        const canViewSensitive = Boolean(
+          tenantContext.permissions?.includes(Permission.PLAYERS_SENSITIVE_READ) ||
+          (tenantContext.role &&
+            hasPermission(tenantContext.role, Permission.PLAYERS_SENSITIVE_READ)),
+        );
         const primaryGuardian = updated.guardians[0] || null;
         const activeEnrollment = updated.enrollments[0] || null;
 
@@ -579,7 +662,7 @@ export class PlayersService {
           lastName: updated.lastName,
           gender: updated.gender as PlayerGender,
           dateOfBirth: updated.dateOfBirth.toISOString().slice(0, 10),
-          nationalId: updated.nationalId,
+          nationalId: canViewSensitive ? updated.nationalId : null,
           photoUrl: updated.photoUrl,
           emergencyContactName: updated.emergencyContactName,
           emergencyContactPhone: updated.emergencyContactPhone,
