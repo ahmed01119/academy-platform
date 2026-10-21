@@ -90,6 +90,30 @@ enum EnrollmentStatus {
   COMPLETED
 }
 
+enum GroupStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum GroupMemberStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum ScheduleStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum AttendanceEventSource {
+  MANUAL
+  QR_CHECKIN
+  BULK_MARK
+  SYSTEM
+}
+
 /// Global user identity (one user can belong to multiple academies).
 model User {
   id                         String    @id @default(uuid()) @db.Uuid
@@ -113,6 +137,8 @@ model User {
   refreshTokens      RefreshToken[]
   sentInvitations    Invitation[]       @relation("UserSentInvitations")
   managedBranches    Branch[]           @relation("BranchManagerUser")
+  groupCoaches       GroupCoach[]
+  coachedSessions    AttendanceSession[] @relation("SessionCoachUser")
 
   @@map("users")
 }
@@ -164,6 +190,8 @@ model Tenant {
   players            Player[]
   guardians          Guardian[]
   playerEnrollments  PlayerEnrollment[]
+  trainingGroups     TrainingGroup[]
+  attendanceEvents   AttendanceEvent[]
 
   @@map("tenants")
 }
@@ -234,6 +262,7 @@ model Branch {
   invitations        Invitation[]
   attendanceSessions AttendanceSession[]
   playerEnrollments  PlayerEnrollment[]
+  trainingGroups     TrainingGroup[]
 
   @@unique([tenantId, code])
   @@unique([tenantId, id])
@@ -283,25 +312,34 @@ model AttendanceSession {
   id             String        @id @default(uuid()) @db.Uuid
   tenantId       String        @map("tenant_id") @db.Uuid
   branchId       String        @map("branch_id") @db.Uuid
+  groupId        String?       @map("group_id") @db.Uuid
+  coachUserId    String?       @map("coach_user_id") @db.Uuid
   sport          SportCode     @default(FOOTBALL)
   groupName      String        @map("group_name")
   sessionDate    DateTime      @map("session_date") @db.Date
   startTime      String        @map("start_time")
   endTime        String        @map("end_time")
   status         SessionStatus @default(SCHEDULED)
+  qrCodeSecret   String?       @map("qr_code_secret")
+  qrCodeExpiresAt DateTime?    @map("qr_code_expires_at") @db.Timestamptz(3)
   closedAt       DateTime?     @map("closed_at") @db.Timestamptz(3)
   closedByUserId String?       @map("closed_by_user_id") @db.Uuid
   createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt      DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  tenant  Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  branch              Branch                  @relation(fields: [tenantId, branchId], references: [tenantId, id], onDelete: Cascade)
-  records             AttendanceRecord[]
-  idempotencyRecords  AttendanceIdempotency[]
+  tenant             Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch             Branch                  @relation(fields: [tenantId, branchId], references: [tenantId, id], onDelete: Cascade)
+  group              TrainingGroup?          @relation(fields: [tenantId, groupId], references: [tenantId, id], onDelete: SetNull)
+  coachUser          User?                   @relation("SessionCoachUser", fields: [coachUserId], references: [id], onDelete: SetNull)
+  records            AttendanceRecord[]
+  idempotencyRecords AttendanceIdempotency[]
+  events             AttendanceEvent[]
 
   @@unique([tenantId, id])
   @@index([tenantId, sessionDate])
   @@index([branchId])
+  @@index([groupId])
+  @@index([coachUserId])
   @@map("attendance_sessions")
 }
 
@@ -321,6 +359,7 @@ model AttendanceRecord {
 
   session     AttendanceSession      @relation(fields: [tenantId, sessionId], references: [tenantId, id], onDelete: Cascade)
   corrections AttendanceCorrection[]
+  events      AttendanceEvent[]
 
   @@unique([sessionId, playerId])
   @@unique([tenantId, id])
@@ -384,6 +423,8 @@ model Player {
   tenant      Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   guardians   Guardian[]
   enrollments PlayerEnrollment[]
+  groupMemberships GroupMember[]
+  attendanceEvents AttendanceEvent[]
 
   @@unique([tenantId, id])
   @@index([tenantId])
@@ -441,4 +482,124 @@ model PlayerEnrollment {
   @@index([tenantId, status])
   @@map("player_enrollments")
 }
+
+/// Training group / squad in an academy branch.
+model TrainingGroup {
+  id          String      @id @default(uuid()) @db.Uuid
+  tenantId    String      @map("tenant_id") @db.Uuid
+  branchId    String      @map("branch_id") @db.Uuid
+  sport       SportCode   @default(FOOTBALL)
+  name        String
+  description String?
+  ageCategory String?     @map("age_category")
+  capacity    Int?
+  status      GroupStatus @default(ACTIVE)
+  createdAt   DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime    @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  tenant    Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch    Branch              @relation(fields: [tenantId, branchId], references: [tenantId, id], onDelete: Restrict)
+  coaches   GroupCoach[]
+  members   GroupMember[]
+  schedules TrainingSchedule[]
+  sessions  AttendanceSession[]
+
+  @@unique([tenantId, id])
+  @@index([tenantId])
+  @@index([branchId])
+  @@index([tenantId, status])
+  @@map("training_groups")
+}
+
+/// Coach assignment to a training group.
+model GroupCoach {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  groupId     String   @map("group_id") @db.Uuid
+  coachUserId String   @map("coach_user_id") @db.Uuid
+  isHeadCoach Boolean  @default(false) @map("is_head_coach")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  group     TrainingGroup @relation(fields: [tenantId, groupId], references: [tenantId, id], onDelete: Cascade)
+  coachUser User          @relation(fields: [coachUserId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, id])
+  @@unique([groupId, coachUserId])
+  @@index([tenantId])
+  @@index([coachUserId])
+  @@map("group_coaches")
+}
+
+/// Player enrollment in a specific training group.
+model GroupMember {
+  id        String            @id @default(uuid()) @db.Uuid
+  tenantId  String            @map("tenant_id") @db.Uuid
+  groupId   String            @map("group_id") @db.Uuid
+  playerId  String            @map("player_id") @db.Uuid
+  status    GroupMemberStatus @default(ACTIVE)
+  startDate DateTime          @default(now()) @map("start_date") @db.Date
+  endDate   DateTime?         @map("end_date") @db.Date
+  createdAt DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  group  TrainingGroup @relation(fields: [tenantId, groupId], references: [tenantId, id], onDelete: Cascade)
+  player Player        @relation(fields: [tenantId, playerId], references: [tenantId, id], onDelete: Cascade)
+
+  @@unique([tenantId, id])
+  @@unique([groupId, playerId])
+  @@index([tenantId])
+  @@index([playerId])
+  @@index([groupId, status])
+  @@map("group_members")
+}
+
+/// Recurring training schedule for a group (e.g. Mon & Wed 17:00-18:30).
+model TrainingSchedule {
+  id        String         @id @default(uuid()) @db.Uuid
+  tenantId  String         @map("tenant_id") @db.Uuid
+  groupId   String         @map("group_id") @db.Uuid
+  dayOfWeek Int            @map("day_of_week")
+  startTime String         @map("start_time")
+  endTime   String         @map("end_time")
+  location  String?
+  status    ScheduleStatus @default(ACTIVE)
+  createdAt DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  group TrainingGroup @relation(fields: [tenantId, groupId], references: [tenantId, id], onDelete: Cascade)
+
+  @@unique([tenantId, id])
+  @@index([tenantId])
+  @@index([groupId])
+  @@map("training_schedules")
+}
+
+/// Append-only immutable log of every attendance marking, QR scan, and status change.
+model AttendanceEvent {
+  id             String                @id @default(uuid()) @db.Uuid
+  tenantId       String                @map("tenant_id") @db.Uuid
+  recordId       String                @map("record_id") @db.Uuid
+  sessionId      String                @map("session_id") @db.Uuid
+  playerId       String                @map("player_id") @db.Uuid
+  actorUserId    String?               @map("actor_user_id") @db.Uuid
+  previousStatus AttendanceStatus?     @map("previous_status")
+  newStatus      AttendanceStatus      @map("new_status")
+  source         AttendanceEventSource @default(MANUAL)
+  reason         String?
+  metadata       Json?
+  eventAt        DateTime              @default(now()) @map("event_at") @db.Timestamptz(3)
+
+  tenant  Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  record  AttendanceRecord  @relation(fields: [tenantId, recordId], references: [tenantId, id], onDelete: Cascade)
+  session AttendanceSession @relation(fields: [tenantId, sessionId], references: [tenantId, id], onDelete: Cascade)
+  player  Player            @relation(fields: [tenantId, playerId], references: [tenantId, id], onDelete: Cascade)
+
+  @@unique([tenantId, id])
+  @@index([tenantId, eventAt])
+  @@index([sessionId])
+  @@index([playerId])
+  @@index([recordId])
+  @@map("attendance_events")
+}
+
 

@@ -4,6 +4,7 @@ packages:
 
 # Explicit allowlist for packages that may run install scripts (pnpm 11+).
 allowBuilds:
+  '@embedded-postgres/windows-x64': set this to true or false
   '@nestjs/core': true
   '@prisma/client': true
   '@prisma/engines': true

@@ -200,6 +200,7 @@ $$;
 
 -- 4. Hardened complete_password_reset
 -- Validates token, updates password, and revokes all refresh tokens
+DROP FUNCTION IF EXISTS public.complete_password_reset(text, text);
 CREATE OR REPLACE FUNCTION public.complete_password_reset(
   p_token text,
   p_new_password_hash text

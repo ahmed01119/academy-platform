@@ -1,25 +1,50 @@
 import type {
   AcademyProfile,
+  AssignCoachRequest,
+  AssignPlayerRequest,
+  AttendanceCorrection,
+  AttendanceEventSummary,
+  AttendanceMutation,
+  AttendanceReportQuery,
+  AttendanceReportSummary,
+  AttendanceRosterItem,
   AuthResponse,
   BranchStatus,
   BranchSummary,
+  BulkAttendanceSubmission,
+  CreateAttendanceSession,
   CreateBranchRequest,
   CreateEnrollmentRequest,
   CreatePlayerRequest,
+  CreateScheduleRequest,
+  CreateTrainingGroupRequest,
   EnrollmentStatus,
   EnrollmentSummary,
   ForgotPasswordRequest,
+  GenerateQrRequest,
+  GenerateQrResponse,
+  GroupCoachSummary,
+  GroupMemberSummary,
+  GroupStatus,
   LoginRequest,
   PlayerDetails,
   PlayerStatus,
   PlayerSummary,
+  QrCheckInRequest,
   RegisterRequest,
   ResetPasswordRequest,
+  SessionDetails,
+  SessionQuery,
+  SessionSummary,
   TenantMembershipSummary,
+  TrainingGroupDetails,
+  TrainingGroupSummary,
+  TrainingScheduleSummary,
   TransferBranchRequest,
   UpdateAcademySettings,
   UpdateBranchRequest,
   UpdatePlayerRequest,
+  UpdateTrainingGroupRequest,
   UserSummary,
 } from '@academy/shared';
 
@@ -373,6 +398,194 @@ export const api = {
       return request(`/enrollments/${id}/transfer`, {
         method: 'POST',
         body: JSON.stringify(data),
+      });
+    },
+  },
+
+  groups: {
+    async list(params?: {
+      search?: string;
+      branchId?: string;
+      status?: GroupStatus;
+      page?: number;
+      limit?: number;
+    }): Promise<{
+      items: TrainingGroupSummary[];
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    }> {
+      const query = new URLSearchParams();
+      if (params?.search) query.set('search', params.search);
+      if (params?.branchId) query.set('branchId', params.branchId);
+      if (params?.status) query.set('status', params.status);
+      if (params?.page) query.set('page', String(params.page));
+      if (params?.limit) query.set('limit', String(params.limit));
+      const qs = query.toString() ? `?${query.toString()}` : '';
+      return request(`/groups${qs}`, {
+        method: 'GET',
+      });
+    },
+
+    async get(id: string): Promise<TrainingGroupDetails> {
+      return request(`/groups/${id}`, {
+        method: 'GET',
+      });
+    },
+
+    async create(data: CreateTrainingGroupRequest): Promise<TrainingGroupSummary> {
+      return request('/groups', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
+
+    async update(id: string, data: UpdateTrainingGroupRequest): Promise<TrainingGroupSummary> {
+      return request(`/groups/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      });
+    },
+
+    async assignCoach(groupId: string, data: AssignCoachRequest): Promise<GroupCoachSummary> {
+      return request(`/groups/${groupId}/coaches`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
+
+    async removeCoach(groupId: string, coachUserId: string): Promise<{ success: boolean }> {
+      return request(`/groups/${groupId}/coaches/${coachUserId}`, {
+        method: 'DELETE',
+      });
+    },
+
+    async assignPlayer(groupId: string, data: AssignPlayerRequest): Promise<GroupMemberSummary> {
+      return request(`/groups/${groupId}/members`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
+
+    async removePlayer(groupId: string, playerId: string): Promise<{ success: boolean }> {
+      return request(`/groups/${groupId}/members/${playerId}`, {
+        method: 'DELETE',
+      });
+    },
+
+    async createSchedule(
+      groupId: string,
+      data: CreateScheduleRequest,
+    ): Promise<TrainingScheduleSummary> {
+      return request(`/groups/${groupId}/schedules`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
+
+    async deleteSchedule(groupId: string, scheduleId: string): Promise<{ success: boolean }> {
+      return request(`/groups/${groupId}/schedules/${scheduleId}`, {
+        method: 'DELETE',
+      });
+    },
+  },
+
+  attendance: {
+    async listSessions(params?: Partial<SessionQuery>): Promise<{
+      items: SessionSummary[];
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    }> {
+      const query = new URLSearchParams();
+      if (params?.branchId) query.set('branchId', params.branchId);
+      if (params?.groupId) query.set('groupId', params.groupId);
+      if (params?.coachUserId) query.set('coachUserId', params.coachUserId);
+      if (params?.status) query.set('status', params.status);
+      if (params?.dateFrom) query.set('dateFrom', params.dateFrom);
+      if (params?.dateTo) query.set('dateTo', params.dateTo);
+      if (params?.page) query.set('page', String(params.page));
+      if (params?.limit) query.set('limit', String(params.limit));
+      const qs = query.toString() ? `?${query.toString()}` : '';
+      return request(`/attendance/sessions${qs}`, {
+        method: 'GET',
+      });
+    },
+
+    async getSession(id: string): Promise<SessionDetails> {
+      return request(`/attendance/sessions/${id}`, {
+        method: 'GET',
+      });
+    },
+
+    async createSession(data: CreateAttendanceSession): Promise<SessionSummary> {
+      return request('/attendance/sessions', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
+
+    async closeSession(id: string): Promise<SessionSummary> {
+      return request(`/attendance/sessions/${id}/close`, {
+        method: 'POST',
+      });
+    },
+
+    async generateQr(id: string, data?: GenerateQrRequest): Promise<GenerateQrResponse> {
+      return request(`/attendance/sessions/${id}/qr`, {
+        method: 'POST',
+        body: JSON.stringify(data || {}),
+      });
+    },
+
+    async checkInViaQr(sessionId: string, data: QrCheckInRequest): Promise<AttendanceRosterItem> {
+      return request(`/attendance/sessions/${sessionId}/checkin-qr`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
+
+    async recordAttendance(data: AttendanceMutation): Promise<AttendanceRosterItem> {
+      return request('/attendance/records', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
+
+    async bulkRecordAttendance(
+      data: BulkAttendanceSubmission,
+    ): Promise<{ count: number; updated: AttendanceRosterItem[] }> {
+      return request('/attendance/records/bulk', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
+
+    async correctAttendance(data: AttendanceCorrection): Promise<AttendanceRosterItem> {
+      return request('/attendance/corrections', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
+
+    async getSessionEvents(sessionId: string): Promise<AttendanceEventSummary[]> {
+      return request(`/attendance/sessions/${sessionId}/events`, {
+        method: 'GET',
+      });
+    },
+
+    async getReports(params?: AttendanceReportQuery): Promise<AttendanceReportSummary> {
+      const query = new URLSearchParams();
+      if (params?.branchId) query.set('branchId', params.branchId);
+      if (params?.groupId) query.set('groupId', params.groupId);
+      if (params?.playerId) query.set('playerId', params.playerId);
+      if (params?.dateFrom) query.set('dateFrom', params.dateFrom);
+      if (params?.dateTo) query.set('dateTo', params.dateTo);
+      const qs = query.toString() ? `?${query.toString()}` : '';
+      return request(`/attendance/reports${qs}`, {
+        method: 'GET',
       });
     },
   },

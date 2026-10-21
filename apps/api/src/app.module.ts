@@ -10,6 +10,7 @@ import { HealthModule } from './modules/health/health.module';
 import { BranchesModule } from './modules/branches/branches.module';
 import { PlayersModule } from './modules/players/players.module';
 import { EnrollmentsModule } from './modules/enrollments/enrollments.module';
+import { GroupsModule } from './modules/groups/groups.module';
 
 /**
  * Root module for the modular monolith.
@@ -29,6 +30,7 @@ import { EnrollmentsModule } from './modules/enrollments/enrollments.module';
     BranchesModule,
     PlayersModule,
     EnrollmentsModule,
+    GroupsModule,
   ],
 })
 export class AppModule {}
