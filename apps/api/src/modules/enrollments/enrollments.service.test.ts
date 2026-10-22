@@ -22,6 +22,18 @@ interface MockPrisma {
   branch: {
     findUnique: MockFn;
   };
+  trainingGroup: {
+    findMany: MockFn;
+  };
+  groupMember: {
+    updateMany: MockFn;
+  };
+  attendanceSession: {
+    findMany: MockFn;
+  };
+  attendanceRecord: {
+    deleteMany: MockFn;
+  };
   withTenantTransaction: MockFn;
 }
 
@@ -55,6 +67,18 @@ describe('EnrollmentsService', () => {
       },
       branch: {
         findUnique: vi.fn(),
+      },
+      trainingGroup: {
+        findMany: vi.fn().mockResolvedValue([]),
+      },
+      groupMember: {
+        updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+      },
+      attendanceSession: {
+        findMany: vi.fn().mockResolvedValue([]),
+      },
+      attendanceRecord: {
+        deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
       },
       withTenantTransaction: vi.fn().mockImplementation((_opts, fn) => fn(mockPrisma)),
     };
@@ -316,6 +340,74 @@ describe('EnrollmentsService', () => {
           targetBranchId: 'same-branch-id',
         }),
       ).rejects.toThrow(BadRequestException);
+    });
+
+    it('deactivates active source branch group memberships and cleans up unmarked future sessions', async () => {
+      mockPrisma.playerEnrollment.findUnique.mockResolvedValue({
+        id: 'enrollment-source-1',
+        tenantId: mockTenantContext.tenantId,
+        playerId: 'player-1',
+        branchId: 'branch-source-1',
+        sport: 'FOOTBALL',
+        status: 'ACTIVE',
+        notes: 'Initial enrollment',
+        branch: { id: 'branch-source-1', name: 'الفرع القديم' },
+        player: { firstName: 'Tsubasa', lastName: 'Ozora', status: 'ACTIVE' },
+      });
+
+      mockPrisma.branch.findUnique.mockResolvedValue({
+        id: 'branch-target-2',
+        name: 'فرع المعادي',
+        status: 'ACTIVE',
+        capacity: 100,
+      });
+      mockPrisma.playerEnrollment.count.mockResolvedValue(20);
+
+      mockPrisma.trainingGroup.findMany.mockResolvedValue([{ id: 'group-source-1' }]);
+      mockPrisma.attendanceSession.findMany.mockResolvedValue([{ id: 'session-future-1' }]);
+      mockPrisma.playerEnrollment.update.mockResolvedValue({});
+      mockPrisma.playerEnrollment.create.mockResolvedValue({
+        id: 'enrollment-new-2',
+        tenantId: mockTenantContext.tenantId,
+        playerId: 'player-1',
+        branchId: 'branch-target-2',
+        sport: 'FOOTBALL',
+        status: 'ACTIVE',
+        startDate: new Date('2026-11-01T00:00:00Z'),
+        notes: 'نقل الفرع',
+        branch: { id: 'branch-target-2', name: 'فرع المعادي', code: 'MAADI' },
+        player: { id: 'player-1', firstName: 'Tsubasa', lastName: 'Ozora', photoUrl: null },
+        createdAt: new Date('2026-11-01T00:00:00Z'),
+        updatedAt: new Date('2026-11-01T00:00:00Z'),
+      });
+
+      await service.transferBranch(mockTenantContext, 'enrollment-source-1', {
+        targetBranchId: 'branch-target-2',
+        effectiveDate: '2026-11-01',
+      });
+
+      expect(mockPrisma.groupMember.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            playerId: 'player-1',
+            groupId: { in: ['group-source-1'] },
+            status: 'ACTIVE',
+          }),
+          data: expect.objectContaining({
+            status: 'INACTIVE',
+          }),
+        }),
+      );
+
+      expect(mockPrisma.attendanceRecord.deleteMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            playerId: 'player-1',
+            sessionId: { in: ['session-future-1'] },
+            status: 'UNMARKED',
+          }),
+        }),
+      );
     });
   });
 });

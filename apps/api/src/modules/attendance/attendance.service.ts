@@ -485,6 +485,23 @@ export class AttendanceService {
           });
         }
 
+        // Verify player has active enrollment in the session branch (prevents stale access after transfers)
+        const activeEnrollment = await tx.playerEnrollment.findFirst({
+          where: {
+            tenantId: tenantContext.tenantId,
+            playerId: dto.playerId,
+            branchId: session.branchId,
+            status: 'ACTIVE',
+          },
+        });
+
+        if (!activeEnrollment) {
+          throw new BadRequestException({
+            code: ErrorCode.VALIDATION_FAILED,
+            message: 'اللاعب غير مسجل بنشاط في هذا الفرع (Player is not actively enrolled in this branch)',
+          });
+        }
+
         // Find or create attendance record for this player
         let record = await tx.attendanceRecord.findUnique({
           where: {
@@ -652,6 +669,22 @@ export class AttendanceService {
         const updatedRecords = [];
 
         for (const item of dto.records) {
+          const activeEnrollment = await tx.playerEnrollment.findFirst({
+            where: {
+              tenantId: tenantContext.tenantId,
+              playerId: item.playerId,
+              branchId: session.branchId,
+              status: 'ACTIVE',
+            },
+          });
+
+          if (!activeEnrollment) {
+            throw new BadRequestException({
+              code: ErrorCode.VALIDATION_FAILED,
+              message: `اللاعب ${item.playerId} غير مسجل بنشاط في هذا الفرع (Player is not actively enrolled in this branch)`,
+            });
+          }
+
           let record = await tx.attendanceRecord.findUnique({
             where: {
               sessionId_playerId: {
@@ -871,6 +904,22 @@ export class AttendanceService {
           throw new BadRequestException({
             code: ErrorCode.VALIDATION_FAILED,
             message: 'Player is not registered or not active',
+          });
+        }
+
+        const activeEnrollment = await tx.playerEnrollment.findFirst({
+          where: {
+            tenantId: tenantContext.tenantId,
+            playerId: dto.playerId,
+            branchId: session.branchId,
+            status: 'ACTIVE',
+          },
+        });
+
+        if (!activeEnrollment) {
+          throw new BadRequestException({
+            code: ErrorCode.VALIDATION_FAILED,
+            message: 'اللاعب غير مسجل بنشاط في هذا الفرع (Player is not actively enrolled in this branch)',
           });
         }
 

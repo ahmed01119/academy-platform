@@ -12,7 +12,7 @@ import {
   ErrorCode,
   type GuardianChildSummary,
   type GuardianPortalData,
-  type PlayerEvaluation,
+  type PlayerPortalEvaluation,
   type PlayerPortalProfile,
   type TenantContext,
 } from '@academy/shared';
@@ -45,7 +45,7 @@ export class PortalService {
       absent: number;
       attendanceRate: number;
     };
-    recentEvaluations: PlayerEvaluation[];
+    recentEvaluations: PlayerPortalEvaluation[];
   }> {
     return this.prisma.withPortalUserTransaction({ actorUserId }, async (tx) => {
       const player = await tx.player.findFirst({

@@ -392,6 +392,53 @@ export class EnrollmentsService {
           },
         });
 
+        // 1b. Deactivate all active group memberships in the source branch to eliminate stale branch access
+        const sourceBranchGroups = await tx.trainingGroup.findMany({
+          where: {
+            tenantId: tenantContext.tenantId,
+            branchId: sourceEnrollment.branchId,
+          },
+          select: { id: true },
+        });
+
+        if (sourceBranchGroups.length > 0) {
+          const sourceGroupIds = sourceBranchGroups.map((g) => g.id);
+          await tx.groupMember.updateMany({
+            where: {
+              tenantId: tenantContext.tenantId,
+              playerId: sourceEnrollment.playerId,
+              groupId: { in: sourceGroupIds },
+              status: 'ACTIVE',
+            },
+            data: {
+              status: 'INACTIVE',
+              endDate: effectiveDate,
+            },
+          });
+        }
+
+        // 1c. Remove any UNMARKED future attendance records in the source branch so player does not linger on old rosters
+        const futureSourceSessions = await tx.attendanceSession.findMany({
+          where: {
+            tenantId: tenantContext.tenantId,
+            branchId: sourceEnrollment.branchId,
+            status: { in: ['SCHEDULED', 'IN_PROGRESS'] },
+            sessionDate: { gte: new Date(effectiveDate.toISOString().slice(0, 10)) },
+          },
+          select: { id: true },
+        });
+
+        if (futureSourceSessions.length > 0) {
+          await tx.attendanceRecord.deleteMany({
+            where: {
+              tenantId: tenantContext.tenantId,
+              playerId: sourceEnrollment.playerId,
+              sessionId: { in: futureSourceSessions.map((s) => s.id) },
+              status: 'UNMARKED',
+            },
+          });
+        }
+
         // 2. Create new enrollment in target branch
         const newEnrollment = await tx.playerEnrollment.create({
           data: {

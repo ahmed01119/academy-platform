@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../lib/auth-context';
+import { canAccessAdminRoutes, getRoleHomeRoute } from '../../lib/role-routing';
 import { Navbar } from '../../components/Navbar';
 import { api } from '../../lib/api-client';
 import type { BranchSummary, PlayerSummary } from '@academy/shared';
@@ -35,10 +36,16 @@ export default function DashboardPage() {
   const [isFetchingData, setIsFetchingData] = useState(false);
 
   useEffect(() => {
-    if (!isLoading && !user) {
-      router.push('/login');
+    if (!isLoading) {
+      if (!user) {
+        router.push('/login');
+        return;
+      }
+      if (!canAccessAdminRoutes(user, activeTenant)) {
+        router.push(getRoleHomeRoute(user, activeTenant));
+      }
     }
-  }, [user, isLoading, router]);
+  }, [user, activeTenant, isLoading, router]);
 
   useEffect(() => {
     if (user && activeTenant) {
