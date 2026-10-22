@@ -1,6 +1,11 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { AttendanceService } from './attendance.service';
-import { BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import type { PrismaService } from '../database/prisma.service';
 import type { AuditService } from '../audit/audit.service';
 import type { TenantContext } from '@academy/shared';
@@ -41,10 +46,14 @@ interface MockPrisma {
   };
   player: {
     findUnique: MockFn;
+    findFirst: MockFn;
     findMany: MockFn;
   };
   playerEnrollment: {
     findFirst: MockFn;
+  };
+  tenant: {
+    findUnique: MockFn;
   };
   user: {
     findMany: MockFn;
@@ -98,10 +107,18 @@ describe('AttendanceService', () => {
       },
       player: {
         findUnique: vi.fn(),
+        findFirst: vi.fn(),
         findMany: vi.fn().mockResolvedValue([]),
       },
       playerEnrollment: {
         findFirst: vi.fn().mockResolvedValue({ id: 'enr-1', status: 'ACTIVE' }),
+      },
+      tenant: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: tenantContext.tenantId,
+          timezone: 'Africa/Cairo',
+          latenessGraceMinutes: 15,
+        }),
       },
       user: {
         findMany: vi.fn().mockResolvedValue([]),
@@ -536,6 +553,231 @@ describe('AttendanceService', () => {
       expect(report.attendanceRate).toBe(75); // (2+1)/4 = 75%
       expect(report.byGroup).toHaveLength(1);
       expect(report.byBranch).toHaveLength(1);
+    });
+  });
+
+  describe('scanPlayerQr', () => {
+    const mockSession = {
+      id: '00000000-0000-4000-8000-000000000301',
+      tenantId: tenantContext.tenantId,
+      branchId: tenantContext.branchId,
+      groupName: 'U14 Boys',
+      sessionDate: new Date('2026-10-22T00:00:00Z'),
+      startTime: '10:00',
+      endTime: '11:30',
+      status: 'SCHEDULED',
+      branch: { id: tenantContext.branchId, name: 'فرع مدينة نصر' },
+    };
+
+    const mockPlayer = {
+      id: '00000000-0000-4000-8000-000000000401',
+      tenantId: tenantContext.tenantId,
+      firstName: 'أحمد',
+      lastName: 'حسام',
+      qrCardCode: 'card_hex_code_123',
+      membershipNumber: 'ACAD-2026-401',
+      photoUrl: null,
+      status: 'ACTIVE',
+      qrCardRevokedAt: null,
+    };
+
+    it('records on-time check-in (PRESENT) when scanned within grace period', async () => {
+      mockPrisma.attendanceSession.findUnique.mockResolvedValue(mockSession);
+      mockPrisma.player.findFirst.mockResolvedValue(mockPlayer);
+      mockPrisma.attendanceRecord.findUnique.mockResolvedValue(null);
+      mockPrisma.attendanceRecord.create.mockResolvedValue({
+        id: 'rec-1',
+        sessionId: mockSession.id,
+        playerId: mockPlayer.id,
+        status: 'PRESENT',
+        checkInTime: new Date(),
+        version: 1,
+      });
+
+      const scanTime = new Date('2026-10-22T07:05:00Z');
+      const res = await service.scanPlayerQr(tenantContext, mockSession.id, {
+        qrCardCode: 'card_hex_code_123',
+        deviceObservedTime: scanTime.toISOString(),
+      });
+
+      expect(res.success).toBe(true);
+      expect(res.alreadyCheckedIn).toBe(false);
+      expect(res.status).toBe('PRESENT');
+      expect(res.latenessMinutes).toBe(0);
+      expect(res.player.id).toBe(mockPlayer.id);
+      expect(mockPrisma.attendanceEvent.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            source: 'QR_CHECKIN',
+            newStatus: 'PRESENT',
+          }),
+        }),
+      );
+    });
+
+    it('records late check-in (LATE) when scanned after grace period', async () => {
+      mockPrisma.attendanceSession.findUnique.mockResolvedValue(mockSession);
+      mockPrisma.player.findFirst.mockResolvedValue(mockPlayer);
+      mockPrisma.attendanceRecord.findUnique.mockResolvedValue(null);
+      mockPrisma.attendanceRecord.create.mockResolvedValue({
+        id: 'rec-1',
+        sessionId: mockSession.id,
+        playerId: mockPlayer.id,
+        status: 'LATE',
+        checkInTime: new Date(),
+        version: 1,
+      });
+
+      const scanTime = new Date('2026-10-22T07:35:00Z');
+      const res = await service.scanPlayerQr(tenantContext, mockSession.id, {
+        qrCardCode: 'card_hex_code_123',
+        deviceObservedTime: scanTime.toISOString(),
+      });
+
+      expect(res.success).toBe(true);
+      expect(res.status).toBe('LATE');
+      expect(res.latenessMinutes).toBe(35);
+      expect(mockPrisma.attendanceEvent.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            source: 'QR_CHECKIN',
+            newStatus: 'LATE',
+          }),
+        }),
+      );
+    });
+
+    it('handles idempotent duplicate scan if already checked in', async () => {
+      mockPrisma.attendanceSession.findUnique.mockResolvedValue(mockSession);
+      mockPrisma.player.findFirst.mockResolvedValue(mockPlayer);
+      mockPrisma.attendanceRecord.findUnique.mockResolvedValue({
+        id: 'rec-1',
+        sessionId: mockSession.id,
+        playerId: mockPlayer.id,
+        status: 'PRESENT',
+        checkInTime: new Date('2026-10-22T07:02:00Z'),
+        version: 1,
+      });
+
+      const res = await service.scanPlayerQr(tenantContext, mockSession.id, {
+        qrCardCode: 'card_hex_code_123',
+      });
+
+      expect(res.success).toBe(true);
+      expect(res.alreadyCheckedIn).toBe(true);
+      expect(res.status).toBe('PRESENT');
+      expect(mockPrisma.attendanceRecord.create).not.toHaveBeenCalled();
+      expect(mockPrisma.attendanceRecord.update).not.toHaveBeenCalled();
+    });
+
+    it('rejects scan when card code is not found', async () => {
+      mockPrisma.attendanceSession.findUnique.mockResolvedValue(mockSession);
+      mockPrisma.player.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.scanPlayerQr(tenantContext, mockSession.id, {
+          qrCardCode: 'non_existent_code',
+        }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('rejects scan when card is revoked', async () => {
+      mockPrisma.attendanceSession.findUnique.mockResolvedValue(mockSession);
+      mockPrisma.player.findFirst.mockResolvedValue({
+        ...mockPlayer,
+        qrCardRevokedAt: new Date(),
+      });
+
+      await expect(
+        service.scanPlayerQr(tenantContext, mockSession.id, {
+          qrCardCode: 'card_hex_code_123',
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejects scan when player is not enrolled in session branch', async () => {
+      mockPrisma.attendanceSession.findUnique.mockResolvedValue(mockSession);
+      mockPrisma.player.findFirst.mockResolvedValue(mockPlayer);
+      mockPrisma.playerEnrollment.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.scanPlayerQr(tenantContext, mockSession.id, {
+          qrCardCode: 'card_hex_code_123',
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('syncOfflineBatch', () => {
+    const mockSession = {
+      id: '00000000-0000-4000-8000-000000000301',
+      tenantId: tenantContext.tenantId,
+      branchId: tenantContext.branchId,
+      sessionDate: new Date('2026-10-22T00:00:00Z'),
+      startTime: '10:00',
+      status: 'SCHEDULED',
+    };
+
+    it('syncs offline scans batch and flags isOfflineSync true', async () => {
+      mockPrisma.attendanceSession.findUnique.mockResolvedValue(mockSession);
+      mockPrisma.player.findFirst.mockResolvedValue({
+        id: 'player-1',
+        firstName: 'عمر',
+        lastName: 'نور',
+        qrCardRevokedAt: null,
+      });
+      mockPrisma.attendanceRecord.findUnique.mockResolvedValue(null);
+      mockPrisma.attendanceRecord.create.mockResolvedValue({
+        id: 'rec-1',
+        status: 'PRESENT',
+      });
+
+      const batch = {
+        sessionId: mockSession.id,
+        items: [
+          {
+            operationId: '00000000-0000-4000-8000-000000000501',
+            qrCardCode: 'offline_card_1',
+            deviceObservedTime: '2026-10-22T07:05:00Z',
+          },
+        ],
+      };
+
+      const res = await service.syncOfflineBatch(tenantContext, batch);
+
+      expect(res.syncedCount).toBe(1);
+      expect(res.failedCount).toBe(0);
+      expect(res.results[0]?.success).toBe(true);
+      expect(mockPrisma.attendanceRecord.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            isOfflineSync: true,
+            syncStatus: 'CONFIRMED',
+          }),
+        }),
+      );
+    });
+
+    it('gracefully handles invalid codes in batch without aborting entire sync', async () => {
+      mockPrisma.attendanceSession.findUnique.mockResolvedValue(mockSession);
+      mockPrisma.player.findFirst.mockResolvedValue(null);
+
+      const batch = {
+        sessionId: mockSession.id,
+        items: [
+          {
+            operationId: '00000000-0000-4000-8000-000000000502',
+            qrCardCode: 'bad_card',
+            deviceObservedTime: '2026-10-22T07:05:00Z',
+          },
+        ],
+      };
+
+      const res = await service.syncOfflineBatch(tenantContext, batch);
+
+      expect(res.syncedCount).toBe(0);
+      expect(res.failedCount).toBe(1);
+      expect(res.results[0]?.success).toBe(false);
     });
   });
 });

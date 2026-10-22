@@ -24,6 +24,7 @@ import {
   Globe2,
   HeartHandshake,
   UserCheck,
+  QrCode,
 } from 'lucide-react';
 
 export function Navbar() {
@@ -114,6 +115,14 @@ export function Navbar() {
                     <CalendarCheck className="h-4 w-4 text-[var(--accent-primary)]" />
                     <span>{t('nav.sessions')}</span>
                   </Link>
+                  <Link
+                    href="/attendance/scanner"
+                    id="nav-link-coach-scanner"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500/20 transition-all"
+                  >
+                    <QrCode className="h-4 w-4 text-emerald-400" />
+                    <span>{t('nav.scanner')}</span>
+                  </Link>
                 </>
               )}
 
@@ -159,6 +168,14 @@ export function Navbar() {
                   >
                     <CalendarCheck className="h-4 w-4 text-[var(--accent-primary)]" />
                     <span>{t('nav.sessions')}</span>
+                  </Link>
+                  <Link
+                    href="/attendance/scanner"
+                    id="nav-link-scanner"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500/20 transition-all"
+                  >
+                    <QrCode className="h-4 w-4 text-emerald-400" />
+                    <span>{t('nav.scanner')}</span>
                   </Link>
                   <Link
                     href="/attendance/reports"

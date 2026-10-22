@@ -404,6 +404,18 @@ export default function SessionAttendancePage() {
 
             {/* Quick Session Actions */}
             <div className="flex flex-wrap items-center gap-3">
+              {/* QR Scanner Direct Camera Link */}
+              {!isClosed && (
+                <Link
+                  href={`/attendance/scanner?sessionId=${sessionId}`}
+                  id="btn-open-scanner"
+                  className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-4 py-2.5 text-xs font-bold text-emerald-950 shadow-lg shadow-emerald-500/20 hover:brightness-110 transition-all cursor-pointer"
+                >
+                  <QrCode className="h-4 w-4" />
+                  <span>ماسح الحضور بالكاميرا</span>
+                </Link>
+              )}
+
               {/* QR Check-In Modal Trigger */}
               {!isClosed && (
                 <button
@@ -413,7 +425,7 @@ export default function SessionAttendancePage() {
                   className="flex items-center gap-2 rounded-xl border border-[#2b4c3e] bg-[#0f1c18] px-4 py-2.5 text-xs font-semibold text-[#45c387] hover:border-[#2f9e6b] transition-all cursor-pointer"
                 >
                   <QrCode className="h-4 w-4" />
-                  <span>رمز QR للتحضير</span>
+                  <span>رمز QR للحصة</span>
                 </button>
               )}
 

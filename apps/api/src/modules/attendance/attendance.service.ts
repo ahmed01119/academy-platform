@@ -21,6 +21,10 @@ import {
   type GenerateQrRequest,
   type GenerateQrResponse,
   type QrCheckInRequest,
+  type ScanPlayerQrRequest,
+  type ScanPlayerQrResponse,
+  type OfflineAttendanceBatchSyncRequest,
+  type OfflineAttendanceBatchSyncResponse,
   type SessionDetails,
   type SessionQuery,
   type SessionSummary,
@@ -1319,6 +1323,541 @@ export class AttendanceService {
           excusedRate,
           byGroup,
           byBranch,
+        };
+      },
+    );
+  }
+
+  /**
+   * Helper to compute lateness comparing check-in timestamp against scheduled start + grace minutes.
+   */
+  private computeLateness(
+    sessionDate: Date,
+    startTime: string,
+    checkInTime: Date,
+    graceMinutes: number,
+    timezone: string = 'Africa/Cairo',
+  ): { isLate: boolean; latenessMinutes: number } {
+    try {
+      const formatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone: timezone || 'Africa/Cairo',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+      });
+
+      const sessionDateStr = sessionDate.toISOString().slice(0, 10);
+      const parts = formatter.formatToParts(checkInTime);
+      const partMap: Record<string, string> = {};
+      for (const part of parts) {
+        partMap[part.type] = part.value;
+      }
+      const checkInDateStr = `${partMap.year}-${partMap.month}-${partMap.day}`;
+      const checkInHours = parseInt(partMap.hour ?? '0', 10);
+      const checkInMinutes = parseInt(partMap.minute ?? '0', 10);
+
+      const [startH, startM] = startTime.split(':').map((s) => parseInt(s, 10));
+      const scheduledMinutes = (startH || 0) * 60 + (startM || 0);
+      const actualMinutes = checkInHours * 60 + checkInMinutes;
+
+      const dayDiffMs =
+        new Date(`${checkInDateStr}T00:00:00Z`).getTime() -
+        new Date(`${sessionDateStr}T00:00:00Z`).getTime();
+      const dayDiffMinutes = Math.round(dayDiffMs / (1000 * 60));
+
+      const totalDiffMinutes = dayDiffMinutes + (actualMinutes - scheduledMinutes);
+
+      if (totalDiffMinutes > graceMinutes) {
+        return {
+          isLate: true,
+          latenessMinutes: totalDiffMinutes,
+        };
+      }
+      return {
+        isLate: false,
+        latenessMinutes: 0,
+      };
+    } catch {
+      return { isLate: false, latenessMinutes: 0 };
+    }
+  }
+
+  /**
+   * Scans a physical/digital player QR card code for attendance check-in.
+   * Compares check-in time against scheduled start time + latenessGraceMinutes.
+   * Emits append-only AttendanceEvent and returns rich scan response.
+   */
+  async scanPlayerQr(
+    tenantContext: TenantContext,
+    sessionId: string,
+    dto: ScanPlayerQrRequest,
+  ): Promise<ScanPlayerQrResponse> {
+    return this.prisma.withTenantTransaction(
+      { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
+      async (tx) => {
+        if (dto.idempotencyKey) {
+          const existingIdempotency = await tx.attendanceIdempotency.findUnique({
+            where: {
+              tenantId_key: {
+                tenantId: tenantContext.tenantId,
+                key: dto.idempotencyKey,
+              },
+            },
+          });
+          if (existingIdempotency?.response) {
+            return existingIdempotency.response as unknown as ScanPlayerQrResponse;
+          }
+        }
+
+        const [session, tenant] = await Promise.all([
+          tx.attendanceSession.findUnique({
+            where: {
+              tenantId_id: {
+                tenantId: tenantContext.tenantId,
+                id: sessionId,
+              },
+            },
+            include: {
+              branch: { select: { id: true, name: true } },
+            },
+          }),
+          tx.tenant.findUnique({
+            where: { id: tenantContext.tenantId },
+            select: { timezone: true, latenessGraceMinutes: true },
+          }),
+        ]);
+
+        if (!session) {
+          throw new NotFoundException({
+            code: ErrorCode.NOT_FOUND,
+            message: 'Attendance session not found',
+          });
+        }
+
+        if (tenantContext.branchId && session.branchId !== tenantContext.branchId) {
+          throw new ForbiddenException({
+            code: ErrorCode.FORBIDDEN,
+            message: 'Access restricted to your assigned branch',
+          });
+        }
+
+        if (session.status === 'CLOSED') {
+          throw new BadRequestException({
+            code: ErrorCode.VALIDATION_FAILED,
+            message: 'Cannot check in players to a closed session',
+          });
+        }
+
+        const player = await tx.player.findFirst({
+          where: {
+            tenantId: tenantContext.tenantId,
+            qrCardCode: dto.qrCardCode.trim(),
+          },
+        });
+
+        if (!player) {
+          throw new NotFoundException({
+            code: ErrorCode.NOT_FOUND,
+            message: 'بطاقة غير صالحة أو غير مسجلة (Invalid or unregistered QR card)',
+          });
+        }
+
+        if (player.qrCardRevokedAt) {
+          throw new BadRequestException({
+            code: ErrorCode.VALIDATION_FAILED,
+            message: 'هذه البطاقة ملغاة أو تم استبدالها (This QR card has been revoked or replaced)',
+          });
+        }
+
+        if (player.status !== 'ACTIVE') {
+          throw new BadRequestException({
+            code: ErrorCode.VALIDATION_FAILED,
+            message: 'اللاعب غير نشط في الأكاديمية (Player is inactive or suspended)',
+          });
+        }
+
+        const activeEnrollment = await tx.playerEnrollment.findFirst({
+          where: {
+            tenantId: tenantContext.tenantId,
+            playerId: player.id,
+            branchId: session.branchId,
+            status: 'ACTIVE',
+          },
+        });
+
+        if (!activeEnrollment) {
+          throw new BadRequestException({
+            code: ErrorCode.VALIDATION_FAILED,
+            message: 'اللاعب غير مسجل بنشاط في هذا الفرع (Player is not actively enrolled in this branch)',
+          });
+        }
+
+        const existingRecord = await tx.attendanceRecord.findUnique({
+          where: {
+            sessionId_playerId: {
+              sessionId,
+              playerId: player.id,
+            },
+          },
+        });
+
+        const checkInTime = new Date();
+        const deviceObservedTime = dto.deviceObservedTime ? new Date(dto.deviceObservedTime) : null;
+
+        if (
+          existingRecord &&
+          (existingRecord.status === 'PRESENT' || existingRecord.status === 'LATE')
+        ) {
+          const res: ScanPlayerQrResponse = {
+            success: true,
+            alreadyCheckedIn: true,
+            status: existingRecord.status as 'PRESENT' | 'LATE',
+            latenessMinutes: 0,
+            checkInTime: existingRecord.checkInTime
+              ? existingRecord.checkInTime.toISOString()
+              : checkInTime.toISOString(),
+            deviceObservedTime: existingRecord.deviceObservedTime
+              ? existingRecord.deviceObservedTime.toISOString()
+              : dto.deviceObservedTime || null,
+            syncStatus: 'CONFIRMED',
+            message: `اللاعب ${player.firstName} ${player.lastName} مسجل حضوره مسبقاً (${
+              existingRecord.status === 'LATE' ? 'متأخر' : 'في الموعد'
+            })`,
+            player: {
+              id: player.id,
+              name: `${player.firstName} ${player.lastName}`,
+              membershipNumber: player.membershipNumber || undefined,
+              photoUrl: player.photoUrl,
+            },
+            session: {
+              id: session.id,
+              groupName: session.groupName,
+              branchName: session.branch.name,
+              sessionDate: session.sessionDate.toISOString().slice(0, 10),
+              startTime: session.startTime,
+            },
+          };
+
+          return res;
+        }
+
+        const graceMinutes = tenant?.latenessGraceMinutes ?? 15;
+        const timezone = tenant?.timezone ?? 'Africa/Cairo';
+        const effectiveTime = deviceObservedTime || checkInTime;
+        const { isLate, latenessMinutes } = this.computeLateness(
+          session.sessionDate,
+          session.startTime,
+          effectiveTime,
+          graceMinutes,
+          timezone,
+        );
+
+        const newStatus = isLate ? 'LATE' : 'PRESENT';
+        const previousStatus = existingRecord?.status || 'UNMARKED';
+
+        let updatedRecord;
+        if (!existingRecord) {
+          updatedRecord = await tx.attendanceRecord.create({
+            data: {
+              tenantId: tenantContext.tenantId,
+              sessionId,
+              playerId: player.id,
+              status: newStatus,
+              checkInTime,
+              deviceObservedTime,
+              isOfflineSync: false,
+              syncStatus: 'CONFIRMED',
+              markedByUserId: tenantContext.actorUserId,
+              version: 1,
+            },
+          });
+        } else {
+          updatedRecord = await tx.attendanceRecord.update({
+            where: { id: existingRecord.id },
+            data: {
+              status: newStatus,
+              checkInTime,
+              deviceObservedTime,
+              isOfflineSync: false,
+              syncStatus: 'CONFIRMED',
+              markedByUserId: tenantContext.actorUserId,
+              version: existingRecord.version + 1,
+            },
+          });
+        }
+
+        await tx.attendanceEvent.create({
+          data: {
+            tenantId: tenantContext.tenantId,
+            recordId: updatedRecord.id,
+            sessionId,
+            playerId: player.id,
+            actorUserId: tenantContext.actorUserId,
+            previousStatus,
+            newStatus,
+            source: 'QR_CHECKIN',
+            reason: isLate
+              ? `تسجيل حضور متأخر (${latenessMinutes} دقيقة)`
+              : 'تسجيل حضور في الموعد عبر بطاقة QR',
+            metadata: {
+              latenessMinutes,
+              graceMinutes,
+              deviceObservedTime: dto.deviceObservedTime || null,
+              qrCardCodePrefix: dto.qrCardCode.slice(0, 8),
+            },
+          },
+        });
+
+        const statusLabel = isLate ? 'متأخر (Late)' : 'في الموعد (On Time)';
+        const res: ScanPlayerQrResponse = {
+          success: true,
+          alreadyCheckedIn: false,
+          status: newStatus,
+          latenessMinutes,
+          checkInTime: checkInTime.toISOString(),
+          deviceObservedTime: dto.deviceObservedTime || null,
+          syncStatus: 'CONFIRMED',
+          message: `تم تسجيل حضور اللاعب ${player.firstName} ${player.lastName} بنجاح [${statusLabel}]`,
+          player: {
+            id: player.id,
+            name: `${player.firstName} ${player.lastName}`,
+            membershipNumber: player.membershipNumber || undefined,
+            photoUrl: player.photoUrl,
+          },
+          session: {
+            id: session.id,
+            groupName: session.groupName,
+            branchName: session.branch.name,
+            sessionDate: session.sessionDate.toISOString().slice(0, 10),
+            startTime: session.startTime,
+          },
+        };
+
+        return res;
+      },
+    );
+  }
+
+  /**
+   * Syncs a batch of offline attendance scans captured by mobile devices without internet.
+   * Preserves deviceObservedTime, sets isOfflineSync = true, resolves conflicts idempotently.
+   */
+  async syncOfflineBatch(
+    tenantContext: TenantContext,
+    dto: OfflineAttendanceBatchSyncRequest,
+  ): Promise<OfflineAttendanceBatchSyncResponse> {
+    return this.prisma.withTenantTransaction(
+      { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
+      async (tx) => {
+        const [session, tenant] = await Promise.all([
+          tx.attendanceSession.findUnique({
+            where: {
+              tenantId_id: {
+                tenantId: tenantContext.tenantId,
+                id: dto.sessionId,
+              },
+            },
+          }),
+          tx.tenant.findUnique({
+            where: { id: tenantContext.tenantId },
+            select: { timezone: true, latenessGraceMinutes: true },
+          }),
+        ]);
+
+        if (!session) {
+          throw new NotFoundException({
+            code: ErrorCode.NOT_FOUND,
+            message: 'Attendance session not found',
+          });
+        }
+
+        if (tenantContext.branchId && session.branchId !== tenantContext.branchId) {
+          throw new ForbiddenException({
+            code: ErrorCode.FORBIDDEN,
+            message: 'Access restricted to your assigned branch',
+          });
+        }
+
+        if (session.status === 'CLOSED') {
+          throw new BadRequestException({
+            code: ErrorCode.VALIDATION_FAILED,
+            message: 'Cannot sync attendance to a closed session',
+          });
+        }
+
+        const graceMinutes = tenant?.latenessGraceMinutes ?? 15;
+        const timezone = tenant?.timezone ?? 'Africa/Cairo';
+        const results = [];
+        let syncedCount = 0;
+        let failedCount = 0;
+
+        for (const item of dto.items) {
+          try {
+            const player = await tx.player.findFirst({
+              where: {
+                tenantId: tenantContext.tenantId,
+                qrCardCode: item.qrCardCode.trim(),
+              },
+            });
+
+            if (!player) {
+              failedCount++;
+              results.push({
+                operationId: item.operationId,
+                success: false,
+                error: 'بطاقة غير صالحة أو غير مسجلة (Invalid QR card code)',
+              });
+              continue;
+            }
+
+            if (player.qrCardRevokedAt) {
+              failedCount++;
+              results.push({
+                operationId: item.operationId,
+                success: false,
+                error: 'البطاقة ملغاة (Revoked QR card)',
+                player: { id: player.id, name: `${player.firstName} ${player.lastName}` },
+              });
+              continue;
+            }
+
+            const activeEnrollment = await tx.playerEnrollment.findFirst({
+              where: {
+                tenantId: tenantContext.tenantId,
+                playerId: player.id,
+                branchId: session.branchId,
+                status: 'ACTIVE',
+              },
+            });
+
+            if (!activeEnrollment) {
+              failedCount++;
+              results.push({
+                operationId: item.operationId,
+                success: false,
+                error: 'اللاعب غير مسجل بنشاط في هذا الفرع (Not enrolled in this branch)',
+                player: { id: player.id, name: `${player.firstName} ${player.lastName}` },
+              });
+              continue;
+            }
+
+            const existingRecord = await tx.attendanceRecord.findUnique({
+              where: {
+                sessionId_playerId: {
+                  sessionId: dto.sessionId,
+                  playerId: player.id,
+                },
+              },
+            });
+
+            if (
+              existingRecord &&
+              (existingRecord.status === 'PRESENT' || existingRecord.status === 'LATE')
+            ) {
+              syncedCount++;
+              results.push({
+                operationId: item.operationId,
+                success: true,
+                status: existingRecord.status,
+                alreadyCheckedIn: true,
+                player: { id: player.id, name: `${player.firstName} ${player.lastName}` },
+              });
+              continue;
+            }
+
+            const deviceObservedTime = new Date(item.deviceObservedTime);
+            const serverCheckInTime = new Date();
+
+            const { isLate, latenessMinutes } = this.computeLateness(
+              session.sessionDate,
+              session.startTime,
+              deviceObservedTime,
+              graceMinutes,
+              timezone,
+            );
+
+            const newStatus = isLate ? 'LATE' : 'PRESENT';
+            const previousStatus = existingRecord?.status || 'UNMARKED';
+
+            let updatedRecord;
+            if (!existingRecord) {
+              updatedRecord = await tx.attendanceRecord.create({
+                data: {
+                  tenantId: tenantContext.tenantId,
+                  sessionId: dto.sessionId,
+                  playerId: player.id,
+                  status: newStatus,
+                  checkInTime: serverCheckInTime,
+                  deviceObservedTime,
+                  isOfflineSync: true,
+                  syncStatus: 'CONFIRMED',
+                  markedByUserId: tenantContext.actorUserId,
+                  version: 1,
+                  remarks: item.reason || 'Offline synced check-in',
+                },
+              });
+            } else {
+              updatedRecord = await tx.attendanceRecord.update({
+                where: { id: existingRecord.id },
+                data: {
+                  status: newStatus,
+                  checkInTime: serverCheckInTime,
+                  deviceObservedTime,
+                  isOfflineSync: true,
+                  syncStatus: 'CONFIRMED',
+                  markedByUserId: tenantContext.actorUserId,
+                  version: existingRecord.version + 1,
+                  remarks: item.reason || existingRecord.remarks,
+                },
+              });
+            }
+
+            await tx.attendanceEvent.create({
+              data: {
+                tenantId: tenantContext.tenantId,
+                recordId: updatedRecord.id,
+                sessionId: dto.sessionId,
+                playerId: player.id,
+                actorUserId: tenantContext.actorUserId,
+                previousStatus,
+                newStatus,
+                source: 'QR_CHECKIN',
+                reason: item.reason || 'Offline batch sync scan',
+                metadata: {
+                  operationId: item.operationId,
+                  deviceObservedTime: item.deviceObservedTime,
+                  latenessMinutes,
+                  isOfflineSync: true,
+                },
+              },
+            });
+
+            syncedCount++;
+            results.push({
+              operationId: item.operationId,
+              success: true,
+              status: newStatus,
+              alreadyCheckedIn: false,
+              player: { id: player.id, name: `${player.firstName} ${player.lastName}` },
+            });
+          } catch (err: unknown) {
+            failedCount++;
+            results.push({
+              operationId: item.operationId,
+              success: false,
+              error: (err as Error)?.message || 'Failed to process item',
+            });
+          }
+        }
+
+        return {
+          syncedCount,
+          failedCount,
+          results,
         };
       },
     );

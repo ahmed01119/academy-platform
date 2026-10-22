@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import {
   BadRequestException,
   ConflictException,
@@ -14,6 +15,7 @@ import {
   type GuardianPortalData,
   type PlayerPortalEvaluation,
   type PlayerPortalProfile,
+  type PlayerQrCardResponse,
   type TenantContext,
 } from '@academy/shared';
 
@@ -418,6 +420,72 @@ export class PortalService {
         code: ErrorCode.TOKEN_INVALID,
         message: 'رمز المطالبة غير صالح أو منتهي الصلاحية',
       });
+    });
+  }
+
+  /**
+   * Retrieves player QR membership card data for the authenticated player.
+   */
+  async getMyPlayerQrCard(actorUserId: string): Promise<PlayerQrCardResponse> {
+    return this.prisma.withPortalUserTransaction({ actorUserId }, async (tx) => {
+      const player = await tx.player.findFirst({
+        where: { userId: actorUserId },
+        include: { tenant: { select: { id: true, name: true, slug: true } } },
+      });
+
+      if (!player) {
+        throw new NotFoundException({
+          code: ErrorCode.NOT_FOUND,
+          message: 'No player profile linked to your account',
+        });
+      }
+
+      if (!player.qrCardCode) {
+        const prefix = (player.tenant.slug || 'ACAD').toUpperCase().slice(0, 4);
+        const membershipNumber =
+          player.membershipNumber ||
+          `${prefix}-${new Date().getFullYear()}-${player.id.slice(0, 6).toUpperCase()}`;
+        const qrCardCode = crypto.randomBytes(16).toString('hex');
+        const issuedAt = new Date();
+
+        const updated = await tx.player.update({
+          where: { id: player.id },
+          data: {
+            membershipNumber,
+            qrCardCode,
+            qrCardIssuedAt: issuedAt,
+            qrCardRevokedAt: null,
+          },
+        });
+
+        return {
+          playerId: updated.id,
+          playerName: `${updated.firstName} ${updated.lastName}`,
+          academyName: player.tenant.name,
+          membershipNumber: updated.membershipNumber!,
+          photoUrl: updated.photoUrl,
+          qrCardCode: updated.qrCardCode!,
+          issuedAt: updated.qrCardIssuedAt!.toISOString(),
+          isRevoked: false,
+          revokedAt: null,
+        };
+      }
+
+      return {
+        playerId: player.id,
+        playerName: `${player.firstName} ${player.lastName}`,
+        academyName: player.tenant.name,
+        membershipNumber:
+          player.membershipNumber ||
+          `MEM-${new Date().getFullYear()}-${player.id.slice(0, 6).toUpperCase()}`,
+        photoUrl: player.photoUrl,
+        qrCardCode: player.qrCardCode,
+        issuedAt: player.qrCardIssuedAt
+          ? player.qrCardIssuedAt.toISOString()
+          : player.createdAt.toISOString(),
+        isRevoked: Boolean(player.qrCardRevokedAt),
+        revokedAt: player.qrCardRevokedAt ? player.qrCardRevokedAt.toISOString() : null,
+      };
     });
   }
 }

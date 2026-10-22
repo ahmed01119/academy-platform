@@ -11,6 +11,7 @@ import type {
   PlayerDetails,
   PlayerStatus,
   UpdatePlayerRequest,
+  PlayerQrCardResponse,
 } from '@academy/shared';
 import {
   GitBranch,
@@ -26,7 +27,9 @@ import {
   Users,
   X,
   Save,
+  QrCode,
 } from 'lucide-react';
+import { PlayerQrCard } from '../../../components/player-qr-card';
 
 export default function PlayerProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
@@ -62,6 +65,25 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
   const [editMedicalNotes, setEditMedicalNotes] = useState('');
   const [editStatus, setEditStatus] = useState<PlayerStatus>('ACTIVE');
   const [isUpdating, setIsUpdating] = useState(false);
+
+  // QR Membership Card State
+  const [qrCard, setQrCard] = useState<PlayerQrCardResponse | null>(null);
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+  const [isLoadingQrCard, setIsLoadingQrCard] = useState(false);
+
+  const handleOpenQrCardModal = async () => {
+    setIsLoadingQrCard(true);
+    setErrorMessage(null);
+    try {
+      const cardData = await api.players.getQrCard(playerId);
+      setQrCard(cardData);
+      setIsQrModalOpen(true);
+    } catch (err: unknown) {
+      setErrorMessage((err as Error)?.message || 'فشل تحميل بطاقة العضوية');
+    } finally {
+      setIsLoadingQrCard(false);
+    }
+  };
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -280,7 +302,22 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
             </div>
 
             {/* Actions */}
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                id="btn-player-qr-card"
+                onClick={handleOpenQrCardModal}
+                disabled={isLoadingQrCard}
+                className="inline-flex items-center gap-2 rounded-xl border border-[#2b5944] bg-[#162e24] px-4 py-2.5 text-xs font-semibold text-white hover:border-[#45c387] hover:bg-[#1c392c] transition-colors cursor-pointer disabled:opacity-50"
+              >
+                {isLoadingQrCard ? (
+                  <RefreshCw className="h-4 w-4 animate-spin text-[#45c387]" />
+                ) : (
+                  <QrCode className="h-4 w-4 text-[#45c387]" />
+                )}
+                <span>بطاقة العضوية (QR Card)</span>
+              </button>
+
               <button
                 type="button"
                 id="btn-edit-player"
@@ -690,6 +727,20 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* QR Membership Card Modal */}
+        {isQrModalOpen && qrCard && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm overflow-y-auto">
+            <div className="relative w-full max-w-md my-8">
+              <PlayerQrCard
+                card={qrCard}
+                isAdmin={canViewSensitive}
+                onCardUpdated={(newCard) => setQrCard(newCard)}
+                onClose={() => setIsQrModalOpen(false)}
+              />
             </div>
           </div>
         )}
