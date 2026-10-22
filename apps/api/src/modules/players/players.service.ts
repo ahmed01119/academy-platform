@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import {
   BadRequestException,
   ConflictException,
@@ -21,6 +22,9 @@ import {
   type PlayerStatus,
   type PlayerGender,
   type GuardianRelationship,
+  type PlayerQrCardResponse,
+  type RotatePlayerQrCardRequest,
+  type RevokePlayerQrCardRequest,
 } from '@academy/shared';
 
 @Injectable()
@@ -687,6 +691,294 @@ export class PlayersService {
             : null,
           createdAt: updated.createdAt.toISOString(),
           updatedAt: updated.updatedAt.toISOString(),
+        };
+      },
+    );
+  }
+
+  /**
+   * Retrieves player QR membership card data. Issues default credentials if not generated yet.
+   */
+  async getPlayerQrCard(
+    tenantContext: TenantContext,
+    playerId: string,
+  ): Promise<PlayerQrCardResponse> {
+    return this.prisma.withTenantTransaction(
+      { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
+      async (tx) => {
+        const player = await tx.player.findUnique({
+          where: {
+            tenantId_id: {
+              tenantId: tenantContext.tenantId,
+              id: playerId,
+            },
+          },
+          include: {
+            tenant: { select: { id: true, name: true, slug: true } },
+            enrollments: {
+              where: { status: 'ACTIVE' },
+              take: 1,
+            },
+          },
+        });
+
+        if (!player) {
+          throw new NotFoundException({
+            code: ErrorCode.NOT_FOUND,
+            message: 'Player not found',
+          });
+        }
+
+        if (tenantContext.branchId) {
+          const inBranch = player.enrollments.some((e) => e.branchId === tenantContext.branchId);
+          if (!inBranch) {
+            throw new ForbiddenException({
+              code: ErrorCode.FORBIDDEN,
+              message: 'Access restricted: player is not in your assigned branch',
+            });
+          }
+        }
+
+        // If player does not have a QR card code yet, generate default
+        if (!player.qrCardCode) {
+          const prefix = (player.tenant.slug || 'ACAD').toUpperCase().slice(0, 4);
+          const membershipNumber =
+            player.membershipNumber ||
+            `${prefix}-${new Date().getFullYear()}-${player.id.slice(0, 6).toUpperCase()}`;
+          const qrCardCode = crypto.randomBytes(16).toString('hex');
+          const issuedAt = new Date();
+
+          const updated = await tx.player.update({
+            where: { id: player.id },
+            data: {
+              membershipNumber,
+              qrCardCode,
+              qrCardIssuedAt: issuedAt,
+              qrCardRevokedAt: null,
+            },
+          });
+
+          await this.auditService.logEvent(
+            {
+              tenantId: tenantContext.tenantId,
+              actorUserId: tenantContext.actorUserId,
+              action: 'PLAYER_QR_CARD_ISSUED',
+              resourceType: 'Player',
+              resourceId: player.id,
+              metadata: {
+                membershipNumber,
+                issuedAt: issuedAt.toISOString(),
+              },
+            },
+            tx,
+          );
+
+          return {
+            playerId: updated.id,
+            playerName: `${updated.firstName} ${updated.lastName}`,
+            academyName: player.tenant.name,
+            membershipNumber: updated.membershipNumber!,
+            photoUrl: updated.photoUrl,
+            qrCardCode: updated.qrCardCode!,
+            issuedAt: updated.qrCardIssuedAt!.toISOString(),
+            isRevoked: false,
+            revokedAt: null,
+          };
+        }
+
+        return {
+          playerId: player.id,
+          playerName: `${player.firstName} ${player.lastName}`,
+          academyName: player.tenant.name,
+          membershipNumber:
+            player.membershipNumber ||
+            `MEM-${new Date().getFullYear()}-${player.id.slice(0, 6).toUpperCase()}`,
+          photoUrl: player.photoUrl,
+          qrCardCode: player.qrCardCode,
+          issuedAt: player.qrCardIssuedAt
+            ? player.qrCardIssuedAt.toISOString()
+            : player.createdAt.toISOString(),
+          isRevoked: Boolean(player.qrCardRevokedAt),
+          revokedAt: player.qrCardRevokedAt ? player.qrCardRevokedAt.toISOString() : null,
+        };
+      },
+    );
+  }
+
+  /**
+   * Rotates a player's QR credential (e.g. if physical card was lost or compromised).
+   * Generates a new cryptographically random card code, invalidating previous code.
+   */
+  async rotatePlayerQrCard(
+    tenantContext: TenantContext,
+    playerId: string,
+    dto?: RotatePlayerQrCardRequest,
+  ): Promise<PlayerQrCardResponse> {
+    return this.prisma.withTenantTransaction(
+      { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
+      async (tx) => {
+        const player = await tx.player.findUnique({
+          where: {
+            tenantId_id: {
+              tenantId: tenantContext.tenantId,
+              id: playerId,
+            },
+          },
+          include: {
+            tenant: { select: { id: true, name: true, slug: true } },
+            enrollments: {
+              where: { status: 'ACTIVE' },
+              take: 1,
+            },
+          },
+        });
+
+        if (!player) {
+          throw new NotFoundException({
+            code: ErrorCode.NOT_FOUND,
+            message: 'Player not found',
+          });
+        }
+
+        if (tenantContext.branchId) {
+          const inBranch = player.enrollments.some((e) => e.branchId === tenantContext.branchId);
+          if (!inBranch) {
+            throw new ForbiddenException({
+              code: ErrorCode.FORBIDDEN,
+              message: 'Access restricted: player is not in your assigned branch',
+            });
+          }
+        }
+
+        const newQrCardCode = crypto.randomBytes(16).toString('hex');
+        const issuedAt = new Date();
+        const prefix = (player.tenant.slug || 'ACAD').toUpperCase().slice(0, 4);
+        const membershipNumber =
+          player.membershipNumber ||
+          `${prefix}-${new Date().getFullYear()}-${player.id.slice(0, 6).toUpperCase()}`;
+
+        const updated = await tx.player.update({
+          where: { id: player.id },
+          data: {
+            membershipNumber,
+            qrCardCode: newQrCardCode,
+            qrCardIssuedAt: issuedAt,
+            qrCardRevokedAt: null,
+          },
+        });
+
+        await this.auditService.logEvent(
+          {
+            tenantId: tenantContext.tenantId,
+            actorUserId: tenantContext.actorUserId,
+            action: 'PLAYER_QR_CARD_ROTATED',
+            resourceType: 'Player',
+            resourceId: player.id,
+            metadata: {
+              reason: dto?.reason || 'Player QR card rotated',
+              rotatedAt: issuedAt.toISOString(),
+            },
+          },
+          tx,
+        );
+
+        return {
+          playerId: updated.id,
+          playerName: `${updated.firstName} ${updated.lastName}`,
+          academyName: player.tenant.name,
+          membershipNumber: updated.membershipNumber!,
+          photoUrl: updated.photoUrl,
+          qrCardCode: updated.qrCardCode!,
+          issuedAt: updated.qrCardIssuedAt!.toISOString(),
+          isRevoked: false,
+          revokedAt: null,
+        };
+      },
+    );
+  }
+
+  /**
+   * Revokes a player's QR credential without deleting the player.
+   */
+  async revokePlayerQrCard(
+    tenantContext: TenantContext,
+    playerId: string,
+    dto: RevokePlayerQrCardRequest,
+  ): Promise<PlayerQrCardResponse> {
+    return this.prisma.withTenantTransaction(
+      { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
+      async (tx) => {
+        const player = await tx.player.findUnique({
+          where: {
+            tenantId_id: {
+              tenantId: tenantContext.tenantId,
+              id: playerId,
+            },
+          },
+          include: {
+            tenant: { select: { id: true, name: true } },
+            enrollments: {
+              where: { status: 'ACTIVE' },
+              take: 1,
+            },
+          },
+        });
+
+        if (!player) {
+          throw new NotFoundException({
+            code: ErrorCode.NOT_FOUND,
+            message: 'Player not found',
+          });
+        }
+
+        if (tenantContext.branchId) {
+          const inBranch = player.enrollments.some((e) => e.branchId === tenantContext.branchId);
+          if (!inBranch) {
+            throw new ForbiddenException({
+              code: ErrorCode.FORBIDDEN,
+              message: 'Access restricted: player is not in your assigned branch',
+            });
+          }
+        }
+
+        const revokedAt = new Date();
+
+        const updated = await tx.player.update({
+          where: { id: player.id },
+          data: {
+            qrCardRevokedAt: revokedAt,
+          },
+        });
+
+        await this.auditService.logEvent(
+          {
+            tenantId: tenantContext.tenantId,
+            actorUserId: tenantContext.actorUserId,
+            action: 'PLAYER_QR_CARD_REVOKED',
+            resourceType: 'Player',
+            resourceId: player.id,
+            metadata: {
+              reason: dto.reason,
+              revokedAt: revokedAt.toISOString(),
+            },
+          },
+          tx,
+        );
+
+        return {
+          playerId: updated.id,
+          playerName: `${updated.firstName} ${updated.lastName}`,
+          academyName: player.tenant.name,
+          membershipNumber:
+            updated.membershipNumber ||
+            `MEM-${new Date().getFullYear()}-${updated.id.slice(0, 6).toUpperCase()}`,
+          photoUrl: updated.photoUrl,
+          qrCardCode: updated.qrCardCode || '',
+          issuedAt: updated.qrCardIssuedAt
+            ? updated.qrCardIssuedAt.toISOString()
+            : updated.createdAt.toISOString(),
+          isRevoked: true,
+          revokedAt: revokedAt.toISOString(),
         };
       },
     );

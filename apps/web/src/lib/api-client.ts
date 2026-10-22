@@ -60,6 +60,13 @@ import type {
   PlayerPortalProfile,
   PlayerPortalEvaluation,
   UpdateAcademyStatusRequest,
+  PlayerQrCardResponse,
+  RotatePlayerQrCardRequest,
+  RevokePlayerQrCardRequest,
+  ScanPlayerQrRequest,
+  ScanPlayerQrResponse,
+  OfflineAttendanceBatchSyncRequest,
+  OfflineAttendanceBatchSyncResponse,
 } from '@academy/shared';
 
 const API_BASE_URL =
@@ -383,6 +390,26 @@ export const api = {
         body: JSON.stringify(data),
       });
     },
+
+    async getQrCard(id: string): Promise<PlayerQrCardResponse> {
+      return request(`/players/${id}/qr-card`, {
+        method: 'GET',
+      });
+    },
+
+    async rotateQrCard(id: string, data?: RotatePlayerQrCardRequest): Promise<PlayerQrCardResponse> {
+      return request(`/players/${id}/qr-card/rotate`, {
+        method: 'POST',
+        body: JSON.stringify(data || {}),
+      });
+    },
+
+    async revokeQrCard(id: string, data: RevokePlayerQrCardRequest): Promise<PlayerQrCardResponse> {
+      return request(`/players/${id}/qr-card/revoke`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
   },
 
   enrollments: {
@@ -561,6 +588,23 @@ export const api = {
       });
     },
 
+    async scanPlayerQr(sessionId: string, data: ScanPlayerQrRequest): Promise<ScanPlayerQrResponse> {
+      return request(`/attendance/sessions/${sessionId}/scan-player-qr`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
+
+    async syncOfflineBatch(
+      sessionId: string,
+      data: OfflineAttendanceBatchSyncRequest,
+    ): Promise<OfflineAttendanceBatchSyncResponse> {
+      return request(`/attendance/sessions/${sessionId}/offline-sync`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
+
     async recordAttendance(data: AttendanceMutation): Promise<AttendanceRosterItem> {
       return request('/attendance/records', {
         method: 'POST',
@@ -703,6 +747,10 @@ export const api = {
       recentEvaluations: PlayerPortalEvaluation[];
     }> {
       return request('/portal/player/me', { method: 'GET' });
+    },
+
+    async getMyPlayerQrCard(): Promise<PlayerQrCardResponse> {
+      return request('/portal/player/qr-card', { method: 'GET' });
     },
 
     async getGuardianProfile(): Promise<GuardianPortalData> {

@@ -453,4 +453,124 @@ describe('PlayersService', () => {
       ).rejects.toThrow(ConflictException);
     });
   });
+
+  describe('Player QR Card Management', () => {
+    const mockPlayer = {
+      id: '00000000-0000-4000-8000-000000000101',
+      tenantId: mockTenantContext.tenantId,
+      firstName: 'كريم',
+      lastName: 'محمود',
+      membershipNumber: 'ACAD-2026-000101',
+      photoUrl: null,
+      qrCardCode: 'abc123def456',
+      qrCardIssuedAt: new Date('2026-10-20T10:00:00Z'),
+      qrCardRevokedAt: null,
+      tenant: { id: mockTenantContext.tenantId, name: 'أكاديمية الفرسان', slug: 'forsan' },
+      enrollments: [{ branchId: 'branch-1', status: 'ACTIVE' }],
+    };
+
+    it('returns existing QR card if already issued', async () => {
+      mockPrisma.player.findUnique.mockResolvedValue(mockPlayer);
+
+      const card = await service.getPlayerQrCard(mockTenantContext, mockPlayer.id);
+
+      expect(card.playerId).toBe(mockPlayer.id);
+      expect(card.qrCardCode).toBe('abc123def456');
+      expect(card.isRevoked).toBe(false);
+      expect(card.revokedAt).toBeNull();
+      expect(card.membershipNumber).toBe('ACAD-2026-000101');
+    });
+
+    it('issues default QR card if qrCardCode is null', async () => {
+      const playerWithoutCard = {
+        ...mockPlayer,
+        qrCardCode: null,
+        qrCardIssuedAt: null,
+        membershipNumber: null,
+      };
+      mockPrisma.player.findUnique.mockResolvedValue(playerWithoutCard);
+      mockPrisma.player.update.mockResolvedValue({
+        ...playerWithoutCard,
+        membershipNumber: 'FORS-2026-000101',
+        qrCardCode: 'newlygeneratedcode123',
+        qrCardIssuedAt: new Date(),
+        qrCardRevokedAt: null,
+      });
+
+      const card = await service.getPlayerQrCard(mockTenantContext, mockPlayer.id);
+
+      expect(card.qrCardCode).toBe('newlygeneratedcode123');
+      expect(card.isRevoked).toBe(false);
+      expect(mockAudit.logEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'PLAYER_QR_CARD_ISSUED',
+          resourceId: mockPlayer.id,
+        }),
+        expect.anything(),
+      );
+    });
+
+    it('rotates player QR card code and logs audit event', async () => {
+      mockPrisma.player.findUnique.mockResolvedValue(mockPlayer);
+      mockPrisma.player.update.mockResolvedValue({
+        ...mockPlayer,
+        qrCardCode: 'rotatedcode987654321',
+        qrCardIssuedAt: new Date(),
+        qrCardRevokedAt: null,
+      });
+
+      const card = await service.rotatePlayerQrCard(mockTenantContext, mockPlayer.id, {
+        reason: 'Lost physical badge',
+      });
+
+      expect(card.qrCardCode).toBe('rotatedcode987654321');
+      expect(card.isRevoked).toBe(false);
+      expect(mockAudit.logEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'PLAYER_QR_CARD_ROTATED',
+          resourceId: mockPlayer.id,
+          metadata: expect.objectContaining({
+            reason: 'Lost physical badge',
+          }),
+        }),
+        expect.anything(),
+      );
+    });
+
+    it('revokes player QR card and marks isRevoked true', async () => {
+      mockPrisma.player.findUnique.mockResolvedValue(mockPlayer);
+      const revokedAt = new Date();
+      mockPrisma.player.update.mockResolvedValue({
+        ...mockPlayer,
+        qrCardRevokedAt: revokedAt,
+      });
+
+      const card = await service.revokePlayerQrCard(mockTenantContext, mockPlayer.id, {
+        reason: 'Membership suspended due to non-payment',
+      });
+
+      expect(card.isRevoked).toBe(true);
+      expect(card.revokedAt).toBeTruthy();
+      expect(new Date(card.revokedAt!).getTime()).not.toBeNaN();
+      expect(mockAudit.logEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'PLAYER_QR_CARD_REVOKED',
+          resourceId: mockPlayer.id,
+        }),
+        expect.anything(),
+      );
+    });
+
+    it('enforces branch isolation on QR card operations', async () => {
+      const branchScopedContext: TenantContext = {
+        ...mockTenantContext,
+        branchId: 'other-branch-99',
+      };
+      mockPrisma.player.findUnique.mockResolvedValue(mockPlayer);
+
+      await expect(
+        service.getPlayerQrCard(branchScopedContext, mockPlayer.id),
+      ).rejects.toThrow(ForbiddenException);
+    });
+  });
 });

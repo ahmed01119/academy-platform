@@ -241,3 +241,76 @@ export const AttendanceReportSummarySchema = z.object({
 });
 
 export type AttendanceReportSummary = z.infer<typeof AttendanceReportSummarySchema>;
+
+export const ScanPlayerQrRequestSchema = z.object({
+  qrCardCode: z.string().trim().min(8, 'Valid QR card code is required'),
+  deviceObservedTime: z.string().optional(),
+  idempotencyKey: z.string().optional(),
+});
+
+export type ScanPlayerQrRequest = z.infer<typeof ScanPlayerQrRequestSchema>;
+
+export const ScanPlayerQrResponseSchema = z.object({
+  success: z.boolean(),
+  alreadyCheckedIn: z.boolean(),
+  status: z.enum(['PRESENT', 'LATE']),
+  latenessMinutes: z.number(),
+  checkInTime: z.string(),
+  deviceObservedTime: z.string().nullable().optional(),
+  syncStatus: z.enum(['CONFIRMED', 'PROVISIONAL']),
+  message: z.string(),
+  player: z.object({
+    id: z.string().uuid(),
+    name: z.string(),
+    membershipNumber: z.string().optional(),
+    photoUrl: z.string().nullable().optional(),
+  }),
+  session: z.object({
+    id: z.string().uuid(),
+    groupName: z.string(),
+    branchName: z.string(),
+    sessionDate: z.string(),
+    startTime: z.string(),
+  }),
+});
+
+export type ScanPlayerQrResponse = z.infer<typeof ScanPlayerQrResponseSchema>;
+
+export const OfflineAttendanceBatchItemSchema = z.object({
+  operationId: z.string().uuid(),
+  qrCardCode: z.string().trim().min(8),
+  deviceObservedTime: z.string(),
+  reason: z.string().trim().max(250).optional(),
+});
+
+export type OfflineAttendanceBatchItem = z.infer<typeof OfflineAttendanceBatchItemSchema>;
+
+export const OfflineAttendanceBatchSyncRequestSchema = z.object({
+  sessionId: z.string().uuid(),
+  items: z.array(OfflineAttendanceBatchItemSchema).min(1).max(500),
+});
+
+export type OfflineAttendanceBatchSyncRequest = z.infer<typeof OfflineAttendanceBatchSyncRequestSchema>;
+
+export const OfflineAttendanceBatchSyncResponseSchema = z.object({
+  syncedCount: z.number(),
+  failedCount: z.number(),
+  results: z.array(
+    z.object({
+      operationId: z.string().uuid(),
+      success: z.boolean(),
+      status: z.string().optional(),
+      alreadyCheckedIn: z.boolean().optional(),
+      error: z.string().optional(),
+      player: z
+        .object({
+          id: z.string(),
+          name: z.string(),
+        })
+        .optional(),
+    }),
+  ),
+});
+
+export type OfflineAttendanceBatchSyncResponse = z.infer<typeof OfflineAttendanceBatchSyncResponseSchema>;
+

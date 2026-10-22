@@ -12,8 +12,14 @@ import {
   RefreshCw,
   KeyRound,
   Target,
+  QrCode,
 } from 'lucide-react';
-import type { PlayerPortalProfile, PlayerPortalEvaluation } from '@academy/shared';
+import { PlayerQrCard } from '../../components/player-qr-card';
+import type {
+  PlayerPortalProfile,
+  PlayerPortalEvaluation,
+  PlayerQrCardResponse,
+} from '@academy/shared';
 
 export default function PlayerPortalPage() {
   const { user, isLoading: authLoading } = useAuth();
@@ -43,14 +49,21 @@ export default function PlayerPortalPage() {
   const [claimStatus, setClaimStatus] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [isClaiming, setIsClaiming] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [qrCard, setQrCard] = useState<PlayerQrCardResponse | null>(null);
+  const [showQrCardModal, setShowQrCardModal] = useState(false);
 
   const loadPlayerData = React.useCallback(async () => {
     setIsLoading(true);
     try {
-      const res = await apiClient.portal.getPlayerProfile();
+      const [res, cardRes] = await Promise.all([
+        apiClient.portal.getPlayerProfile(),
+        apiClient.portal.getMyPlayerQrCard().catch(() => null),
+      ]);
       setData(res);
+      setQrCard(cardRes);
     } catch {
       setData(null);
+      setQrCard(null);
     } finally {
       setIsLoading(false);
     }
@@ -197,14 +210,28 @@ export default function PlayerPortalPage() {
               </div>
             </div>
 
-            <div className="rounded-xl border border-[#2f9e6b]/40 bg-[#162821] p-4 text-center sm:text-right">
-              <span className="text-xs text-[#9bb5a8]">نسبة الالتزام والحضور</span>
-              <div className="text-3xl font-extrabold text-[#45c387] mt-0.5">
-                {attendanceSummary.attendanceRate}%
+            <div className="flex flex-col sm:flex-row items-center gap-3">
+              {qrCard && (
+                <button
+                  type="button"
+                  id="btn-open-player-card"
+                  onClick={() => setShowQrCardModal(true)}
+                  className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#2f9e6b] to-[#45c387] px-4 py-3 text-xs font-bold text-[#062016] shadow-lg shadow-[#2f9e6b]/20 hover:brightness-110 transition-all w-full sm:w-auto justify-center cursor-pointer"
+                >
+                  <QrCode className="h-4 w-4" />
+                  <span>بطاقة العضوية الذكية (QR Card)</span>
+                </button>
+              )}
+
+              <div className="rounded-xl border border-[#2f9e6b]/40 bg-[#162821] p-4 text-center sm:text-right w-full sm:w-auto">
+                <span className="text-xs text-[#9bb5a8]">نسبة الالتزام والحضور</span>
+                <div className="text-3xl font-extrabold text-[#45c387] mt-0.5">
+                  {attendanceSummary.attendanceRate}%
+                </div>
+                <span className="text-[10px] text-[#9bb5a8] mt-1 block">
+                  {profile.totalSessionsAttended} حصة حضور مثبتة
+                </span>
               </div>
-              <span className="text-[10px] text-[#9bb5a8] mt-1 block">
-                {profile.totalSessionsAttended} حصة حضور مثبتة
-              </span>
             </div>
           </div>
         </div>
@@ -364,6 +391,19 @@ export default function PlayerPortalPage() {
             )}
           </div>
         </div>
+
+        {/* QR Membership Card Modal */}
+        {showQrCardModal && qrCard && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm overflow-y-auto">
+            <div className="relative w-full max-w-md my-8">
+              <PlayerQrCard
+                card={qrCard}
+                isAdmin={false}
+                onClose={() => setShowQrCardModal(false)}
+              />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
