@@ -132,7 +132,6 @@ export default function SettingsPage() {
               <Settings className="h-3.5 w-3.5" />
               ملف الأكاديمية
             </span>
-            <span className="text-xs text-[#9bb5a8]">Sprint 2</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
             إعدادات وهوية الأكاديمية

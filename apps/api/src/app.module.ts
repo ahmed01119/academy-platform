@@ -11,6 +11,9 @@ import { BranchesModule } from './modules/branches/branches.module';
 import { PlayersModule } from './modules/players/players.module';
 import { EnrollmentsModule } from './modules/enrollments/enrollments.module';
 import { GroupsModule } from './modules/groups/groups.module';
+import { PlatformModule } from './modules/platform/platform.module';
+import { EvaluationsModule } from './modules/evaluations/evaluations.module';
+import { PortalModule } from './modules/portal/portal.module';
 
 /**
  * Root module for the modular monolith.
@@ -31,6 +34,10 @@ import { GroupsModule } from './modules/groups/groups.module';
     PlayersModule,
     EnrollmentsModule,
     GroupsModule,
+    PlatformModule,
+    EvaluationsModule,
+    PortalModule,
   ],
 })
 export class AppModule {}
+
