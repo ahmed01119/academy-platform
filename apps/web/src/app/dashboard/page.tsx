@@ -4,8 +4,10 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../lib/auth-context';
+import { useLocale } from '../../lib/locale-context';
 import { canAccessAdminRoutes, getRoleHomeRoute } from '../../lib/role-routing';
-import { Navbar } from '../../components/Navbar';
+import { AppShell } from '../../components/layout/AppShell';
+import { StatCard, StatusBadge } from '../../components/ui';
 import { api } from '../../lib/api-client';
 import type { BranchSummary, PlayerSummary } from '@academy/shared';
 import {
@@ -15,8 +17,8 @@ import {
   RefreshCw,
   Trophy,
   UserPlus,
-  ArrowUpRight,
   ChevronLeft,
+  ChevronRight,
   Phone,
   Layers,
   CalendarCheck,
@@ -26,6 +28,7 @@ import {
 export default function DashboardPage() {
   const router = useRouter();
   const { user, activeTenant, isLoading, refreshUser } = useAuth();
+  const { t, locale, isRtl } = useLocale();
 
   const [players, setPlayers] = useState<PlayerSummary[]>([]);
   const [totalPlayers, setTotalPlayers] = useState<number>(0);
@@ -77,10 +80,10 @@ export default function DashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#0f1c18] flex items-center justify-center text-[#9bb5a8]">
+      <div className="min-h-screen bg-[var(--bg-base)] flex items-center justify-center text-[var(--text-muted)]">
         <div className="flex flex-col items-center gap-3">
-          <RefreshCw className="h-8 w-8 animate-spin text-[#2f9e6b]" />
-          <p className="text-sm font-medium">جارٍ التحقق من الجلسة الآمنة...</p>
+          <RefreshCw className="h-8 w-8 animate-spin text-[var(--accent-primary)]" />
+          <p className="text-sm font-medium">{t('common.loading')}</p>
         </div>
       </div>
     );
@@ -90,293 +93,235 @@ export default function DashboardPage() {
     return null;
   }
 
-  return (
-    <div className="min-h-screen bg-[#0f1c18] text-[#e8f0ec] flex flex-col font-sans">
-      <Navbar />
+  const DirectionIcon = isRtl ? ChevronLeft : ChevronRight;
 
-      <main className="flex-1 mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-8">
-        {/* Welcome and Identity Hero Card */}
-        <div className="rounded-2xl border border-[#234235] bg-gradient-to-r from-[#162821] via-[#12231c] to-[#162821] p-6 sm:p-8 shadow-xl relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-96 h-96 bg-[#2f9e6b]/10 rounded-full blur-3xl pointer-events-none" />
+  return (
+    <AppShell>
+      <div className="space-y-6">
+        {/* Welcome and Identity Hero Banner */}
+        <div className="rounded-2xl border border-[var(--border-app)] bg-gradient-to-br from-[var(--bg-surface)] via-[var(--bg-surface-subtle)] to-[var(--bg-surface)] p-6 sm:p-8 shadow-sm relative overflow-hidden">
+          <div className="absolute top-0 start-0 w-80 h-80 bg-[var(--accent-primary)]/10 rounded-full blur-3xl pointer-events-none" />
 
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <span className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-[#45c387] bg-[#2f9e6b]/15 px-2.5 py-1 rounded-full border border-[#2f9e6b]/30">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[var(--badge-fg)] bg-[var(--badge-bg)] px-3 py-1 rounded-full border border-[var(--badge-border)]">
                   <ShieldCheck className="h-3.5 w-3.5" />
-                  لوحة تحكم الأكاديمية والعمليات الرياضية
+                  {locale === 'ar' ? 'لوحة تحكم العمليات المركزية' : 'Academy Operations Hub'}
                 </span>
-                <span className="text-xs text-[#9bb5a8]">
-                  {activeTenant?.tenantName || 'الأكاديمية النشطة'}
+                <span className="text-xs text-[var(--text-muted)] font-medium">
+                  {activeTenant?.tenantName}
                 </span>
               </div>
-              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
-                أهلاً بك، {user.name} 👋
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[var(--text-main)]">
+                {locale === 'ar' ? `أهلاً بك، ${user.name} 👋` : `Welcome back, ${user.name} 👋`}
               </h1>
-              <p className="mt-1 text-sm text-[#9bb5a8]">
-                لوحة الإدارة المركزية للأكاديمية واللاعبين والمجموعات وحصص الحضور الذكية.
+              <p className="text-xs sm:text-sm text-[var(--text-muted)] max-w-2xl leading-relaxed">
+                {locale === 'ar'
+                  ? 'المنظومة السحابية المتكاملة لإدارة اللاعبين، الحصص، التحضير الذكي، وذكاء الأداء الرياضي.'
+                  : 'Centralized operations console for squad management, training sessions, QR check-ins, and performance intelligence.'}
               </p>
             </div>
 
             {/* Quick Action Buttons */}
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2.5">
               <button
                 type="button"
                 id="btn-refresh-dashboard"
                 onClick={() => void refreshUser()}
-                className="flex items-center gap-2 rounded-xl border border-[#2b4c3e] bg-[#0f1c18] px-4 py-2.5 text-xs font-medium text-[#e8f0ec] hover:border-[#2f9e6b] transition-colors cursor-pointer"
+                className="flex items-center gap-2 rounded-xl border border-[var(--border-app)] bg-[var(--bg-surface)] px-4 py-2.5 text-xs font-semibold text-[var(--text-main)] hover:border-[var(--accent-primary)] hover:text-[var(--accent-primary)] transition-all cursor-pointer shadow-sm"
               >
                 <RefreshCw className={`h-4 w-4 ${isFetchingData ? 'animate-spin' : ''}`} />
-                <span>تحديث</span>
+                <span>{t('common.refresh')}</span>
               </button>
 
               <Link
-                href="/sessions"
-                id="btn-quick-sessions"
-                className="flex items-center gap-2 rounded-xl border border-[#2b4c3e] bg-[#0f1c18] px-4 py-2.5 text-xs font-semibold text-[#45c387] hover:border-[#2f9e6b] transition-all cursor-pointer"
+                href="/attendance/scanner"
+                id="btn-quick-scanner"
+                className="flex items-center gap-2 rounded-xl border border-[var(--border-app)] bg-[var(--bg-surface)] px-4 py-2.5 text-xs font-semibold text-[var(--accent-primary)] hover:border-[var(--accent-primary)] transition-all cursor-pointer shadow-sm"
               >
                 <CalendarCheck className="h-4 w-4" />
-                <span>شاشة التحضير</span>
+                <span>{t('nav.scanner')}</span>
               </Link>
 
               <Link
                 href="/players/new"
                 id="btn-new-player"
-                className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#2f9e6b] to-[#36b379] px-4 py-2.5 text-xs font-semibold text-[#062016] shadow-md shadow-[#2f9e6b]/20 hover:brightness-110 transition-all"
+                className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-[var(--accent-primary)] to-emerald-500 px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-emerald-500/20 hover:brightness-110 transition-all"
               >
                 <UserPlus className="h-4 w-4" />
-                <span>تسجيل لاعب جديد</span>
+                <span>{locale === 'ar' ? 'تسجيل لاعب جديد' : 'New Player'}</span>
               </Link>
             </div>
           </div>
         </div>
 
-        {/* KPI Metrics Cards (6-item Grid for Sprint 3) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {/* Card 1: Players */}
-          <Link
-            href="/players"
-            id="kpi-players"
-            className="group rounded-2xl border border-[#234235] bg-[#162821]/80 p-5 hover:border-[#2f9e6b]/60 transition-all shadow-lg hover:shadow-[#2f9e6b]/10"
-          >
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-medium text-[#9bb5a8]">إجمالي اللاعبين المسجلين</span>
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#2f9e6b]/15 text-[#45c387] group-hover:scale-110 transition-transform">
-                <Users className="h-5 w-5" />
-              </div>
-            </div>
-            <div className="flex items-baseline justify-between">
-              <span className="text-2xl sm:text-3xl font-extrabold text-white">{totalPlayers}</span>
-              <span className="text-xs text-[#45c387] flex items-center gap-0.5">
-                عرض اللاعبين <ArrowUpRight className="h-3.5 w-3.5" />
-              </span>
-            </div>
+        {/* 6-Grid Operational KPI Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <Link href="/players" id="kpi-players">
+            <StatCard
+              title={t('nav.players', 'اللاعبين والناشئين')}
+              value={totalPlayers}
+              subtitle={locale === 'ar' ? 'عرض السجلات والملفات' : 'View roster records'}
+              icon={Users}
+              trend="up"
+              change="+12%"
+            />
           </Link>
 
-          {/* Card 2: Training Groups */}
-          <Link
-            href="/groups"
-            id="kpi-groups"
-            className="group rounded-2xl border border-[#234235] bg-[#162821]/80 p-5 hover:border-[#2f9e6b]/60 transition-all shadow-lg hover:shadow-[#2f9e6b]/10"
-          >
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-medium text-[#9bb5a8]">المجموعات التدريبية</span>
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#2f9e6b]/15 text-[#45c387] group-hover:scale-110 transition-transform">
-                <Layers className="h-5 w-5" />
-              </div>
-            </div>
-            <div className="flex items-baseline justify-between">
-              <span className="text-2xl sm:text-3xl font-extrabold text-white">{groupCount}</span>
-              <span className="text-xs text-[#45c387] flex items-center gap-0.5">
-                إدارة المجموعات <ArrowUpRight className="h-3.5 w-3.5" />
-              </span>
-            </div>
+          <Link href="/groups" id="kpi-groups">
+            <StatCard
+              title={t('nav.groups', 'المجموعات التدريبية')}
+              value={groupCount}
+              subtitle={locale === 'ar' ? 'إدارة الفرق والجدول' : 'Manage squads and rosters'}
+              icon={Layers}
+            />
           </Link>
 
-          {/* Card 3: Training Sessions */}
-          <Link
-            href="/sessions"
-            id="kpi-sessions"
-            className="group rounded-2xl border border-[#234235] bg-[#162821]/80 p-5 hover:border-[#2f9e6b]/60 transition-all shadow-lg hover:shadow-[#2f9e6b]/10"
-          >
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-medium text-[#9bb5a8]">الحصص وسجلات الحضور</span>
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#3b82f6]/15 text-[#60a5fa] group-hover:scale-110 transition-transform">
-                <CalendarCheck className="h-5 w-5" />
-              </div>
-            </div>
-            <div className="flex items-baseline justify-between">
-              <span className="text-2xl sm:text-3xl font-extrabold text-white">{sessionCount}</span>
-              <span className="text-xs text-[#60a5fa] flex items-center gap-0.5">
-                سجل الحصص <ArrowUpRight className="h-3.5 w-3.5" />
-              </span>
-            </div>
+          <Link href="/sessions" id="kpi-sessions">
+            <StatCard
+              title={t('nav.sessions', 'الحصص التدريبية')}
+              value={sessionCount}
+              subtitle={locale === 'ar' ? 'كشوف الحضور والتحضير' : 'Live attendance logs'}
+              icon={CalendarCheck}
+            />
           </Link>
 
-          {/* Card 4: Attendance Reports */}
-          <Link
-            href="/attendance/reports"
-            id="kpi-reports"
-            className="group rounded-2xl border border-[#234235] bg-[#162821]/80 p-5 hover:border-[#2f9e6b]/60 transition-all shadow-lg hover:shadow-[#2f9e6b]/10"
-          >
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-medium text-[#9bb5a8]">تقارير الانضباط والحضور</span>
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#eab308]/15 text-[#facc15] group-hover:scale-110 transition-transform">
-                <BarChart3 className="h-5 w-5" />
-              </div>
-            </div>
-            <div className="flex items-baseline justify-between">
-              <span className="text-2xl sm:text-3xl font-extrabold text-white">التحليلات</span>
-              <span className="text-xs text-[#facc15] flex items-center gap-0.5">
-                عرض التقارير <ArrowUpRight className="h-3.5 w-3.5" />
-              </span>
-            </div>
+          <Link href="/attendance/reports" id="kpi-reports">
+            <StatCard
+              title={t('nav.reports', 'تقارير الحضور')}
+              value={locale === 'ar' ? 'التحليلات' : 'Analytics'}
+              subtitle={locale === 'ar' ? 'معدلات الانضباط والغياب' : 'Attendance rate analytics'}
+              icon={BarChart3}
+            />
           </Link>
 
-          {/* Card 5: Branches */}
-          <Link
-            href="/branches"
-            id="kpi-branches"
-            className="group rounded-2xl border border-[#234235] bg-[#162821]/80 p-5 hover:border-[#2f9e6b]/60 transition-all shadow-lg hover:shadow-[#2f9e6b]/10"
-          >
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-medium text-[#9bb5a8]">الفروع التشغيلية</span>
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#3b82f6]/15 text-[#60a5fa] group-hover:scale-110 transition-transform">
-                <GitBranch className="h-5 w-5" />
-              </div>
-            </div>
-            <div className="flex items-baseline justify-between">
-              <span className="text-2xl sm:text-3xl font-extrabold text-white">
-                {branches.length}
-              </span>
-              <span className="text-xs text-[#60a5fa] flex items-center gap-0.5">
-                إدارة الفروع <ArrowUpRight className="h-3.5 w-3.5" />
-              </span>
-            </div>
+          <Link href="/branches" id="kpi-branches">
+            <StatCard
+              title={t('nav.branches', 'الفروع والملاعب')}
+              value={branches.length}
+              subtitle={locale === 'ar' ? 'المقرات التشغيلية' : 'Operating pitch sites'}
+              icon={GitBranch}
+            />
           </Link>
 
-          {/* Card 6: Staff */}
-          <div className="rounded-2xl border border-[#234235] bg-[#162821]/80 p-5 shadow-lg">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-medium text-[#9bb5a8]">الكادر الفني والإداري</span>
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#8b5cf6]/15 text-[#a78bfa]">
-                <Trophy className="h-5 w-5" />
-              </div>
-            </div>
-            <div className="flex items-baseline justify-between">
-              <span className="text-2xl sm:text-3xl font-extrabold text-white">{staffCount}</span>
-              <span className="text-xs text-[#9bb5a8]">عضو معتمد</span>
-            </div>
+          <div>
+            <StatCard
+              title={locale === 'ar' ? 'الكادر الفني والإداري' : 'Coaching & Staff'}
+              value={staffCount}
+              subtitle={locale === 'ar' ? 'عضو معتمد بالنظام' : 'Active system users'}
+              icon={Trophy}
+            />
           </div>
         </div>
 
-        {/* Main Content Grid: Recent Players & Branches List */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left / Center 2 Cols: Recent Players */}
-          <div className="lg:col-span-2 rounded-2xl border border-[#234235] bg-[#162821]/80 p-6 backdrop-blur-md space-y-5">
-            <div className="flex items-center justify-between border-b border-[#234235] pb-4">
+        {/* Main Content Grid: Recent Players & Operational Branches */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Recent Players Table (2 Cols) */}
+          <div className="lg:col-span-2 rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-5 shadow-sm space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-[var(--border-subtle)]">
               <div className="flex items-center gap-2">
-                <Users className="h-5 w-5 text-[#2f9e6b]" />
-                <h2 className="text-lg font-bold text-white">أحدث اللاعبين المسجلين</h2>
+                <Users className="h-5 w-5 text-[var(--accent-primary)]" />
+                <h2 className="text-base font-bold text-[var(--text-main)]">
+                  {locale === 'ar' ? 'أحدث اللاعبين المسجلين' : 'Recent Player Enrollments'}
+                </h2>
               </div>
               <Link
                 href="/players"
                 id="link-view-all-players"
-                className="text-xs font-semibold text-[#45c387] hover:underline flex items-center gap-1"
+                className="text-xs font-semibold text-[var(--accent-primary)] hover:underline flex items-center gap-1"
               >
-                عرض كل اللاعبين ({totalPlayers})
-                <ChevronLeft className="h-4 w-4" />
+                <span>{locale === 'ar' ? `عرض الكل (${totalPlayers})` : `View All (${totalPlayers})`}</span>
+                <DirectionIcon className="h-3.5 w-3.5" />
               </Link>
             </div>
 
             {players.length === 0 ? (
-              <div className="py-12 text-center text-[#9bb5a8]">
-                <Users className="h-12 w-12 mx-auto text-[#234235] mb-3" />
-                <p className="text-sm font-medium text-[#e8f0ec]">
-                  لم يتم تسجيل أي لاعبين حتى الآن
-                </p>
-                <p className="text-xs text-[#9bb5a8] mt-1 mb-4">
-                  ابدأ بتسجيل أول لاعب في الأكاديمية وربطه بالفرع وولي الأمر.
+              <div className="py-10 text-center space-y-2">
+                <Users className="h-10 w-10 mx-auto text-[var(--text-muted)] opacity-50" />
+                <p className="text-sm font-semibold text-[var(--text-main)]">
+                  {t('common.noResults')}
                 </p>
                 <Link
                   href="/players/new"
-                  className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#2f9e6b] to-[#36b379] px-4 py-2 text-xs font-semibold text-[#062016] shadow hover:brightness-110"
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--accent-primary)] px-3.5 py-1.5 text-xs font-bold text-white hover:brightness-110 transition-all mt-2"
                 >
-                  <UserPlus className="h-4 w-4" />
-                  <span>تسجيل أول لاعب</span>
+                  <UserPlus className="h-3.5 w-3.5" />
+                  <span>{locale === 'ar' ? 'تسجيل لاعب جديد' : 'Enroll First Player'}</span>
                 </Link>
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-right text-xs">
-                  <thead>
-                    <tr className="border-b border-[#234235] text-[#9bb5a8]">
-                      <th className="py-2.5 px-3 font-semibold">اللاعب</th>
-                      <th className="py-2.5 px-3 font-semibold">الفرع</th>
-                      <th className="py-2.5 px-3 font-semibold">ولي الأمر</th>
-                      <th className="py-2.5 px-3 font-semibold">الحالة</th>
-                      <th className="py-2.5 px-3 font-semibold text-left">الإجراء</th>
+                <table className="w-full text-start text-xs">
+                  <thead className="bg-[var(--bg-surface-subtle)] text-[var(--text-muted)] border-b border-[var(--border-subtle)]">
+                    <tr>
+                      <th className="py-2.5 px-3 font-semibold text-start">{t('common.player')}</th>
+                      <th className="py-2.5 px-3 font-semibold text-start">{t('common.branch')}</th>
+                      <th className="py-2.5 px-3 font-semibold text-start">{t('common.guardian')}</th>
+                      <th className="py-2.5 px-3 font-semibold text-start">{t('common.status')}</th>
+                      <th className="py-2.5 px-3 font-semibold text-end">{t('common.actions')}</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#234235]">
+                  <tbody className="divide-y divide-[var(--border-subtle)]">
                     {players.map((p) => {
                       const currentBranch = p.currentBranch;
                       const primaryGuardian = p.primaryGuardian;
 
                       return (
-                        <tr key={p.id} className="hover:bg-[#1a3328]/40 transition-colors">
+                        <tr
+                          key={p.id}
+                          className="hover:bg-[var(--bg-surface-subtle)]/60 transition-colors"
+                        >
                           <td className="py-3 px-3">
                             <div className="flex items-center gap-2.5">
-                              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#2f9e6b]/20 text-[#45c387] font-bold text-xs">
+                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[var(--badge-bg)] text-[var(--accent-primary)] font-bold text-xs shadow-inner">
                                 {p.firstName.charAt(0)}
                               </div>
-                              <div>
-                                <div className="font-semibold text-white">
+                              <div className="min-w-0">
+                                <div className="font-bold text-[var(--text-main)] truncate">
                                   {p.firstName} {p.lastName}
                                 </div>
-                                <div className="text-[11px] text-[#9bb5a8]">
-                                  {p.gender === 'MALE' ? 'ذكر' : 'أنثى'} •{' '}
-                                  {p.dateOfBirth.slice(0, 10)}
+                                <div className="text-[10px] text-[var(--text-muted)]">
+                                  {p.gender === 'MALE'
+                                    ? locale === 'ar'
+                                      ? 'ذكر'
+                                      : 'Male'
+                                    : locale === 'ar'
+                                      ? 'أنثى'
+                                      : 'Female'}{' '}
+                                  • {p.dateOfBirth.slice(0, 10)}
                                 </div>
                               </div>
                             </div>
                           </td>
                           <td className="py-3 px-3">
-                            <span className="text-[#e8f0ec]">
-                              {currentBranch?.name || 'غير مسجل بفرع'}
+                            <span className="text-[var(--text-main)] font-medium">
+                              {currentBranch?.name || '-'}
                             </span>
                           </td>
                           <td className="py-3 px-3">
                             {primaryGuardian ? (
                               <div>
-                                <span className="text-[#e8f0ec] block">
+                                <span className="text-[var(--text-main)] font-medium block">
                                   {primaryGuardian.firstName} {primaryGuardian.lastName}
                                 </span>
-                                <span className="text-[10px] text-[#9bb5a8] font-mono flex items-center gap-1">
-                                  <Phone className="h-3 w-3" /> {primaryGuardian.phone}
+                                <span className="text-[10px] text-[var(--text-muted)] font-mono flex items-center gap-1">
+                                  <Phone className="h-2.5 w-2.5" /> {primaryGuardian.phone}
                                 </span>
                               </div>
                             ) : (
-                              <span className="text-[#9bb5a8]">-</span>
+                              <span className="text-[var(--text-muted)]">-</span>
                             )}
                           </td>
                           <td className="py-3 px-3">
-                            <span
-                              className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                                p.status === 'ACTIVE'
-                                  ? 'bg-[#2f9e6b]/20 text-[#45c387] border border-[#2f9e6b]/30'
-                                  : 'bg-[#ef4444]/20 text-[#fca5a5] border border-[#ef4444]/30'
-                              }`}
-                            >
-                              {p.status === 'ACTIVE' ? 'نشط' : 'غير نشط'}
-                            </span>
+                            <StatusBadge status={p.status} label={t(`common.${p.status.toLowerCase()}`, p.status)} />
                           </td>
-                          <td className="py-3 px-3 text-left">
+                          <td className="py-3 px-3 text-end">
                             <Link
                               href={`/players/${p.id}`}
-                              className="inline-flex items-center gap-1 rounded-lg border border-[#2b4c3e] bg-[#0f1c18] px-2.5 py-1 text-[11px] font-medium text-[#e8f0ec] hover:border-[#2f9e6b] hover:text-[#45c387] transition-all"
+                              className="inline-flex items-center gap-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-2.5 py-1 text-[11px] font-semibold text-[var(--text-main)] hover:border-[var(--accent-primary)] hover:text-[var(--accent-primary)] transition-all"
                             >
-                              الملف
+                              <span>{locale === 'ar' ? 'الملف' : 'Profile'}</span>
                             </Link>
                           </td>
                         </tr>
@@ -388,45 +333,48 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* Right 1 Col: Operational Branches List */}
-          <div className="rounded-2xl border border-[#234235] bg-[#162821]/80 p-6 backdrop-blur-md space-y-4">
-            <div className="flex items-center justify-between border-b border-[#234235] pb-4">
+          {/* Branches List (1 Col) */}
+          <div className="rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-5 shadow-sm space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-[var(--border-subtle)]">
               <div className="flex items-center gap-2">
-                <GitBranch className="h-5 w-5 text-[#2f9e6b]" />
-                <h2 className="text-lg font-bold text-white">فروع الأكاديمية</h2>
+                <GitBranch className="h-5 w-5 text-[var(--accent-primary)]" />
+                <h2 className="text-base font-bold text-[var(--text-main)]">
+                  {t('nav.branches', 'الفروع')}
+                </h2>
               </div>
               <Link
                 href="/branches"
-                className="text-xs font-semibold text-[#45c387] hover:underline"
+                className="text-xs font-semibold text-[var(--accent-primary)] hover:underline"
               >
-                إدارة
+                {t('common.edit', 'إدارة')}
               </Link>
             </div>
 
             {branches.length === 0 ? (
-              <div className="py-8 text-center text-[#9bb5a8]">
-                <GitBranch className="h-8 w-8 mx-auto text-[#234235] mb-2" />
-                <p className="text-xs">لم يتم تسجيل فروع حتى الآن</p>
+              <div className="py-6 text-center text-[var(--text-muted)] text-xs">
+                {t('common.noResults')}
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-2.5">
                 {branches.map((b) => (
                   <div
                     key={b.id}
-                    className="rounded-xl border border-[#234235] bg-[#0f1c18]/60 p-3.5 space-y-2 hover:border-[#2f9e6b]/40 transition-colors"
+                    className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] p-3 space-y-1.5 hover:border-emerald-500/40 transition-colors"
                   >
                     <div className="flex items-center justify-between">
-                      <h4 className="font-bold text-white text-sm">{b.name}</h4>
+                      <h4 className="font-bold text-[var(--text-main)] text-xs truncate">
+                        {b.name}
+                      </h4>
                       {b.code && (
-                        <span className="rounded bg-[#234235] px-1.5 py-0.5 text-[10px] font-mono text-[#45c387]">
+                        <span className="rounded bg-[var(--badge-bg)] px-1.5 py-0.5 text-[9px] font-mono font-bold text-[var(--badge-fg)]">
                           {b.code}
                         </span>
                       )}
                     </div>
-                    <div className="text-xs text-[#9bb5a8] flex items-center justify-between">
-                      <span>{b.city || 'المدينة غير محددة'}</span>
-                      <span className="text-[#45c387] font-semibold">
-                        {b.activePlayersCount || 0} لاعب
+                    <div className="text-[11px] text-[var(--text-muted)] flex items-center justify-between">
+                      <span>{b.city || (locale === 'ar' ? 'المدينة' : 'Site')}</span>
+                      <span className="text-[var(--accent-primary)] font-bold">
+                        {b.activePlayersCount || 0} {locale === 'ar' ? 'لاعب' : 'players'}
                       </span>
                     </div>
                   </div>
@@ -438,15 +386,15 @@ export default function DashboardPage() {
               <Link
                 href="/branches"
                 id="btn-add-branch-dashboard"
-                className="w-full flex items-center justify-center gap-2 rounded-xl border border-dashed border-[#2f9e6b]/40 bg-[#2f9e6b]/5 py-2.5 text-xs font-medium text-[#45c387] hover:bg-[#2f9e6b]/10 transition-colors"
+                className="w-full flex items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--accent-primary)]/40 bg-[var(--badge-bg)]/50 py-2.5 text-xs font-bold text-[var(--accent-primary)] hover:bg-[var(--badge-bg)] transition-colors"
               >
                 <GitBranch className="h-4 w-4" />
-                <span>إضافة أو تعديل فرع</span>
+                <span>{locale === 'ar' ? 'إضافة أو تعديل الفروع' : 'Manage Branches'}</span>
               </Link>
             </div>
           </div>
         </div>
-      </main>
-    </div>
+      </div>
+    </AppShell>
   );
 }

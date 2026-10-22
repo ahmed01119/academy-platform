@@ -5,7 +5,9 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../lib/auth-context';
 import { canAccessAdminRoutes, getRoleHomeRoute } from '../../lib/role-routing';
-import { Navbar } from '../../components/Navbar';
+import { AppShell } from '../../components/layout/AppShell';
+import { PageHeader } from '../../components/ui/PageHeader';
+import { StatusBadge } from '../../components/ui/StatusBadge';
 import { api } from '../../lib/api-client';
 import type {
   BranchStatus,
@@ -14,7 +16,6 @@ import type {
   UpdateBranchRequest,
 } from '@academy/shared';
 import {
-  GitBranch,
   Plus,
   MapPin,
   Phone,
@@ -25,7 +26,6 @@ import {
   Save,
   AlertCircle,
   CheckCircle2,
-  ChevronRight,
   Building,
 } from 'lucide-react';
 
@@ -185,56 +185,43 @@ export default function BranchesPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#0f1c18] flex items-center justify-center text-[#9bb5a8]">
-        <RefreshCw className="h-8 w-8 animate-spin text-[#2f9e6b]" />
-      </div>
+      <AppShell>
+        <div className="flex min-h-[50vh] items-center justify-center">
+          <RefreshCw className="h-8 w-8 animate-spin text-[var(--brand-primary)]" />
+        </div>
+      </AppShell>
     );
   }
 
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-[#0f1c18] text-[#e8f0ec] flex flex-col font-sans">
-      <Navbar />
-
-      <main className="flex-1 mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-6">
-        {/* Navigation Breadcrumb */}
-        <div className="flex items-center gap-2 text-xs text-[#9bb5a8]">
-          <Link href="/dashboard" className="hover:text-white transition-colors">
-            الرئيسية
-          </Link>
-          <ChevronRight className="h-3.5 w-3.5" />
-          <span className="text-[#45c387]">الفروع</span>
-        </div>
-
-        {/* Page Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#234235] pb-6">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-[#60a5fa] bg-[#3b82f6]/15 px-2.5 py-0.5 rounded-full border border-[#3b82f6]/30">
-                <GitBranch className="h-3.5 w-3.5" />
-                شبكة الفروع
-              </span>
-              <span className="text-xs text-[#9bb5a8]">إجمالي {branches.length} فرع</span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-              إدارة الفروع التشغيلية
-            </h1>
-            <p className="text-sm text-[#9bb5a8]">
-              إدارة مقرات الأكاديمية والملاعب المتاحة وسعة كل فرع وقيد اللاعبين.
-            </p>
-          </div>
-
-          <button
-            type="button"
-            id="btn-create-branch-modal"
-            onClick={openCreateModal}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#2f9e6b] to-[#36b379] px-4 py-2.5 text-xs font-semibold text-[#062016] shadow-lg shadow-[#2f9e6b]/20 hover:brightness-110 transition-all cursor-pointer"
-          >
-            <Plus className="h-4 w-4" />
-            <span>إضافة فرع جديد</span>
-          </button>
-        </div>
+    <AppShell>
+      <div className="space-y-6">
+        <PageHeader
+          breadcrumbs={[
+            { label: 'الرئيسية', href: '/dashboard' },
+            { label: 'الفروع' },
+          ]}
+          title="إدارة الفروع التشغيلية"
+          description="إدارة مقرات الأكاديمية والملاعب المتاحة وسعة كل فرع وقيد اللاعبين."
+          badge={
+            <span className="rounded-full bg-[var(--brand-primary)]/15 px-2.5 py-0.5 text-xs font-semibold text-[var(--brand-primary)] border border-[var(--brand-primary)]/30">
+              إجمالي {branches.length} فرع
+            </span>
+          }
+          actions={
+            <button
+              type="button"
+              id="btn-create-branch-modal"
+              onClick={openCreateModal}
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[var(--brand-primary)] px-4 py-2 text-xs font-semibold text-white shadow-sm hover:brightness-110 transition-all cursor-pointer"
+            >
+              <Plus className="h-4 w-4" />
+              <span>إضافة فرع جديد</span>
+            </button>
+          }
+        />
 
         {/* Alerts */}
         {errorMessage && (
@@ -258,16 +245,16 @@ export default function BranchesPage() {
             <p className="text-xs">جارٍ تحميل الفروع...</p>
           </div>
         ) : branches.length === 0 ? (
-          <div className="py-20 text-center text-[#9bb5a8] border border-[#234235] bg-[#162821]/80 rounded-2xl">
-            <Building className="h-12 w-12 mx-auto text-[#234235] mb-3" />
-            <h3 className="text-base font-bold text-white mb-1">لا توجد فروع مسجلة بعد</h3>
-            <p className="text-xs text-[#9bb5a8] max-w-sm mx-auto mb-5">
+          <div className="py-20 text-center text-[var(--text-muted)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-2xl">
+            <Building className="h-12 w-12 mx-auto text-[var(--border-subtle)] mb-3" />
+            <h3 className="text-base font-bold text-[var(--text-primary)] mb-1">لا توجد فروع مسجلة بعد</h3>
+            <p className="text-xs text-[var(--text-muted)] max-w-sm mx-auto mb-5">
               قم بإنشاء الفرع الأول للأكاديمية لتبدأ في تسجيل المدربين واللاعبين به.
             </p>
             <button
               type="button"
               onClick={openCreateModal}
-              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#2f9e6b] to-[#36b379] px-4 py-2 text-xs font-semibold text-[#062016] shadow hover:brightness-110"
+              className="inline-flex items-center gap-2 rounded-xl bg-[var(--brand-primary)] px-4 py-2 text-xs font-semibold text-white shadow hover:brightness-110"
             >
               <Plus className="h-4 w-4" />
               <span>إضافة فرع</span>
@@ -284,59 +271,51 @@ export default function BranchesPage() {
               return (
                 <div
                   key={b.id}
-                  className="rounded-2xl border border-[#234235] bg-[#162821]/80 p-6 backdrop-blur-md space-y-4 hover:border-[#2f9e6b]/50 transition-all shadow-lg flex flex-col justify-between"
+                  className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 space-y-4 hover:border-[var(--brand-primary)]/50 transition-all shadow-sm flex flex-col justify-between"
                 >
                   <div className="space-y-3">
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <div className="flex items-center gap-2">
-                          <h3 className="font-bold text-white text-base">{b.name}</h3>
+                          <h3 className="font-bold text-[var(--text-primary)] text-base">{b.name}</h3>
                           {b.code && (
-                            <span className="rounded bg-[#234235] px-2 py-0.5 text-[10px] font-mono text-[#45c387] border border-[#2b4c3e]">
+                            <span className="rounded bg-[var(--bg-elevated)] px-2 py-0.5 text-[10px] font-mono text-[var(--brand-primary)] border border-[var(--border-subtle)]">
                               {b.code}
                             </span>
                           )}
                         </div>
                         {b.city && (
-                          <div className="text-xs text-[#9bb5a8] flex items-center gap-1 mt-1">
-                            <MapPin className="h-3 w-3 text-[#2f9e6b]" />
+                          <div className="text-xs text-[var(--text-muted)] flex items-center gap-1 mt-1">
+                            <MapPin className="h-3 w-3 text-[var(--brand-primary)]" />
                             <span>{b.city}</span>
                             {b.address && <span>• {b.address}</span>}
                           </div>
                         )}
                       </div>
 
-                      <span
-                        className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
-                          b.status === 'ACTIVE'
-                            ? 'bg-[#2f9e6b]/20 text-[#45c387] border border-[#2f9e6b]/40'
-                            : 'bg-[#ef4444]/20 text-[#fca5a5] border border-[#ef4444]/40'
-                        }`}
-                      >
-                        {b.status === 'ACTIVE' ? 'نشط' : 'غير نشط'}
-                      </span>
+                      <StatusBadge status={b.status} />
                     </div>
 
                     {b.phone && (
-                      <div className="text-xs text-[#9bb5a8] flex items-center gap-1.5 font-mono">
-                        <Phone className="h-3.5 w-3.5 text-[#2f9e6b]" />
+                      <div className="text-xs text-[var(--text-muted)] flex items-center gap-1.5 font-mono">
+                        <Phone className="h-3.5 w-3.5 text-[var(--brand-primary)]" />
                         <span>{b.phone}</span>
                       </div>
                     )}
 
                     {/* Capacity Indicator */}
-                    <div className="rounded-xl border border-[#234235] bg-[#0f1c18]/60 p-3 space-y-2">
+                    <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 space-y-2">
                       <div className="flex items-center justify-between text-xs">
-                        <span className="text-[#9bb5a8] flex items-center gap-1">
-                          <Users className="h-3.5 w-3.5 text-[#3b82f6]" />
+                        <span className="text-[var(--text-muted)] flex items-center gap-1">
+                          <Users className="h-3.5 w-3.5 text-blue-500" />
                           اللاعبين المشتركين:
                         </span>
-                        <span className="font-bold text-white">
+                        <span className="font-bold text-[var(--text-primary)]">
                           {activeCount}{' '}
                           {capacityVal > 0 ? (
-                            <span className="text-[#9bb5a8] font-normal">/ {capacityVal}</span>
+                            <span className="text-[var(--text-muted)] font-normal">/ {capacityVal}</span>
                           ) : (
-                            <span className="text-[#9bb5a8] text-[10px] font-normal">
+                            <span className="text-[var(--text-muted)] text-[10px] font-normal">
                               (غير محدد السعة)
                             </span>
                           )}
@@ -345,19 +324,19 @@ export default function BranchesPage() {
 
                       {capacityVal > 0 && (
                         <div>
-                          <div className="w-full bg-[#234235] rounded-full h-1.5 overflow-hidden">
+                          <div className="w-full bg-[var(--border-subtle)] rounded-full h-1.5 overflow-hidden">
                             <div
                               className={`h-1.5 rounded-full ${
                                 utilization >= 90
-                                  ? 'bg-[#ef4444]'
+                                  ? 'bg-rose-500'
                                   : utilization >= 70
-                                    ? 'bg-[#eab308]'
-                                    : 'bg-[#2f9e6b]'
+                                    ? 'bg-amber-500'
+                                    : 'bg-[var(--brand-primary)]'
                               }`}
                               style={{ width: `${utilization}%` }}
                             />
                           </div>
-                          <div className="text-[10px] text-[#9bb5a8] text-left mt-1">
+                          <div className="text-[10px] text-[var(--text-muted)] text-left mt-1">
                             نسبة الإشغال: {utilization}%
                           </div>
                         </div>
@@ -366,10 +345,10 @@ export default function BranchesPage() {
                   </div>
 
                   {/* Card Actions */}
-                  <div className="pt-3 border-t border-[#234235] flex items-center justify-between">
+                  <div className="pt-3 border-t border-[var(--border-subtle)] flex items-center justify-between">
                     <Link
                       href={`/players?branchId=${b.id}`}
-                      className="text-xs font-semibold text-[#45c387] hover:underline"
+                      className="text-xs font-semibold text-[var(--brand-primary)] hover:underline"
                     >
                       عرض لاعبي الفرع
                     </Link>
@@ -378,7 +357,7 @@ export default function BranchesPage() {
                       type="button"
                       id={`btn-edit-branch-${b.id}`}
                       onClick={() => openEditModal(b)}
-                      className="inline-flex items-center gap-1 rounded-lg border border-[#2b4c3e] bg-[#0f1c18] px-3 py-1.5 text-xs font-medium text-[#e8f0ec] hover:border-[#2f9e6b] hover:text-[#45c387] transition-all cursor-pointer"
+                      className="inline-flex items-center gap-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-1.5 text-xs font-medium text-[var(--text-primary)] hover:border-[var(--brand-primary)] hover:text-[var(--brand-primary)] transition-all cursor-pointer"
                     >
                       <Edit2 className="h-3.5 w-3.5" />
                       <span>تعديل</span>
@@ -393,16 +372,16 @@ export default function BranchesPage() {
         {/* Modal: Add Branch */}
         {isCreateModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-            <div className="w-full max-w-lg rounded-2xl border border-[#234235] bg-[#162821] p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
-              <div className="flex items-center justify-between border-b border-[#234235] pb-3 mb-4">
-                <h3 className="font-bold text-white text-base flex items-center gap-2">
-                  <Plus className="h-5 w-5 text-[#2f9e6b]" />
+            <div className="w-full max-w-lg rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+              <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3 mb-4">
+                <h3 className="font-bold text-[var(--text-primary)] text-base flex items-center gap-2">
+                  <Plus className="h-5 w-5 text-[var(--brand-primary)]" />
                   إضافة فرع جديد للأكاديمية
                 </h3>
                 <button
                   type="button"
                   onClick={() => setIsCreateModalOpen(false)}
-                  className="rounded-lg p-1 text-[#9bb5a8] hover:bg-[#234235] hover:text-white"
+                  className="rounded-lg p-1 text-[var(--text-muted)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)]"
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -411,7 +390,7 @@ export default function BranchesPage() {
               <form onSubmit={handleCreateSubmit} className="space-y-4">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-[#9bb5a8] mb-1">
+                    <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
                       اسم الفرع *
                     </label>
                     <input
@@ -421,12 +400,12 @@ export default function BranchesPage() {
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       placeholder="مثال: فرع التجمع الخامس"
-                      className="w-full rounded-xl border border-[#2b4c3e] bg-[#0f1c18] px-3.5 py-2 text-xs text-[#e8f0ec] focus:border-[#2f9e6b] focus:outline-none"
+                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3.5 py-2 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-[#9bb5a8] mb-1">
+                    <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
                       كود الفرع (Code)
                     </label>
                     <input
@@ -435,14 +414,14 @@ export default function BranchesPage() {
                       value={code}
                       onChange={(e) => setCode(e.target.value.toUpperCase())}
                       placeholder="TAGAMO"
-                      className="w-full rounded-xl border border-[#2b4c3e] bg-[#0f1c18] px-3.5 py-2 text-xs text-[#e8f0ec] focus:border-[#2f9e6b] focus:outline-none font-mono uppercase"
+                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3.5 py-2 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none font-mono uppercase"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-[#9bb5a8] mb-1">
+                    <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
                       المدينة
                     </label>
                     <input
@@ -451,12 +430,12 @@ export default function BranchesPage() {
                       value={city}
                       onChange={(e) => setCity(e.target.value)}
                       placeholder="القاهرة"
-                      className="w-full rounded-xl border border-[#2b4c3e] bg-[#0f1c18] px-3.5 py-2 text-xs text-[#e8f0ec] focus:border-[#2f9e6b] focus:outline-none"
+                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3.5 py-2 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-[#9bb5a8] mb-1">
+                    <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
                       السعة الاستيعابية (لاعب)
                     </label>
                     <input
@@ -467,13 +446,13 @@ export default function BranchesPage() {
                         setCapacity(e.target.value === '' ? '' : parseInt(e.target.value, 10))
                       }
                       placeholder="مثال: 150"
-                      className="w-full rounded-xl border border-[#2b4c3e] bg-[#0f1c18] px-3.5 py-2 text-xs text-[#e8f0ec] focus:border-[#2f9e6b] focus:outline-none font-mono"
+                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3.5 py-2 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none font-mono"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-[#9bb5a8] mb-1">
+                  <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
                     العنوان التفصيلي
                   </label>
                   <input
@@ -482,12 +461,12 @@ export default function BranchesPage() {
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
                     placeholder="شارع التسعين، مجمع الملاعب الأولمبية"
-                    className="w-full rounded-xl border border-[#2b4c3e] bg-[#0f1c18] px-3.5 py-2 text-xs text-[#e8f0ec] focus:border-[#2f9e6b] focus:outline-none"
+                    className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3.5 py-2 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-[#9bb5a8] mb-1">
+                  <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
                     هاتف الفرع
                   </label>
                   <input
@@ -496,15 +475,15 @@ export default function BranchesPage() {
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="+201012345678"
-                    className="w-full rounded-xl border border-[#2b4c3e] bg-[#0f1c18] px-3.5 py-2 text-xs text-[#e8f0ec] focus:border-[#2f9e6b] focus:outline-none font-mono"
+                    className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3.5 py-2 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none font-mono"
                   />
                 </div>
 
-                <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#234235]">
+                <div className="flex items-center justify-end gap-2 pt-3 border-t border-[var(--border-subtle)]">
                   <button
                     type="button"
                     onClick={() => setIsCreateModalOpen(false)}
-                    className="rounded-xl border border-[#234235] bg-[#0f1c18] px-4 py-2 text-xs font-medium text-[#9bb5a8] hover:text-white"
+                    className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-4 py-2 text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                   >
                     إلغاء
                   </button>
@@ -512,7 +491,7 @@ export default function BranchesPage() {
                     type="submit"
                     id="btn-confirm-create-branch"
                     disabled={isSubmitting}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-[#2f9e6b] to-[#36b379] px-5 py-2 text-xs font-semibold text-[#062016] shadow hover:brightness-110 disabled:opacity-50 cursor-pointer"
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--brand-primary)] px-5 py-2 text-xs font-semibold text-white shadow hover:brightness-110 disabled:opacity-50 cursor-pointer"
                   >
                     <Save className="h-4 w-4" />
                     <span>{isSubmitting ? 'جارٍ الحفظ...' : 'إنشاء الفرع'}</span>
@@ -526,16 +505,16 @@ export default function BranchesPage() {
         {/* Modal: Edit Branch */}
         {isEditModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-            <div className="w-full max-w-lg rounded-2xl border border-[#234235] bg-[#162821] p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
-              <div className="flex items-center justify-between border-b border-[#234235] pb-3 mb-4">
-                <h3 className="font-bold text-white text-base flex items-center gap-2">
-                  <Edit2 className="h-5 w-5 text-[#2f9e6b]" />
+            <div className="w-full max-w-lg rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+              <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3 mb-4">
+                <h3 className="font-bold text-[var(--text-primary)] text-base flex items-center gap-2">
+                  <Edit2 className="h-5 w-5 text-[var(--brand-primary)]" />
                   تعديل بيانات الفرع
                 </h3>
                 <button
                   type="button"
                   onClick={() => setIsEditModalOpen(false)}
-                  className="rounded-lg p-1 text-[#9bb5a8] hover:bg-[#234235] hover:text-white"
+                  className="rounded-lg p-1 text-[var(--text-muted)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)]"
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -544,7 +523,7 @@ export default function BranchesPage() {
               <form onSubmit={handleEditSubmit} className="space-y-4">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-[#9bb5a8] mb-1">
+                    <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
                       اسم الفرع *
                     </label>
                     <input
@@ -552,38 +531,38 @@ export default function BranchesPage() {
                       required
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      className="w-full rounded-xl border border-[#2b4c3e] bg-[#0f1c18] px-3.5 py-2 text-xs text-[#e8f0ec] focus:border-[#2f9e6b] focus:outline-none"
+                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3.5 py-2 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-[#9bb5a8] mb-1">
+                    <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
                       كود الفرع (Code)
                     </label>
                     <input
                       type="text"
                       value={code}
                       onChange={(e) => setCode(e.target.value.toUpperCase())}
-                      className="w-full rounded-xl border border-[#2b4c3e] bg-[#0f1c18] px-3.5 py-2 text-xs text-[#e8f0ec] focus:border-[#2f9e6b] focus:outline-none font-mono uppercase"
+                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3.5 py-2 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none font-mono uppercase"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-[#9bb5a8] mb-1">
+                    <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
                       المدينة
                     </label>
                     <input
                       type="text"
                       value={city}
                       onChange={(e) => setCity(e.target.value)}
-                      className="w-full rounded-xl border border-[#2b4c3e] bg-[#0f1c18] px-3.5 py-2 text-xs text-[#e8f0ec] focus:border-[#2f9e6b] focus:outline-none"
+                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3.5 py-2 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-[#9bb5a8] mb-1">
+                    <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
                       السعة الاستيعابية
                     </label>
                     <input
@@ -592,42 +571,42 @@ export default function BranchesPage() {
                       onChange={(e) =>
                         setCapacity(e.target.value === '' ? '' : parseInt(e.target.value, 10))
                       }
-                      className="w-full rounded-xl border border-[#2b4c3e] bg-[#0f1c18] px-3.5 py-2 text-xs text-[#e8f0ec] focus:border-[#2f9e6b] focus:outline-none font-mono"
+                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3.5 py-2 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none font-mono"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-[#9bb5a8] mb-1">العنوان</label>
+                  <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">العنوان</label>
                   <input
                     type="text"
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
-                    className="w-full rounded-xl border border-[#2b4c3e] bg-[#0f1c18] px-3.5 py-2 text-xs text-[#e8f0ec] focus:border-[#2f9e6b] focus:outline-none"
+                    className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3.5 py-2 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-[#9bb5a8] mb-1">
+                    <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
                       الهاتف
                     </label>
                     <input
                       type="tel"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
-                      className="w-full rounded-xl border border-[#2b4c3e] bg-[#0f1c18] px-3.5 py-2 text-xs text-[#e8f0ec] focus:border-[#2f9e6b] focus:outline-none font-mono"
+                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3.5 py-2 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none font-mono"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-[#9bb5a8] mb-1">
+                    <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
                       حالة الفرع
                     </label>
                     <select
                       value={status}
                       onChange={(e) => setStatus(e.target.value as BranchStatus)}
-                      className="w-full rounded-xl border border-[#2b4c3e] bg-[#0f1c18] px-3.5 py-2 text-xs text-[#e8f0ec] focus:border-[#2f9e6b] focus:outline-none"
+                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3.5 py-2 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none"
                     >
                       <option value="ACTIVE">نشط (Active)</option>
                       <option value="INACTIVE">غير نشط (Inactive)</option>
@@ -635,11 +614,11 @@ export default function BranchesPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#234235]">
+                <div className="flex items-center justify-end gap-2 pt-3 border-t border-[var(--border-subtle)]">
                   <button
                     type="button"
                     onClick={() => setIsEditModalOpen(false)}
-                    className="rounded-xl border border-[#234235] bg-[#0f1c18] px-4 py-2 text-xs font-medium text-[#9bb5a8] hover:text-white"
+                    className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-4 py-2 text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                   >
                     إلغاء
                   </button>
@@ -647,7 +626,7 @@ export default function BranchesPage() {
                     type="submit"
                     id="btn-confirm-update-branch"
                     disabled={isSubmitting}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-[#2f9e6b] to-[#36b379] px-5 py-2 text-xs font-semibold text-[#062016] shadow hover:brightness-110 disabled:opacity-50 cursor-pointer"
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--brand-primary)] px-5 py-2 text-xs font-semibold text-white shadow hover:brightness-110 disabled:opacity-50 cursor-pointer"
                   >
                     <Save className="h-4 w-4" />
                     <span>{isSubmitting ? 'جارٍ الحفظ...' : 'حفظ التعديلات'}</span>
@@ -657,7 +636,7 @@ export default function BranchesPage() {
             </div>
           </div>
         )}
-      </main>
-    </div>
+      </div>
+    </AppShell>
   );
 }

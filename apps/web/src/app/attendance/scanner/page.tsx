@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import jsQR from 'jsqr';
 import {
@@ -17,13 +16,15 @@ import {
   AlertTriangle,
   RotateCcw,
   UploadCloud,
-  ChevronRight,
   RefreshCw,
   Search,
   Sparkles,
+  QrCode,
 } from 'lucide-react';
-import { Navbar } from '../../../components/Navbar';
 import { useAuth } from '../../../lib/auth-context';
+import { useLocale } from '../../../lib/locale-context';
+import { AppShell } from '../../../components/layout/AppShell';
+import { PageHeader } from '../../../components/ui/PageHeader';
 import { apiClient } from '../../../lib/api-client';
 import { offlineStore } from '../../../lib/offline-attendance-store';
 import type {
@@ -44,6 +45,7 @@ interface ScanFeedback {
 export default function MobileAttendanceScannerPage() {
   const router = useRouter();
   const { user, activeTenant, isLoading: authLoading } = useAuth();
+  const { t } = useLocale();
 
   // Session State
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
@@ -509,70 +511,65 @@ export default function MobileAttendanceScannerPage() {
   const selectedSession = sessions.find((s) => s.id === selectedSessionId);
 
   return (
-    <div className="min-h-screen bg-[#08120e] text-[#e8f0ec] flex flex-col font-sans">
-      <Navbar />
-
-      <main className="flex-1 mx-auto w-full max-w-4xl px-4 py-6 sm:px-6 lg:px-8 space-y-6">
-        {/* Navigation Breadcrumb */}
-        <div className="flex items-center justify-between text-xs text-[#8ca89a]">
-          <div className="flex items-center gap-2">
-            <Link href="/dashboard" className="hover:text-white transition-colors">
-              الرئيسية
-            </Link>
-            <ChevronRight className="h-3.5 w-3.5" />
-            <Link href="/sessions" className="hover:text-white transition-colors">
-              الحصص التدريبية
-            </Link>
-            <ChevronRight className="h-3.5 w-3.5" />
-            <span className="text-[#45c387] font-semibold">ماسح الحضور السريع (QR Scanner)</span>
-          </div>
-
-          {/* Network Indicator Pill */}
-          <div className="flex items-center gap-3">
-            {pendingQueueCount > 0 && (
-              <button
-                type="button"
-                onClick={handleSyncPendingScans}
-                disabled={isSyncingOffline || !isOnline}
-                className="flex items-center gap-1.5 rounded-full bg-amber-500/20 border border-amber-500/40 px-3 py-1 text-[11px] font-bold text-amber-300 hover:bg-amber-500/30 transition-all cursor-pointer disabled:opacity-50"
-              >
-                <UploadCloud
-                  className={`h-3.5 w-3.5 ${isSyncingOffline ? 'animate-bounce' : ''}`}
-                />
-                <span>مزامنة ({pendingQueueCount})</span>
-              </button>
-            )}
-
-            <span
-              className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold border ${
-                isOnline
-                  ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300'
-                  : 'bg-rose-500/20 border-rose-500/40 text-rose-300'
-              }`}
-            >
-              {isOnline ? (
-                <>
-                  <Wifi className="h-3 w-3 text-emerald-400" />
-                  <span>متصل</span>
-                </>
-              ) : (
-                <>
-                  <WifiOff className="h-3 w-3 text-rose-400" />
-                  <span>بدون إنترنت</span>
-                </>
+    <AppShell
+      breadcrumbs={[
+        { label: t('nav.sessions'), href: '/sessions' },
+        { label: t('attendance.scanner') || 'ماسح الحضور السريع (QR Scanner)' },
+      ]}
+    >
+      <div className="max-w-4xl mx-auto space-y-6">
+        {/* Header with Network Indicator */}
+        <PageHeader
+          title={t('attendance.scanner') || 'ماسح الحضور السريع (QR Scanner)'}
+          description="تسجيل الحضور الفوري بالكاميرا أو يدوياً مع الدعم الكامل لوضع عدم الاتصال والمزامنة التلقائية."
+          icon={QrCode}
+          actions={
+            <div className="flex items-center gap-3">
+              {pendingQueueCount > 0 && (
+                <button
+                  type="button"
+                  onClick={handleSyncPendingScans}
+                  disabled={isSyncingOffline || !isOnline}
+                  className="flex items-center gap-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 px-3 py-1 text-[11px] font-bold text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 transition-all cursor-pointer disabled:opacity-50"
+                >
+                  <UploadCloud
+                    className={`h-3.5 w-3.5 ${isSyncingOffline ? 'animate-bounce' : ''}`}
+                  />
+                  <span>مزامنة ({pendingQueueCount})</span>
+                </button>
               )}
-            </span>
-          </div>
-        </div>
+
+              <span
+                className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold border ${
+                  isOnline
+                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
+                    : 'bg-red-500/10 border-red-500/30 text-red-500'
+                }`}
+              >
+                {isOnline ? (
+                  <>
+                    <Wifi className="h-3 w-3 text-emerald-500" />
+                    <span>متصل</span>
+                  </>
+                ) : (
+                  <>
+                    <WifiOff className="h-3 w-3 text-red-500" />
+                    <span>بدون إنترنت</span>
+                  </>
+                )}
+              </span>
+            </div>
+          }
+        />
 
         {/* Sync Status Banner */}
         {syncStatusBanner && (
-          <div className="rounded-xl border border-emerald-500/40 bg-emerald-950/40 p-3 text-xs text-emerald-200 flex items-center justify-between">
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-3 text-xs text-emerald-600 dark:text-emerald-400 flex items-center justify-between">
             <span>{syncStatusBanner}</span>
             <button
               type="button"
               onClick={() => setSyncStatusBanner(null)}
-              className="text-emerald-400 hover:text-white text-xs underline"
+              className="text-emerald-600 dark:text-emerald-400 hover:underline text-xs cursor-pointer"
             >
               إغلاق
             </button>
@@ -580,23 +577,23 @@ export default function MobileAttendanceScannerPage() {
         )}
 
         {/* Session Selector Header */}
-        <div className="rounded-2xl border border-[#234235] bg-[#12231c] p-4 sm:p-5 shadow-lg">
+        <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 sm:p-5 shadow-sm">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <label
                 htmlFor="session-selector"
-                className="block text-xs font-bold text-[#8ca89a] mb-1.5"
+                className="block text-xs font-bold text-[var(--text-secondary)] mb-1.5"
               >
                 اختر الحصة التدريبية المراد تسجيل الحضور لها:
               </label>
 
               {isLoadingSessions ? (
-                <div className="flex items-center gap-2 text-xs text-[#8ca89a]">
-                  <RefreshCw className="h-3.5 w-3.5 animate-spin text-[#45c387]" />
+                <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
+                  <RefreshCw className="h-3.5 w-3.5 animate-spin text-[var(--brand-primary)]" />
                   <span>جارٍ تحميل الحصص المتاحة...</span>
                 </div>
               ) : sessions.length === 0 ? (
-                <div className="text-xs text-amber-300">
+                <div className="text-xs text-amber-500">
                   لا توجد حصص تدريبية متاحة حالياً. يرجى إنشاء حصة أولاً.
                 </div>
               ) : (
@@ -604,7 +601,7 @@ export default function MobileAttendanceScannerPage() {
                   id="session-selector"
                   value={selectedSessionId}
                   onChange={(e) => setSelectedSessionId(e.target.value)}
-                  className="w-full sm:w-80 rounded-xl border border-[#2b4c3e] bg-[#0c1813] px-3.5 py-2.5 text-xs font-semibold text-white focus:border-[#45c387] focus:outline-none cursor-pointer"
+                  className="w-full sm:w-80 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2.5 text-xs font-semibold text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none cursor-pointer transition-colors"
                 >
                   {sessions.map((s) => (
                     <option key={s.id} value={s.id}>
@@ -617,13 +614,13 @@ export default function MobileAttendanceScannerPage() {
 
             {selectedSession && (
               <div className="flex flex-wrap items-center gap-2 text-xs">
-                <span className="rounded-lg bg-[#162e24] px-3 py-1.5 text-[#45c387] font-semibold border border-[#2b5944]">
+                <span className="rounded-lg bg-[var(--bg-elevated)] px-3 py-1.5 text-[var(--brand-primary)] font-semibold border border-[var(--border-subtle)]">
                   📅 {selectedSession.sessionDate}
                 </span>
-                <span className="rounded-lg bg-[#162e24] px-3 py-1.5 text-[#45c387] font-semibold border border-[#2b5944]">
+                <span className="rounded-lg bg-[var(--bg-elevated)] px-3 py-1.5 text-[var(--brand-primary)] font-semibold border border-[var(--border-subtle)]">
                   ⏰ {selectedSession.startTime} - {selectedSession.endTime}
                 </span>
-                <span className="rounded-lg bg-[#162e24] px-3 py-1.5 text-white font-semibold border border-[#2b5944]">
+                <span className="rounded-lg bg-[var(--bg-elevated)] px-3 py-1.5 text-[var(--text-primary)] font-semibold border border-[var(--border-subtle)]">
                   حضور: {selectedSession.totalPresent + selectedSession.totalLate} /{' '}
                   {selectedSession.totalExpected}
                 </span>
@@ -633,7 +630,7 @@ export default function MobileAttendanceScannerPage() {
         </div>
 
         {/* Viewfinder & Continuous Scanner Section */}
-        <div className="relative mx-auto w-full max-w-lg overflow-hidden rounded-3xl border-2 border-[#2f9e6b]/40 bg-black shadow-2xl">
+        <div className="relative mx-auto w-full max-w-lg overflow-hidden rounded-3xl border-2 border-[var(--brand-primary)]/40 bg-black shadow-2xl">
           {/* Video Feed */}
           <div className="relative aspect-[4/3] w-full bg-black overflow-hidden flex items-center justify-center">
             <video
@@ -651,7 +648,7 @@ export default function MobileAttendanceScannerPage() {
             {isCameraActive && (
               <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
                 {/* Target Square Bracket */}
-                <div className="relative h-60 w-60 rounded-2xl border-2 border-[#45c387]/70 shadow-2xl">
+                <div className="relative h-60 w-60 rounded-2xl border-2 border-emerald-400/70 shadow-2xl">
                   {/* Glowing Corner Brackets */}
                   <div className="absolute -top-1 -right-1 h-6 w-6 border-t-4 border-r-4 border-emerald-400 rounded-tr-lg" />
                   <div className="absolute -top-1 -left-1 h-6 w-6 border-t-4 border-l-4 border-emerald-400 rounded-tl-lg" />
@@ -659,7 +656,7 @@ export default function MobileAttendanceScannerPage() {
                   <div className="absolute -bottom-1 -left-1 h-6 w-6 border-b-4 border-l-4 border-emerald-400 rounded-bl-lg" />
 
                   {/* Horizontal Animated Laser Scanline */}
-                  <div className="absolute right-0 left-0 h-0.5 bg-gradient-to-r from-transparent via-[#45c387] to-transparent shadow-[0_0_12px_#45c387] animate-pulse" />
+                  <div className="absolute right-0 left-0 h-0.5 bg-gradient-to-r from-transparent via-emerald-400 to-transparent shadow-[0_0_12px_#45c387] animate-pulse" />
                 </div>
               </div>
             )}
@@ -679,7 +676,7 @@ export default function MobileAttendanceScannerPage() {
                   title="كتم / تفعيل الصوت"
                 >
                   {soundEnabled ? (
-                    <Volume2 className="h-4 w-4 text-[#45c387]" />
+                    <Volume2 className="h-4 w-4 text-emerald-400" />
                   ) : (
                     <VolumeX className="h-4 w-4 text-gray-400" />
                   )}
@@ -691,23 +688,23 @@ export default function MobileAttendanceScannerPage() {
                   className="flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-md border border-white/10 hover:bg-black/90 cursor-pointer"
                   title="تبديل الكاميرا الأمامية / الخلفية"
                 >
-                  <SwitchCamera className="h-4 w-4 text-[#45c387]" />
+                  <SwitchCamera className="h-4 w-4 text-emerald-400" />
                 </button>
               </div>
             </div>
 
             {/* Camera Inactive / Error Fallback */}
             {!isCameraActive && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#06140e] p-6 text-center text-[#8ca89a] z-10">
-                <CameraOff className="h-12 w-12 text-rose-400 mb-3 opacity-60" />
-                <p className="text-sm font-bold text-white">الكاميرا غير مفعلة</p>
-                <p className="text-xs text-[#8ca89a] mt-1 max-w-xs">
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-[var(--bg-surface)] p-6 text-center text-[var(--text-secondary)] z-10">
+                <CameraOff className="h-12 w-12 text-red-500 mb-3 opacity-60" />
+                <p className="text-sm font-bold text-[var(--text-primary)]">الكاميرا غير مفعلة</p>
+                <p className="text-xs text-[var(--text-secondary)] mt-1 max-w-xs">
                   {cameraError || 'انقر لتفعيل الكاميرا والبدء في مسح بطاقات اللاعبين.'}
                 </p>
                 <button
                   type="button"
                   onClick={startCamera}
-                  className="mt-4 flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#2f9e6b] to-[#45c387] px-5 py-2.5 text-xs font-bold text-[#062016] shadow-lg hover:brightness-110 cursor-pointer"
+                  className="mt-4 flex items-center gap-2 rounded-xl bg-[var(--brand-primary)] text-white px-5 py-2.5 text-xs font-bold shadow-lg hover:brightness-110 cursor-pointer"
                 >
                   <Camera className="h-4 w-4" />
                   <span>تشغيل الكاميرا الآن</span>
@@ -721,43 +718,43 @@ export default function MobileAttendanceScannerPage() {
             <div
               className={`p-4 border-t transition-all ${
                 activeFeedback.type === 'ON_TIME'
-                  ? 'bg-gradient-to-r from-emerald-950 via-[#103022] to-emerald-950 border-emerald-500/50 text-emerald-200'
+                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
                   : activeFeedback.type === 'LATE'
-                    ? 'bg-gradient-to-r from-amber-950 via-[#302610] to-amber-950 border-amber-500/50 text-amber-200'
+                    ? 'bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400'
                     : activeFeedback.type === 'DUPLICATE'
-                      ? 'bg-gradient-to-r from-blue-950 via-[#102030] to-blue-950 border-blue-500/50 text-blue-200'
+                      ? 'bg-blue-500/10 border-blue-500/30 text-blue-500'
                       : activeFeedback.type === 'OFFLINE_QUEUED'
-                        ? 'bg-gradient-to-r from-orange-950 via-[#301c10] to-orange-950 border-orange-500/50 text-orange-200'
-                        : 'bg-gradient-to-r from-rose-950 via-[#301010] to-rose-950 border-rose-500/50 text-rose-200'
+                        ? 'bg-orange-500/10 border-orange-500/30 text-orange-500'
+                        : 'bg-red-500/10 border-red-500/30 text-red-500'
               }`}
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-start gap-3">
                   {activeFeedback.type === 'ON_TIME' && (
-                    <CheckCircle2 className="h-6 w-6 text-emerald-400 shrink-0 mt-0.5" />
+                    <CheckCircle2 className="h-6 w-6 text-emerald-500 shrink-0 mt-0.5" />
                   )}
                   {activeFeedback.type === 'LATE' && (
-                    <Clock className="h-6 w-6 text-amber-400 shrink-0 mt-0.5" />
+                    <Clock className="h-6 w-6 text-amber-500 shrink-0 mt-0.5" />
                   )}
                   {activeFeedback.type === 'DUPLICATE' && (
-                    <CheckCircle2 className="h-6 w-6 text-blue-400 shrink-0 mt-0.5" />
+                    <CheckCircle2 className="h-6 w-6 text-blue-500 shrink-0 mt-0.5" />
                   )}
                   {activeFeedback.type === 'OFFLINE_QUEUED' && (
-                    <UploadCloud className="h-6 w-6 text-orange-400 shrink-0 mt-0.5" />
+                    <UploadCloud className="h-6 w-6 text-orange-500 shrink-0 mt-0.5" />
                   )}
                   {activeFeedback.type === 'ERROR' && (
-                    <AlertTriangle className="h-6 w-6 text-rose-400 shrink-0 mt-0.5" />
+                    <AlertTriangle className="h-6 w-6 text-red-500 shrink-0 mt-0.5" />
                   )}
 
                   <div>
-                    <h3 className="text-sm font-extrabold text-white">
+                    <h3 className="text-sm font-extrabold text-[var(--text-primary)]">
                       {activeFeedback.playerName
                         ? `${activeFeedback.playerName} • ${activeFeedback.title}`
                         : activeFeedback.title}
                     </h3>
                     <p className="text-xs mt-0.5 opacity-90">{activeFeedback.message}</p>
                     {activeFeedback.membershipNumber && (
-                      <span className="inline-block mt-1.5 font-mono text-[10px] font-bold bg-black/40 px-2 py-0.5 rounded border border-white/10">
+                      <span className="inline-block mt-1.5 font-mono text-[10px] font-bold bg-[var(--bg-elevated)] px-2 py-0.5 rounded border border-[var(--border-subtle)] text-[var(--text-primary)]">
                         {activeFeedback.membershipNumber}
                       </span>
                     )}
@@ -773,13 +770,13 @@ export default function MobileAttendanceScannerPage() {
         </div>
 
         {/* Manual Input Fallback */}
-        <div className="rounded-2xl border border-[#234235] bg-[#12231c] p-4 sm:p-5 shadow-lg">
+        <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 sm:p-5 shadow-sm">
           <form onSubmit={handleManualSubmit} className="space-y-3">
-            <div className="flex items-center gap-2 text-xs font-bold text-white">
-              <Search className="h-4 w-4 text-[#45c387]" />
+            <div className="flex items-center gap-2 text-xs font-bold text-[var(--text-primary)]">
+              <Search className="h-4 w-4 text-[var(--brand-primary)]" />
               <span>تسجيل يدوي كبديل (Manual Entry Fallback)</span>
             </div>
-            <p className="text-[11px] text-[#8ca89a]">
+            <p className="text-[11px] text-[var(--text-secondary)]">
               إذا كانت عدسة الكاميرا متسخة أو البطاقة تالفة، أدخل رمز بطاقة اللاعب يدوياً:
             </p>
 
@@ -789,12 +786,12 @@ export default function MobileAttendanceScannerPage() {
                 placeholder="أدخل رمز بطاقة اللاعب (مثال: a1b2c3d4e5...)"
                 value={manualCode}
                 onChange={(e) => setManualCode(e.target.value)}
-                className="flex-1 rounded-xl border border-[#2b4c3e] bg-[#0c1813] px-3.5 py-2.5 text-xs text-white placeholder-[#8ca89a]/50 focus:border-[#45c387] focus:outline-none"
+                className="flex-1 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2.5 text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:border-[var(--brand-primary)] focus:outline-none transition-colors"
               />
               <button
                 type="submit"
                 disabled={isSubmittingManual || !manualCode.trim()}
-                className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-[#2f9e6b] to-[#45c387] px-4 py-2.5 text-xs font-bold text-[#062016] hover:brightness-110 disabled:opacity-50 transition-all cursor-pointer"
+                className="flex items-center gap-1.5 rounded-xl bg-[var(--brand-primary)] text-white px-4 py-2.5 text-xs font-bold hover:brightness-110 disabled:opacity-50 transition-all cursor-pointer"
               >
                 {isSubmittingManual ? (
                   <RefreshCw className="h-4 w-4 animate-spin" />
@@ -808,10 +805,10 @@ export default function MobileAttendanceScannerPage() {
         </div>
 
         {/* Live Scanned Activity Feed */}
-        <div className="rounded-2xl border border-[#234235] bg-[#12231c] p-5 space-y-4 shadow-lg">
-          <div className="flex items-center justify-between border-b border-[#234235] pb-3">
-            <h2 className="text-sm font-bold text-white flex items-center gap-2">
-              <RotateCcw className="h-4 w-4 text-[#45c387]" />
+        <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 space-y-4 shadow-sm">
+          <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
+            <h2 className="text-sm font-bold text-[var(--text-primary)] flex items-center gap-2">
+              <RotateCcw className="h-4 w-4 text-[var(--brand-primary)]" />
               <span>سجل عمليات المسح الأخيرة في هذه الحصة ({recentScans.length})</span>
             </h2>
 
@@ -819,7 +816,7 @@ export default function MobileAttendanceScannerPage() {
               <button
                 type="button"
                 onClick={() => setRecentScans([])}
-                className="text-[11px] text-[#8ca89a] hover:text-white transition-colors"
+                className="text-[11px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
               >
                 مسح السجل
               </button>
@@ -827,11 +824,11 @@ export default function MobileAttendanceScannerPage() {
           </div>
 
           {recentScans.length === 0 ? (
-            <div className="py-8 text-center text-xs text-[#8ca89a]">
+            <div className="py-8 text-center text-xs text-[var(--text-secondary)]">
               لم يتم مسح أي بطاقة حتى الآن في هذه الجلسة. وجّه الكاميرا نحو بطاقة اللاعب للبدء.
             </div>
           ) : (
-            <div className="divide-y divide-[#234235] max-h-80 overflow-y-auto">
+            <div className="divide-y divide-[var(--border-subtle)] max-h-80 overflow-y-auto">
               {recentScans.map((scan, idx) => (
                 <div key={idx} className="py-3 flex items-center justify-between gap-3 text-xs">
                   <div className="flex items-center gap-3">
@@ -845,24 +842,24 @@ export default function MobileAttendanceScannerPage() {
                               ? 'bg-blue-400'
                               : scan.type === 'OFFLINE_QUEUED'
                                 ? 'bg-orange-400'
-                                : 'bg-rose-400'
+                                : 'bg-red-400'
                       }`}
                     />
                     <div>
-                      <span className="font-bold text-white">
+                      <span className="font-bold text-[var(--text-primary)]">
                         {scan.playerName || 'بطاقة غير محددة'}
                       </span>
-                      <p className="text-[11px] text-[#8ca89a]">{scan.title}</p>
+                      <p className="text-[11px] text-[var(--text-secondary)]">{scan.title}</p>
                     </div>
                   </div>
 
-                  <span className="font-mono text-[10px] text-[#8ca89a]">{scan.timestamp}</span>
+                  <span className="font-mono text-[10px] text-[var(--text-secondary)]">{scan.timestamp}</span>
                 </div>
               ))}
             </div>
           )}
         </div>
-      </main>
-    </div>
+      </div>
+    </AppShell>
   );
 }

@@ -1,24 +1,22 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../lib/auth-context';
 import { canAccessAdminRoutes, getRoleHomeRoute } from '../../lib/role-routing';
-import { Navbar } from '../../components/Navbar';
+import { AppShell } from '../../components/layout/AppShell';
+import { PageHeader } from '../../components/ui/PageHeader';
 import { ThemeToggle } from '../../components/ThemeToggle';
 import { LocaleToggle } from '../../components/LocaleToggle';
 import { api } from '../../lib/api-client';
 import type { AcademyProfile, UpdateAcademySettings } from '@academy/shared';
 import {
-  Settings,
   Building2,
   Globe,
   Save,
   RefreshCw,
   AlertCircle,
   CheckCircle2,
-  ChevronRight,
   Palette,
 } from 'lucide-react';
 
@@ -113,55 +111,39 @@ export default function SettingsPage() {
 
   if (isLoading || isFetching) {
     return (
-      <div className="min-h-screen bg-[#0f1c18] flex items-center justify-center text-[#9bb5a8]">
-        <RefreshCw className="h-8 w-8 animate-spin text-[#2f9e6b]" />
-      </div>
+      <AppShell>
+        <div className="flex min-h-[50vh] items-center justify-center">
+          <RefreshCw className="h-8 w-8 animate-spin text-[var(--brand-primary)]" />
+        </div>
+      </AppShell>
     );
   }
 
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-[#0f1c18] text-[#e8f0ec] flex flex-col font-sans">
-      <Navbar />
-
-      <main className="flex-1 mx-auto w-full max-w-4xl px-4 py-8 sm:px-6 lg:px-8 space-y-6">
-        {/* Navigation Breadcrumb */}
-        <div className="flex items-center gap-2 text-xs text-[#9bb5a8]">
-          <Link href="/dashboard" className="hover:text-white transition-colors">
-            الرئيسية
-          </Link>
-          <ChevronRight className="h-3.5 w-3.5" />
-          <span className="text-[#45c387]">إعدادات الأكاديمية</span>
-        </div>
-
-        {/* Page Title */}
-        <div className="border-b border-[#234235] pb-4">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-[#45c387] bg-[#2f9e6b]/15 px-2.5 py-0.5 rounded-full border border-[#2f9e6b]/30">
-              <Settings className="h-3.5 w-3.5" />
-              ملف الأكاديمية
-            </span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-            إعدادات وهوية الأكاديمية
-          </h1>
-          <p className="text-xs text-[#9bb5a8] mt-1">
-            إدارة الاسم الرسمي ومعلومات الاتصال والموقع والعملة المعيارية للمدفوعات.
-          </p>
-        </div>
+    <AppShell>
+      <div className="max-w-4xl space-y-6">
+        <PageHeader
+          breadcrumbs={[
+            { label: 'الرئيسية', href: '/dashboard' },
+            { label: 'إعدادات الأكاديمية' },
+          ]}
+          title="إعدادات وهوية الأكاديمية"
+          description="إدارة الاسم الرسمي ومعلومات الاتصال والموقع والعملة المعيارية للمدفوعات."
+        />
 
         {/* Alerts */}
         {errorMessage && (
-          <div className="rounded-xl border border-[#ef4444]/40 bg-[#ef4444]/10 p-4 text-xs text-[#fca5a5] flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 shrink-0 text-[#ef4444]" />
+          <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-xs text-rose-600 dark:text-rose-300 flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 shrink-0 text-rose-500" />
             <div className="flex-1 font-medium">{errorMessage}</div>
           </div>
         )}
 
         {successMessage && (
-          <div className="rounded-xl border border-[#2f9e6b]/40 bg-[#2f9e6b]/10 p-4 text-xs text-[#45c387] flex items-start gap-3">
-            <CheckCircle2 className="h-5 w-5 shrink-0 text-[#45c387]" />
+          <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-xs text-emerald-600 dark:text-emerald-300 flex items-start gap-3">
+            <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-500" />
             <div className="flex-1 font-medium">{successMessage}</div>
           </div>
         )}
@@ -169,30 +151,30 @@ export default function SettingsPage() {
         {/* Invariant Stats Card */}
         {profile && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="rounded-xl border border-[#234235] bg-[#162821]/80 p-3.5 text-center">
-              <span className="text-[11px] text-[#9bb5a8] block mb-0.5">
+            <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3.5 text-center">
+              <span className="text-[11px] text-[var(--text-muted)] block mb-0.5">
                 معرف الأكاديمية (Slug)
               </span>
-              <span className="font-mono text-xs font-bold text-white">{profile.slug}</span>
+              <span className="font-mono text-xs font-bold text-[var(--text-primary)]">{profile.slug}</span>
             </div>
 
-            <div className="rounded-xl border border-[#234235] bg-[#162821]/80 p-3.5 text-center">
-              <span className="text-[11px] text-[#9bb5a8] block mb-0.5">عدد الفروع</span>
-              <span className="text-sm font-bold text-[#45c387]">
+            <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3.5 text-center">
+              <span className="text-[11px] text-[var(--text-muted)] block mb-0.5">عدد الفروع</span>
+              <span className="text-sm font-bold text-[var(--brand-primary)]">
                 {profile._count?.branches || 0} فروع
               </span>
             </div>
 
-            <div className="rounded-xl border border-[#234235] bg-[#162821]/80 p-3.5 text-center">
-              <span className="text-[11px] text-[#9bb5a8] block mb-0.5">إجمالي اللاعبين</span>
-              <span className="text-sm font-bold text-[#3b82f6]">
+            <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3.5 text-center">
+              <span className="text-[11px] text-[var(--text-muted)] block mb-0.5">إجمالي اللاعبين</span>
+              <span className="text-sm font-bold text-blue-500">
                 {profile._count?.players || 0} لاعب
               </span>
             </div>
 
-            <div className="rounded-xl border border-[#234235] bg-[#162821]/80 p-3.5 text-center">
-              <span className="text-[11px] text-[#9bb5a8] block mb-0.5">الكادر النشط</span>
-              <span className="text-sm font-bold text-[#a78bfa]">
+            <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3.5 text-center">
+              <span className="text-[11px] text-[var(--text-muted)] block mb-0.5">الكادر النشط</span>
+              <span className="text-sm font-bold text-purple-500">
                 {profile._count?.memberships || 0} عضو
               </span>
             </div>
@@ -201,15 +183,15 @@ export default function SettingsPage() {
 
         {/* Profile Form */}
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="rounded-2xl border border-[#234235] bg-[#162821]/80 p-6 backdrop-blur-md space-y-4">
-            <div className="flex items-center gap-2 border-b border-[#234235] pb-3 text-sm font-bold text-white">
-              <Building2 className="h-4 w-4 text-[#2f9e6b]" />
+          <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 space-y-4 shadow-sm">
+            <div className="flex items-center gap-2 border-b border-[var(--border-subtle)] pb-3 text-sm font-bold text-[var(--text-primary)]">
+              <Building2 className="h-4 w-4 text-[var(--brand-primary)]" />
               <span>البيانات الأساسية ومعلومات التواصل</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-[#9bb5a8] mb-1.5">
+                <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">
                   اسم الأكاديمية الرسمي *
                 </label>
                 <input
@@ -219,12 +201,12 @@ export default function SettingsPage() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="مثال: أكاديمية الأبطال لكرة القدم"
-                  className="w-full rounded-xl border border-[#2b4c3e] bg-[#0f1c18] px-3.5 py-2.5 text-xs text-[#e8f0ec] focus:border-[#2f9e6b] focus:outline-none"
+                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3.5 py-2.5 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[#9bb5a8] mb-1.5">
+                <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">
                   رابط الشعار (Logo URL)
                 </label>
                 <input
@@ -233,12 +215,12 @@ export default function SettingsPage() {
                   value={logoUrl}
                   onChange={(e) => setLogoUrl(e.target.value)}
                   placeholder="https://example.com/logo.png"
-                  className="w-full rounded-xl border border-[#2b4c3e] bg-[#0f1c18] px-3.5 py-2.5 text-xs text-[#e8f0ec] focus:border-[#2f9e6b] focus:outline-none font-mono"
+                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3.5 py-2.5 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none font-mono"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[#9bb5a8] mb-1.5">
+                <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">
                   رقم الهاتف الرسمي
                 </label>
                 <input
@@ -247,12 +229,12 @@ export default function SettingsPage() {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="+201012345678"
-                  className="w-full rounded-xl border border-[#2b4c3e] bg-[#0f1c18] px-3.5 py-2.5 text-xs text-[#e8f0ec] focus:border-[#2f9e6b] focus:outline-none font-mono"
+                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3.5 py-2.5 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none font-mono"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[#9bb5a8] mb-1.5">
+                <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">
                   البريد الإلكتروني الرسمي
                 </label>
                 <input
@@ -261,12 +243,12 @@ export default function SettingsPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="info@academy.com"
-                  className="w-full rounded-xl border border-[#2b4c3e] bg-[#0f1c18] px-3.5 py-2.5 text-xs text-[#e8f0ec] focus:border-[#2f9e6b] focus:outline-none font-mono"
+                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3.5 py-2.5 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none font-mono"
                 />
               </div>
 
               <div className="sm:col-span-2">
-                <label className="block text-xs font-semibold text-[#9bb5a8] mb-1.5">
+                <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">
                   المقر الرئيسي / العنوان
                 </label>
                 <input
@@ -275,29 +257,29 @@ export default function SettingsPage() {
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
                   placeholder="المعادي، القاهرة، جمهورية مصر العربية"
-                  className="w-full rounded-xl border border-[#2b4c3e] bg-[#0f1c18] px-3.5 py-2.5 text-xs text-[#e8f0ec] focus:border-[#2f9e6b] focus:outline-none"
+                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3.5 py-2.5 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none"
                 />
               </div>
             </div>
           </div>
 
           {/* Localization & Financial Settings */}
-          <div className="rounded-2xl border border-[#234235] bg-[#162821]/80 p-6 backdrop-blur-md space-y-4">
-            <div className="flex items-center gap-2 border-b border-[#234235] pb-3 text-sm font-bold text-white">
-              <Globe className="h-4 w-4 text-[#3b82f6]" />
+          <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 space-y-4 shadow-sm">
+            <div className="flex items-center gap-2 border-b border-[var(--border-subtle)] pb-3 text-sm font-bold text-[var(--text-primary)]">
+              <Globe className="h-4 w-4 text-blue-500" />
               <span>الإعدادات المالية والإقليمية</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-[#9bb5a8] mb-1.5">
+                <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">
                   العملة الافتراضية
                 </label>
                 <select
                   id="select-currency"
                   value={currency}
                   onChange={(e) => setCurrency(e.target.value)}
-                  className="w-full rounded-xl border border-[#2b4c3e] bg-[#0f1c18] px-3.5 py-2.5 text-xs text-[#e8f0ec] focus:border-[#2f9e6b] focus:outline-none"
+                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3.5 py-2.5 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none"
                 >
                   <option value="EGP">جنيه مصري (EGP)</option>
                   <option value="SAR">ريال سعودي (SAR)</option>
@@ -308,14 +290,14 @@ export default function SettingsPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[#9bb5a8] mb-1.5">
+                <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">
                   المنطقة الزمنية
                 </label>
                 <select
                   id="select-timezone"
                   value={timezone}
                   onChange={(e) => setTimezone(e.target.value)}
-                  className="w-full rounded-xl border border-[#2b4c3e] bg-[#0f1c18] px-3.5 py-2.5 text-xs text-[#e8f0ec] focus:border-[#2f9e6b] focus:outline-none"
+                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3.5 py-2.5 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none"
                 >
                   <option value="Africa/Cairo">توقيت القاهرة (UTC+2 / UTC+3)</option>
                   <option value="Asia/Riyadh">توقيت الرياض (UTC+3)</option>
@@ -327,15 +309,15 @@ export default function SettingsPage() {
           </div>
 
           {/* Appearance & Personal Preferences */}
-          <div className="rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-6 backdrop-blur-md space-y-4">
-            <div className="flex items-center gap-2 border-b border-[var(--border-app)] pb-3 text-sm font-bold text-[var(--text-main)]">
-              <Palette className="h-4 w-4 text-[var(--accent-primary)]" />
+          <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 space-y-4 shadow-sm">
+            <div className="flex items-center gap-2 border-b border-[var(--border-subtle)] pb-3 text-sm font-bold text-[var(--text-primary)]">
+              <Palette className="h-4 w-4 text-[var(--brand-primary)]" />
               <span>المظهر واللغة (Appearance & Language)</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-center">
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">
+                <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">
                   نمط المظهر (Theme Mode)
                 </label>
                 <div className="flex items-center gap-3">
@@ -347,7 +329,7 @@ export default function SettingsPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">
+                <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">
                   لغة الواجهة (Interface Language)
                 </label>
                 <div className="flex items-center gap-3">
@@ -361,19 +343,19 @@ export default function SettingsPage() {
           </div>
 
           {/* Submit Action */}
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#234235]">
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-[var(--border-subtle)]">
             <button
               type="submit"
               id="btn-save-settings"
               disabled={isSaving}
-              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#2f9e6b] to-[#36b379] px-6 py-2.5 text-xs font-semibold text-[#062016] shadow-lg shadow-[#2f9e6b]/20 hover:brightness-110 transition-all disabled:opacity-50 cursor-pointer"
+              className="inline-flex items-center gap-2 rounded-xl bg-[var(--brand-primary)] px-6 py-2.5 text-xs font-semibold text-white shadow hover:brightness-110 transition-all disabled:opacity-50 cursor-pointer"
             >
               <Save className="h-4 w-4" />
               <span>{isSaving ? 'جارٍ الحفظ...' : 'حفظ التعديلات'}</span>
             </button>
           </div>
         </form>
-      </main>
-    </div>
+      </div>
+    </AppShell>
   );
 }

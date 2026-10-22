@@ -62,22 +62,56 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
     [applyLocale],
   );
 
-  const t = useCallback(
-    (path: string, fallback?: string): string => {
-      const parts = path.split('.');
-      let current: unknown = translations[locale];
-
+  const resolveKey = useCallback(
+    (loc: SupportedLocale, keyPath: string): string | null => {
+      const parts = keyPath.split('.');
+      let current: unknown = translations[loc];
       for (const part of parts) {
         if (current && typeof current === 'object' && part in current) {
           current = (current as Record<string, unknown>)[part];
         } else {
-          return fallback || path;
+          return null;
         }
       }
-
-      return typeof current === 'string' ? current : fallback || path;
+      return typeof current === 'string' ? current : null;
     },
-    [locale],
+    [],
+  );
+
+  const t = useCallback(
+    (path: string, fallback?: string): string => {
+      // 1. Direct match in active locale
+      const direct = resolveKey(locale, path);
+      if (direct) return direct;
+
+      // 2. Cross-domain alias resolution (common <-> nav)
+      if (path.startsWith('common.')) {
+        const navCandidate = path.replace(/^common\./, 'nav.');
+        const navMatch = resolveKey(locale, navCandidate);
+        if (navMatch) return navMatch;
+      } else if (path.startsWith('nav.')) {
+        const commonCandidate = path.replace(/^nav\./, 'common.');
+        const commonMatch = resolveKey(locale, commonCandidate);
+        if (commonMatch) return commonMatch;
+      }
+
+      // 3. Fallback to alternative locale (ar <-> en)
+      const altLocale: SupportedLocale = locale === 'ar' ? 'en' : 'ar';
+      const altMatch = resolveKey(altLocale, path);
+      if (altMatch) return altMatch;
+
+      // 4. Provided explicit fallback
+      if (fallback) return fallback;
+
+      // 5. Safe humanized string (never display raw internal key identifiers)
+      const lastSegment = path.split('.').pop() || path;
+      return lastSegment
+        .replace(/([A-Z])/g, ' $1')
+        .replace(/[-_]/g, ' ')
+        .replace(/^./, (str) => str.toUpperCase())
+        .trim();
+    },
+    [locale, resolveKey],
   );
 
   const formatDate = useCallback(

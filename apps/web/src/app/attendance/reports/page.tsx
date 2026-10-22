@@ -4,7 +4,8 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../lib/auth-context';
 import { canAccessAdminRoutes, getRoleHomeRoute } from '../../../lib/role-routing';
-import { Navbar } from '../../../components/Navbar';
+import { AppShell } from '../../../components/layout/AppShell';
+import { PageHeader } from '../../../components/ui/PageHeader';
 import { api } from '../../../lib/api-client';
 import type { AttendanceReportSummary, BranchSummary, TrainingGroupSummary } from '@academy/shared';
 import {
@@ -82,12 +83,14 @@ export default function AttendanceReportsPage() {
 
   if (isLoading || !user) {
     return (
-      <div className="min-h-screen bg-[#0f1c18] flex items-center justify-center text-[#9bb5a8]">
-        <div className="flex flex-col items-center gap-3">
-          <RefreshCw className="h-8 w-8 animate-spin text-[#2f9e6b]" />
-          <p className="text-sm font-medium">جارٍ تحميل تقارير الحضور...</p>
+      <AppShell>
+        <div className="flex min-h-[50vh] items-center justify-center">
+          <div className="flex flex-col items-center gap-3">
+            <RefreshCw className="h-8 w-8 animate-spin text-[var(--brand-primary)]" />
+            <p className="text-sm font-medium text-[var(--text-muted)]">جارٍ تحميل تقارير الحضور...</p>
+          </div>
         </div>
-      </div>
+      </AppShell>
     );
   }
 
@@ -102,43 +105,31 @@ export default function AttendanceReportsPage() {
     totalRecords > 0 ? Math.round(((report?.excusedCount || 0) / totalRecords) * 100) : 0;
 
   return (
-    <div className="min-h-screen bg-[#0f1c18] text-[#e8f0ec] flex flex-col font-sans pb-16">
-      <Navbar />
-
-      <main className="flex-1 mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-8">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#234235] pb-6">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-[#45c387] bg-[#2f9e6b]/15 px-2.5 py-1 rounded-full border border-[#2f9e6b]/30">
-                <BarChart3 className="h-3.5 w-3.5" />
-                تحليلات الأداء التشغيلي
-              </span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
-              تقارير الحضور والانضباط الرياضي
-            </h1>
-            <p className="text-sm text-[#9bb5a8]">
-              تحليل نسب الحضور والالتزام بالتمارين عبر الفروع والمجموعات التدريبية في الفترات
-              المحددة.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
+    <AppShell>
+      <div className="space-y-6">
+        <PageHeader
+          breadcrumbs={[
+            { label: 'الرئيسية', href: '/dashboard' },
+            { label: 'جلسات الحضور', href: '/sessions' },
+            { label: 'تقارير الحضور والانضباط' },
+          ]}
+          title="تقارير الحضور والانضباط الرياضي"
+          description="تحليل نسب الحضور والالتزام بالتمارين عبر الفروع والمجموعات التدريبية في الفترات المحددة."
+          actions={
             <button
               type="button"
               id="btn-print-report"
               onClick={handlePrint}
-              className="flex items-center gap-2 rounded-xl border border-[#2b4c3e] bg-[#162821] px-4 py-2.5 text-xs font-semibold text-[#e8f0ec] hover:border-[#2f9e6b] transition-all cursor-pointer"
+              className="flex items-center gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-2 text-xs font-semibold text-[var(--text-primary)] hover:border-[var(--brand-primary)] transition-all cursor-pointer"
             >
               <Printer className="h-4 w-4" />
               <span>طباعة التقرير</span>
             </button>
-          </div>
-        </div>
+          }
+        />
 
         {/* Filter Controls */}
-        <div className="rounded-2xl border border-[#234235] bg-[#162821]/80 p-4 shadow-lg backdrop-blur-md">
+        <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 shadow-sm">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {/* Branch */}
             <select
@@ -146,7 +137,7 @@ export default function AttendanceReportsPage() {
               value={selectedBranchId}
               onChange={(e) => setSelectedBranchId(e.target.value)}
               aria-label="تصفية حسب الفرع"
-              className="rounded-xl border border-[#2b4c3e] bg-[#0f1c18] px-3 py-2 text-xs text-[#e8f0ec] focus:border-[#2f9e6b] focus:outline-none"
+              className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none"
             >
               <option value="">جميع الفروع</option>
               {branches.map((b) => (
@@ -162,7 +153,7 @@ export default function AttendanceReportsPage() {
               value={selectedGroupId}
               onChange={(e) => setSelectedGroupId(e.target.value)}
               aria-label="تصفية حسب المجموعة"
-              className="rounded-xl border border-[#2b4c3e] bg-[#0f1c18] px-3 py-2 text-xs text-[#e8f0ec] focus:border-[#2f9e6b] focus:outline-none"
+              className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none"
             >
               <option value="">جميع المجموعات</option>
               {groups.map((g) => (
@@ -179,7 +170,7 @@ export default function AttendanceReportsPage() {
               onChange={(e) => setDateFrom(e.target.value)}
               placeholder="من تاريخ"
               aria-label="من تاريخ"
-              className="rounded-xl border border-[#2b4c3e] bg-[#0f1c18] px-3 py-2 text-xs text-[#e8f0ec] focus:border-[#2f9e6b] focus:outline-none"
+              className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none"
             />
 
             {/* Date To & Refresh */}
@@ -190,17 +181,17 @@ export default function AttendanceReportsPage() {
                 onChange={(e) => setDateTo(e.target.value)}
                 placeholder="إلى تاريخ"
                 aria-label="إلى تاريخ"
-                className="w-full rounded-xl border border-[#2b4c3e] bg-[#0f1c18] px-3 py-2 text-xs text-[#e8f0ec] focus:border-[#2f9e6b] focus:outline-none"
+                className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none"
               />
 
               <button
                 type="button"
                 id="btn-report-refresh"
                 onClick={() => void loadReportData()}
-                className="p-2 rounded-xl border border-[#2b4c3e] bg-[#12231c] text-[#9bb5a8] hover:text-white hover:border-[#2f9e6b] transition-colors cursor-pointer"
+                className="p-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--brand-primary)] transition-colors cursor-pointer"
                 title="تحديث البيانات"
               >
-                <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin text-[var(--brand-primary)]' : ''}`} />
               </button>
             </div>
           </div>
@@ -209,146 +200,146 @@ export default function AttendanceReportsPage() {
         {/* PRIMARY OVERVIEW METRICS */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
           {/* 1. Overall Attendance Rate */}
-          <div className="rounded-2xl border border-[#234235] bg-gradient-to-br from-[#162821] to-[#12231c] p-6 shadow-xl relative overflow-hidden">
+          <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-sm relative overflow-hidden">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-semibold text-[#9bb5a8]">نسبة الحضور الإجمالية</span>
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#2f9e6b]/20 text-[#45c387]">
+              <span className="text-xs font-semibold text-[var(--text-muted)]">نسبة الحضور الإجمالية</span>
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--brand-surface)] text-[var(--brand-primary)]">
                 <BarChart3 className="h-5 w-5" />
               </div>
             </div>
             <div className="flex items-baseline gap-2">
-              <span className="text-3xl sm:text-4xl font-black text-white">
+              <span className="text-3xl sm:text-4xl font-black text-[var(--text-primary)]">
                 {report?.attendanceRate || 0}%
               </span>
-              <span className="text-xs text-[#45c387] font-semibold">
+              <span className="text-xs text-[var(--brand-primary)] font-semibold">
                 (حاضر {report?.presentCount || 0} + متأخر {report?.lateCount || 0})
               </span>
             </div>
-            <div className="mt-3 h-2 w-full rounded-full bg-[#0f1c18] overflow-hidden">
+            <div className="mt-3 h-2 w-full rounded-full bg-[var(--bg-elevated)] overflow-hidden">
               <div
-                className="h-full rounded-full bg-[#2f9e6b] transition-all duration-500"
+                className="h-full rounded-full bg-[var(--brand-primary)] transition-all duration-500"
                 style={{ width: `${report?.attendanceRate || 0}%` }}
               />
             </div>
-            <p className="text-[11px] text-[#9bb5a8] mt-2">
+            <p className="text-[11px] text-[var(--text-muted)] mt-2">
               محسوب من السجلات المؤهلة ({report?.eligibleRecords ?? report?.totalRecords ?? 0})، باستثناء غير المحدد ({report?.unmarkedCount || 0})
             </p>
           </div>
 
           {/* 2. Total Sessions */}
-          <div className="rounded-2xl border border-[#234235] bg-[#162821]/80 p-6 shadow-lg">
+          <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-sm">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-semibold text-[#9bb5a8]">إجمالي الحصص المنفذة</span>
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#3b82f6]/15 text-[#60a5fa]">
+              <span className="text-xs font-semibold text-[var(--text-muted)]">إجمالي الحصص المنفذة</span>
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-500">
                 <Calendar className="h-5 w-5" />
               </div>
             </div>
             <div className="flex items-baseline justify-between">
-              <span className="text-3xl font-extrabold text-white">
+              <span className="text-3xl font-extrabold text-[var(--text-primary)]">
                 {report?.totalSessions || 0}
               </span>
-              <span className="text-xs text-[#9bb5a8]">حصة تدريبية</span>
+              <span className="text-xs text-[var(--text-muted)]">حصة تدريبية</span>
             </div>
           </div>
 
           {/* 3. Total Attendance Records */}
-          <div className="rounded-2xl border border-[#234235] bg-[#162821]/80 p-6 shadow-lg">
+          <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-sm">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-semibold text-[#9bb5a8]">إجمالي عمليات التحضير</span>
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#eab308]/15 text-[#facc15]">
+              <span className="text-xs font-semibold text-[var(--text-muted)]">إجمالي عمليات التحضير</span>
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-500">
                 <Users className="h-5 w-5" />
               </div>
             </div>
             <div className="flex items-baseline justify-between">
-              <span className="text-3xl font-extrabold text-white">
+              <span className="text-3xl font-extrabold text-[var(--text-primary)]">
                 {report?.totalRecords || 0}
               </span>
-              <span className="text-xs text-[#9bb5a8]">سجل حضور</span>
+              <span className="text-xs text-[var(--text-muted)]">سجل حضور</span>
             </div>
           </div>
 
           {/* 4. Active Groups Monitored */}
-          <div className="rounded-2xl border border-[#234235] bg-[#162821]/80 p-6 shadow-lg">
+          <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-sm">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-semibold text-[#9bb5a8]">المجموعات المشمولة</span>
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#8b5cf6]/15 text-[#a78bfa]">
+              <span className="text-xs font-semibold text-[var(--text-muted)]">المجموعات المشمولة</span>
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-500/10 text-purple-500">
                 <Layers className="h-5 w-5" />
               </div>
             </div>
             <div className="flex items-baseline justify-between">
-              <span className="text-3xl font-extrabold text-white">
+              <span className="text-3xl font-extrabold text-[var(--text-primary)]">
                 {report?.byGroup?.length || 0}
               </span>
-              <span className="text-xs text-[#9bb5a8]">مجموعة نشطة</span>
+              <span className="text-xs text-[var(--text-muted)]">مجموعة نشطة</span>
             </div>
           </div>
         </div>
 
         {/* STATUS DISTRIBUTION BREAKDOWN */}
-        <div className="rounded-2xl border border-[#234235] bg-[#162821]/90 p-6 shadow-xl space-y-4">
-          <h3 className="text-base font-bold text-white">توزيع حالات الحضور الإجمالية</h3>
+        <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-sm space-y-4">
+          <h3 className="text-base font-bold text-[var(--text-primary)]">توزيع حالات الحضور الإجمالية</h3>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {/* Present */}
-            <div className="rounded-xl border border-[#2f9e6b]/30 bg-[#2f9e6b]/10 p-4 space-y-1 text-center">
-              <span className="text-xs text-[#45c387] font-semibold flex items-center justify-center gap-1">
+            <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 space-y-1 text-center">
+              <span className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold flex items-center justify-center gap-1">
                 <CheckCircle2 className="h-3.5 w-3.5" />
                 حاضر (Present)
               </span>
-              <div className="text-2xl font-black text-white">{report?.presentCount || 0}</div>
-              <span className="text-xs text-[#45c387] font-semibold">{presentPct}% من السجلات</span>
+              <div className="text-2xl font-black text-[var(--text-primary)]">{report?.presentCount || 0}</div>
+              <span className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold">{presentPct}% من السجلات</span>
             </div>
 
             {/* Late */}
-            <div className="rounded-xl border border-[#facc15]/30 bg-[#facc15]/10 p-4 space-y-1 text-center">
-              <span className="text-xs text-[#facc15] font-semibold flex items-center justify-center gap-1">
+            <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 space-y-1 text-center">
+              <span className="text-xs text-amber-600 dark:text-amber-400 font-semibold flex items-center justify-center gap-1">
                 <Clock4 className="h-3.5 w-3.5" />
                 متأخر (Late)
               </span>
-              <div className="text-2xl font-black text-white">{report?.lateCount || 0}</div>
-              <span className="text-xs text-[#facc15] font-semibold">{latePct}% من السجلات</span>
+              <div className="text-2xl font-black text-[var(--text-primary)]">{report?.lateCount || 0}</div>
+              <span className="text-xs text-amber-600 dark:text-amber-400 font-semibold">{latePct}% من السجلات</span>
             </div>
 
             {/* Absent */}
-            <div className="rounded-xl border border-[#ef4444]/30 bg-[#ef4444]/10 p-4 space-y-1 text-center">
-              <span className="text-xs text-[#f87171] font-semibold flex items-center justify-center gap-1">
+            <div className="rounded-xl border border-rose-500/20 bg-rose-500/5 p-4 space-y-1 text-center">
+              <span className="text-xs text-rose-600 dark:text-rose-400 font-semibold flex items-center justify-center gap-1">
                 <XCircle className="h-3.5 w-3.5" />
                 غائب (Absent)
               </span>
-              <div className="text-2xl font-black text-white">{report?.absentCount || 0}</div>
-              <span className="text-xs text-[#f87171] font-semibold">{absentPct}% من السجلات</span>
+              <div className="text-2xl font-black text-[var(--text-primary)]">{report?.absentCount || 0}</div>
+              <span className="text-xs text-rose-600 dark:text-rose-400 font-semibold">{absentPct}% من السجلات</span>
             </div>
 
             {/* Excused */}
-            <div className="rounded-xl border border-[#38bdf8]/30 bg-[#38bdf8]/10 p-4 space-y-1 text-center">
-              <span className="text-xs text-[#38bdf8] font-semibold flex items-center justify-center gap-1">
+            <div className="rounded-xl border border-sky-500/20 bg-sky-500/5 p-4 space-y-1 text-center">
+              <span className="text-xs text-sky-600 dark:text-sky-400 font-semibold flex items-center justify-center gap-1">
                 <HelpCircle className="h-3.5 w-3.5" />
                 غياب بعذر (Excused)
               </span>
-              <div className="text-2xl font-black text-white">{report?.excusedCount || 0}</div>
-              <span className="text-xs text-[#38bdf8] font-semibold">{excusedPct}% من السجلات</span>
+              <div className="text-2xl font-black text-[var(--text-primary)]">{report?.excusedCount || 0}</div>
+              <span className="text-xs text-sky-600 dark:text-sky-400 font-semibold">{excusedPct}% من السجلات</span>
             </div>
           </div>
         </div>
 
         {/* PERFORMANCE BY TRAINING GROUP */}
-        <div className="rounded-2xl border border-[#234235] bg-[#162821]/80 p-6 shadow-xl space-y-4">
+        <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-sm space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-base font-bold text-white flex items-center gap-2">
-              <Layers className="h-5 w-5 text-[#2f9e6b]" />
+            <h3 className="text-base font-bold text-[var(--text-primary)] flex items-center gap-2">
+              <Layers className="h-5 w-5 text-[var(--brand-primary)]" />
               <span>معدل الحضور والانضباط حسب المجموعة التدريبية</span>
             </h3>
           </div>
 
           {!report?.byGroup || report.byGroup.length === 0 ? (
-            <p className="text-xs text-[#9bb5a8] py-4 text-center">
+            <p className="text-xs text-[var(--text-muted)] py-4 text-center">
               لا توجد سجلات حضور للمجموعات في هذه الفترة.
             </p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-right text-xs">
                 <thead>
-                  <tr className="border-b border-[#234235] text-[#9bb5a8]">
+                  <tr className="border-b border-[var(--border-subtle)] text-[var(--text-muted)]">
                     <th className="py-3 px-4 font-semibold">المجموعة التدريبية</th>
                     <th className="py-3 px-4 font-semibold">عدد الحصص</th>
                     <th className="py-3 px-4 font-semibold">إجمالي الحضور والغياب</th>
@@ -356,18 +347,18 @@ export default function AttendanceReportsPage() {
                     <th className="py-3 px-4 font-semibold">التقييم</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#234235]">
+                <tbody className="divide-y divide-[var(--border-subtle)]">
                   {report.byGroup.map((g, idx) => (
-                    <tr key={idx} className="hover:bg-[#12231c]/50 transition-colors">
-                      <td className="py-3.5 px-4 font-bold text-white">{g.groupName}</td>
-                      <td className="py-3.5 px-4 text-[#e8f0ec]">{g.totalSessions} حصة</td>
-                      <td className="py-3.5 px-4 text-[#e8f0ec]">{g.totalRecords} تسجيل</td>
+                    <tr key={idx} className="hover:bg-[var(--bg-elevated)] transition-colors">
+                      <td className="py-3.5 px-4 font-bold text-[var(--text-primary)]">{g.groupName}</td>
+                      <td className="py-3.5 px-4 text-[var(--text-secondary)]">{g.totalSessions} حصة</td>
+                      <td className="py-3.5 px-4 text-[var(--text-secondary)]">{g.totalRecords} تسجيل</td>
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-2">
-                          <span className="font-bold text-[#45c387] w-10">{g.attendanceRate}%</span>
-                          <div className="h-1.5 w-24 rounded-full bg-[#0f1c18] overflow-hidden">
+                          <span className="font-bold text-[var(--brand-primary)] w-10">{g.attendanceRate}%</span>
+                          <div className="h-1.5 w-24 rounded-full bg-[var(--bg-elevated)] overflow-hidden">
                             <div
-                              className="h-full rounded-full bg-[#2f9e6b]"
+                              className="h-full rounded-full bg-[var(--brand-primary)]"
                               style={{ width: `${g.attendanceRate}%` }}
                             />
                           </div>
@@ -377,10 +368,10 @@ export default function AttendanceReportsPage() {
                         <span
                           className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
                             g.attendanceRate >= 80
-                              ? 'bg-[#2f9e6b]/20 text-[#45c387]'
+                              ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
                               : g.attendanceRate >= 60
-                                ? 'bg-[#facc15]/20 text-[#facc15]'
-                                : 'bg-[#ef4444]/20 text-[#f87171]'
+                                ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
+                                : 'bg-rose-500/15 text-rose-600 dark:text-rose-400'
                           }`}
                         >
                           {g.attendanceRate >= 80
@@ -399,36 +390,36 @@ export default function AttendanceReportsPage() {
         </div>
 
         {/* PERFORMANCE BY BRANCH */}
-        <div className="rounded-2xl border border-[#234235] bg-[#162821]/80 p-6 shadow-xl space-y-4">
+        <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-sm space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-base font-bold text-white flex items-center gap-2">
-              <Building2 className="h-5 w-5 text-[#2f9e6b]" />
+            <h3 className="text-base font-bold text-[var(--text-primary)] flex items-center gap-2">
+              <Building2 className="h-5 w-5 text-[var(--brand-primary)]" />
               <span>معدل الحضور حسب الفروع</span>
             </h3>
           </div>
 
           {!report?.byBranch || report.byBranch.length === 0 ? (
-            <p className="text-xs text-[#9bb5a8] py-4 text-center">
+            <p className="text-xs text-[var(--text-muted)] py-4 text-center">
               لا توجد بيانات فروع مسجلة لهذه الفترة.
             </p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-right text-xs">
                 <thead>
-                  <tr className="border-b border-[#234235] text-[#9bb5a8]">
+                  <tr className="border-b border-[var(--border-subtle)] text-[var(--text-muted)]">
                     <th className="py-3 px-4 font-semibold">الفرع</th>
                     <th className="py-3 px-4 font-semibold">عدد الحصص</th>
                     <th className="py-3 px-4 font-semibold">إجمالي السجلات</th>
                     <th className="py-3 px-4 font-semibold">نسبة الحضور</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#234235]">
+                <tbody className="divide-y divide-[var(--border-subtle)]">
                   {report.byBranch.map((b) => (
-                    <tr key={b.branchId} className="hover:bg-[#12231c]/50 transition-colors">
-                      <td className="py-3.5 px-4 font-bold text-white">{b.branchName}</td>
-                      <td className="py-3.5 px-4 text-[#e8f0ec]">{b.totalSessions}</td>
-                      <td className="py-3.5 px-4 text-[#e8f0ec]">{b.totalRecords}</td>
-                      <td className="py-3.5 px-4 font-bold text-[#45c387]">{b.attendanceRate}%</td>
+                    <tr key={b.branchId} className="hover:bg-[var(--bg-elevated)] transition-colors">
+                      <td className="py-3.5 px-4 font-bold text-[var(--text-primary)]">{b.branchName}</td>
+                      <td className="py-3.5 px-4 text-[var(--text-secondary)]">{b.totalSessions}</td>
+                      <td className="py-3.5 px-4 text-[var(--text-secondary)]">{b.totalRecords}</td>
+                      <td className="py-3.5 px-4 font-bold text-[var(--brand-primary)]">{b.attendanceRate}%</td>
                     </tr>
                   ))}
                 </tbody>
@@ -436,7 +427,7 @@ export default function AttendanceReportsPage() {
             </div>
           )}
         </div>
-      </main>
-    </div>
+      </div>
+    </AppShell>
   );
 }

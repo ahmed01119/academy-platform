@@ -23,59 +23,63 @@
 }
 
 :root {
-  /* Light Theme — Clean, Professional Emerald Athletic Palette */
-  --bg-base: #f4f8f5;
+  /* Light Theme — Modern Crisp Global SaaS Palette */
+  --bg-base: #f8fafc;
   --bg-surface: #ffffff;
-  --bg-surface-subtle: #ebf3ee;
+  --bg-surface-subtle: #f1f5f9;
   --bg-surface-elevated: #ffffff;
 
-  --text-main: #0c1f17;
-  --text-muted: #4a685b;
+  --text-main: #0f172a;
+  --text-muted: #475569;
   --text-inverse: #ffffff;
 
-  --border-app: #cfe0d7;
-  --border-subtle: #e1ece6;
+  --border-app: #e2e8f0;
+  --border-subtle: #edf2f7;
 
-  --accent-primary: #187a48;
-  --accent-primary-hover: #12633a;
+  --accent-primary: #059669;
+  --accent-primary-hover: #047857;
   --accent-primary-fg: #ffffff;
+  --brand-primary: #059669;
+  --brand-primary-hover: #047857;
 
-  --badge-bg: #e2f4ea;
-  --badge-border: #a3dfbc;
-  --badge-fg: #0e5933;
+  --badge-bg: #ecfdf5;
+  --badge-border: #a7f3d0;
+  --badge-fg: #065f46;
 
   --font-display: 'IBM Plex Sans Arabic', 'Segoe UI', sans-serif;
   --font-body: 'IBM Plex Sans', 'Segoe UI', sans-serif;
 
-  --ambient-glow-1: rgba(24, 122, 72, 0.08);
-  --ambient-glow-2: rgba(31, 138, 87, 0.06);
+  --ambient-glow-1: rgba(5, 150, 105, 0.05);
+  --ambient-glow-2: rgba(16, 185, 129, 0.03);
 }
 
 [data-theme='dark'],
 .dark {
-  /* Dark Theme — Deep Premium Pitch Emerald */
-  --bg-base: #0b1612;
-  --bg-surface: #12221b;
-  --bg-surface-subtle: #162821;
-  --bg-surface-elevated: #192e25;
+  /* Dark Theme — Deep Stadium Night Emerald */
+  --bg-base: #0b1411;
+  --bg-surface: #11201a;
+  --bg-surface-subtle: #162922;
+  --bg-surface-elevated: #1b332a;
 
-  --text-main: #e8f0ec;
-  --text-muted: #9bb5a8;
-  --text-inverse: #062016;
+  --text-main: #f1f5f9;
+  --text-muted: #94a3b8;
+  --text-inverse: #022c22;
 
-  --border-app: #234235;
-  --border-subtle: #1a3328;
+  --border-app: #223e33;
+  --border-subtle: #1a3028;
 
-  --accent-primary: #2f9e6b;
-  --accent-primary-hover: #3bb87d;
-  --accent-primary-fg: #062016;
+  --accent-primary: #10b981;
+  --accent-primary-hover: #34d399;
+  --accent-primary-fg: #022c22;
+  --brand-primary: #10b981;
+  --brand-primary-hover: #34d399;
 
-  --badge-bg: rgba(47, 158, 107, 0.15);
-  --badge-border: rgba(47, 158, 107, 0.35);
-  --badge-fg: #45c387;
+  --badge-bg: rgba(16, 185, 129, 0.15);
+  --badge-border: rgba(16, 185, 129, 0.35);
+  --badge-fg: #34d399;
 
-  --ambient-glow-1: rgba(47, 158, 107, 0.18);
-  --ambient-glow-2: rgba(34, 92, 70, 0.3);
+  --ambient-glow-1: rgba(16, 185, 129, 0.15);
+  --ambient-glow-2: rgba(5, 150, 105, 0.25);
 }
 
 * {

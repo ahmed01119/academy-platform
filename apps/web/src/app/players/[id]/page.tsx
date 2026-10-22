@@ -4,7 +4,8 @@ import React, { useCallback, useEffect, useState, use } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../lib/auth-context';
-import { Navbar } from '../../../components/Navbar';
+import { useLocale } from '../../../lib/locale-context';
+import { AppShell } from '../../../components/layout/AppShell';
 import { api } from '../../../lib/api-client';
 import type {
   BranchSummary,
@@ -17,7 +18,6 @@ import {
   GitBranch,
   Phone,
   Heart,
-  ChevronRight,
   RefreshCw,
   ArrowRightLeft,
   Edit3,
@@ -37,6 +37,7 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
 
   const router = useRouter();
   const { user, activeTenant, isLoading } = useAuth();
+  const { t } = useLocale();
 
   const canViewSensitive =
     activeTenant?.role === 'OWNER' ||
@@ -192,24 +193,25 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
 
   if (isLoading || isFetching) {
     return (
-      <div className="min-h-screen bg-[#0f1c18] flex items-center justify-center text-[#9bb5a8]">
-        <RefreshCw className="h-8 w-8 animate-spin text-[#2f9e6b]" />
-      </div>
+      <AppShell>
+        <div className="flex h-96 items-center justify-center">
+          <RefreshCw className="h-8 w-8 animate-spin text-[var(--brand-primary)]" />
+        </div>
+      </AppShell>
     );
   }
 
   if (!player) {
     return (
-      <div className="min-h-screen bg-[#0f1c18] text-[#e8f0ec] flex flex-col font-sans">
-        <Navbar />
+      <AppShell>
         <div className="py-20 text-center">
-          <AlertCircle className="h-12 w-12 text-[#ef4444] mx-auto mb-3" />
-          <p className="text-white font-bold">اللاعب غير موجود أو تم حذفه</p>
-          <Link href="/players" className="mt-4 inline-block text-xs text-[#45c387] underline">
+          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-3" />
+          <p className="text-[var(--text-primary)] font-bold">اللاعب غير موجود أو تم حذفه</p>
+          <Link href="/players" className="mt-4 inline-block text-xs text-[var(--brand-primary)] hover:underline">
             العودة لقائمة اللاعبين
           </Link>
         </div>
-      </div>
+      </AppShell>
     );
   }
 
@@ -217,59 +219,47 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
   const pastEnrollments = player.enrollments.filter((en) => en.status !== 'ACTIVE');
 
   return (
-    <div className="min-h-screen bg-[#0f1c18] text-[#e8f0ec] flex flex-col font-sans">
-      <Navbar />
-
-      <main className="flex-1 mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8 space-y-6">
-        {/* Navigation Breadcrumb */}
-        <div className="flex items-center gap-2 text-xs text-[#9bb5a8]">
-          <Link href="/dashboard" className="hover:text-white transition-colors">
-            الرئيسية
-          </Link>
-          <ChevronRight className="h-3.5 w-3.5" />
-          <Link href="/players" className="hover:text-white transition-colors">
-            اللاعبين
-          </Link>
-          <ChevronRight className="h-3.5 w-3.5" />
-          <span className="text-[#45c387]">
-            {player.firstName} {player.lastName}
-          </span>
-        </div>
-
+    <AppShell
+      breadcrumbs={[
+        { label: t('nav.players'), href: '/players' },
+        { label: `${player.firstName} ${player.lastName}` },
+      ]}
+    >
+      <div className="space-y-6">
         {/* Alerts */}
         {errorMessage && (
-          <div className="rounded-xl border border-[#ef4444]/40 bg-[#ef4444]/10 p-4 text-xs text-[#fca5a5] flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 shrink-0 text-[#ef4444]" />
+          <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-xs text-red-500 flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 shrink-0 text-red-500" />
             <div className="flex-1 font-medium">{errorMessage}</div>
           </div>
         )}
 
         {successMessage && (
-          <div className="rounded-xl border border-[#2f9e6b]/40 bg-[#2f9e6b]/10 p-4 text-xs text-[#45c387] flex items-start gap-3">
-            <CheckCircle2 className="h-5 w-5 shrink-0 text-[#45c387]" />
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-4 text-xs text-emerald-600 dark:text-emerald-400 flex items-start gap-3">
+            <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
             <div className="flex-1 font-medium">{successMessage}</div>
           </div>
         )}
 
         {/* Player Profile Header Card */}
-        <div className="rounded-2xl border border-[#234235] bg-gradient-to-r from-[#162821] via-[#12231c] to-[#162821] p-6 sm:p-8 shadow-xl relative overflow-hidden">
+        <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 sm:p-8 shadow-sm relative overflow-hidden">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
             <div className="flex items-center gap-5">
-              <div className="flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-2xl bg-gradient-to-tr from-[#2f9e6b] to-[#45c387] text-[#062016] text-2xl sm:text-3xl font-extrabold shadow-lg shadow-[#2f9e6b]/20">
+              <div className="flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-2xl bg-[var(--brand-primary)] text-white text-2xl sm:text-3xl font-extrabold shadow-sm">
                 {player.firstName.charAt(0)}
               </div>
               <div>
                 <div className="flex items-center gap-3 mb-1">
-                  <h1 className="text-2xl sm:text-3xl font-bold text-white">
+                  <h1 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)]">
                     {player.firstName} {player.lastName}
                   </h1>
                   <span
                     className={`inline-flex items-center rounded-full px-3 py-0.5 text-xs font-bold ${
                       player.status === 'ACTIVE'
-                        ? 'bg-[#2f9e6b]/20 text-[#45c387] border border-[#2f9e6b]/40'
+                        ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
                         : player.status === 'SUSPENDED'
-                          ? 'bg-[#eab308]/20 text-[#facc15] border border-[#eab308]/40'
-                          : 'bg-[#ef4444]/20 text-[#fca5a5] border border-[#ef4444]/40'
+                          ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30'
+                          : 'bg-red-500/10 text-red-500 border border-red-500/30'
                     }`}
                   >
                     {player.status === 'ACTIVE'
@@ -279,22 +269,22 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
                         : 'غير نشط'}
                   </span>
                 </div>
-                <p className="text-xs text-[#9bb5a8]">
+                <p className="text-xs text-[var(--text-secondary)]">
                   تاريخ الميلاد:{' '}
-                  <span className="text-white font-mono">{player.dateOfBirth.slice(0, 10)}</span> •
+                  <span className="text-[var(--text-primary)] font-mono">{player.dateOfBirth.slice(0, 10)}</span> •
                   الجنس:{' '}
-                  <span className="text-white">{player.gender === 'MALE' ? 'ذكر' : 'أنثى'}</span>
+                  <span className="text-[var(--text-primary)]">{player.gender === 'MALE' ? 'ذكر' : 'أنثى'}</span>
                   {player.nationalId ? (
                     <>
                       {' '}
                       • الرقم القومي:{' '}
-                      <span className="text-white font-mono">{player.nationalId}</span>
+                      <span className="text-[var(--text-primary)] font-mono">{player.nationalId}</span>
                     </>
                   ) : !canViewSensitive ? (
                     <>
                       {' '}
                       • الرقم القومي:{' '}
-                      <span className="text-[#9bb5a8] italic text-[11px]">محجوب للخصوصية</span>
+                      <span className="text-[var(--text-muted)] italic text-[11px]">محجوب للخصوصية</span>
                     </>
                   ) : null}
                 </p>
@@ -308,12 +298,12 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
                 id="btn-player-qr-card"
                 onClick={handleOpenQrCardModal}
                 disabled={isLoadingQrCard}
-                className="inline-flex items-center gap-2 rounded-xl border border-[#2b5944] bg-[#162e24] px-4 py-2.5 text-xs font-semibold text-white hover:border-[#45c387] hover:bg-[#1c392c] transition-colors cursor-pointer disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-4 py-2.5 text-xs font-semibold text-[var(--text-primary)] hover:border-[var(--brand-primary)] transition-colors cursor-pointer disabled:opacity-50"
               >
                 {isLoadingQrCard ? (
-                  <RefreshCw className="h-4 w-4 animate-spin text-[#45c387]" />
+                  <RefreshCw className="h-4 w-4 animate-spin text-[var(--brand-primary)]" />
                 ) : (
-                  <QrCode className="h-4 w-4 text-[#45c387]" />
+                  <QrCode className="h-4 w-4 text-[var(--brand-primary)]" />
                 )}
                 <span>بطاقة العضوية (QR Card)</span>
               </button>
@@ -322,9 +312,9 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
                 type="button"
                 id="btn-edit-player"
                 onClick={() => setIsEditModalOpen(true)}
-                className="inline-flex items-center gap-2 rounded-xl border border-[#2b4c3e] bg-[#0f1c18] px-4 py-2.5 text-xs font-medium text-[#e8f0ec] hover:border-[#2f9e6b] transition-colors cursor-pointer"
+                className="inline-flex items-center gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-4 py-2.5 text-xs font-medium text-[var(--text-primary)] hover:border-[var(--brand-primary)] transition-colors cursor-pointer"
               >
-                <Edit3 className="h-4 w-4 text-[#2f9e6b]" />
+                <Edit3 className="h-4 w-4 text-[var(--brand-primary)]" />
                 <span>تعديل البيانات</span>
               </button>
 
@@ -332,7 +322,7 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
                 type="button"
                 id="btn-transfer-branch"
                 onClick={() => setIsTransferModalOpen(true)}
-                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#2f9e6b] to-[#36b379] px-4 py-2.5 text-xs font-semibold text-[#062016] shadow-md shadow-[#2f9e6b]/20 hover:brightness-110 transition-all cursor-pointer"
+                className="inline-flex items-center gap-2 rounded-xl bg-[var(--brand-primary)] text-white px-4 py-2.5 text-xs font-semibold shadow-sm hover:brightness-110 transition-all cursor-pointer"
               >
                 <ArrowRightLeft className="h-4 w-4" />
                 <span>نقل لفرع آخر</span>
@@ -346,28 +336,28 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
           {/* Col 1 & 2: Branch Enrollments & History */}
           <div className="lg:col-span-2 space-y-6">
             {/* Active Branch Enrollment */}
-            <div className="rounded-2xl border border-[#234235] bg-[#162821]/80 p-6 backdrop-blur-md space-y-4">
-              <div className="flex items-center justify-between border-b border-[#234235] pb-3">
+            <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-sm space-y-4">
+              <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
                 <div className="flex items-center gap-2">
-                  <GitBranch className="h-5 w-5 text-[#3b82f6]" />
-                  <h2 className="text-base font-bold text-white">الفرع الحالي المقيد به</h2>
+                  <GitBranch className="h-5 w-5 text-blue-500" />
+                  <h2 className="text-base font-bold text-[var(--text-primary)]">الفرع الحالي المقيد به</h2>
                 </div>
                 {activeEnrollment && (
-                  <span className="rounded-full bg-[#3b82f6]/20 px-2.5 py-0.5 text-xs font-semibold text-[#60a5fa] border border-[#3b82f6]/30">
+                  <span className="rounded-full bg-blue-500/10 px-2.5 py-0.5 text-xs font-semibold text-blue-500 border border-blue-500/30">
                     قيد فعّال
                   </span>
                 )}
               </div>
 
               {activeEnrollment ? (
-                <div className="rounded-xl border border-[#234235] bg-[#0f1c18]/60 p-4 space-y-3">
+                <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="text-lg font-bold text-white">
+                      <h3 className="text-lg font-bold text-[var(--text-primary)]">
                         {activeEnrollment.branch.name}
                       </h3>
                       {activeEnrollment.branch.code && (
-                        <span className="text-[10px] font-mono text-[#9bb5a8]">
+                        <span className="text-[10px] font-mono text-[var(--text-secondary)]">
                           كود الفرع: {activeEnrollment.branch.code}
                         </span>
                       )}
@@ -375,44 +365,44 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
                     <button
                       type="button"
                       onClick={() => setIsTransferModalOpen(true)}
-                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#45c387] hover:underline"
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--brand-primary)] hover:underline cursor-pointer"
                     >
                       <ArrowRightLeft className="h-3.5 w-3.5" />
                       <span>نقل إلى فرع آخر</span>
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4 text-xs pt-2 border-t border-[#234235]/60 text-[#9bb5a8]">
+                  <div className="grid grid-cols-2 gap-4 text-xs pt-2 border-t border-[var(--border-subtle)] text-[var(--text-secondary)]">
                     <div>
                       <span className="block text-[11px]">تاريخ بدء القيد:</span>
-                      <span className="font-mono text-white font-medium">
+                      <span className="font-mono text-[var(--text-primary)] font-medium">
                         {activeEnrollment.startDate.slice(0, 10)}
                       </span>
                     </div>
                     <div>
                       <span className="block text-[11px]">ملاحظات القيد:</span>
-                      <span className="text-white">{activeEnrollment.notes || 'لا توجد'}</span>
+                      <span className="text-[var(--text-primary)]">{activeEnrollment.notes || 'لا توجد'}</span>
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="py-6 text-center text-xs text-[#9bb5a8]">
+                <div className="py-6 text-center text-xs text-[var(--text-secondary)]">
                   اللاعب ليس لديه أي اشتراك نشط حالياً بأي فرع.
                 </div>
               )}
             </div>
 
             {/* Branch Enrollment History */}
-            <div className="rounded-2xl border border-[#234235] bg-[#162821]/80 p-6 backdrop-blur-md space-y-4">
-              <div className="flex items-center gap-2 border-b border-[#234235] pb-3">
-                <Calendar className="h-5 w-5 text-[#2f9e6b]" />
-                <h2 className="text-base font-bold text-white">
+            <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-sm space-y-4">
+              <div className="flex items-center gap-2 border-b border-[var(--border-subtle)] pb-3">
+                <Calendar className="h-5 w-5 text-[var(--brand-primary)]" />
+                <h2 className="text-base font-bold text-[var(--text-primary)]">
                   سجل التنقلات والاشتراكات السابقة ({pastEnrollments.length})
                 </h2>
               </div>
 
               {pastEnrollments.length === 0 ? (
-                <p className="text-xs text-[#9bb5a8] py-4 text-center">
+                <p className="text-xs text-[var(--text-secondary)] py-4 text-center">
                   لا توجد تنقلات سابقة مسجلة للاعب.
                 </p>
               ) : (
@@ -420,19 +410,19 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
                   {pastEnrollments.map((en) => (
                     <div
                       key={en.id}
-                      className="rounded-xl border border-[#234235] bg-[#0f1c18]/50 p-3.5 flex items-center justify-between text-xs"
+                      className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3.5 flex items-center justify-between text-xs"
                     >
                       <div>
-                        <div className="font-bold text-white">{en.branch.name}</div>
-                        <div className="text-[11px] text-[#9bb5a8] mt-0.5">
+                        <div className="font-bold text-[var(--text-primary)]">{en.branch.name}</div>
+                        <div className="text-[11px] text-[var(--text-secondary)] mt-0.5">
                           من: {en.startDate.slice(0, 10)}{' '}
                           {en.endDate ? `إلى: ${en.endDate.slice(0, 10)}` : ''}
                         </div>
                         {en.notes && (
-                          <div className="text-[11px] text-[#9bb5a8]/80 mt-1">{en.notes}</div>
+                          <div className="text-[11px] text-[var(--text-secondary)] mt-1">{en.notes}</div>
                         )}
                       </div>
-                      <span className="rounded bg-[#234235] px-2 py-0.5 text-[10px] text-[#9bb5a8]">
+                      <span className="rounded bg-[var(--bg-surface)] px-2 py-0.5 text-[10px] text-[var(--text-secondary)] border border-[var(--border-subtle)]">
                         {en.status === 'TRANSFERRED'
                           ? 'تم النقل'
                           : en.status === 'COMPLETED'
@@ -449,32 +439,32 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
           {/* Col 3: Guardians & Emergency Contacts */}
           <div className="space-y-6">
             {/* Guardians Card */}
-            <div className="rounded-2xl border border-[#234235] bg-[#162821]/80 p-6 backdrop-blur-md space-y-4">
-              <div className="flex items-center gap-2 border-b border-[#234235] pb-3">
-                <Users className="h-5 w-5 text-[#2f9e6b]" />
-                <h2 className="text-base font-bold text-white">أولياء الأمور</h2>
+            <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-sm space-y-4">
+              <div className="flex items-center gap-2 border-b border-[var(--border-subtle)] pb-3">
+                <Users className="h-5 w-5 text-[var(--brand-primary)]" />
+                <h2 className="text-base font-bold text-[var(--text-primary)]">أولياء الأمور</h2>
               </div>
 
               <div className="space-y-3">
                 {player.guardians.map((g) => (
                   <div
                     key={g.id}
-                    className="rounded-xl border border-[#234235] bg-[#0f1c18]/60 p-3.5 space-y-2"
+                    className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3.5 space-y-2"
                   >
                     <div className="flex items-center justify-between">
-                      <span className="font-bold text-white text-xs">
+                      <span className="font-bold text-[var(--text-primary)] text-xs">
                         {g.firstName} {g.lastName}
                       </span>
                       {g.isPrimary && (
-                        <span className="rounded bg-[#2f9e6b]/20 px-2 py-0.5 text-[10px] font-semibold text-[#45c387] border border-[#2f9e6b]/30">
+                        <span className="rounded bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
                           ولي أمر رئيسي
                         </span>
                       )}
                     </div>
-                    <div className="text-xs text-[#9bb5a8] space-y-1">
+                    <div className="text-xs text-[var(--text-secondary)] space-y-1">
                       <div className="flex items-center gap-1.5">
-                        <Phone className="h-3.5 w-3.5 text-[#2f9e6b]" />
-                        <span className="font-mono text-white">{g.phone}</span>
+                        <Phone className="h-3.5 w-3.5 text-[var(--brand-primary)]" />
+                        <span className="font-mono text-[var(--text-primary)]">{g.phone}</span>
                       </div>
                       {g.email && <div className="text-[11px] truncate">{g.email}</div>}
                     </div>
@@ -484,24 +474,24 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
             </div>
 
             {/* Emergency & Health Card */}
-            <div className="rounded-2xl border border-[#234235] bg-[#162821]/80 p-6 backdrop-blur-md space-y-4">
-              <div className="flex items-center gap-2 border-b border-[#234235] pb-3">
-                <Heart className="h-5 w-5 text-[#ef4444]" />
-                <h2 className="text-base font-bold text-white">الطوارئ والصحة</h2>
+            <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-sm space-y-4">
+              <div className="flex items-center gap-2 border-b border-[var(--border-subtle)] pb-3">
+                <Heart className="h-5 w-5 text-red-500" />
+                <h2 className="text-base font-bold text-[var(--text-primary)]">الطوارئ والصحة</h2>
               </div>
 
               <div className="space-y-3 text-xs">
-                <div className="rounded-xl border border-[#234235] bg-[#0f1c18]/60 p-3.5">
-                  <span className="text-[11px] text-[#9bb5a8] block mb-1">جهة اتصال الطوارئ:</span>
-                  <div className="font-bold text-white">{player.emergencyContactName}</div>
-                  <div className="font-mono text-[#45c387] mt-0.5 flex items-center gap-1">
+                <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3.5">
+                  <span className="text-[11px] text-[var(--text-secondary)] block mb-1">جهة اتصال الطوارئ:</span>
+                  <div className="font-bold text-[var(--text-primary)]">{player.emergencyContactName}</div>
+                  <div className="font-mono text-[var(--brand-primary)] mt-0.5 flex items-center gap-1">
                     <Phone className="h-3 w-3" /> {player.emergencyContactPhone}
                   </div>
                 </div>
 
-                <div className="rounded-xl border border-[#234235] bg-[#0f1c18]/60 p-3.5">
-                  <span className="text-[11px] text-[#9bb5a8] block mb-1">الملاحظات الطبية:</span>
-                  <div className="text-white">
+                <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3.5">
+                  <span className="text-[11px] text-[var(--text-secondary)] block mb-1">الملاحظات الطبية:</span>
+                  <div className="text-[var(--text-primary)]">
                     {canViewSensitive
                       ? player.medicalNotes || 'لا توجد ملاحظات طبية أو حساسية مسجلة'
                       : 'محجوبة (لا تملك صلاحية الاطلاع على البيانات الحساسة)'}
@@ -514,17 +504,17 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
 
         {/* Transfer Branch Modal */}
         {isTransferModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-            <div className="w-full max-w-md rounded-2xl border border-[#234235] bg-[#162821] p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
-              <div className="flex items-center justify-between border-b border-[#234235] pb-3 mb-4">
-                <h3 className="font-bold text-white text-base flex items-center gap-2">
-                  <ArrowRightLeft className="h-5 w-5 text-[#2f9e6b]" />
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <div className="w-full max-w-md rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+              <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3 mb-4">
+                <h3 className="font-bold text-[var(--text-primary)] text-base flex items-center gap-2">
+                  <ArrowRightLeft className="h-5 w-5 text-[var(--brand-primary)]" />
                   نقل اللاعب إلى فرع آخر
                 </h3>
                 <button
                   type="button"
                   onClick={() => setIsTransferModalOpen(false)}
-                  className="rounded-lg p-1 text-[#9bb5a8] hover:bg-[#234235] hover:text-white"
+                  className="rounded-lg p-1 text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -532,7 +522,7 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
 
               <form onSubmit={handleTransferSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold text-[#9bb5a8] mb-1.5">
+                  <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">
                     الفرع المستهدف *
                   </label>
                   <select
@@ -540,7 +530,7 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
                     id="select-target-branch"
                     value={targetBranchId}
                     onChange={(e) => setTargetBranchId(e.target.value)}
-                    className="w-full rounded-xl border border-[#2b4c3e] bg-[#0f1c18] px-3.5 py-2.5 text-xs text-[#e8f0ec] focus:border-[#2f9e6b] focus:outline-none"
+                    className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2.5 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none transition-colors"
                   >
                     <option value="">اختر الفرع الجديد...</option>
                     {branches
@@ -554,7 +544,7 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-[#9bb5a8] mb-1.5">
+                  <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">
                     تاريخ النقل الفعلي
                   </label>
                   <input
@@ -562,12 +552,12 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
                     id="input-transfer-date"
                     value={transferDate}
                     onChange={(e) => setTransferDate(e.target.value)}
-                    className="w-full rounded-xl border border-[#2b4c3e] bg-[#0f1c18] px-3.5 py-2.5 text-xs text-[#e8f0ec] focus:border-[#2f9e6b] focus:outline-none"
+                    className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2.5 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none transition-colors"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-[#9bb5a8] mb-1.5">
+                  <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">
                     سبب أو ملاحظات النقل
                   </label>
                   <textarea
@@ -576,15 +566,15 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
                     value={transferNotes}
                     onChange={(e) => setTransferNotes(e.target.value)}
                     placeholder="مثال: بناءً على طلب ولي الأمر بسبب تغيير مكان السكن"
-                    className="w-full rounded-xl border border-[#2b4c3e] bg-[#0f1c18] px-3.5 py-2.5 text-xs text-[#e8f0ec] focus:border-[#2f9e6b] focus:outline-none"
+                    className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2.5 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none transition-colors"
                   />
                 </div>
 
-                <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#234235]">
+                <div className="flex items-center justify-end gap-2 pt-3 border-t border-[var(--border-subtle)]">
                   <button
                     type="button"
                     onClick={() => setIsTransferModalOpen(false)}
-                    className="rounded-xl border border-[#234235] bg-[#0f1c18] px-4 py-2 text-xs font-medium text-[#9bb5a8] hover:text-white"
+                    className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-4 py-2 text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
                   >
                     إلغاء
                   </button>
@@ -592,7 +582,7 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
                     type="submit"
                     id="btn-confirm-transfer"
                     disabled={isTransferring}
-                    className="rounded-xl bg-gradient-to-r from-[#2f9e6b] to-[#36b379] px-5 py-2 text-xs font-semibold text-[#062016] shadow hover:brightness-110 disabled:opacity-50 cursor-pointer"
+                    className="rounded-xl bg-[var(--brand-primary)] text-white px-5 py-2 text-xs font-semibold shadow hover:brightness-110 disabled:opacity-50 cursor-pointer"
                   >
                     {isTransferring ? 'جارٍ النقل...' : 'تأكيد النقل'}
                   </button>
@@ -604,17 +594,17 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
 
         {/* Edit Player Modal */}
         {isEditModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-            <div className="w-full max-w-lg rounded-2xl border border-[#234235] bg-[#162821] p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
-              <div className="flex items-center justify-between border-b border-[#234235] pb-3 mb-4">
-                <h3 className="font-bold text-white text-base flex items-center gap-2">
-                  <Edit3 className="h-5 w-5 text-[#2f9e6b]" />
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <div className="w-full max-w-lg rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+              <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3 mb-4">
+                <h3 className="font-bold text-[var(--text-primary)] text-base flex items-center gap-2">
+                  <Edit3 className="h-5 w-5 text-[var(--brand-primary)]" />
                   تعديل بيانات اللاعب
                 </h3>
                 <button
                   type="button"
                   onClick={() => setIsEditModalOpen(false)}
-                  className="rounded-lg p-1 text-[#9bb5a8] hover:bg-[#234235] hover:text-white"
+                  className="rounded-lg p-1 text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -623,7 +613,7 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
               <form onSubmit={handleUpdatePlayerSubmit} className="space-y-4">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-[#9bb5a8] mb-1">
+                    <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
                       الاسم الأول
                     </label>
                     <input
@@ -631,11 +621,11 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
                       required
                       value={editFirstName}
                       onChange={(e) => setEditFirstName(e.target.value)}
-                      className="w-full rounded-xl border border-[#2b4c3e] bg-[#0f1c18] px-3.5 py-2 text-xs text-[#e8f0ec] focus:border-[#2f9e6b] focus:outline-none"
+                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none transition-colors"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-[#9bb5a8] mb-1">
+                    <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
                       اسم العائلة
                     </label>
                     <input
@@ -643,14 +633,14 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
                       required
                       value={editLastName}
                       onChange={(e) => setEditLastName(e.target.value)}
-                      className="w-full rounded-xl border border-[#2b4c3e] bg-[#0f1c18] px-3.5 py-2 text-xs text-[#e8f0ec] focus:border-[#2f9e6b] focus:outline-none"
+                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none transition-colors"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-[#9bb5a8] mb-1">
+                    <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
                       جهة اتصال الطوارئ
                     </label>
                     <input
@@ -658,11 +648,11 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
                       required
                       value={editEmergencyName}
                       onChange={(e) => setEditEmergencyName(e.target.value)}
-                      className="w-full rounded-xl border border-[#2b4c3e] bg-[#0f1c18] px-3.5 py-2 text-xs text-[#e8f0ec] focus:border-[#2f9e6b] focus:outline-none"
+                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none transition-colors"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-[#9bb5a8] mb-1">
+                    <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
                       هاتف الطوارئ
                     </label>
                     <input
@@ -670,19 +660,19 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
                       required
                       value={editEmergencyPhone}
                       onChange={(e) => setEditEmergencyPhone(e.target.value)}
-                      className="w-full rounded-xl border border-[#2b4c3e] bg-[#0f1c18] px-3.5 py-2 text-xs text-[#e8f0ec] focus:border-[#2f9e6b] focus:outline-none font-mono"
+                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none transition-colors font-mono"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-[#9bb5a8] mb-1">
+                  <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
                     حالة اللاعب
                   </label>
                   <select
                     value={editStatus}
                     onChange={(e) => setEditStatus(e.target.value as PlayerStatus)}
-                    className="w-full rounded-xl border border-[#2b4c3e] bg-[#0f1c18] px-3.5 py-2 text-xs text-[#e8f0ec] focus:border-[#2f9e6b] focus:outline-none"
+                    className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none transition-colors"
                   >
                     <option value="ACTIVE">نشط (Active)</option>
                     <option value="INACTIVE">غير نشط (Inactive)</option>
@@ -692,27 +682,27 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
 
                 {canViewSensitive ? (
                   <div>
-                    <label className="block text-xs font-semibold text-[#9bb5a8] mb-1">
+                    <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
                       الملاحظات الطبية
                     </label>
                     <textarea
                       rows={2}
                       value={editMedicalNotes}
                       onChange={(e) => setEditMedicalNotes(e.target.value)}
-                      className="w-full rounded-xl border border-[#2b4c3e] bg-[#0f1c18] px-3.5 py-2 text-xs text-[#e8f0ec] focus:border-[#2f9e6b] focus:outline-none"
+                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none transition-colors"
                     />
                   </div>
                 ) : (
-                  <div className="rounded-xl border border-[#234235] bg-[#0f1c18]/40 p-3 text-[11px] text-[#9bb5a8]">
+                  <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 text-[11px] text-[var(--text-secondary)]">
                     الملاحظات الطبية محجوبة ولا يمكن تعديلها إلا من قِبل مديري الأكاديمية أو الفروع.
                   </div>
                 )}
 
-                <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#234235]">
+                <div className="flex items-center justify-end gap-2 pt-3 border-t border-[var(--border-subtle)]">
                   <button
                     type="button"
                     onClick={() => setIsEditModalOpen(false)}
-                    className="rounded-xl border border-[#234235] bg-[#0f1c18] px-4 py-2 text-xs font-medium text-[#9bb5a8] hover:text-white"
+                    className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-4 py-2 text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
                   >
                     إلغاء
                   </button>
@@ -720,7 +710,7 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
                     type="submit"
                     id="btn-confirm-update-player"
                     disabled={isUpdating}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-[#2f9e6b] to-[#36b379] px-5 py-2 text-xs font-semibold text-[#062016] shadow hover:brightness-110 disabled:opacity-50 cursor-pointer"
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--brand-primary)] text-white px-5 py-2 text-xs font-semibold shadow hover:brightness-110 disabled:opacity-50 cursor-pointer"
                   >
                     <Save className="h-4 w-4" />
                     <span>{isUpdating ? 'جارٍ الحفظ...' : 'حفظ التعديلات'}</span>
@@ -744,7 +734,7 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
             </div>
           </div>
         )}
-      </main>
-    </div>
+      </div>
+    </AppShell>
   );
 }

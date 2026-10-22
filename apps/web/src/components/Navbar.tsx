@@ -317,17 +317,17 @@ export function Navbar() {
             <div className="flex items-center gap-2">
               <Link
                 href="/login"
-                className="rounded-lg border border-[var(--border-app)] px-3.5 py-1.5 text-xs font-medium text-[var(--text-main)] hover:border-[var(--accent-primary)] hover:text-[var(--accent-primary)] transition-all"
+                className="rounded-lg border border-[var(--border-app)] px-3.5 py-1.5 text-xs font-semibold text-[var(--text-main)] hover:border-[var(--accent-primary)] hover:text-[var(--accent-primary)] transition-all"
               >
                 {t('common.login')}
               </Link>
-              <Link
-                href="/register"
-                className="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-[var(--accent-primary)] to-[var(--accent-hover)] px-3.5 py-1.5 text-xs font-semibold text-emerald-950 shadow-md shadow-emerald-500/20 hover:brightness-110 transition-all"
+              <a
+                href="#demo-request"
+                className="flex items-center gap-1.5 rounded-lg bg-[var(--accent-primary)] px-3.5 py-1.5 text-xs font-semibold text-white shadow-md shadow-emerald-500/20 hover:opacity-90 transition-all"
               >
                 <Sparkles className="h-3.5 w-3.5" />
-                <span>{t('common.register')}</span>
-              </Link>
+                <span>{t('common.requestDemo')}</span>
+              </a>
             </div>
           )}
         </div>

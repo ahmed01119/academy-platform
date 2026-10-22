@@ -46,4 +46,52 @@ describe('Localization Completeness & Translation Parity', () => {
     expect(formatted).toBeDefined();
     expect(formatted).toContain('2026');
   });
+
+  it('contains all critical common and navigation keys without missing entries', () => {
+    const requiredCommonKeys = [
+      'appName',
+      'academyPlatform',
+      'login',
+      'logout',
+      'register',
+      'home',
+      'currency',
+      'notifications',
+      'profile',
+      'collapse',
+      'expand',
+      'searchPlaceholder',
+      'quickActions',
+      'operations',
+      'analytics',
+      'athletics',
+      'administration',
+    ];
+
+    const requiredNavKeys = [
+      'home',
+      'dashboard',
+      'players',
+      'groups',
+      'evaluations',
+      'sessions',
+      'reports',
+      'scanner',
+      'branches',
+      'settings',
+      'coachWorkspace',
+      'playerPortal',
+      'guardianPortal',
+    ];
+
+    for (const key of requiredCommonKeys) {
+      expect(translations.ar.common).toHaveProperty(key);
+      expect(translations.en.common).toHaveProperty(key);
+    }
+
+    for (const key of requiredNavKeys) {
+      expect(translations.ar.nav).toHaveProperty(key);
+      expect(translations.en.nav).toHaveProperty(key);
+    }
+  });
 });

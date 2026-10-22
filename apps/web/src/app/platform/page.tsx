@@ -5,8 +5,9 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../lib/auth-context';
 import { apiClient } from '../../lib/api-client';
+import { AppShell } from '../../components/layout/AppShell';
+import { PageHeader } from '../../components/ui/PageHeader';
 import {
-  Globe2,
   Building2,
   Users,
   ShieldCheck,
@@ -108,32 +109,36 @@ export default function PlatformSuperAdminPage() {
 
   if (authLoading || (!user?.isPlatformSuperAdmin && isLoading)) {
     return (
-      <div className="flex min-h-[70vh] items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <RefreshCw className="h-8 w-8 animate-spin text-[#45c387]" />
-          <p className="text-sm text-[#9bb5a8]">جارٍ التحقق من صلاحيات الإشراف السحابي...</p>
+      <AppShell>
+        <div className="flex h-[60vh] items-center justify-center">
+          <div className="flex flex-col items-center gap-3">
+            <RefreshCw className="h-8 w-8 animate-spin text-[var(--brand-primary)]" />
+            <p className="text-sm font-medium text-[var(--text-muted)]">جارٍ التحقق من صلاحيات الإشراف السحابي...</p>
+          </div>
         </div>
-      </div>
+      </AppShell>
     );
   }
 
   if (!user?.isPlatformSuperAdmin) {
     return (
-      <div className="mx-auto max-w-xl py-20 px-4 text-center">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 mb-4">
-          <Lock className="h-7 w-7" />
+      <AppShell>
+        <div className="mx-auto max-w-xl py-20 px-4 text-center">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-500 mb-4">
+            <Lock className="h-7 w-7" />
+          </div>
+          <h1 className="text-xl font-bold text-[var(--text-primary)] mb-2">منطقة محظورة</h1>
+          <p className="text-sm text-[var(--text-muted)] mb-6">
+            هذه الصفحة مخصصة حصرياً للمشرفين العامين على المنصة السحابية (Platform Super Administrators).
+          </p>
+          <Link
+            href="/dashboard"
+            className="inline-flex items-center gap-2 rounded-xl bg-[var(--brand-primary)] px-4 py-2 text-sm font-semibold text-white hover:brightness-110 transition-all cursor-pointer"
+          >
+            العودة للوحة الأكاديمية
+          </Link>
         </div>
-        <h1 className="text-xl font-bold text-white mb-2">منطقة محظورة</h1>
-        <p className="text-sm text-[#9bb5a8] mb-6">
-          هذه الصفحة مخصصة حصرياً للمشرفين العامين على المنصة السحابية (Platform Super Administrators).
-        </p>
-        <Link
-          href="/dashboard"
-          className="inline-flex items-center gap-2 rounded-xl bg-[#2f9e6b] px-4 py-2 text-sm font-semibold text-[#062016] hover:bg-[#36b379] transition-all"
-        >
-          العودة للوحة الأكاديمية
-        </Link>
-      </div>
+      </AppShell>
     );
   }
 
@@ -146,64 +151,50 @@ export default function PlatformSuperAdminPage() {
   });
 
   return (
-    <div className="min-h-screen bg-[#0a1410] text-[#e8f0ec] py-8">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-8">
-        {/* Header Hero */}
-        <div className="rounded-2xl border border-[#2b4c3e] bg-gradient-to-r from-[#12231c] via-[#162821] to-[#12231c] p-6 sm:p-8 shadow-xl relative overflow-hidden">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#f59e0b] bg-[#f59e0b]/15 px-3 py-1 rounded-full border border-[#f59e0b]/30">
-                  <Globe2 className="h-4 w-4" />
-                  SaaS Platform Operations Console
-                </span>
-                <span className="flex items-center gap-1 text-xs text-[#45c387] bg-[#2f9e6b]/20 px-2 py-0.5 rounded-full border border-[#2f9e6b]/40">
-                  <Activity className="h-3 w-3" />
-                  النظام نشط ومستقر
-                </span>
-              </div>
-              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
-                مركز إدارة المنصة السحابية
-              </h1>
-              <p className="mt-1 text-sm text-[#9bb5a8]">
-                مراقبة الأكاديميات الرياضية المشتركة، التحكم بالصلاحيات وحالات الحسابات، ومتابعة سجلات التدقيق والأمان.
-              </p>
-            </div>
-
+    <AppShell>
+      <div className="space-y-8">
+        <PageHeader
+          breadcrumbs={[
+            { label: 'الرئيسية', href: '/dashboard' },
+            { label: 'مركز إدارة المنصة السحابية' },
+          ]}
+          title="مركز إدارة المنصة السحابية (Platform Console)"
+          description="مراقبة الأكاديميات الرياضية المشتركة، التحكم بالصلاحيات وحالات الحسابات، ومتابعة سجلات التدقيق والأمان."
+          actions={
             <div className="flex items-center gap-3">
               <button
                 type="button"
                 onClick={loadData}
                 disabled={isLoading}
-                className="flex items-center gap-2 rounded-xl border border-[#2b4c3e] bg-[#162821] px-4 py-2 text-sm font-medium text-[#e8f0ec] hover:border-[#2f9e6b] hover:text-[#45c387] transition-all"
+                className="flex items-center gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-2 text-xs font-semibold text-[var(--text-primary)] hover:border-[var(--brand-primary)] transition-all cursor-pointer"
               >
                 <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
                 <span>تحديث البيانات</span>
               </button>
               <Link
                 href="/auth-test"
-                className="flex items-center gap-2 rounded-xl bg-amber-500/10 border border-amber-500/30 px-4 py-2 text-sm font-semibold text-amber-400 hover:bg-amber-500/20 transition-all"
+                className="flex items-center gap-2 rounded-xl bg-amber-500/10 border border-amber-500/30 px-4 py-2 text-xs font-semibold text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 transition-all"
               >
                 <ShieldCheck className="h-4 w-4" />
                 <span>مختبر فحص الأمان</span>
               </Link>
             </div>
-          </div>
-        </div>
+          }
+        />
 
         {/* Feedback Alert */}
         {feedbackMessage && (
           <div
             className={`p-4 rounded-xl border flex items-center justify-between text-sm ${
               feedbackMessage.type === 'success'
-                ? 'bg-emerald-950/40 border-emerald-500/30 text-emerald-300'
-                : 'bg-rose-950/40 border-rose-500/30 text-rose-300'
+                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
+                : 'bg-rose-500/10 border-rose-500/30 text-rose-600 dark:text-rose-400'
             }`}
           >
             <span>{feedbackMessage.text}</span>
             <button
               onClick={() => setFeedbackMessage(null)}
-              className="text-xs opacity-60 hover:opacity-100"
+              className="text-xs opacity-60 hover:opacity-100 cursor-pointer"
             >
               ✕
             </button>
@@ -213,73 +204,73 @@ export default function PlatformSuperAdminPage() {
         {/* Global SaaS KPI Metrics */}
         {metrics && (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            <div className="rounded-xl border border-[#234235] bg-[#12231c] p-4">
-              <div className="flex items-center justify-between text-xs text-[#9bb5a8] mb-1">
+            <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 shadow-sm">
+              <div className="flex items-center justify-between text-xs text-[var(--text-muted)] mb-1">
                 <span>إجمالي الأكاديميات</span>
-                <Building2 className="h-4 w-4 text-[#2f9e6b]" />
+                <Building2 className="h-4 w-4 text-[var(--brand-primary)]" />
               </div>
-              <div className="text-2xl font-bold text-white">{metrics.totalAcademies}</div>
-              <div className="text-[11px] text-[#45c387] mt-1 font-medium">
+              <div className="text-2xl font-bold text-[var(--text-primary)]">{metrics.totalAcademies}</div>
+              <div className="text-[11px] text-[var(--brand-primary)] mt-1 font-medium">
                 {metrics.activeAcademies} نشطة / {metrics.suspendedAcademies} موقوفة
               </div>
             </div>
 
-            <div className="rounded-xl border border-[#234235] bg-[#12231c] p-4">
-              <div className="flex items-center justify-between text-xs text-[#9bb5a8] mb-1">
+            <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 shadow-sm">
+              <div className="flex items-center justify-between text-xs text-[var(--text-muted)] mb-1">
                 <span>إجمالي اللاعبين</span>
-                <Users className="h-4 w-4 text-[#38bdf8]" />
+                <Users className="h-4 w-4 text-sky-500" />
               </div>
-              <div className="text-2xl font-bold text-white">{metrics.totalPlayers}</div>
-              <div className="text-[11px] text-[#9bb5a8] mt-1">مسجلين في المنصة</div>
+              <div className="text-2xl font-bold text-[var(--text-primary)]">{metrics.totalPlayers}</div>
+              <div className="text-[11px] text-[var(--text-muted)] mt-1">مسجلين في المنصة</div>
             </div>
 
-            <div className="rounded-xl border border-[#234235] bg-[#12231c] p-4">
-              <div className="flex items-center justify-between text-xs text-[#9bb5a8] mb-1">
+            <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 shadow-sm">
+              <div className="flex items-center justify-between text-xs text-[var(--text-muted)] mb-1">
                 <span>المدربين النشطين</span>
-                <TrendingUp className="h-4 w-4 text-[#45c387]" />
+                <TrendingUp className="h-4 w-4 text-emerald-500" />
               </div>
-              <div className="text-2xl font-bold text-white">{metrics.totalCoaches}</div>
-              <div className="text-[11px] text-[#9bb5a8] mt-1">معتمدين بالأكاديميات</div>
+              <div className="text-2xl font-bold text-[var(--text-primary)]">{metrics.totalCoaches}</div>
+              <div className="text-[11px] text-[var(--text-muted)] mt-1">معتمدين بالأكاديميات</div>
             </div>
 
-            <div className="rounded-xl border border-[#234235] bg-[#12231c] p-4">
-              <div className="flex items-center justify-between text-xs text-[#9bb5a8] mb-1">
+            <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 shadow-sm">
+              <div className="flex items-center justify-between text-xs text-[var(--text-muted)] mb-1">
                 <span>الفروع التشغيلية</span>
-                <Sliders className="h-4 w-4 text-[#a855f7]" />
+                <Sliders className="h-4 w-4 text-purple-500" />
               </div>
-              <div className="text-2xl font-bold text-white">{metrics.totalBranches}</div>
-              <div className="text-[11px] text-[#9bb5a8] mt-1">موزعة جغرافياً</div>
+              <div className="text-2xl font-bold text-[var(--text-primary)]">{metrics.totalBranches}</div>
+              <div className="text-[11px] text-[var(--text-muted)] mt-1">موزعة جغرافياً</div>
             </div>
 
-            <div className="rounded-xl border border-[#234235] bg-[#12231c] p-4">
-              <div className="flex items-center justify-between text-xs text-[#9bb5a8] mb-1">
+            <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 shadow-sm">
+              <div className="flex items-center justify-between text-xs text-[var(--text-muted)] mb-1">
                 <span>الحصص المكتملة</span>
-                <CalendarCheck className="h-4 w-4 text-[#2f9e6b]" />
+                <CalendarCheck className="h-4 w-4 text-emerald-500" />
               </div>
-              <div className="text-2xl font-bold text-white">{metrics.totalSessionsCompleted}</div>
-              <div className="text-[11px] text-[#45c387] mt-1">جلسة حضور مثبتة</div>
+              <div className="text-2xl font-bold text-[var(--text-primary)]">{metrics.totalSessionsCompleted}</div>
+              <div className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-1">جلسة حضور مثبتة</div>
             </div>
 
-            <div className="rounded-xl border border-[#234235] bg-[#12231c] p-4">
-              <div className="flex items-center justify-between text-xs text-[#9bb5a8] mb-1">
+            <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 shadow-sm">
+              <div className="flex items-center justify-between text-xs text-[var(--text-muted)] mb-1">
                 <span>حالة الخوادم</span>
-                <Activity className="h-4 w-4 text-emerald-400" />
+                <Activity className="h-4 w-4 text-emerald-500" />
               </div>
-              <div className="text-xl font-bold text-emerald-400">ممتازة (100%)</div>
-              <div className="text-[11px] text-[#9bb5a8] mt-1">RLS مُفعل بالكامل</div>
+              <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400">ممتازة (100%)</div>
+              <div className="text-[11px] text-[var(--text-muted)] mt-1">RLS مُفعل بالكامل</div>
             </div>
           </div>
         )}
 
         {/* Tab Navigation */}
-        <div className="border-b border-[#234235] flex items-center gap-6">
+        <div className="border-b border-[var(--border-subtle)] flex items-center gap-6">
           <button
             type="button"
             onClick={() => setActiveTab('academies')}
-            className={`pb-3 text-sm font-semibold transition-all relative ${
+            className={`pb-3 text-sm font-semibold transition-all relative cursor-pointer ${
               activeTab === 'academies'
-                ? 'text-[#45c387] border-b-2 border-[#45c387]'
-                : 'text-[#9bb5a8] hover:text-white'
+                ? 'text-[var(--brand-primary)] border-b-2 border-[var(--brand-primary)]'
+                : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
             }`}
           >
             الأكاديميات المشتركة ({academies.length})
@@ -287,10 +278,10 @@ export default function PlatformSuperAdminPage() {
           <button
             type="button"
             onClick={() => setActiveTab('audit')}
-            className={`pb-3 text-sm font-semibold transition-all relative ${
+            className={`pb-3 text-sm font-semibold transition-all relative cursor-pointer ${
               activeTab === 'audit'
-                ? 'text-[#45c387] border-b-2 border-[#45c387]'
-                : 'text-[#9bb5a8] hover:text-white'
+                ? 'text-[var(--brand-primary)] border-b-2 border-[var(--brand-primary)]'
+                : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
             }`}
           >
             سجل التدقيق الشامل ({auditLogs.length})
@@ -298,15 +289,15 @@ export default function PlatformSuperAdminPage() {
           <button
             type="button"
             onClick={() => setActiveTab('security')}
-            className={`pb-3 text-sm font-semibold transition-all relative flex items-center gap-2 ${
+            className={`pb-3 text-sm font-semibold transition-all relative flex items-center gap-2 cursor-pointer ${
               activeTab === 'security'
-                ? 'text-[#45c387] border-b-2 border-[#45c387]'
-                : 'text-[#9bb5a8] hover:text-white'
+                ? 'text-[var(--brand-primary)] border-b-2 border-[var(--brand-primary)]'
+                : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
             }`}
           >
             <span>أحداث الأمان والتهديدات</span>
             {securityEvents.length > 0 && (
-              <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-xs text-amber-300 font-bold border border-amber-500/30">
+              <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-xs text-amber-600 dark:text-amber-300 font-bold border border-amber-500/30">
                 {securityEvents.length}
               </span>
             )}
@@ -317,15 +308,15 @@ export default function PlatformSuperAdminPage() {
         {activeTab === 'academies' && (
           <div className="space-y-4">
             {/* Filters */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-between items-center bg-[#12231c] p-4 rounded-xl border border-[#234235]">
+            <div className="flex flex-col sm:flex-row gap-4 justify-between items-center bg-[var(--bg-surface)] p-4 rounded-xl border border-[var(--border-subtle)] shadow-sm">
               <div className="relative w-full sm:w-80">
-                <Search className="absolute right-3 top-2.5 h-4 w-4 text-[#9bb5a8]" />
+                <Search className="absolute right-3 top-2.5 h-4 w-4 text-[var(--text-muted)]" />
                 <input
                   type="text"
                   placeholder="بحث باسم الأكاديمية أو المعرّف (slug)..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full rounded-lg border border-[#2b4c3e] bg-[#162821] pr-9 pl-3 py-2 text-xs text-white placeholder-[#9bb5a8] focus:border-[#2f9e6b] focus:outline-none"
+                  className="w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-elevated)] pr-9 pl-3 py-2 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:border-[var(--brand-primary)] focus:outline-none"
                 />
               </div>
 
@@ -333,7 +324,7 @@ export default function PlatformSuperAdminPage() {
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="rounded-lg border border-[#2b4c3e] bg-[#162821] px-3 py-2 text-xs text-white focus:border-[#2f9e6b] focus:outline-none"
+                  className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-2 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none"
                 >
                   <option value="">جميع الحالات</option>
                   <option value="ACTIVE">نشطة فقط</option>
@@ -344,9 +335,9 @@ export default function PlatformSuperAdminPage() {
             </div>
 
             {/* Table */}
-            <div className="overflow-x-auto rounded-xl border border-[#234235] bg-[#12231c]">
+            <div className="overflow-x-auto rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] shadow-sm">
               <table className="w-full text-right text-xs">
-                <thead className="bg-[#162821] text-[#9bb5a8] border-b border-[#234235]">
+                <thead className="bg-[var(--bg-elevated)] text-[var(--text-muted)] border-b border-[var(--border-subtle)]">
                   <tr>
                     <th className="p-3.5">الأكاديمية</th>
                     <th className="p-3.5">المعرف (Slug)</th>
@@ -358,38 +349,38 @@ export default function PlatformSuperAdminPage() {
                     <th className="p-3.5 text-center">الإجراءات</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#234235]/60">
+                <tbody className="divide-y divide-[var(--border-subtle)]">
                   {filteredAcademies.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="p-8 text-center text-[#9bb5a8]">
+                      <td colSpan={8} className="p-8 text-center text-[var(--text-muted)]">
                         لا توجد أكاديميات مطابقة لمعايير البحث.
                       </td>
                     </tr>
                   ) : (
                     filteredAcademies.map((a) => (
-                      <tr key={a.id} className="hover:bg-[#162821]/50 transition-colors">
+                      <tr key={a.id} className="hover:bg-[var(--bg-elevated)] transition-colors">
                         <td className="p-3.5">
-                          <div className="font-bold text-white">{a.name}</div>
-                          <div className="text-[11px] text-[#9bb5a8]">{a.email || a.phone || '—'}</div>
+                          <div className="font-bold text-[var(--text-primary)]">{a.name}</div>
+                          <div className="text-[11px] text-[var(--text-muted)]">{a.email || a.phone || '—'}</div>
                         </td>
-                        <td className="p-3.5 font-mono text-[11px] text-[#45c387]">{a.slug}</td>
-                        <td className="p-3.5">{a.branchesCount} فرع</td>
-                        <td className="p-3.5">{a.playersCount} لاعب</td>
-                        <td className="p-3.5">{a.coachesCount} مدرب</td>
+                        <td className="p-3.5 font-mono text-[11px] text-[var(--brand-primary)]">{a.slug}</td>
+                        <td className="p-3.5 text-[var(--text-secondary)]">{a.branchesCount} فرع</td>
+                        <td className="p-3.5 text-[var(--text-secondary)]">{a.playersCount} لاعب</td>
+                        <td className="p-3.5 text-[var(--text-secondary)]">{a.coachesCount} مدرب</td>
                         <td className="p-3.5">
                           {a.status === 'ACTIVE' ? (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-950/60 border border-emerald-500/30 px-2 py-0.5 text-[11px] font-medium text-emerald-400">
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
                               <CheckCircle2 className="h-3 w-3" />
                               نشطة
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-rose-950/60 border border-rose-500/30 px-2 py-0.5 text-[11px] font-medium text-rose-400">
+                            <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/15 border border-rose-500/30 px-2.5 py-0.5 text-[11px] font-medium text-rose-600 dark:text-rose-400">
                               <XCircle className="h-3 w-3" />
                               موقوفة
                             </span>
                           )}
                         </td>
-                        <td className="p-3.5 text-[#9bb5a8]">
+                        <td className="p-3.5 text-[var(--text-muted)]">
                           {new Date(a.createdAt).toLocaleDateString('ar-SA')}
                         </td>
                         <td className="p-3.5 text-center">
@@ -397,10 +388,10 @@ export default function PlatformSuperAdminPage() {
                             type="button"
                             onClick={() => handleToggleStatus(a)}
                             disabled={actionLoading === a.id}
-                            className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+                            className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
                               a.status === 'ACTIVE'
-                                ? 'bg-rose-500/10 border border-rose-500/30 text-rose-400 hover:bg-rose-500/20'
-                                : 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20'
+                                ? 'bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20'
+                                : 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20'
                             }`}
                           >
                             {actionLoading === a.id
@@ -421,9 +412,9 @@ export default function PlatformSuperAdminPage() {
 
         {/* Tab Content 2: Audit Logs */}
         {activeTab === 'audit' && (
-          <div className="overflow-x-auto rounded-xl border border-[#234235] bg-[#12231c]">
+          <div className="overflow-x-auto rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] shadow-sm">
             <table className="w-full text-right text-xs">
-              <thead className="bg-[#162821] text-[#9bb5a8] border-b border-[#234235]">
+              <thead className="bg-[var(--bg-elevated)] text-[var(--text-muted)] border-b border-[var(--border-subtle)]">
                 <tr>
                   <th className="p-3.5">العملية (Action)</th>
                   <th className="p-3.5">الكيان المتأثر</th>
@@ -433,22 +424,22 @@ export default function PlatformSuperAdminPage() {
                   <th className="p-3.5">الوقت والتاريخ</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#234235]/60 font-mono text-[11px]">
+              <tbody className="divide-y divide-[var(--border-subtle)] font-mono text-[11px]">
                 {auditLogs.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="p-8 text-center text-[#9bb5a8]">
+                    <td colSpan={6} className="p-8 text-center text-[var(--text-muted)]">
                       لا توجد سجلات تدقيق مسجلة حتى الآن.
                     </td>
                   </tr>
                 ) : (
                   auditLogs.map((log) => (
-                    <tr key={log.id} className="hover:bg-[#162821]/50 transition-colors">
-                      <td className="p-3.5 font-bold text-[#45c387]">{log.action}</td>
-                      <td className="p-3.5 text-[#e8f0ec]">{log.resourceType}</td>
-                      <td className="p-3.5 text-white">{log.actorEmail || 'نظام آلي'}</td>
-                      <td className="p-3.5 text-[#9bb5a8]">{log.tenantName || 'عام بالمنصة'}</td>
-                      <td className="p-3.5 text-[#9bb5a8]">{log.ipAddress || '—'}</td>
-                      <td className="p-3.5 text-[#9bb5a8]">
+                    <tr key={log.id} className="hover:bg-[var(--bg-elevated)] transition-colors">
+                      <td className="p-3.5 font-bold text-[var(--brand-primary)]">{log.action}</td>
+                      <td className="p-3.5 text-[var(--text-primary)]">{log.resourceType}</td>
+                      <td className="p-3.5 text-[var(--text-primary)]">{log.actorEmail || 'نظام آلي'}</td>
+                      <td className="p-3.5 text-[var(--text-muted)]">{log.tenantName || 'عام بالمنصة'}</td>
+                      <td className="p-3.5 text-[var(--text-muted)]">{log.ipAddress || '—'}</td>
+                      <td className="p-3.5 text-[var(--text-muted)]">
                         {new Date(log.createdAt).toLocaleString('ar-SA')}
                       </td>
                     </tr>
@@ -463,9 +454,9 @@ export default function PlatformSuperAdminPage() {
         {activeTab === 'security' && (
           <div className="space-y-4">
             {securityEvents.length === 0 ? (
-              <div className="rounded-xl border border-[#234235] bg-[#12231c] p-8 text-center text-[#9bb5a8]">
-                <ShieldCheck className="h-10 w-10 text-emerald-400 mx-auto mb-2 opacity-80" />
-                <div className="font-semibold text-white">لا توجد تهديدات أو خروقات أمنية مسجلة</div>
+              <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-8 text-center text-[var(--text-muted)] shadow-sm">
+                <ShieldCheck className="h-10 w-10 text-emerald-500 mx-auto mb-2 opacity-80" />
+                <div className="font-semibold text-[var(--text-primary)]">لا توجد تهديدات أو خروقات أمنية مسجلة</div>
                 <p className="text-xs mt-1">
                   جميع آليات المصادقة وحماية معدل الطلبات وسياسات RLS تعمل بكفاءة تامة.
                 </p>
@@ -474,26 +465,26 @@ export default function PlatformSuperAdminPage() {
               securityEvents.map((event) => (
                 <div
                   key={event.id}
-                  className="rounded-xl border border-rose-500/20 bg-rose-950/20 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                  className="rounded-xl border border-rose-500/20 bg-rose-500/5 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm"
                 >
                   <div className="flex items-start gap-3">
-                    <AlertTriangle className="h-5 w-5 text-rose-400 flex-shrink-0 mt-0.5" />
+                    <AlertTriangle className="h-5 w-5 text-rose-500 flex-shrink-0 mt-0.5" />
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-sm text-white">{event.type}</span>
-                        <span className="rounded bg-rose-500/20 px-2 py-0.5 text-[10px] font-semibold text-rose-300 border border-rose-500/30">
+                        <span className="font-bold text-sm text-[var(--text-primary)]">{event.type}</span>
+                        <span className="rounded bg-rose-500/20 px-2 py-0.5 text-[10px] font-semibold text-rose-600 dark:text-rose-300 border border-rose-500/30">
                           {event.severity}
                         </span>
                       </div>
-                      <p className="text-xs text-rose-200 mt-1">{event.description}</p>
-                      <div className="flex items-center gap-4 text-[11px] text-[#9bb5a8] mt-2 font-mono">
+                      <p className="text-xs text-rose-600 dark:text-rose-300 mt-1">{event.description}</p>
+                      <div className="flex items-center gap-4 text-[11px] text-[var(--text-muted)] mt-2 font-mono">
                         <span>IP: {event.ipAddress || 'غير محدد'}</span>
                         <span>الحساب: {event.actorEmail || 'غير مسجل'}</span>
                       </div>
                     </div>
                   </div>
 
-                  <div className="text-xs text-[#9bb5a8] sm:text-left font-mono">
+                  <div className="text-xs text-[var(--text-muted)] sm:text-left font-mono">
                     {new Date(event.timestamp).toLocaleString('ar-SA')}
                   </div>
                 </div>
@@ -502,6 +493,6 @@ export default function PlatformSuperAdminPage() {
           </div>
         )}
       </div>
-    </div>
+    </AppShell>
   );
 }
