@@ -206,6 +206,9 @@ export class AuthService {
       name: result.user.name,
       phone: result.user.phone,
       isEmailVerified: result.user.isEmailVerified,
+      isPlatformSuperAdmin: false,
+      hasPlayerProfile: false,
+      hasGuardianProfile: false,
       createdAt: result.user.createdAt.toISOString(),
     };
 
@@ -247,6 +250,10 @@ export class AuthService {
     // Credential lookup must not depend on tenant-scoped RLS visibility.
     const user = await this.prisma.user.findUnique({
       where: { email: normalizedEmail },
+      include: {
+        playerProfile: { select: { id: true } },
+        guardianProfiles: { select: { id: true } },
+      },
     });
 
     // Timing-attack prevention: If user does not exist, run a dummy hash verification
@@ -318,6 +325,8 @@ export class AuthService {
         : undefined,
       userAgent,
       ipAddress,
+      undefined,
+      user.isPlatformSuperAdmin,
     );
 
     await this.auditService.logEvent({
@@ -336,6 +345,9 @@ export class AuthService {
       name: user.name,
       phone: user.phone,
       isEmailVerified: user.isEmailVerified,
+      isPlatformSuperAdmin: user.isPlatformSuperAdmin,
+      hasPlayerProfile: Boolean(user.playerProfile),
+      hasGuardianProfile: (user.guardianProfiles?.length ?? 0) > 0,
       createdAt: user.createdAt.toISOString(),
     };
 
@@ -367,6 +379,10 @@ export class AuthService {
 
     const user = await this.prisma.user.findUniqueOrThrow({
       where: { id: userId },
+      include: {
+        playerProfile: { select: { id: true } },
+        guardianProfiles: { select: { id: true } },
+      },
     });
 
     // Refresh tokens authenticate the user, but must not bypass tenant RLS.
@@ -404,6 +420,9 @@ export class AuthService {
       name: user.name,
       phone: user.phone,
       isEmailVerified: user.isEmailVerified,
+      isPlatformSuperAdmin: user.isPlatformSuperAdmin,
+      hasPlayerProfile: Boolean(user.playerProfile),
+      hasGuardianProfile: (user.guardianProfiles?.length ?? 0) > 0,
       createdAt: user.createdAt.toISOString(),
     };
 
@@ -673,6 +692,8 @@ export class AuthService {
               branch: true,
             },
           },
+          playerProfile: { select: { id: true } },
+          guardianProfiles: { select: { id: true } },
         },
       });
 
@@ -699,6 +720,9 @@ export class AuthService {
         name: user.name,
         phone: user.phone,
         isEmailVerified: user.isEmailVerified,
+        isPlatformSuperAdmin: user.isPlatformSuperAdmin,
+        hasPlayerProfile: Boolean(user.playerProfile),
+        hasGuardianProfile: (user.guardianProfiles?.length ?? 0) > 0,
         createdAt: user.createdAt.toISOString(),
       };
 

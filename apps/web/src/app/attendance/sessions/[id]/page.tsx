@@ -223,12 +223,26 @@ export default function SessionAttendancePage() {
         expectedVersion: item.version,
       });
 
-      // Synchronize exact server version
+      // Synchronize exact server version while safely preserving playerName and photoUrl
+      const rawRecord = (updatedItem as { record?: Partial<AttendanceRosterItem> & { id?: string } })?.record;
+      const serverItem: Partial<AttendanceRosterItem> & { id?: string } = rawRecord || (updatedItem as Partial<AttendanceRosterItem> & { id?: string });
       setSession((curr) => {
         if (!curr) return null;
         return {
           ...curr,
-          roster: curr.roster.map((r) => (r.playerId === item.playerId ? updatedItem : r)),
+          roster: (curr.roster || []).map((r) =>
+            r.playerId === item.playerId
+              ? {
+                  ...r,
+                  ...serverItem,
+                  recordId: serverItem.id || serverItem.recordId || r.recordId,
+                  playerName: serverItem.playerName || r.playerName || 'لاعب غير معروف',
+                  photoUrl: serverItem.photoUrl !== undefined ? serverItem.photoUrl : r.photoUrl,
+                  status: serverItem.status || newStatus,
+                  version: serverItem.version || r.version + 1,
+                }
+              : r,
+          ),
         };
       });
     } catch (err) {
@@ -315,10 +329,12 @@ export default function SessionAttendancePage() {
   }
 
   const isClosed = session.status === 'CLOSED';
-  const totalRoster = session.roster.length;
-  const filteredRoster = session.roster.filter((item) => {
-    const matchesSearch = item.playerName.toLowerCase().includes(searchTerm.trim().toLowerCase());
-    const matchesStatus = statusFilter === 'ALL' || item.status === statusFilter;
+  const totalRoster = session.roster?.length || 0;
+  const filteredRoster = (session.roster || []).filter((item) => {
+    const rawName = typeof item?.playerName === 'string' ? item.playerName : '';
+    const query = searchTerm.trim().toLowerCase();
+    const matchesSearch = !query || rawName.toLowerCase().includes(query);
+    const matchesStatus = statusFilter === 'ALL' || item?.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 

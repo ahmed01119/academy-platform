@@ -561,8 +561,25 @@ export class AttendanceService {
           },
         });
 
+        // Fetch player identity for complete roster item contract
+        const player = await tx.player.findUnique({
+          where: { id: dto.playerId },
+          select: { firstName: true, lastName: true, photoUrl: true },
+        });
+
+        const rosterItem = {
+          recordId: updatedRecord.id,
+          playerId: updatedRecord.playerId,
+          playerName: player ? `${player.firstName} ${player.lastName}` : 'لاعب غير معروف',
+          photoUrl: player?.photoUrl || null,
+          status: updatedRecord.status,
+          checkInTime: updatedRecord.checkInTime ? updatedRecord.checkInTime.toISOString() : null,
+          remarks: updatedRecord.remarks,
+          version: updatedRecord.version,
+        };
+
         const responsePayload = {
-          record: updatedRecord,
+          record: rosterItem,
           previousStatus,
         };
 
@@ -1206,8 +1223,18 @@ export class AttendanceService {
         }
 
         const attendedCount = presentCount + lateCount;
+        const eligibleRecords = presentCount + lateCount + absentCount + excusedCount;
+        const unmarkedCount = totalRecords - eligibleRecords;
         const attendanceRate =
-          totalRecords > 0 ? Math.round((attendedCount / totalRecords) * 100) : 0;
+          eligibleRecords > 0 ? Math.round((attendedCount / eligibleRecords) * 100) : 0;
+        const onTimeRate =
+          eligibleRecords > 0 ? Math.round((presentCount / eligibleRecords) * 100) : 0;
+        const lateRate =
+          eligibleRecords > 0 ? Math.round((lateCount / eligibleRecords) * 100) : 0;
+        const absenceRate =
+          eligibleRecords > 0 ? Math.round(((absentCount + excusedCount) / eligibleRecords) * 100) : 0;
+        const excusedRate =
+          eligibleRecords > 0 ? Math.round((excusedCount / eligibleRecords) * 100) : 0;
 
         const byGroup = Array.from(groupMap.entries()).map(([k, v]) => ({
           groupId: k === 'no_group' ? null : k,
@@ -1230,11 +1257,17 @@ export class AttendanceService {
         return {
           totalSessions: sessions.length,
           totalRecords,
+          eligibleRecords,
           presentCount,
           lateCount,
           absentCount,
           excusedCount,
+          unmarkedCount,
           attendanceRate,
+          onTimeRate,
+          lateRate,
+          absenceRate,
+          excusedRate,
           byGroup,
           byBranch,
         };

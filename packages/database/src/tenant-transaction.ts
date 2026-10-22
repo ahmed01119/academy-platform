@@ -74,3 +74,52 @@ export async function withAuthLookupTransaction<T>(
     return operation(tx);
   });
 }
+
+export interface PlatformAdminTransactionOptions {
+  actorUserId: string;
+}
+
+/**
+ * Execute platform management queries under Platform Super Admin context.
+ */
+export async function withPlatformAdminTransaction<T>(
+  client: PrismaClient,
+  options: PlatformAdminTransactionOptions,
+  operation: (tx: Prisma.TransactionClient) => Promise<T>,
+): Promise<T> {
+  const actorUserId = options.actorUserId?.trim();
+  if (!actorUserId || !UUID_PATTERN.test(actorUserId)) {
+    throw new Error('A valid actor user ID is required for platform operations');
+  }
+
+  return client.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT set_config('app.actor_user_id', ${actorUserId}, true)`;
+    await tx.$executeRaw`SELECT set_config('app.current_actor_user_id', ${actorUserId}, true)`;
+    return operation(tx);
+  });
+}
+
+export interface PortalUserTransactionOptions {
+  actorUserId: string;
+}
+
+/**
+ * Execute player/guardian self-service queries with user identity bound for RLS.
+ */
+export async function withPortalUserTransaction<T>(
+  client: PrismaClient,
+  options: PortalUserTransactionOptions,
+  operation: (tx: Prisma.TransactionClient) => Promise<T>,
+): Promise<T> {
+  const actorUserId = options.actorUserId?.trim();
+  if (!actorUserId || !UUID_PATTERN.test(actorUserId)) {
+    throw new Error('A valid actor user ID is required for portal operations');
+  }
+
+  return client.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT set_config('app.actor_user_id', ${actorUserId}, true)`;
+    await tx.$executeRaw`SELECT set_config('app.current_actor_user_id', ${actorUserId}, true)`;
+    return operation(tx);
+  });
+}
+

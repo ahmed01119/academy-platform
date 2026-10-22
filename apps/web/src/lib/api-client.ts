@@ -46,6 +46,19 @@ import type {
   UpdatePlayerRequest,
   UpdateTrainingGroupRequest,
   UserSummary,
+  CreateEvaluationTemplateRequest,
+  CreatePlayerEvaluationRequest,
+  EvaluationTemplate,
+  GuardianPortalData,
+  PerformanceRankingsResponse,
+  PlatformAcademyItem,
+  PlatformAuditLogItem,
+  PlatformOverviewMetrics,
+  PlatformSecurityEvent,
+  PlayerDevelopmentProfile,
+  PlayerEvaluation,
+  PlayerPortalProfile,
+  UpdateAcademyStatusRequest,
 } from '@academy/shared';
 
 const API_BASE_URL =
@@ -589,4 +602,136 @@ export const api = {
       });
     },
   },
+
+  platform: {
+    async getMetrics(): Promise<PlatformOverviewMetrics> {
+      return request('/platform/metrics', { method: 'GET' });
+    },
+
+    async listAcademies(params?: { status?: string; search?: string }): Promise<PlatformAcademyItem[]> {
+      const query = new URLSearchParams();
+      if (params?.status) query.set('status', params.status);
+      if (params?.search) query.set('search', params.search);
+      const qs = query.toString() ? `?${query.toString()}` : '';
+      return request(`/platform/academies${qs}`, { method: 'GET' });
+    },
+
+    async updateAcademyStatus(id: string, data: UpdateAcademyStatusRequest): Promise<PlatformAcademyItem> {
+      return request(`/platform/academies/${id}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      });
+    },
+
+    async listAuditLogs(params?: { limit?: number; offset?: number }): Promise<PlatformAuditLogItem[]> {
+      const query = new URLSearchParams();
+      if (params?.limit) query.set('limit', String(params.limit));
+      if (params?.offset) query.set('offset', String(params.offset));
+      const qs = query.toString() ? `?${query.toString()}` : '';
+      return request(`/platform/audit-logs${qs}`, { method: 'GET' });
+    },
+
+    async getSecurityEvents(): Promise<PlatformSecurityEvent[]> {
+      return request('/platform/security-events', { method: 'GET' });
+    },
+  },
+
+  evaluations: {
+    async listTemplates(): Promise<EvaluationTemplate[]> {
+      return request('/evaluations/templates', { method: 'GET' });
+    },
+
+    async createTemplate(data: CreateEvaluationTemplateRequest): Promise<EvaluationTemplate> {
+      return request('/evaluations/templates', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
+
+    async createEvaluation(data: CreatePlayerEvaluationRequest): Promise<PlayerEvaluation> {
+      return request('/evaluations', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
+
+    async listPlayerEvaluations(playerId: string): Promise<PlayerEvaluation[]> {
+      return request(`/evaluations/player/${playerId}`, { method: 'GET' });
+    },
+
+    async getPlayerDevelopmentProfile(playerId: string): Promise<PlayerDevelopmentProfile> {
+      return request(`/evaluations/player/${playerId}/profile`, { method: 'GET' });
+    },
+
+    async listSessionEvaluations(sessionId: string): Promise<PlayerEvaluation[]> {
+      return request(`/evaluations/session/${sessionId}`, { method: 'GET' });
+    },
+
+    async getRankings(params?: {
+      ageCategory?: string;
+      groupId?: string;
+      timeframe?: string;
+    }): Promise<PerformanceRankingsResponse> {
+      const query = new URLSearchParams();
+      if (params?.ageCategory) query.set('ageCategory', params.ageCategory);
+      if (params?.groupId) query.set('groupId', params.groupId);
+      if (params?.timeframe) query.set('timeframe', params.timeframe);
+      const qs = query.toString() ? `?${query.toString()}` : '';
+      return request(`/evaluations/rankings${qs}`, { method: 'GET' });
+    },
+  },
+
+  portal: {
+    async getPlayerProfile(): Promise<{
+      profile: PlayerPortalProfile;
+      upcomingSessions: Array<{
+        id: string;
+        sessionDate: string;
+        startTime: string;
+        endTime: string;
+        groupName: string;
+        branchName?: string;
+      }>;
+      attendanceSummary: {
+        totalEligible: number;
+        present: number;
+        late: number;
+        absent: number;
+        attendanceRate: number;
+      };
+      recentEvaluations: PlayerEvaluation[];
+    }> {
+      return request('/portal/player/me', { method: 'GET' });
+    },
+
+    async getGuardianProfile(): Promise<GuardianPortalData> {
+      return request('/portal/guardian/me', { method: 'GET' });
+    },
+
+    async redeemClaimToken(claimToken: string): Promise<{
+      success: boolean;
+      type: 'PLAYER' | 'GUARDIAN';
+      entityId: string;
+      message: string;
+    }> {
+      return request('/portal/claim', {
+        method: 'POST',
+        body: JSON.stringify({ claimToken }),
+      });
+    },
+
+    async generateClaimToken(data: {
+      targetType: 'PLAYER' | 'GUARDIAN';
+      targetId: string;
+    }): Promise<{ claimToken: string; expiresAt: string }> {
+      return request('/portal/claim-token', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
+  },
 };
+
+export const apiClient = api;
+export default api;
+

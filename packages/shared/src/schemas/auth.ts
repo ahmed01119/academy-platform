@@ -78,6 +78,9 @@ export const UserSummarySchema = z.object({
   name: z.string(),
   phone: z.string().nullable().optional(),
   isEmailVerified: z.boolean(),
+  isPlatformSuperAdmin: z.boolean().default(false),
+  hasPlayerProfile: z.boolean().optional(),
+  hasGuardianProfile: z.boolean().optional(),
   createdAt: z.string(),
 });
 

@@ -107,7 +107,6 @@ export default function AttendanceReportsPage() {
                 <BarChart3 className="h-3.5 w-3.5" />
                 تحليلات الأداء التشغيلي
               </span>
-              <span className="text-xs text-[#9bb5a8]">Sprint 3</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
               تقارير الحضور والانضباط الرياضي
@@ -214,7 +213,9 @@ export default function AttendanceReportsPage() {
               <span className="text-3xl sm:text-4xl font-black text-white">
                 {report?.attendanceRate || 0}%
               </span>
-              <span className="text-xs text-[#45c387] font-semibold">معدل الانضباط</span>
+              <span className="text-xs text-[#45c387] font-semibold">
+                (حاضر {report?.presentCount || 0} + متأخر {report?.lateCount || 0})
+              </span>
             </div>
             <div className="mt-3 h-2 w-full rounded-full bg-[#0f1c18] overflow-hidden">
               <div
@@ -222,6 +223,9 @@ export default function AttendanceReportsPage() {
                 style={{ width: `${report?.attendanceRate || 0}%` }}
               />
             </div>
+            <p className="text-[11px] text-[#9bb5a8] mt-2">
+              محسوب من السجلات المؤهلة ({report?.eligibleRecords ?? report?.totalRecords ?? 0})، باستثناء غير المحدد ({report?.unmarkedCount || 0})
+            </p>
           </div>
 
           {/* 2. Total Sessions */}
