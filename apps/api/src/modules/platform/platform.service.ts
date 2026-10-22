@@ -8,6 +8,8 @@ import {
   type PlatformOverviewMetrics,
   type PlatformSecurityEvent,
   type UpdateAcademyStatusRequest,
+  type RequestSupportAccessRequest,
+  type SupportAccessResponse,
 } from '@academy/shared';
 
 @Injectable()
@@ -178,6 +180,59 @@ export class PlatformService {
         playersCount: tenant._count.players,
         coachesCount: tenant._count.memberships,
         createdAt: updated.createdAt.toISOString(),
+      };
+    });
+  }
+
+  /**
+   * Authorizes an audited, time-limited support session for a specific academy.
+   * Prevents platform admins from silently browsing tenant data.
+   */
+  async requestSupportAccess(
+    actorUserId: string,
+    academyId: string,
+    dto: RequestSupportAccessRequest,
+  ): Promise<SupportAccessResponse> {
+    return this.prisma.withPlatformAdminTransaction({ actorUserId }, async (tx) => {
+      const tenant = await tx.tenant.findUnique({
+        where: { id: academyId },
+        select: { id: true, name: true, status: true },
+      });
+
+      if (!tenant) {
+        throw new NotFoundException({
+          code: ErrorCode.NOT_FOUND,
+          message: 'Academy not found',
+        });
+      }
+
+      const grantedAt = new Date();
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour session
+
+      const auditEvent = await tx.auditLog.create({
+        data: {
+          tenantId: academyId,
+          actorUserId,
+          action: 'PLATFORM_SUPPORT_SESSION_STARTED',
+          resourceType: 'Tenant',
+          resourceId: academyId,
+          metadata: {
+            reason: dto.reason,
+            grantedAt: grantedAt.toISOString(),
+            expiresAt: expiresAt.toISOString(),
+            scope: 'READ_ONLY_SUPPORT',
+          },
+        },
+      });
+
+      return {
+        authorized: true,
+        tenantId: tenant.id,
+        tenantName: tenant.name,
+        reason: dto.reason,
+        grantedAt: grantedAt.toISOString(),
+        expiresAt: expiresAt.toISOString(),
+        auditLogId: auditEvent.id,
       };
     });
   }

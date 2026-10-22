@@ -489,94 +489,99 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Demo Credentials Quick Switcher Card */}
+        {/* Specialized 5-Role Experiences Section */}
         <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
-          <div className="rounded-3xl border border-[#234235] bg-gradient-to-br from-[#162821] to-[#0f1c18] p-8 shadow-2xl">
+          <div className="rounded-3xl border border-[var(--border-app)] bg-gradient-to-br from-[var(--bg-surface)] to-[var(--bg-base)] p-8 shadow-2xl">
             <div className="text-center max-w-2xl mx-auto mb-8">
-              <span className="text-xs font-bold uppercase tracking-wider text-[#45c387]">
-                بيئة العرض التجريبية المحلية
+              <span className="text-xs font-bold uppercase tracking-wider text-[var(--accent-primary)]">
+                تجارب استخدام مستقلة ومتخصصة
               </span>
-              <h2 className="text-2xl font-bold text-white mt-1">
-                سجل الدخول فورياً لتجربة جميع الأدوار الخمسة
+              <h2 className="text-2xl font-bold text-[var(--text-main)] mt-1">
+                منظومة أدوار شاملة مصممة لكل مستخدم
               </h2>
-              <p className="text-xs text-[#9bb5a8] mt-2">
-                قاعدة البيانات المحلية مهيأة مسبقاً بحسابات تجريبية لكافة الأدوار مع بيانات حقيقية للحصص والتقييمات:
+              <p className="text-xs text-[var(--text-muted)] mt-2">
+                تخصيص كامل للصلاحيات وواجهات الاستخدام وفق أعلى معايير أمن البيانات والعزل التام:
               </p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-              {/* Persona 1 */}
-              <div className="rounded-xl border border-[#234235] bg-[#0f1c18]/80 p-4 text-center flex flex-col justify-between">
+              {/* Persona 1: Platform Super Admin */}
+              <div className="rounded-xl border border-[var(--border-app)] bg-[var(--bg-surface-subtle)] p-4 text-center flex flex-col justify-between hover:border-amber-500/50 transition-all">
                 <div>
-                  <div className="text-xs font-bold text-purple-400 mb-1">مشرف المنصة</div>
-                  <div className="text-xs text-white font-mono select-all">superadmin@platform.sa</div>
-                  <div className="text-[11px] text-[#9bb5a8] mt-1 font-mono">SuperAdmin123!</div>
+                  <div className="text-xs font-bold text-amber-400 mb-1">مشرف المنصة</div>
+                  <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
+                    مراقبة صحة النظام، إدارة اشتراكات الأكاديميات، وسجلات الامتثال والتدقيق الأمني.
+                  </p>
                 </div>
                 <Link
                   href="/login"
-                  className="mt-3 block text-center text-xs font-semibold text-purple-400 hover:underline"
+                  className="mt-4 block text-center text-xs font-semibold text-amber-400 hover:underline"
                 >
-                  تسجيل الدخول &larr;
+                  دخول المشرف &larr;
                 </Link>
               </div>
 
-              {/* Persona 2 */}
-              <div className="rounded-xl border border-[#234235] bg-[#0f1c18]/80 p-4 text-center flex flex-col justify-between">
+              {/* Persona 2: Academy Owner */}
+              <div className="rounded-xl border border-[var(--border-app)] bg-[var(--bg-surface-subtle)] p-4 text-center flex flex-col justify-between hover:border-emerald-500/50 transition-all">
                 <div>
-                  <div className="text-xs font-bold text-[#45c387] mb-1">مالك الأكاديمية</div>
-                  <div className="text-xs text-white font-mono select-all">admin@academy.sa</div>
-                  <div className="text-[11px] text-[#9bb5a8] mt-1 font-mono">AdminPass123!</div>
+                  <div className="text-xs font-bold text-emerald-400 mb-1">مالك الأكاديمية</div>
+                  <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
+                    إدارة الفروع، تسجيل اللاعبين، تعيين الطواقم الفنية، والتحكم بالرسوم والاشتراكات.
+                  </p>
                 </div>
                 <Link
                   href="/login"
-                  className="mt-3 block text-center text-xs font-semibold text-[#45c387] hover:underline"
+                  className="mt-4 block text-center text-xs font-semibold text-emerald-400 hover:underline"
                 >
-                  تسجيل الدخول &larr;
+                  لوحة الأكاديمية &larr;
                 </Link>
               </div>
 
-              {/* Persona 3 */}
-              <div className="rounded-xl border border-[#234235] bg-[#0f1c18]/80 p-4 text-center flex flex-col justify-between">
+              {/* Persona 3: Coach */}
+              <div className="rounded-xl border border-[var(--border-app)] bg-[var(--bg-surface-subtle)] p-4 text-center flex flex-col justify-between hover:border-blue-500/50 transition-all">
                 <div>
                   <div className="text-xs font-bold text-blue-400 mb-1">مدرب معتمد</div>
-                  <div className="text-xs text-white font-mono select-all">coach.ahmed@academy.sa</div>
-                  <div className="text-[11px] text-[#9bb5a8] mt-1 font-mono">CoachPass123!</div>
+                  <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
+                    جدول الحصص التدريبية، التحضير السريع بمسح QR، وتقييم وتطوير مهارات اللاعبين.
+                  </p>
                 </div>
                 <Link
                   href="/login"
-                  className="mt-3 block text-center text-xs font-semibold text-blue-400 hover:underline"
+                  className="mt-4 block text-center text-xs font-semibold text-blue-400 hover:underline"
                 >
-                  تسجيل الدخول &larr;
+                  مساحة المدرب &larr;
                 </Link>
               </div>
 
-              {/* Persona 4 */}
-              <div className="rounded-xl border border-[#234235] bg-[#0f1c18]/80 p-4 text-center flex flex-col justify-between">
+              {/* Persona 4: Player */}
+              <div className="rounded-xl border border-[var(--border-app)] bg-[var(--bg-surface-subtle)] p-4 text-center flex flex-col justify-between hover:border-sky-500/50 transition-all">
                 <div>
-                  <div className="text-xs font-bold text-amber-400 mb-1">لاعب ناشئ</div>
-                  <div className="text-xs text-white font-mono select-all">player.omar@academy.sa</div>
-                  <div className="text-[11px] text-[#9bb5a8] mt-1 font-mono">PlayerPass123!</div>
+                  <div className="text-xs font-bold text-sky-400 mb-1">اللاعب</div>
+                  <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
+                    بطاقة العضوية الرقمية (QR)، تتبع سجل الحضور، والاطلاع على التقييمات الفنية.
+                  </p>
                 </div>
                 <Link
                   href="/login"
-                  className="mt-3 block text-center text-xs font-semibold text-amber-400 hover:underline"
+                  className="mt-4 block text-center text-xs font-semibold text-sky-400 hover:underline"
                 >
-                  تسجيل الدخول &larr;
+                  بوابة اللاعب &larr;
                 </Link>
               </div>
 
-              {/* Persona 5 */}
-              <div className="rounded-xl border border-[#234235] bg-[#0f1c18]/80 p-4 text-center flex flex-col justify-between">
+              {/* Persona 5: Guardian */}
+              <div className="rounded-xl border border-[var(--border-app)] bg-[var(--bg-surface-subtle)] p-4 text-center flex flex-col justify-between hover:border-purple-500/50 transition-all">
                 <div>
-                  <div className="text-xs font-bold text-emerald-400 mb-1">ولي أمر</div>
-                  <div className="text-xs text-white font-mono select-all">parent.fahad@academy.sa</div>
-                  <div className="text-[11px] text-[#9bb5a8] mt-1 font-mono">ParentPass123!</div>
+                  <div className="text-xs font-bold text-purple-400 mb-1">ولي الأمر</div>
+                  <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
+                    متابعة حضور الأبناء، تقارير التطور البدني والمهاري، وملاحظات الجهاز التدريبي.
+                  </p>
                 </div>
                 <Link
                   href="/login"
-                  className="mt-3 block text-center text-xs font-semibold text-emerald-400 hover:underline"
+                  className="mt-4 block text-center text-xs font-semibold text-purple-400 hover:underline"
                 >
-                  تسجيل الدخول &larr;
+                  بوابة ولي الأمر &larr;
                 </Link>
               </div>
             </div>

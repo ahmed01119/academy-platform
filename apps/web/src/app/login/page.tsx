@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../lib/auth-context';
+import { useLocale } from '../../lib/locale-context';
+import { getRoleHomeRoute } from '../../lib/role-routing';
 import { Navbar } from '../../components/Navbar';
 import {
   Lock,
@@ -18,7 +20,8 @@ import {
 
 export default function LoginPage() {
   const router = useRouter();
-  const { user, login } = useAuth();
+  const { user, activeTenant, login } = useAuth();
+  const { locale } = useLocale();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -29,9 +32,9 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (user) {
-      router.push('/dashboard');
+      router.push(getRoleHomeRoute(user, activeTenant));
     }
-  }, [user, router]);
+  }, [user, activeTenant, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,12 +47,15 @@ export default function LoginPage() {
         password,
         rememberMe,
       });
-      router.push('/dashboard');
+      // Will trigger useEffect or we can push directly
+      router.push(getRoleHomeRoute(user, activeTenant));
     } catch (err: unknown) {
       const message =
         err instanceof Error
           ? err.message
-          : 'فشل تسجيل الدخول. يرجى التحقق من بياناتك والمحاولة مرة أخرى.';
+          : locale === 'ar'
+            ? 'فشل تسجيل الدخول. يرجى التحقق من بياناتك والمحاولة مرة أخرى.'
+            : 'Login failed. Please check your credentials and try again.';
       setError(message);
     } finally {
       setIsSubmitting(false);
@@ -57,7 +63,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0f1c18] text-[#e8f0ec] flex flex-col">
+    <div className="min-h-screen bg-[var(--bg-base)] text-[var(--text-main)] flex flex-col transition-colors">
       <Navbar />
 
       <main className="flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-8">

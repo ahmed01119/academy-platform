@@ -63,3 +63,22 @@ export const PlatformSecurityEventSchema = z.object({
 });
 
 export type PlatformSecurityEvent = z.infer<typeof PlatformSecurityEventSchema>;
+
+export const RequestSupportAccessSchema = z.object({
+  reason: z.string().trim().min(10, 'A valid reason of at least 10 characters is required for audited support access').max(500),
+});
+
+export type RequestSupportAccessRequest = z.infer<typeof RequestSupportAccessSchema>;
+
+export const SupportAccessResponseSchema = z.object({
+  authorized: z.boolean(),
+  tenantId: z.string().uuid(),
+  tenantName: z.string(),
+  reason: z.string(),
+  grantedAt: z.string(),
+  expiresAt: z.string(),
+  auditLogId: z.string().uuid(),
+});
+
+export type SupportAccessResponse = z.infer<typeof SupportAccessResponseSchema>;
+

@@ -54,3 +54,21 @@ export const GuardianPortalDataSchema = z.object({
 });
 
 export type GuardianPortalData = z.infer<typeof GuardianPortalDataSchema>;
+
+export const PlayerPortalEvaluationSchema = z.object({
+  id: z.string().uuid(),
+  evaluationDate: z.string(),
+  evaluatorName: z.string(),
+  overallScore: z.number(),
+  technicalScore: z.number(),
+  tacticalScore: z.number(),
+  physicalScore: z.number(),
+  behavioralScore: z.number(),
+  strengths: z.string().nullable().optional(),
+  areasForImprovement: z.string().nullable().optional(),
+  guardianFeedback: z.string().nullable().optional(),
+  suggestedGoals: z.string().nullable().optional(),
+});
+
+export type PlayerPortalEvaluation = z.infer<typeof PlayerPortalEvaluationSchema>;
+
