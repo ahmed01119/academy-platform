@@ -17,9 +17,17 @@ import { CurrentUser } from '../auth/decorators/auth-user.decorator';
 import {
   RequestSupportAccessSchema,
   UpdateAcademyStatusRequestSchema,
+  UpdateUserSecurityPolicyRequestSchema,
+  UpdateSaaSPlanRequestSchema,
+  UpdateTenantSubscriptionRequestSchema,
+  CreatePlatformAnnouncementRequestSchema,
   UuidParamSchema,
   type RequestSupportAccessRequest,
   type UpdateAcademyStatusRequest,
+  type UpdateUserSecurityPolicyRequest,
+  type UpdateSaaSPlanRequest,
+  type UpdateTenantSubscriptionRequest,
+  type CreatePlatformAnnouncementRequest,
 } from '@academy/shared';
 
 @Controller('platform')
@@ -52,6 +60,17 @@ export class PlatformController {
     return this.platformService.updateAcademyStatus(actorUserId, academyId, dto);
   }
 
+  @Patch('academies/:id/subscription')
+  async updateAcademySubscription(
+    @CurrentUser('id') actorUserId: string,
+    @Param('id') rawId: string,
+    @Body() body: unknown,
+  ) {
+    const academyId = UuidParamSchema.parse(rawId);
+    const dto: UpdateTenantSubscriptionRequest = UpdateTenantSubscriptionRequestSchema.parse(body);
+    return this.platformService.updateTenantSubscription(actorUserId, academyId, dto);
+  }
+
   @Post('academies/:id/support-access')
   async requestSupportAccess(
     @CurrentUser('id') actorUserId: string,
@@ -61,6 +80,69 @@ export class PlatformController {
     const academyId = UuidParamSchema.parse(rawId);
     const dto: RequestSupportAccessRequest = RequestSupportAccessSchema.parse(body);
     return this.platformService.requestSupportAccess(actorUserId, academyId, dto);
+  }
+
+  @Get('users')
+  async listUsers(
+    @CurrentUser('id') actorUserId: string,
+    @Query('search') search?: string,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+  ) {
+    return this.platformService.listUsers(actorUserId, {
+      search,
+      limit: limit ? parseInt(limit, 10) : undefined,
+      offset: offset ? parseInt(offset, 10) : undefined,
+    });
+  }
+
+  @Post('users/:id/revoke-sessions')
+  async revokeUserSessions(
+    @CurrentUser('id') actorUserId: string,
+    @Param('id') rawId: string,
+  ) {
+    const userId = UuidParamSchema.parse(rawId);
+    return this.platformService.revokeUserSessions(actorUserId, userId);
+  }
+
+  @Patch('users/:id/security-policy')
+  async updateUserSecurityPolicy(
+    @CurrentUser('id') actorUserId: string,
+    @Param('id') rawId: string,
+    @Body() body: unknown,
+  ) {
+    const userId = UuidParamSchema.parse(rawId);
+    const dto: UpdateUserSecurityPolicyRequest = UpdateUserSecurityPolicyRequestSchema.parse(body);
+    return this.platformService.updateUserSecurityPolicy(actorUserId, userId, dto);
+  }
+
+  @Get('saas-plans')
+  async listSaaSPlans(@CurrentUser('id') actorUserId: string) {
+    return this.platformService.listSaaSPlans(actorUserId);
+  }
+
+  @Patch('saas-plans/:code')
+  async updateSaaSPlan(
+    @CurrentUser('id') actorUserId: string,
+    @Param('code') code: string,
+    @Body() body: unknown,
+  ) {
+    const dto: UpdateSaaSPlanRequest = UpdateSaaSPlanRequestSchema.parse(body);
+    return this.platformService.updateSaaSPlan(actorUserId, code, dto);
+  }
+
+  @Get('announcements')
+  async listAnnouncements(@CurrentUser('id') actorUserId: string) {
+    return this.platformService.listAnnouncements(actorUserId);
+  }
+
+  @Post('announcements')
+  async createAnnouncement(
+    @CurrentUser('id') actorUserId: string,
+    @Body() body: unknown,
+  ) {
+    const dto: CreatePlatformAnnouncementRequest = CreatePlatformAnnouncementRequestSchema.parse(body);
+    return this.platformService.createAnnouncement(actorUserId, dto);
   }
 
   @Get('audit-logs')

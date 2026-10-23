@@ -814,6 +814,161 @@ async function main() {
     console.log('[Seed] Seeded realistic performance evaluations for demo players');
   }
 
+  // 15. Player Subscription Plans & Financial Data
+  const omar = seededPlayers[0];
+  const saud = seededPlayers[1];
+  const yousef = seededPlayers[2];
+
+  let monthlyPlan = await prisma.playerSubscriptionPlan.findFirst({
+    where: { tenantId: tenant.id, name: 'الاشتراك الشهري الأساسي' },
+  });
+  if (!monthlyPlan) {
+    monthlyPlan = await prisma.playerSubscriptionPlan.create({
+      data: {
+        tenantId: tenant.id,
+        branchId: branchMain.id,
+        sport: 'FOOTBALL',
+        name: 'الاشتراك الشهري الأساسي',
+        description: 'يشمل 3 حصص تدريبية أسبوعياً مع بطاقة QR وحصص التقييم الدوري',
+        billingPeriod: 'MONTHLY',
+        feeAmount: 650,
+        currency: 'SAR',
+      },
+    });
+    console.log('[Seed] Created PlayerSubscriptionPlan:', monthlyPlan.name);
+  }
+
+  // Player Subscriptions for Omar, Saud, Yousef
+  const omarSub = await prisma.playerSubscription.findFirst({
+    where: { tenantId: tenant.id, playerId: omar.id },
+  });
+  if (!omarSub) {
+    const now = new Date();
+    const nextMonth = new Date(Date.now() + 25 * 86400000);
+    const sub = await prisma.playerSubscription.create({
+      data: {
+        tenantId: tenant.id,
+        playerId: omar.id,
+        planId: monthlyPlan.id,
+        status: 'ACTIVE',
+        startDate: now,
+        dueDate: nextMonth,
+        renewalDate: nextMonth,
+        feeAmount: 650,
+        paidAmount: 650,
+        outstandingBalance: 0,
+        lastPaymentDate: now,
+        notes: 'تم سداد الرسوم بالكامل نقداً عند بدء الدورة',
+      },
+    });
+    // Record payment transaction
+    await prisma.academyFinancialTransaction.create({
+      data: {
+        tenantId: tenant.id,
+        branchId: branchMain.id,
+        playerId: omar.id,
+        subscriptionId: sub.id,
+        recordedByUserId: adminUser.id,
+        type: 'MEMBERSHIP_FEE',
+        amount: 650,
+        currency: 'SAR',
+        paymentMethod: 'CASH',
+        status: 'COMPLETED',
+        receiptNumber: 'REC-2026-0001',
+        referenceNumber: 'REF-CSH-01',
+        notes: 'سداد رسوم اشتراك شهرية كاش',
+      },
+    });
+    console.log('[Seed] Seeded Omar subscription: ACTIVE (Fully Paid)');
+  }
+
+  const saudSub = await prisma.playerSubscription.findFirst({
+    where: { tenantId: tenant.id, playerId: saud.id },
+  });
+  if (!saudSub) {
+    const now = new Date();
+    const dueDate = new Date(Date.now() + 5 * 86400000);
+    const sub = await prisma.playerSubscription.create({
+      data: {
+        tenantId: tenant.id,
+        playerId: saud.id,
+        planId: monthlyPlan.id,
+        status: 'PARTIAL',
+        startDate: now,
+        dueDate: dueDate,
+        feeAmount: 650,
+        paidAmount: 350,
+        outstandingBalance: 300,
+        lastPaymentDate: now,
+        notes: 'تم سداد دفعة أولى 350 ريال، والمتبقي 300 ريال',
+      },
+    });
+    await prisma.academyFinancialTransaction.create({
+      data: {
+        tenantId: tenant.id,
+        branchId: branchMain.id,
+        playerId: saud.id,
+        subscriptionId: sub.id,
+        recordedByUserId: coachUser.id,
+        type: 'MEMBERSHIP_FEE',
+        amount: 350,
+        currency: 'SAR',
+        paymentMethod: 'CARD',
+        status: 'COMPLETED',
+        receiptNumber: 'REC-2026-0002',
+        referenceNumber: 'POS-TX-9921',
+        notes: 'سداد دفعة أولى عبر جهاز نقاط البيع',
+      },
+    });
+    console.log('[Seed] Seeded Saud subscription: PARTIAL (300 SAR outstanding)');
+  }
+
+  const yousefSub = await prisma.playerSubscription.findFirst({
+    where: { tenantId: tenant.id, playerId: yousef.id },
+  });
+  if (!yousefSub) {
+    const pastDate = new Date(Date.now() - 7 * 86400000);
+    await prisma.playerSubscription.create({
+      data: {
+        tenantId: tenant.id,
+        playerId: yousef.id,
+        planId: monthlyPlan.id,
+        status: 'OVERDUE',
+        startDate: new Date(Date.now() - 37 * 86400000),
+        dueDate: pastDate,
+        feeAmount: 650,
+        paidAmount: 0,
+        outstandingBalance: 650,
+        notes: 'متأخر في سداد رسوم الشهر الحالي - تنبيه تلقائي للولي',
+      },
+    });
+    console.log('[Seed] Seeded Yousef subscription: OVERDUE (650 SAR due)');
+  }
+
+  // Session expense sample
+  const existingExpense = await prisma.academyFinancialTransaction.findFirst({
+    where: { tenantId: tenant.id, type: 'SESSION_EXPENSE' },
+  });
+  if (!existingExpense) {
+    await prisma.academyFinancialTransaction.create({
+      data: {
+        tenantId: tenant.id,
+        branchId: branchMain.id,
+        sessionId: sessionToday ? sessionToday.id : undefined,
+        recordedByUserId: coachUser.id,
+        type: 'SESSION_EXPENSE',
+        amount: 120,
+        currency: 'SAR',
+        paymentMethod: 'CASH',
+        status: 'COMPLETED',
+        receiptNumber: 'EXP-2026-0001',
+        notes: 'مياه شرب ومشروبات ترطيب للاعبين أثناء الحصة',
+      },
+    });
+    console.log('[Seed] Seeded session expense: 120 SAR for hydration');
+  }
+
+
   console.log('\n=========================================');
   console.log(' Academy Platform — 5-Role Demo Ready! ');
   console.log('=========================================');

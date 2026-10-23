@@ -5,9 +5,12 @@ import { EmptyState } from './EmptyState';
 import { TableRowSkeleton } from './Skeleton';
 
 export interface Column<T> {
-  key: string;
+  key?: string;
+  id?: string;
+  accessorKey?: string;
   header: string;
   render?: (item: T) => React.ReactNode;
+  cell?: (item: T) => React.ReactNode;
   className?: string;
 }
 
@@ -16,8 +19,10 @@ interface DataTableProps<T> {
   data: T[];
   keyExtractor: (item: T) => string;
   loading?: boolean;
+  isLoading?: boolean;
   emptyTitle?: string;
   emptyDescription?: string;
+  emptyState?: React.ReactNode;
   onRowClick?: (item: T) => void;
 }
 
@@ -26,20 +31,25 @@ export function DataTable<T>({
   data,
   keyExtractor,
   loading = false,
+  isLoading = false,
   emptyTitle = 'لا توجد بيانات متاحة',
   emptyDescription = 'لم يتم العثور على أي سجلات في الوقت الحالي.',
+  emptyState,
   onRowClick,
 }: DataTableProps<T>) {
-  if (loading) {
+  const isDataLoading = loading || isLoading;
+  const getColKey = (c: Column<T>, idx: number) => c.key || c.accessorKey || c.id || `col-${idx}`;
+
+  if (isDataLoading) {
     return (
       <div className="rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-start text-xs">
             <thead className="bg-[var(--bg-surface-subtle)] border-b border-[var(--border-subtle)]">
               <tr>
-                {columns.map((c) => (
+                {columns.map((c, idx) => (
                   <th
-                    key={c.key}
+                    key={getColKey(c, idx)}
                     className={`p-3.5 font-bold text-[var(--text-muted)] text-start ${
                       c.className || ''
                     }`}
@@ -61,6 +71,7 @@ export function DataTable<T>({
   }
 
   if (data.length === 0) {
+    if (emptyState) return <>{emptyState}</>;
     return <EmptyState title={emptyTitle} description={emptyDescription} />;
   }
 
@@ -70,9 +81,9 @@ export function DataTable<T>({
         <table className="w-full text-start text-xs">
           <thead className="bg-[var(--bg-surface-subtle)] border-b border-[var(--border-subtle)]">
             <tr>
-              {columns.map((c) => (
+              {columns.map((c, idx) => (
                 <th
-                  key={c.key}
+                  key={getColKey(c, idx)}
                   className={`p-3.5 font-bold text-[var(--text-muted)] text-start ${
                     c.className || ''
                   }`}
@@ -93,16 +104,23 @@ export function DataTable<T>({
                     : 'hover:bg-[var(--bg-surface-subtle)]/50'
                 }`}
               >
-                {columns.map((col) => (
-                  <td
-                    key={col.key}
-                    className={`p-3.5 text-[var(--text-main)] ${col.className || ''}`}
-                  >
-                    {col.render
-                      ? col.render(item)
-                      : String((item as Record<string, unknown>)[col.key] ?? '')}
-                  </td>
-                ))}
+                {columns.map((col, idx) => {
+                  const colKey = getColKey(col, idx);
+                  const renderFn = col.render || col.cell;
+                  const rawKey = col.accessorKey || col.key;
+                  return (
+                    <td
+                      key={colKey}
+                      className={`p-3.5 text-[var(--text-main)] ${col.className || ''}`}
+                    >
+                      {renderFn
+                        ? renderFn(item)
+                        : rawKey
+                        ? String((item as Record<string, unknown>)[rawKey] ?? '')
+                        : null}
+                    </td>
+                  );
+                })}
               </tr>
             ))}
           </tbody>

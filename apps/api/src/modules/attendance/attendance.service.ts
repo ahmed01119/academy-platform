@@ -197,17 +197,32 @@ export class AttendanceService {
           });
         }
 
-        // Fetch player names for records
+        // Fetch player names and active subscriptions for records
         const playerIds = session.records.map((r) => r.playerId);
-        const players = await tx.player.findMany({
-          where: {
-            tenantId: tenantContext.tenantId,
-            id: { in: playerIds },
-          },
-          select: { id: true, firstName: true, lastName: true, photoUrl: true },
-        });
+        const [players, subscriptions] = await Promise.all([
+          tx.player.findMany({
+            where: {
+              tenantId: tenantContext.tenantId,
+              id: { in: playerIds },
+            },
+            select: { id: true, firstName: true, lastName: true, photoUrl: true },
+          }),
+          tx.playerSubscription.findMany({
+            where: {
+              tenantId: tenantContext.tenantId,
+              playerId: { in: playerIds },
+            },
+            orderBy: { createdAt: 'desc' },
+          }),
+        ]);
 
         const playerMap = new Map(players.map((p) => [p.id, p]));
+        const subMap = new Map();
+        for (const sub of subscriptions) {
+          if (!subMap.has(sub.playerId)) {
+            subMap.set(sub.playerId, sub);
+          }
+        }
 
         let present = 0;
         let late = 0;
@@ -223,6 +238,8 @@ export class AttendanceService {
           else unmarked++;
 
           const p = playerMap.get(r.playerId);
+          const s = subMap.get(r.playerId);
+
           return {
             recordId: r.id,
             playerId: r.playerId,
@@ -232,6 +249,12 @@ export class AttendanceService {
             checkInTime: r.checkInTime ? r.checkInTime.toISOString() : null,
             remarks: r.remarks,
             version: r.version,
+            subscriptionStatus: (s?.status as any) ?? 'OVERDUE',
+            outstandingBalance: s?.outstandingBalance ?? 0,
+            amountDue: s?.outstandingBalance ?? 0,
+            nextPaymentDate: s?.dueDate ? s.dueDate.toISOString().slice(0, 10) : null,
+            lastPaymentDate: s?.lastPaymentDate ? s.lastPaymentDate.toISOString() : null,
+            subscriptionId: s?.id ?? null,
           };
         });
 
@@ -1508,6 +1531,23 @@ export class AttendanceService {
         const checkInTime = new Date();
         const deviceObservedTime = dto.deviceObservedTime ? new Date(dto.deviceObservedTime) : null;
 
+        // Fetch player's active subscription status for cashier and coach awareness
+        const playerSub = await tx.playerSubscription.findFirst({
+          where: { tenantId: tenantContext.tenantId, playerId: player.id },
+          orderBy: { createdAt: 'desc' },
+        });
+
+        const paymentStatusPayload = playerSub
+          ? {
+              status: playerSub.status as any,
+              outstandingBalance: playerSub.outstandingBalance,
+              feeAmount: playerSub.feeAmount,
+              dueDate: playerSub.dueDate.toISOString().slice(0, 10),
+              lastPaymentDate: playerSub.lastPaymentDate ? playerSub.lastPaymentDate.toISOString() : null,
+              subscriptionId: playerSub.id,
+            }
+          : undefined;
+
         if (
           existingRecord &&
           (existingRecord.status === 'PRESENT' || existingRecord.status === 'LATE')
@@ -1540,6 +1580,7 @@ export class AttendanceService {
               sessionDate: session.sessionDate.toISOString().slice(0, 10),
               startTime: session.startTime,
             },
+            paymentStatus: paymentStatusPayload,
           };
 
           return res;
@@ -1635,6 +1676,7 @@ export class AttendanceService {
             sessionDate: session.sessionDate.toISOString().slice(0, 10),
             startTime: session.startTime,
           },
+          paymentStatus: paymentStatusPayload,
         };
 
         return res;

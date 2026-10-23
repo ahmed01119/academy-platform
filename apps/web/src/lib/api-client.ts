@@ -67,6 +67,27 @@ import type {
   ScanPlayerQrResponse,
   OfflineAttendanceBatchSyncRequest,
   OfflineAttendanceBatchSyncResponse,
+  PlatformUserItem,
+  UpdateUserSecurityPolicyRequest,
+  SaaSPlanItem,
+  UpdateSaaSPlanRequest,
+  TenantSubscriptionItem,
+  UpdateTenantSubscriptionRequest,
+  PlatformAnnouncementItem,
+  CreatePlatformAnnouncementRequest,
+  PlayerSubscriptionPlanItem,
+  CreatePlayerSubscriptionPlanRequest,
+  PlayerSubscriptionItem,
+  CreatePlayerSubscriptionRequest,
+  FinancialTransactionItem,
+  RecordPlayerPaymentRequest,
+  ReverseTransactionRequest,
+  RecordSessionExpenseRequest,
+  SessionCashierSummary,
+  CloseSessionCashierRequest,
+  AcademyFinancialDashboardMetrics,
+  RequestSupportAccessRequest,
+  SupportAccessResponse,
 } from '@academy/shared';
 
 const API_BASE_URL =
@@ -668,6 +689,16 @@ export const api = {
       });
     },
 
+    async requestSupportAccess(
+      id: string,
+      data: RequestSupportAccessRequest,
+    ): Promise<SupportAccessResponse> {
+      return request(`/platform/academies/${id}/support-access`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
+
     async listAuditLogs(params?: { limit?: number; offset?: number }): Promise<PlatformAuditLogItem[]> {
       const query = new URLSearchParams();
       if (params?.limit) query.set('limit', String(params.limit));
@@ -678,6 +709,150 @@ export const api = {
 
     async getSecurityEvents(): Promise<PlatformSecurityEvent[]> {
       return request('/platform/security-events', { method: 'GET' });
+    },
+
+    async listUsers(params?: { search?: string; limit?: number; offset?: number }): Promise<PlatformUserItem[]> {
+      const query = new URLSearchParams();
+      if (params?.search) query.set('search', params.search);
+      if (params?.limit) query.set('limit', String(params.limit));
+      if (params?.offset) query.set('offset', String(params.offset));
+      const qs = query.toString() ? `?${query.toString()}` : '';
+      return request(`/platform/users${qs}`, { method: 'GET' });
+    },
+
+    async revokeUserSessions(userId: string): Promise<{ success: boolean; revokedCount: number }> {
+      return request(`/platform/users/${userId}/revoke-sessions`, { method: 'POST' });
+    },
+
+    async updateUserSecurityPolicy(
+      userId: string,
+      data: UpdateUserSecurityPolicyRequest,
+    ): Promise<PlatformUserItem> {
+      return request(`/platform/users/${userId}/security-policy`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      });
+    },
+
+    async listSaaSPlans(): Promise<SaaSPlanItem[]> {
+      return request('/platform/saas-plans', { method: 'GET' });
+    },
+
+    async updateSaaSPlan(code: string, data: UpdateSaaSPlanRequest): Promise<SaaSPlanItem> {
+      return request(`/platform/saas-plans/${code}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      });
+    },
+
+    async updateTenantSubscription(
+      tenantId: string,
+      data: UpdateTenantSubscriptionRequest,
+    ): Promise<TenantSubscriptionItem> {
+      return request(`/platform/academies/${tenantId}/subscription`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      });
+    },
+
+    async listAnnouncements(): Promise<PlatformAnnouncementItem[]> {
+      return request('/platform/announcements', { method: 'GET' });
+    },
+
+    async createAnnouncement(data: CreatePlatformAnnouncementRequest): Promise<PlatformAnnouncementItem> {
+      return request('/platform/announcements', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
+  },
+
+  finance: {
+    async getTenantSubscription(): Promise<TenantSubscriptionItem> {
+      return request('/finance/subscription', { method: 'GET' });
+    },
+
+    async listPlayerPlans(branchId?: string): Promise<PlayerSubscriptionPlanItem[]> {
+      const qs = branchId ? `?branchId=${branchId}` : '';
+      return request(`/finance/player-plans${qs}`, { method: 'GET' });
+    },
+
+    async createPlayerPlan(data: CreatePlayerSubscriptionPlanRequest): Promise<PlayerSubscriptionPlanItem> {
+      return request('/finance/player-plans', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
+
+    async listPlayerSubscriptions(params?: {
+      status?: string;
+      search?: string;
+      playerId?: string;
+      limit?: number;
+      offset?: number;
+    }): Promise<PlayerSubscriptionItem[]> {
+      const query = new URLSearchParams();
+      if (params?.status) query.set('status', params.status);
+      if (params?.search) query.set('search', params.search);
+      if (params?.playerId) query.set('playerId', params.playerId);
+      if (params?.limit) query.set('limit', String(params.limit));
+      if (params?.offset) query.set('offset', String(params.offset));
+      const qs = query.toString() ? `?${query.toString()}` : '';
+      return request(`/finance/player-subscriptions${qs}`, { method: 'GET' });
+    },
+
+    async getPlayerSubscription(playerId: string): Promise<PlayerSubscriptionItem | null> {
+      return request(`/finance/player-subscriptions/player/${playerId}`, { method: 'GET' });
+    },
+
+    async createPlayerSubscription(data: CreatePlayerSubscriptionRequest): Promise<PlayerSubscriptionItem> {
+      return request('/finance/player-subscriptions', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
+
+    async recordPayment(data: RecordPlayerPaymentRequest): Promise<FinancialTransactionItem> {
+      return request('/finance/payments/collect', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
+
+    async reverseTransaction(id: string, data: ReverseTransactionRequest): Promise<FinancialTransactionItem> {
+      return request(`/finance/transactions/${id}/reverse`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
+
+    async getSessionCashierSummary(sessionId: string): Promise<SessionCashierSummary> {
+      return request(`/finance/sessions/${sessionId}/cashier`, { method: 'GET' });
+    },
+
+    async recordSessionExpense(
+      sessionId: string,
+      data: RecordSessionExpenseRequest,
+    ): Promise<FinancialTransactionItem> {
+      return request(`/finance/sessions/${sessionId}/expense`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
+
+    async closeSessionCashier(
+      sessionId: string,
+      data?: CloseSessionCashierRequest,
+    ): Promise<SessionCashierSummary> {
+      return request(`/finance/sessions/${sessionId}/close`, {
+        method: 'POST',
+        body: JSON.stringify(data || {}),
+      });
+    },
+
+    async getDashboardMetrics(branchId?: string): Promise<AcademyFinancialDashboardMetrics> {
+      const qs = branchId ? `?branchId=${branchId}` : '';
+      return request(`/finance/dashboard${qs}`, { method: 'GET' });
     },
   },
 

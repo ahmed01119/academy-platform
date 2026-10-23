@@ -52,6 +52,12 @@ export const AttendanceRosterItemSchema = z.object({
   checkInTime: z.string().nullable().optional(),
   remarks: z.string().max(250).nullable().optional(),
   version: z.number().int().default(1),
+  subscriptionStatus: z.enum(['ACTIVE', 'PARTIAL', 'OVERDUE', 'EXEMPT', 'PAUSED', 'EXPIRED']).optional(),
+  outstandingBalance: z.number().optional(),
+  amountDue: z.number().optional(),
+  nextPaymentDate: z.string().nullable().optional(),
+  lastPaymentDate: z.string().nullable().optional(),
+  subscriptionId: z.string().uuid().nullable().optional(),
 });
 
 export type AttendanceRosterItem = z.infer<typeof AttendanceRosterItemSchema>;
@@ -272,6 +278,16 @@ export const ScanPlayerQrResponseSchema = z.object({
     sessionDate: z.string(),
     startTime: z.string(),
   }),
+  paymentStatus: z
+    .object({
+      status: z.enum(['ACTIVE', 'PARTIAL', 'OVERDUE', 'EXEMPT', 'PAUSED', 'EXPIRED']),
+      outstandingBalance: z.number(),
+      feeAmount: z.number(),
+      dueDate: z.string().nullable().optional(),
+      lastPaymentDate: z.string().nullable().optional(),
+      subscriptionId: z.string().uuid().nullable().optional(),
+    })
+    .optional(),
 });
 
 export type ScanPlayerQrResponse = z.infer<typeof ScanPlayerQrResponseSchema>;

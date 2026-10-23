@@ -14,6 +14,7 @@ import { GroupsModule } from './modules/groups/groups.module';
 import { PlatformModule } from './modules/platform/platform.module';
 import { EvaluationsModule } from './modules/evaluations/evaluations.module';
 import { PortalModule } from './modules/portal/portal.module';
+import { FinanceModule } from './modules/finance/finance.module';
 
 /**
  * Root module for the modular monolith.
@@ -37,6 +38,7 @@ import { PortalModule } from './modules/portal/portal.module';
     PlatformModule,
     EvaluationsModule,
     PortalModule,
+    FinanceModule,
   ],
 })
 export class AppModule {}

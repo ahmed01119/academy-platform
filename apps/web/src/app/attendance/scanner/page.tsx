@@ -20,6 +20,8 @@ import {
   Search,
   Sparkles,
   QrCode,
+  CreditCard,
+  X,
 } from 'lucide-react';
 import { useAuth } from '../../../lib/auth-context';
 import { useLocale } from '../../../lib/locale-context';
@@ -40,6 +42,8 @@ interface ScanFeedback {
   latenessMinutes?: number;
   message: string;
   timestamp: string;
+  playerId?: string;
+  paymentStatus?: ScanPlayerQrResponse['paymentStatus'];
 }
 
 export default function MobileAttendanceScannerPage() {
@@ -73,6 +77,69 @@ export default function MobileAttendanceScannerPage() {
   // Manual Input Fallback
   const [manualCode, setManualCode] = useState('');
   const [isSubmittingManual, setIsSubmittingManual] = useState(false);
+
+  // Quick Fee Collection inside Scanner
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [paymentPlayer, setPaymentPlayer] = useState<{
+    id: string;
+    name: string;
+    outstandingBalance: number;
+    subscriptionId?: string;
+  } | null>(null);
+  const [paymentAmount, setPaymentAmount] = useState<number>(0);
+  const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'CARD' | 'POS' | 'BANK_TRANSFER'>('CASH');
+  const [paymentNotes, setPaymentNotes] = useState('');
+  const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
+
+  const handleOpenQuickPayment = (fb: ScanFeedback) => {
+    if (!fb.playerId || !fb.playerName) return;
+    const due = fb.paymentStatus?.outstandingBalance || fb.paymentStatus?.feeAmount || 650;
+    setPaymentPlayer({
+      id: fb.playerId,
+      name: fb.playerName,
+      outstandingBalance: due,
+      subscriptionId: fb.paymentStatus?.subscriptionId || undefined,
+    });
+    setPaymentAmount(due);
+    setPaymentMethod('CASH');
+    setPaymentNotes('');
+    setIsPaymentModalOpen(true);
+  };
+
+  const handleSubmitQuickPayment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!paymentPlayer || !selectedSessionId || paymentAmount <= 0) return;
+    const session = sessions.find((s) => s.id === selectedSessionId);
+    if (!session) return;
+    setIsSubmittingPayment(true);
+    try {
+      await apiClient.finance.recordPayment({
+        playerId: paymentPlayer.id,
+        subscriptionId: paymentPlayer.subscriptionId,
+        branchId: session.branchId,
+        sessionId: selectedSessionId,
+        amount: Number(paymentAmount),
+        paymentMethod,
+        notes: paymentNotes || undefined,
+      });
+      setIsPaymentModalOpen(false);
+      if (activeFeedback) {
+        setActiveFeedback({
+          ...activeFeedback,
+          paymentStatus: {
+            status: 'ACTIVE',
+            outstandingBalance: 0,
+            feeAmount: activeFeedback.paymentStatus?.feeAmount || 650,
+          },
+          message: `${activeFeedback.message} • تم تحصيل ${paymentAmount} ر.س بنجاح!`,
+        });
+      }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'فشل تسجيل الدفعة');
+    } finally {
+      setIsSubmittingPayment(false);
+    }
+  };
 
   // Continuous Scan Guard
   const lastScannedCodeRef = useRef<string>('');
@@ -357,6 +424,8 @@ export default function MobileAttendanceScannerPage() {
               minute: '2-digit',
               second: '2-digit',
             }),
+            playerId: res.player.id,
+            paymentStatus: res.paymentStatus,
           };
 
           setActiveFeedback(fb);
@@ -758,6 +827,52 @@ export default function MobileAttendanceScannerPage() {
                         {activeFeedback.membershipNumber}
                       </span>
                     )}
+
+                    {/* Live Payment Status Banner */}
+                    {activeFeedback.paymentStatus && (
+                      <div className="mt-3 pt-2.5 border-t border-current/20 flex flex-wrap items-center justify-between gap-2 text-xs">
+                        <div className="flex items-center gap-1.5 font-bold">
+                          <CreditCard className="h-4 w-4 shrink-0" />
+                          {activeFeedback.paymentStatus.status === 'ACTIVE' && (
+                            <span className="text-emerald-400">✓ اشتراك ساري ومسدد بالكامل</span>
+                          )}
+                          {activeFeedback.paymentStatus.status === 'PARTIAL' && (
+                            <span className="text-amber-300">
+                              ⚠ متبقي: {activeFeedback.paymentStatus.outstandingBalance} ر.س
+                            </span>
+                          )}
+                          {activeFeedback.paymentStatus.status === 'OVERDUE' && (
+                            <span className="text-rose-300 animate-pulse">
+                              ✕ متأخر: {activeFeedback.paymentStatus.outstandingBalance || activeFeedback.paymentStatus.feeAmount} ر.س
+                            </span>
+                          )}
+                          {(activeFeedback.paymentStatus.status === 'EXEMPT' ||
+                            activeFeedback.paymentStatus.status === 'PAUSED' ||
+                            activeFeedback.paymentStatus.status === 'EXPIRED') && (
+                            <span className="text-slate-300">
+                              {activeFeedback.paymentStatus.status === 'EXEMPT'
+                                ? 'معفى من الرسوم'
+                                : activeFeedback.paymentStatus.status === 'PAUSED'
+                                  ? 'اشتراك موقوف مؤقتاً'
+                                  : 'اشتراك منتهي الصلاحية'}
+                            </span>
+                          )}
+                        </div>
+
+                        {activeFeedback.paymentStatus.status !== 'ACTIVE' &&
+                          activeFeedback.playerId &&
+                          selectedSession && (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenQuickPayment(activeFeedback)}
+                              className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1 text-xs font-bold shadow transition-all cursor-pointer"
+                            >
+                              <CreditCard className="h-3.5 w-3.5" />
+                              <span>تحصيل الرسوم فوراً</span>
+                            </button>
+                          )}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -860,6 +975,107 @@ export default function MobileAttendanceScannerPage() {
           )}
         </div>
       </div>
+
+      {/* QUICK PAYMENT MODAL INSIDE SCANNER */}
+      {isPaymentModalOpen && paymentPlayer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="w-full max-w-md rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-2xl relative space-y-4 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
+              <div className="flex items-center gap-2">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                  <CreditCard className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-[var(--text-primary)]">تحصيل فوري للاعب</h3>
+                  <p className="text-xs text-[var(--text-muted)]">{paymentPlayer.name}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsPaymentModalOpen(false)}
+                className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitQuickPayment} className="space-y-4">
+              <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 text-xs flex justify-between items-center">
+                <span className="text-[var(--text-muted)]">الرصيد المستحق:</span>
+                <span className="font-extrabold text-[var(--brand-primary)]">
+                  {paymentPlayer.outstandingBalance} ر.س
+                </span>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                  المبلغ المحصل (ر.س) *
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  step="0.01"
+                  required
+                  value={paymentAmount}
+                  onChange={(e) => setPaymentAmount(parseFloat(e.target.value) || 0)}
+                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2.5 text-sm font-bold text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                  طريقة الدفع *
+                </label>
+                <select
+                  value={paymentMethod}
+                  onChange={(e) =>
+                    setPaymentMethod(
+                      e.target.value as 'CASH' | 'CARD' | 'POS' | 'BANK_TRANSFER',
+                    )
+                  }
+                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2.5 text-xs font-semibold text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none cursor-pointer"
+                >
+                  <option value="CASH">نقدي (كاش بالملعب)</option>
+                  <option value="POS">جهاز نقاط البيع (POS / شبكة)</option>
+                  <option value="CARD">بطاقة مدى / ائتمانية</option>
+                  <option value="BANK_TRANSFER">تحويل بنكي</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                  ملاحظات الدفعة (اختياري)
+                </label>
+                <input
+                  type="text"
+                  placeholder="ملاحظات توثيقية إضافية..."
+                  value={paymentNotes}
+                  onChange={(e) => setPaymentNotes(e.target.value)}
+                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:border-[var(--brand-primary)] focus:outline-none"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-[var(--border-subtle)]">
+                <button
+                  type="button"
+                  onClick={() => setIsPaymentModalOpen(false)}
+                  className="rounded-xl border border-[var(--border-subtle)] px-4 py-2 text-xs font-semibold text-[var(--text-muted)] hover:bg-[var(--bg-elevated)] transition-colors cursor-pointer"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingPayment || paymentAmount <= 0}
+                  className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-5 py-2 text-xs font-bold text-white shadow hover:brightness-110 disabled:opacity-50 transition-all cursor-pointer"
+                >
+                  {isSubmittingPayment && <RefreshCw className="h-3.5 w-3.5 animate-spin" />}
+                  <span>تأكيد استلام المبلغ</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </AppShell>
   );
 }

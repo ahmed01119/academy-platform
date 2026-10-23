@@ -110,6 +110,10 @@ describe('AttendanceService', () => {
         findFirst: vi.fn(),
         findMany: vi.fn().mockResolvedValue([]),
       },
+      playerSubscription: {
+        findMany: vi.fn().mockResolvedValue([]),
+        findFirst: vi.fn().mockResolvedValue(null),
+      },
       playerEnrollment: {
         findFirst: vi.fn().mockResolvedValue({ id: 'enr-1', status: 'ACTIVE' }),
       },

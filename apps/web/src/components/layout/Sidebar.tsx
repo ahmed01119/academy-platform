@@ -26,6 +26,7 @@ import {
   ChevronDown,
   X,
   Compass,
+  Wallet,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -179,6 +180,12 @@ export function Sidebar({ isMobileOpen = false, onCloseMobile }: SidebarProps) {
           label: t('nav.branches', 'الفروع والملاعب'),
           icon: GitBranch,
           id: 'sidebar-nav-branches',
+        },
+        {
+          href: '/finance',
+          label: t('finance.title', 'العمليات المالية والاشتراكات'),
+          icon: Wallet,
+          id: 'sidebar-nav-finance',
         },
       ],
     });

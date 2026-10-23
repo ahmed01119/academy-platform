@@ -14,3 +14,4 @@ export * from './schemas/tenant-context';
 export * from './schemas/evaluation';
 export * from './schemas/platform';
 export * from './schemas/portal';
+export * from './schemas/billing';
