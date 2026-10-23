@@ -45,7 +45,9 @@ export default function PlatformSuperAdminPage() {
   const { toast } = useToast();
   const router = useRouter();
 
-  const [activeTab, setActiveTab] = useState<'academies' | 'users' | 'plans' | 'security' | 'audit'>('academies');
+  const [activeTab, setActiveTab] = useState<
+    'academies' | 'users' | 'plans' | 'security' | 'audit'
+  >('academies');
   const [metrics, setMetrics] = useState<PlatformOverviewMetrics | null>(null);
   const [academies, setAcademies] = useState<PlatformAcademyItem[]>([]);
   const [usersList, setUsersList] = useState<PlatformUserItem[]>([]);
@@ -58,11 +60,16 @@ export default function PlatformSuperAdminPage() {
   const [userSearchQuery, setUserSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [feedbackMessage, setFeedbackMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [feedbackMessage, setFeedbackMessage] = useState<{
+    type: 'success' | 'error';
+    text: string;
+  } | null>(null);
 
   // Selected academy for plan modification modal
   const [editingAcademy, setEditingAcademy] = useState<PlatformAcademyItem | null>(null);
-  const [selectedPlanCode, setSelectedPlanCode] = useState<'STARTER' | 'PRO' | 'ENTERPRISE' | 'CUSTOM'>('PRO');
+  const [selectedPlanCode, setSelectedPlanCode] = useState<
+    'STARTER' | 'PRO' | 'ENTERPRISE' | 'CUSTOM'
+  >('PRO');
 
   useEffect(() => {
     if (!authLoading && !user?.isPlatformSuperAdmin) {
@@ -91,7 +98,9 @@ export default function PlatformSuperAdminPage() {
     } catch (err: unknown) {
       setFeedbackMessage({
         type: 'error',
-        text: (err as Error)?.message || (locale === 'ar' ? 'فشل تحميل بيانات المنصة' : 'Failed to load platform data'),
+        text:
+          (err as Error)?.message ||
+          (locale === 'ar' ? 'فشل تحميل بيانات المنصة' : 'Failed to load platform data'),
       });
     } finally {
       setIsLoading(false);
@@ -107,9 +116,16 @@ export default function PlatformSuperAdminPage() {
   // Handle Suspend / Reactivate Academy
   const handleToggleStatus = async (academy: PlatformAcademyItem) => {
     const newStatus = academy.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE';
-    const actionName = newStatus === 'SUSPENDED' ? t('platform.suspendAction', 'إيقاف وتجميد') : t('platform.activateAction', 'إعادة تفعيل');
-    const reasonPrompt = locale === 'ar' ? `يرجى إدخال سبب ${actionName} الأكاديمية (${academy.name}):` : `Enter reason for ${actionName} of ${academy.name}:`;
-    const defaultReason = locale === 'ar' ? 'قرار إداري من المنصة' : 'Platform administrative decision';
+    const actionName =
+      newStatus === 'SUSPENDED'
+        ? t('platform.suspendAction', 'إيقاف وتجميد')
+        : t('platform.activateAction', 'إعادة تفعيل');
+    const reasonPrompt =
+      locale === 'ar'
+        ? `يرجى إدخال سبب ${actionName} الأكاديمية (${academy.name}):`
+        : `Enter reason for ${actionName} of ${academy.name}:`;
+    const defaultReason =
+      locale === 'ar' ? 'قرار إداري من المنصة' : 'Platform administrative decision';
     const reason = prompt(reasonPrompt, defaultReason);
     if (!reason) return;
 
@@ -121,7 +137,10 @@ export default function PlatformSuperAdminPage() {
       });
       setFeedbackMessage({
         type: 'success',
-        text: locale === 'ar' ? `تم ${actionName} الأكاديمية بنجاح.` : `Academy ${actionName} successful.`,
+        text:
+          locale === 'ar'
+            ? `تم ${actionName} الأكاديمية بنجاح.`
+            : `Academy ${actionName} successful.`,
       });
       await loadData();
     } catch (err: unknown) {
@@ -136,21 +155,38 @@ export default function PlatformSuperAdminPage() {
 
   // Handle Support Access
   const handleSupportAccess = async (academy: PlatformAcademyItem) => {
-    const reasonPrompt = locale === 'ar' ? `سبب طلب جلسة الدعم الفني الموثقة للأكاديمية (${academy.name}):` : `State the required reason for accessing ${academy.name} support session:`;
-    const defaultReason = locale === 'ar' ? 'معالجة تذكرة دعم فني بطلب من مالك الأكاديمية' : 'Resolving support ticket requested by academy owner';
+    const reasonPrompt =
+      locale === 'ar'
+        ? `سبب طلب جلسة الدعم الفني الموثقة للأكاديمية (${academy.name}):`
+        : `State the required reason for accessing ${academy.name} support session:`;
+    const defaultReason =
+      locale === 'ar'
+        ? 'معالجة تذكرة دعم فني بطلب من مالك الأكاديمية'
+        : 'Resolving support ticket requested by academy owner';
     const reason = prompt(reasonPrompt, defaultReason);
     if (!reason || reason.trim().length < 10) {
-      toast.warning(locale === 'ar' ? 'يجب إدخال سبب واضح لا يقل عن 10 أحرف لتوثيق الجلسة في سجل الأمان' : 'Reason must be at least 10 characters for compliance logging');
+      toast.warning(
+        locale === 'ar'
+          ? 'يجب إدخال سبب واضح لا يقل عن 10 أحرف لتوثيق الجلسة في سجل الأمان'
+          : 'Reason must be at least 10 characters for compliance logging',
+      );
       return;
     }
 
     setActionLoading(academy.id);
     try {
       const res = await apiClient.platform.requestSupportAccess(academy.id, { reason });
-      toast.success(locale === 'ar' ? `تم تفعيل جلسة الدعم الفني بنجاح حتى: ${new Date(res.expiresAt).toLocaleTimeString()}` : `Support session authorized until: ${new Date(res.expiresAt).toLocaleTimeString()}`);
+      toast.success(
+        locale === 'ar'
+          ? `تم تفعيل جلسة الدعم الفني بنجاح حتى: ${new Date(res.expiresAt).toLocaleTimeString()}`
+          : `Support session authorized until: ${new Date(res.expiresAt).toLocaleTimeString()}`,
+      );
       await loadData();
     } catch (err: unknown) {
-      toast.error((err as Error)?.message || (locale === 'ar' ? 'فشل بدء جلسة الدعم الفني' : 'Failed to start support session'));
+      toast.error(
+        (err as Error)?.message ||
+          (locale === 'ar' ? 'فشل بدء جلسة الدعم الفني' : 'Failed to start support session'),
+      );
     } finally {
       setActionLoading(null);
     }
@@ -167,7 +203,10 @@ export default function PlatformSuperAdminPage() {
       });
       setFeedbackMessage({
         type: 'success',
-        text: locale === 'ar' ? 'تم تحديث خطة اشتراك الأكاديمية بنجاح' : 'Academy subscription plan updated successfully',
+        text:
+          locale === 'ar'
+            ? 'تم تحديث خطة اشتراك الأكاديمية بنجاح'
+            : 'Academy subscription plan updated successfully',
       });
       setEditingAcademy(null);
       await loadData();
@@ -183,9 +222,10 @@ export default function PlatformSuperAdminPage() {
 
   // Handle Force Logout for User
   const handleForceLogout = async (targetUser: PlatformUserItem) => {
-    const confirmMsg = locale === 'ar'
-      ? `هل أنت متأكد من إنهاء كافة الجلسات النشطة للمستخدم (${targetUser.email})؟ سيتم تسجيل خروجه فوراً من جميع الأجهزة.`
-      : `Force logout all active sessions for ${targetUser.email}?`;
+    const confirmMsg =
+      locale === 'ar'
+        ? `هل أنت متأكد من إنهاء كافة الجلسات النشطة للمستخدم (${targetUser.email})؟ سيتم تسجيل خروجه فوراً من جميع الأجهزة.`
+        : `Force logout all active sessions for ${targetUser.email}?`;
     if (!confirm(confirmMsg)) return;
 
     setActionLoading(`user-logout-${targetUser.id}`);
@@ -193,7 +233,10 @@ export default function PlatformSuperAdminPage() {
       const res = await apiClient.platform.revokeUserSessions(targetUser.id);
       setFeedbackMessage({
         type: 'success',
-        text: locale === 'ar' ? `تم إنهاء ${res.revokedCount} جلسة نشطة بنجاح.` : `Revoked ${res.revokedCount} active sessions.`,
+        text:
+          locale === 'ar'
+            ? `تم إنهاء ${res.revokedCount} جلسة نشطة بنجاح.`
+            : `Revoked ${res.revokedCount} active sessions.`,
       });
       await loadData();
     } catch (err: unknown) {
@@ -217,8 +260,12 @@ export default function PlatformSuperAdminPage() {
       setFeedbackMessage({
         type: 'success',
         text: nextState
-          ? (locale === 'ar' ? 'سيُطلب من المستخدم تعيين كلمة مرور جديدة فور تسجيل دخوله القادم.' : 'User will be required to reset password upon next sign-in.')
-          : (locale === 'ar' ? 'تم إلغاء شرط إعادة تعيين كلمة المرور.' : 'Password reset requirement cleared.'),
+          ? locale === 'ar'
+            ? 'سيُطلب من المستخدم تعيين كلمة مرور جديدة فور تسجيل دخوله القادم.'
+            : 'User will be required to reset password upon next sign-in.'
+          : locale === 'ar'
+            ? 'تم إلغاء شرط إعادة تعيين كلمة المرور.'
+            : 'Password reset requirement cleared.',
       });
       await loadData();
     } catch (err: unknown) {
@@ -235,8 +282,12 @@ export default function PlatformSuperAdminPage() {
   const handleToggleUserSuspension = async (targetUser: PlatformUserItem) => {
     const nextState = !targetUser.isSuspended;
     const reasonPrompt = nextState
-      ? (locale === 'ar' ? `سبب تجميد حساب المستخدم (${targetUser.email}):` : `Reason for suspending user account (${targetUser.email}):`)
-      : (locale === 'ar' ? `سبب إعادة تفعيل الحساب (${targetUser.email}):` : `Reason for reactivating account:`);
+      ? locale === 'ar'
+        ? `سبب تجميد حساب المستخدم (${targetUser.email}):`
+        : `Reason for suspending user account (${targetUser.email}):`
+      : locale === 'ar'
+        ? `سبب إعادة تفعيل الحساب (${targetUser.email}):`
+        : `Reason for reactivating account:`;
     const reason = prompt(reasonPrompt, 'Super Admin policy update');
     if (reason === null) return;
 
@@ -249,8 +300,12 @@ export default function PlatformSuperAdminPage() {
       setFeedbackMessage({
         type: 'success',
         text: nextState
-          ? (locale === 'ar' ? 'تم تجميد حساب المستخدم وإنهاء جلساته بنجاح.' : 'User account suspended and sessions revoked.')
-          : (locale === 'ar' ? 'تمت إعادة تفعيل حساب المستخدم بنجاح.' : 'User account reactivated.'),
+          ? locale === 'ar'
+            ? 'تم تجميد حساب المستخدم وإنهاء جلساته بنجاح.'
+            : 'User account suspended and sessions revoked.'
+          : locale === 'ar'
+            ? 'تمت إعادة تفعيل حساب المستخدم بنجاح.'
+            : 'User account reactivated.',
       });
       await loadData();
     } catch (err: unknown) {
@@ -302,8 +357,8 @@ export default function PlatformSuperAdminPage() {
               isEnterprise
                 ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300'
                 : isPro
-                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300'
-                : 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300'
+                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300'
+                  : 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300'
             }`}
           >
             {plan}
@@ -364,15 +419,14 @@ export default function PlatformSuperAdminPage() {
   ];
 
   return (
-    <AppShell
-      breadcrumbs={[
-        { label: t('nav.platform', 'وحدة المنصة'), href: '/platform' },
-      ]}
-    >
+    <AppShell breadcrumbs={[{ label: t('nav.platform', 'وحدة المنصة'), href: '/platform' }]}>
       <div className="space-y-6">
         <PageHeader
           title={t('platform.title', 'وحدة المشرف العام للمنصة')}
-          description={t('platform.subtitle', 'مراقبة الأكاديميات المشتركة عبر المنظومة المركزية، إدارة باقات الـ SaaS، ومتابعة الأمان والتحصيلات.')}
+          description={t(
+            'platform.subtitle',
+            'مراقبة الأكاديميات المشتركة عبر المنظومة المركزية، إدارة باقات الـ SaaS، ومتابعة الأمان والتحصيلات.',
+          )}
           badge={
             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
               {locale === 'ar' ? 'تحكم مركزي' : 'Super Admin Core'}
@@ -384,7 +438,9 @@ export default function PlatformSuperAdminPage() {
               disabled={isLoading}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold rounded-lg bg-[var(--bg-card)] border border-[var(--border-subtle)] hover:bg-[var(--bg-card-hover)] text-[var(--text-primary)] transition-colors shadow-sm"
             >
-              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin text-[var(--brand-primary)]' : ''}`} />
+              <RefreshCw
+                className={`w-4 h-4 ${isLoading ? 'animate-spin text-[var(--brand-primary)]' : ''}`}
+              />
               {t('common.refresh', 'تحديث')}
             </button>
           }
@@ -438,9 +494,23 @@ export default function PlatformSuperAdminPage() {
           />
           <StatCard
             label={t('platform.kpiSystemHealth', 'حالة النظام')}
-            value={metrics?.systemHealth ?? 'HEALTHY'}
+            value={metrics?.systemHealth ?? '—'}
             icon={Activity}
-            trend={{ value: '100% Uptime', isPositive: true }}
+            trend={{
+              value:
+                metrics?.systemHealth === 'HEALTHY'
+                  ? locale === 'ar'
+                    ? 'اعتماديات متصلة'
+                    : 'Dependencies reachable'
+                  : metrics?.systemHealth === 'DEGRADED'
+                    ? locale === 'ar'
+                      ? 'تدهور جزئي'
+                      : 'Partial degradation'
+                    : locale === 'ar'
+                      ? 'تحقق من /v1/health/ready'
+                      : 'See /v1/health/ready',
+              isPositive: metrics?.systemHealth === 'HEALTHY',
+            }}
           />
         </div>
 
@@ -524,7 +594,11 @@ export default function PlatformSuperAdminPage() {
             <FilterBar
               searchValue={searchQuery}
               onSearchChange={setSearchQuery}
-              searchPlaceholder={locale === 'ar' ? 'بحث باسم الأكاديمية أو المعرف...' : 'Search academy name or slug...'}
+              searchPlaceholder={
+                locale === 'ar'
+                  ? 'بحث باسم الأكاديمية أو المعرف...'
+                  : 'Search academy name or slug...'
+              }
               filters={[
                 {
                   id: 'status',
@@ -550,7 +624,11 @@ export default function PlatformSuperAdminPage() {
                 <EmptyState
                   icon={Building2}
                   title={locale === 'ar' ? 'لا توجد أكاديميات مطابقة' : 'No academies found'}
-                  description={locale === 'ar' ? 'لم يتم العثور على أي أكاديميات تطابق شروط البحث الحالية.' : 'Try adjusting your filters or search keywords.'}
+                  description={
+                    locale === 'ar'
+                      ? 'لم يتم العثور على أي أكاديميات تطابق شروط البحث الحالية.'
+                      : 'Try adjusting your filters or search keywords.'
+                  }
                 />
               }
             />
@@ -567,7 +645,10 @@ export default function PlatformSuperAdminPage() {
                   type="text"
                   value={userSearchQuery}
                   onChange={(e) => setUserSearchQuery(e.target.value)}
-                  placeholder={t('platform.userSearchPlaceholder', 'بحث باسم المستخدم أو البريد...')}
+                  placeholder={t(
+                    'platform.userSearchPlaceholder',
+                    'بحث باسم المستخدم أو البريد...',
+                  )}
                   className="w-full ps-9 pe-4 py-2 rounded-lg bg-[var(--bg-card)] border border-[var(--border-subtle)] text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)]"
                 />
               </div>
@@ -596,7 +677,9 @@ export default function PlatformSuperAdminPage() {
                       <tr key={u.id} className="hover:bg-[var(--bg-card-hover)] transition-colors">
                         <td className="px-4 py-3">
                           <div className="font-semibold text-[var(--text-primary)]">{u.name}</div>
-                          <div className="text-xs text-[var(--text-secondary)] font-mono">{u.email}</div>
+                          <div className="text-xs text-[var(--text-secondary)] font-mono">
+                            {u.email}
+                          </div>
                           {u.isPlatformSuperAdmin && (
                             <span className="inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-900 dark:bg-purple-950 dark:text-purple-300">
                               SUPER ADMIN
@@ -607,7 +690,9 @@ export default function PlatformSuperAdminPage() {
                           <div className="flex flex-col gap-1">
                             {u.memberships.map((m, idx) => (
                               <div key={idx} className="text-xs">
-                                <span className="font-medium text-[var(--text-primary)]">{m.tenantName}</span>
+                                <span className="font-medium text-[var(--text-primary)]">
+                                  {m.tenantName}
+                                </span>
                                 <span className="ms-1.5 px-1.5 py-0.5 rounded text-[10px] bg-[var(--bg-card-hover)] text-[var(--text-secondary)] font-mono">
                                   {m.role}
                                 </span>
@@ -616,12 +701,16 @@ export default function PlatformSuperAdminPage() {
                           </div>
                         </td>
                         <td className="px-4 py-3">
-                          <span className={`inline-flex items-center gap-1 font-mono text-xs px-2 py-1 rounded-full ${
-                            u.activeSessionsCount > 0
-                              ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300'
-                              : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
-                          }`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${u.activeSessionsCount > 0 ? 'bg-emerald-500' : 'bg-gray-400'}`} />
+                          <span
+                            className={`inline-flex items-center gap-1 font-mono text-xs px-2 py-1 rounded-full ${
+                              u.activeSessionsCount > 0
+                                ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300'
+                                : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
+                            }`}
+                          >
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${u.activeSessionsCount > 0 ? 'bg-emerald-500' : 'bg-gray-400'}`}
+                            />
                             {u.activeSessionsCount} {locale === 'ar' ? 'جلسة' : 'sessions'}
                           </span>
                         </td>
@@ -649,7 +738,11 @@ export default function PlatformSuperAdminPage() {
                               onClick={() => handleForceLogout(u)}
                               disabled={actionLoading === `user-logout-${u.id}`}
                               className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-300 transition-colors"
-                              title={locale === 'ar' ? 'إنهاء كافة الجلسات النشطة للمستخدم فوراً' : 'Force logout user from all devices'}
+                              title={
+                                locale === 'ar'
+                                  ? 'إنهاء كافة الجلسات النشطة للمستخدم فوراً'
+                                  : 'Force logout user from all devices'
+                              }
                             >
                               <LogOut className="w-3 h-3" />
                               {locale === 'ar' ? 'طرد من الجلسات' : 'Force Logout'}
@@ -663,12 +756,20 @@ export default function PlatformSuperAdminPage() {
                                   ? 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
                                   : 'bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300'
                               }`}
-                              title={locale === 'ar' ? 'إلزام المستخدم بتعيين كلمة مرور عند الدخول القادم' : 'Require password change on next login'}
+                              title={
+                                locale === 'ar'
+                                  ? 'إلزام المستخدم بتعيين كلمة مرور عند الدخول القادم'
+                                  : 'Require password change on next login'
+                              }
                             >
                               <KeyRound className="w-3 h-3" />
                               {u.mustResetPassword
-                                ? (locale === 'ar' ? 'إلغاء الإلزام' : 'Clear Reset')
-                                : (locale === 'ar' ? 'إلزام تغيير المرور' : 'Force Reset')}
+                                ? locale === 'ar'
+                                  ? 'إلغاء الإلزام'
+                                  : 'Clear Reset'
+                                : locale === 'ar'
+                                  ? 'إلزام تغيير المرور'
+                                  : 'Force Reset'}
                             </button>
 
                             <button
@@ -681,8 +782,12 @@ export default function PlatformSuperAdminPage() {
                               }`}
                             >
                               {u.isSuspended
-                                ? (locale === 'ar' ? 'فك التجميد' : 'Unsuspend')
-                                : (locale === 'ar' ? 'تجميد الحساب' : 'Suspend')}
+                                ? locale === 'ar'
+                                  ? 'فك التجميد'
+                                  : 'Unsuspend'
+                                : locale === 'ar'
+                                  ? 'تجميد الحساب'
+                                  : 'Suspend'}
                             </button>
                           </div>
                         </td>
@@ -710,7 +815,13 @@ export default function PlatformSuperAdminPage() {
                         {p.code}
                       </span>
                       <span className="text-xs font-medium text-[var(--text-secondary)]">
-                        {p.isActive ? (locale === 'ar' ? 'مفعلة' : 'Active') : (locale === 'ar' ? 'معطلة' : 'Disabled')}
+                        {p.isActive
+                          ? locale === 'ar'
+                            ? 'مفعلة'
+                            : 'Active'
+                          : locale === 'ar'
+                            ? 'معطلة'
+                            : 'Disabled'}
                       </span>
                     </div>
 
@@ -725,21 +836,28 @@ export default function PlatformSuperAdminPage() {
                         </span>
                       </div>
                       <div className="text-xs text-[var(--text-secondary)] mt-0.5">
-                        {p.priceYearly.toLocaleString()} {p.currency} / {locale === 'ar' ? 'سنوياً' : 'year'}
+                        {p.priceYearly.toLocaleString()} {p.currency} /{' '}
+                        {locale === 'ar' ? 'سنوياً' : 'year'}
                       </div>
                     </div>
 
                     <div className="space-y-2 py-3 border-t border-[var(--border-subtle)] text-xs text-[var(--text-primary)]">
                       <div className="flex justify-between">
-                        <span className="text-[var(--text-secondary)]">{locale === 'ar' ? 'الحد الأقصى للفروع:' : 'Max Branches:'}</span>
+                        <span className="text-[var(--text-secondary)]">
+                          {locale === 'ar' ? 'الحد الأقصى للفروع:' : 'Max Branches:'}
+                        </span>
                         <span className="font-bold">{p.maxBranches}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-[var(--text-secondary)]">{locale === 'ar' ? 'الحد الأقصى للاعبين:' : 'Max Players:'}</span>
+                        <span className="text-[var(--text-secondary)]">
+                          {locale === 'ar' ? 'الحد الأقصى للاعبين:' : 'Max Players:'}
+                        </span>
                         <span className="font-bold">{p.maxPlayers}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-[var(--text-secondary)]">{locale === 'ar' ? 'المدربين المسموح بهم:' : 'Max Coaches:'}</span>
+                        <span className="text-[var(--text-secondary)]">
+                          {locale === 'ar' ? 'المدربين المسموح بهم:' : 'Max Coaches:'}
+                        </span>
                         <span className="font-bold">{p.maxCoaches}</span>
                       </div>
                     </div>
@@ -749,14 +867,20 @@ export default function PlatformSuperAdminPage() {
                     <button
                       onClick={() => {
                         const newPrice = prompt(
-                          locale === 'ar' ? `تعديل السعر الشهري لخطة ${p.name}:` : `Edit monthly price for ${p.name}:`,
+                          locale === 'ar'
+                            ? `تعديل السعر الشهري لخطة ${p.name}:`
+                            : `Edit monthly price for ${p.name}:`,
                           String(p.priceMonthly),
                         );
                         if (newPrice !== null && !isNaN(Number(newPrice))) {
                           void apiClient.platform
                             .updateSaaSPlan(p.code, { priceMonthly: Number(newPrice) })
                             .then(() => {
-                              toast.success(locale === 'ar' ? 'تم تحديث السعر بنجاح' : 'Price updated successfully');
+                              toast.success(
+                                locale === 'ar'
+                                  ? 'تم تحديث السعر بنجاح'
+                                  : 'Price updated successfully',
+                              );
                               void loadData();
                             });
                         }
@@ -820,12 +944,16 @@ export default function PlatformSuperAdminPage() {
             <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5">
               <h3 className="font-bold text-[var(--text-primary)] mb-3 flex items-center gap-2">
                 <ShieldAlert className="w-5 h-5 text-amber-500" />
-                {locale === 'ar' ? 'سجل الأحداث الأمنية المباشر' : 'Live Security Operations Stream'}
+                {locale === 'ar'
+                  ? 'سجل الأحداث الأمنية المباشر'
+                  : 'Live Security Operations Stream'}
               </h3>
               <div className="divide-y divide-[var(--border-subtle)]">
                 {securityEvents.length === 0 ? (
                   <p className="py-6 text-center text-sm text-[var(--text-secondary)]">
-                    {locale === 'ar' ? 'لا توجد أحداث أمنية مشبوهة مسجلة حديثاً.' : 'No suspicious security signals logged.'}
+                    {locale === 'ar'
+                      ? 'لا توجد أحداث أمنية مشبوهة مسجلة حديثاً.'
+                      : 'No suspicious security signals logged.'}
                   </p>
                 ) : (
                   securityEvents.map((evt) => (
@@ -837,8 +965,8 @@ export default function PlatformSuperAdminPage() {
                               evt.severity === 'CRITICAL'
                                 ? 'bg-rose-100 text-rose-900 dark:bg-rose-950 dark:text-rose-200'
                                 : evt.severity === 'HIGH'
-                                ? 'bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200'
-                                : 'bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-200'
+                                  ? 'bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200'
+                                  : 'bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-200'
                             }`}
                           >
                             {evt.severity}
@@ -855,7 +983,9 @@ export default function PlatformSuperAdminPage() {
                         )}
                       </div>
                       <div className="text-xs text-[var(--text-secondary)] whitespace-nowrap font-mono">
-                        {new Date(evt.timestamp).toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-US')}
+                        {new Date(evt.timestamp).toLocaleString(
+                          locale === 'ar' ? 'ar-EG' : 'en-US',
+                        )}
                       </div>
                     </div>
                   ))
@@ -889,7 +1019,9 @@ export default function PlatformSuperAdminPage() {
                   auditLogs.map((log) => (
                     <tr key={log.id} className="hover:bg-[var(--bg-card-hover)] transition-colors">
                       <td className="px-4 py-3 text-xs text-[var(--text-secondary)] font-mono whitespace-nowrap">
-                        {new Date(log.createdAt).toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-US')}
+                        {new Date(log.createdAt).toLocaleString(
+                          locale === 'ar' ? 'ar-EG' : 'en-US',
+                        )}
                       </td>
                       <td className="px-4 py-3 font-semibold text-xs text-[var(--text-primary)] font-mono">
                         {log.action}
@@ -901,7 +1033,8 @@ export default function PlatformSuperAdminPage() {
                         {log.tenantName || 'Platform Core'}
                       </td>
                       <td className="px-4 py-3 text-xs text-[var(--text-secondary)] font-mono">
-                        {log.resourceType} {log.resourceId ? `(${log.resourceId.slice(0, 8)}...)` : ''}
+                        {log.resourceType}{' '}
+                        {log.resourceId ? `(${log.resourceId.slice(0, 8)}...)` : ''}
                       </td>
                     </tr>
                   ))
@@ -956,7 +1089,9 @@ export default function PlatformSuperAdminPage() {
                   disabled={actionLoading === 'plan-modal'}
                   className="px-4 py-2 text-sm font-semibold rounded-lg bg-[var(--brand-primary)] hover:bg-[var(--brand-primary-hover)] text-white shadow-sm"
                 >
-                  {actionLoading === 'plan-modal' ? t('common.loading', 'جارٍ الحفظ...') : t('common.save', 'حفظ')}
+                  {actionLoading === 'plan-modal'
+                    ? t('common.loading', 'جارٍ الحفظ...')
+                    : t('common.save', 'حفظ')}
                 </button>
               </div>
             </div>

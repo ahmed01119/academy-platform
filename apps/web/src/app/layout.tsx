@@ -1,14 +1,29 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { DEFAULT_LOCALE, LOCALE_DIRECTION } from '@academy/shared';
 import { AuthProvider } from '../lib/auth-context';
 import { ThemeProvider, themeInitScript } from '../lib/theme-context';
 import { LocaleProvider } from '../lib/locale-context';
 import { ToastProvider } from '../components/ui/Toast';
+import { ServiceWorkerRegistrar } from '../components/pwa/ServiceWorkerRegistrar';
+import { SyncStatus } from '../components/pwa/SyncStatus';
 import './globals.css';
 
 export const metadata: Metadata = {
   title: 'منصة إدارة الأكاديميات الرياضية | Academy Platform',
   description: 'نظام سحابي متكامل لإدارة الأكاديميات الرياضية، الفروع، الاشتراكات والحضور',
+  applicationName: 'Academy Platform',
+  manifest: '/manifest.webmanifest',
+  appleWebApp: {
+    capable: true,
+    title: 'Academy Platform',
+    statusBarStyle: 'black-translucent',
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#059669',
+  width: 'device-width',
+  initialScale: 1,
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -30,7 +45,11 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <ThemeProvider>
           <LocaleProvider>
             <AuthProvider>
-              <ToastProvider>{children}</ToastProvider>
+              <ToastProvider>
+                {children}
+                <ServiceWorkerRegistrar />
+                <SyncStatus />
+              </ToastProvider>
             </AuthProvider>
           </LocaleProvider>
         </ThemeProvider>

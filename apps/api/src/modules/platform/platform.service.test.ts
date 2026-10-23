@@ -3,6 +3,7 @@ import { PlatformService } from './platform.service';
 import { NotFoundException } from '@nestjs/common';
 import type { PrismaService } from '../database/prisma.service';
 import type { AuditService } from '../audit/audit.service';
+import type { HealthService } from '../health/health.service';
 
 type MockFn = ReturnType<typeof vi.fn>;
 
@@ -40,6 +41,7 @@ describe('PlatformService', () => {
   let mockTx: MockPlatformTx;
   let mockPrisma: { withPlatformAdminTransaction: MockFn };
   let mockAudit: { logEvent: MockFn };
+  let mockHealth: { getPlatformHealth: MockFn };
 
   const actorUserId = '00000000-0000-4000-8000-000000000001';
   const academyId = '00000000-0000-4000-8000-000000000101';
@@ -104,10 +106,14 @@ describe('PlatformService', () => {
     mockAudit = {
       logEvent: vi.fn().mockResolvedValue(undefined),
     };
+    mockHealth = {
+      getPlatformHealth: vi.fn().mockResolvedValue('HEALTHY'),
+    };
 
     service = new PlatformService(
       mockPrisma as unknown as PrismaService,
       mockAudit as unknown as AuditService,
+      mockHealth as unknown as HealthService,
     );
   });
 

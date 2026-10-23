@@ -19,12 +19,14 @@ import {
   type PlatformAnnouncementItem,
   type CreatePlatformAnnouncementRequest,
 } from '@academy/shared';
+import { HealthService } from '../health/health.service';
 
 @Injectable()
 export class PlatformService {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(AuditService) private readonly auditService: AuditService,
+    @Inject(HealthService) private readonly healthService: HealthService,
   ) {}
 
   /**
@@ -90,7 +92,12 @@ export class PlatformService {
       ]);
 
       // Calculate Monthly Recurring Revenue (MRR) based on active subscription prices
-      const mrr = (activeSubs as Array<{ negotiatedPrice: number | null; plan: { priceMonthly: number | null } }>).reduce((acc: number, sub) => {
+      const mrr = (
+        activeSubs as Array<{
+          negotiatedPrice: number | null;
+          plan: { priceMonthly: number | null };
+        }>
+      ).reduce((acc: number, sub) => {
         const monthly = sub.negotiatedPrice ?? sub.plan.priceMonthly ?? 0;
         return acc + monthly;
       }, 0);
@@ -115,7 +122,7 @@ export class PlatformService {
         collectedRevenue: paidInvoicesSum._sum.amount ?? 0,
         outstandingInvoices: pendingInvoicesCount,
         failedPayments: overdueInvoicesCount,
-        systemHealth: 'HEALTHY',
+        systemHealth: await this.healthService.getPlatformHealth(),
       };
     });
   }
@@ -259,7 +266,9 @@ export class PlatformService {
         coachesCount: tenant._count.memberships,
         planCode: updated.subscription?.planCode,
         subscriptionStatus: updated.subscription?.status,
-        renewalDate: updated.subscription?.renewalDate ? updated.subscription.renewalDate.toISOString() : null,
+        renewalDate: updated.subscription?.renewalDate
+          ? updated.subscription.renewalDate.toISOString()
+          : null,
         createdAt: updated.createdAt.toISOString(),
       };
     });
@@ -340,7 +349,10 @@ export class PlatformService {
   /**
    * Revokes all active refresh tokens and server-side sessions for a target user.
    */
-  async revokeUserSessions(actorUserId: string, targetUserId: string): Promise<{ success: boolean; revokedCount: number }> {
+  async revokeUserSessions(
+    actorUserId: string,
+    targetUserId: string,
+  ): Promise<{ success: boolean; revokedCount: number }> {
     return this.prisma.withPlatformAdminTransaction({ actorUserId }, async (tx) => {
       const targetUser = await tx.user.findUnique({
         where: { id: targetUserId },
@@ -405,7 +417,9 @@ export class PlatformService {
       }
       if (typeof dto.isSuspended === 'boolean') {
         dataToUpdate.isSuspended = dto.isSuspended;
-        dataToUpdate.suspendedReason = dto.isSuspended ? (dto.reason ?? 'Suspended by Super Admin') : null;
+        dataToUpdate.suspendedReason = dto.isSuspended
+          ? (dto.reason ?? 'Suspended by Super Admin')
+          : null;
 
         // If suspending account, immediately revoke all active sessions!
         if (dto.isSuspended) {
@@ -598,7 +612,9 @@ export class PlatformService {
           status: (dto.status as any) ?? 'ACTIVE',
           billingCycle: (dto.billingCycle as any) ?? 'MONTHLY',
           negotiatedPrice: dto.negotiatedPrice,
-          renewalDate: dto.renewalDate ? new Date(dto.renewalDate) : new Date(Date.now() + 30 * 86400000),
+          renewalDate: dto.renewalDate
+            ? new Date(dto.renewalDate)
+            : new Date(Date.now() + 30 * 86400000),
           autoRenew: dto.autoRenew ?? true,
         },
         update: updateData,
@@ -726,7 +742,7 @@ export class PlatformService {
         action: log.action,
         resourceType: log.resourceType,
         resourceId: log.resourceId,
-        actorEmail: log.actorUserId ? userMap.get(log.actorUserId) ?? null : null,
+        actorEmail: log.actorUserId ? (userMap.get(log.actorUserId) ?? null) : null,
         tenantName: log.tenant?.name ?? null,
         ipAddress: log.ipAddress,
         createdAt: log.createdAt.toISOString(),
@@ -769,7 +785,7 @@ export class PlatformService {
         let type: PlatformSecurityEvent['type'] = 'FAILED_LOGIN';
         let severity: PlatformSecurityEvent['severity'] = 'LOW';
         let description = 'Security event recorded';
-        const actorEmail = log.actorUserId ? userMap.get(log.actorUserId) ?? null : null;
+        const actorEmail = log.actorUserId ? (userMap.get(log.actorUserId) ?? null) : null;
 
         if (log.action === 'AUTH_LOGIN_FAILURE') {
           type = 'FAILED_LOGIN';

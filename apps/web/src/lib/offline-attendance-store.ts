@@ -26,7 +26,9 @@ class OfflineAttendanceStore {
         : (globalThis as unknown as { indexedDB?: IDBFactory }).indexedDB;
 
     if (!idb) {
-      return Promise.reject(new Error('IndexedDB is only available in environments with indexedDB support'));
+      return Promise.reject(
+        new Error('IndexedDB is only available in environments with indexedDB support'),
+      );
     }
 
     if (!this.dbPromise) {
@@ -210,15 +212,28 @@ class OfflineAttendanceStore {
     const res = await apiClient.attendance.syncOfflineBatch(sessionId, payload);
 
     // Remove successfully processed or already checked-in operations
-    const successfulOpIds = res.results
-      .filter((r) => r.success)
-      .map((r) => r.operationId);
+    const successfulOpIds = res.results.filter((r) => r.success).map((r) => r.operationId);
 
     if (successfulOpIds.length > 0) {
       await this.removePendingScans(successfulOpIds);
     }
 
     return res;
+  }
+
+  async purgeAll(): Promise<void> {
+    this.dbPromise = null;
+    const idb: IDBFactory | undefined =
+      typeof window !== 'undefined'
+        ? window.indexedDB
+        : (globalThis as unknown as { indexedDB?: IDBFactory }).indexedDB;
+    if (!idb) return;
+    await new Promise<void>((resolve, reject) => {
+      const req = idb.deleteDatabase(DB_NAME);
+      req.onsuccess = () => resolve();
+      req.onerror = () => reject(req.error);
+      req.onblocked = () => resolve();
+    });
   }
 }
 

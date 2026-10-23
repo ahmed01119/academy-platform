@@ -49,6 +49,19 @@ pnpm dev
 - API Health Check: [http://localhost:3001/v1/health](http://localhost:3001/v1/health)
 - Interactive Auth Test Suite: [http://localhost:3000/auth-test](http://localhost:3000/auth-test)
 
+## Production (self-hosted, no mandatory cloud fee)
+
+See [self-hosting runbook](docs/operations/self-hosting.md), [offline matrix](docs/architecture/offline-capability-matrix.md), and [ADR-004](docs/adr/ADR-004-zero-subscription-self-host.md).
+
+```bash
+cp .env.production.example .env.production
+docker compose -f docker-compose.prod.yml --env-file .env.production config
+# After secrets are set on the host:
+# docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
+```
+
+This repository does **not** purchase domains, enable paid plans, or deploy to a public URL without owner approval.
+
 ## Verify (CI parity)
 
 ```bash

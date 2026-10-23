@@ -116,3 +116,14 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+      - name: Validate production Compose file
+        run: docker compose -f docker-compose.prod.yml config
+        env:
+          POSTGRES_PASSWORD: ci-placeholder
+          POSTGRES_RUNTIME_PASSWORD: ci-placeholder-runtime
+          DATABASE_URL: postgresql://academy_runtime:ci@postgres:5432/academy?schema=public
+          DATABASE_ADMIN_URL: postgresql://academy:ci@postgres:5432/academy?schema=public
+          JWT_SECRET: ci-placeholder-jwt-secret-32chars
+          CORS_ORIGIN: https://app.example.test
+          NEXT_PUBLIC_API_BASE_URL: https://api.example.test/v1

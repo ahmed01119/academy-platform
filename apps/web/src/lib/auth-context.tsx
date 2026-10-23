@@ -8,6 +8,7 @@ import type {
   UserSummary,
 } from '@academy/shared';
 import { api, setActiveTenantIdHeader, getActiveTenantIdHeader } from './api-client';
+import { offlineEngine } from './offline-engine';
 
 interface AuthContextValue {
   user: UserSummary | null;
@@ -101,6 +102,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setActiveTenant(null);
       setMemberships([]);
       setActiveTenantIdHeader(null);
+      await offlineEngine.purgeAll().catch(() => undefined);
     }
   };
 
