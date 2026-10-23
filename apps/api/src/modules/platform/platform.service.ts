@@ -81,16 +81,16 @@ export class PlatformService {
           where: { status: 'ACTIVE' },
           include: { plan: true },
         }),
-        tx.saasInvoice.aggregate({
+        tx.saaSInvoice.aggregate({
           where: { status: 'PAID' },
           _sum: { amount: true },
         }),
-        tx.saasInvoice.count({ where: { status: 'PENDING' } }),
-        tx.saasInvoice.count({ where: { status: 'OVERDUE' } }),
+        tx.saaSInvoice.count({ where: { status: 'PENDING' } }),
+        tx.saaSInvoice.count({ where: { status: 'OVERDUE' } }),
       ]);
 
       // Calculate Monthly Recurring Revenue (MRR) based on active subscription prices
-      const mrr = activeSubs.reduce((acc, sub) => {
+      const mrr = (activeSubs as Array<{ negotiatedPrice: number | null; plan: { priceMonthly: number | null } }>).reduce((acc: number, sub) => {
         const monthly = sub.negotiatedPrice ?? sub.plan.priceMonthly ?? 0;
         return acc + monthly;
       }, 0);

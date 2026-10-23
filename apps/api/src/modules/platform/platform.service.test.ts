@@ -25,7 +25,7 @@ interface MockPlatformTx {
     update: MockFn;
     upsert: MockFn;
   };
-  saasInvoice: {
+  saaSInvoice: {
     aggregate: MockFn;
     count: MockFn;
   };
@@ -75,7 +75,7 @@ describe('PlatformService', () => {
         update: vi.fn(),
         upsert: vi.fn(),
       },
-      saasInvoice: {
+      saaSInvoice: {
         aggregate: vi.fn().mockResolvedValue({ _sum: { amount: 6495 } }),
         count: vi.fn().mockResolvedValue(2),
       },
