@@ -21,6 +21,18 @@ const LocaleContext = createContext<LocaleContextValue | undefined>(undefined);
 const LOCALE_STORAGE_KEY = 'academy_locale';
 const DEFAULT_TIMEZONE = 'Africa/Cairo';
 
+const CURRENCY_ARABIC_SYMBOLS: Record<string, string> = {
+  EGP: 'ج.م',
+  SAR: 'ر.س',
+  USD: '$',
+  EUR: '€',
+  AED: 'د.إ',
+  KWD: 'د.ك',
+  QAR: 'ر.ق',
+  BHD: 'د.ب',
+  OMR: 'ر.ع',
+};
+
 export function LocaleProvider({ children }: { children: React.ReactNode }) {
   const [locale, setLocaleState] = useState<SupportedLocale>(DEFAULT_LOCALE);
 
@@ -156,18 +168,20 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
   );
 
   const formatCurrency = useCallback(
-    (amount: number, currencyCode = 'EGP'): string => {
+    (amount: number, currencyCode = 'SAR'): string => {
       try {
+        const code = currencyCode.toUpperCase();
         if (locale === 'ar') {
-          return `${new Intl.NumberFormat('ar-EG').format(amount)} ج.م`;
+          const symbol = CURRENCY_ARABIC_SYMBOLS[code] || code;
+          return `${new Intl.NumberFormat('ar-EG').format(amount)} ${symbol}`;
         }
-        return new Intl.NumberFormat('en-EG', {
+        return new Intl.NumberFormat('en-US', {
           style: 'currency',
-          currency: currencyCode,
+          currency: code,
           maximumFractionDigits: 0,
         }).format(amount);
       } catch {
-        return `${amount} EGP`;
+        return `${amount} ${currencyCode}`;
       }
     },
     [locale],
