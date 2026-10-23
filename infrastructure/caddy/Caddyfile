@@ -1,0 +1,19 @@
+{
+  email {$CADDY_ACME_EMAIL:ops@localhost}
+}
+
+{$APP_DOMAIN:localhost} {
+  encode gzip
+  reverse_proxy web:3000
+  header {
+    Strict-Transport-Security "max-age=31536000; includeSubDomains"
+  }
+}
+
+{$API_DOMAIN:api.localhost} {
+  encode gzip
+  reverse_proxy api:3001
+  header {
+    Strict-Transport-Security "max-age=31536000; includeSubDomains"
+  }
+}

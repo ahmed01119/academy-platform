@@ -1,0 +1,3 @@
+-- Runs only on first Postgres volume init. Password is supplied via compose envsubst-style
+-- by docker-compose command; this file expects academy_runtime to be created by the
+-- wrapper script 01-runtime-role.sh.

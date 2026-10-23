@@ -1,0 +1,14 @@
+#!/bin/sh
+set -eu
+psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<SQL
+DO \$\$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'academy_runtime') THEN
+    CREATE ROLE academy_runtime LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS
+      PASSWORD '${POSTGRES_RUNTIME_PASSWORD}';
+  END IF;
+END
+\$\$;
+GRANT CONNECT ON DATABASE ${POSTGRES_DB} TO academy_runtime;
+GRANT USAGE ON SCHEMA public TO academy_runtime;
+SQL

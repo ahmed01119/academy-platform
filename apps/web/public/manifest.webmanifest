@@ -1,0 +1,34 @@
+{
+  "id": "/",
+  "name": "Academy Platform",
+  "short_name": "Academy",
+  "description": "Sports academy management — attendance, training, and operations",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0b1411",
+  "theme_color": "#059669",
+  "lang": "ar",
+  "dir": "auto",
+  "icons": [
+    {
+      "src": "/icon",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/apple-icon",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

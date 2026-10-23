@@ -1,14 +1,85 @@
 @import 'tailwindcss';
 
+@theme {
+  --color-bg-base: var(--bg-base);
+  --color-bg-surface: var(--bg-surface);
+  --color-bg-surface-subtle: var(--bg-surface-subtle);
+  --color-bg-surface-elevated: var(--bg-surface-elevated);
+
+  --color-text-main: var(--text-main);
+  --color-text-muted: var(--text-muted);
+  --color-text-inverse: var(--text-inverse);
+
+  --color-border-app: var(--border-app);
+  --color-border-subtle: var(--border-subtle);
+
+  --color-accent-primary: var(--accent-primary);
+  --color-accent-primary-hover: var(--accent-primary-hover);
+  --color-accent-primary-fg: var(--accent-primary-fg);
+
+  --color-badge-bg: var(--badge-bg);
+  --color-badge-border: var(--badge-border);
+  --color-badge-fg: var(--badge-fg);
+}
+
 :root {
-  --color-bg: #0f1c18;
-  --color-surface: #162821;
-  --color-fg: #e8f0ec;
-  --color-muted: #9bb5a8;
-  --color-accent: #2f9e6b;
-  --color-accent-fg: #062016;
+  /* Light Theme — Modern Crisp Global SaaS Palette */
+  --bg-base: #f8fafc;
+  --bg-surface: #ffffff;
+  --bg-surface-subtle: #f1f5f9;
+  --bg-surface-elevated: #ffffff;
+
+  --text-main: #0f172a;
+  --text-muted: #475569;
+  --text-inverse: #ffffff;
+
+  --border-app: #e2e8f0;
+  --border-subtle: #edf2f7;
+
+  --accent-primary: #059669;
+  --accent-primary-hover: #047857;
+  --accent-primary-fg: #ffffff;
+  --brand-primary: #059669;
+  --brand-primary-hover: #047857;
+
+  --badge-bg: #ecfdf5;
+  --badge-border: #a7f3d0;
+  --badge-fg: #065f46;
+
   --font-display: 'IBM Plex Sans Arabic', 'Segoe UI', sans-serif;
   --font-body: 'IBM Plex Sans', 'Segoe UI', sans-serif;
+
+  --ambient-glow-1: rgba(5, 150, 105, 0.05);
+  --ambient-glow-2: rgba(16, 185, 129, 0.03);
+}
+
+[data-theme='dark'],
+.dark {
+  /* Dark Theme — Deep Stadium Night Emerald */
+  --bg-base: #0b1411;
+  --bg-surface: #11201a;
+  --bg-surface-subtle: #162922;
+  --bg-surface-elevated: #1b332a;
+
+  --text-main: #f1f5f9;
+  --text-muted: #94a3b8;
+  --text-inverse: #022c22;
+
+  --border-app: #223e33;
+  --border-subtle: #1a3028;
+
+  --accent-primary: #10b981;
+  --accent-primary-hover: #34d399;
+  --accent-primary-fg: #022c22;
+  --brand-primary: #10b981;
+  --brand-primary-hover: #34d399;
+
+  --badge-bg: rgba(16, 185, 129, 0.15);
+  --badge-border: rgba(16, 185, 129, 0.35);
+  --badge-fg: #34d399;
+
+  --ambient-glow-1: rgba(16, 185, 129, 0.15);
+  --ambient-glow-2: rgba(5, 150, 105, 0.25);
 }
 
 * {
@@ -22,12 +93,31 @@ body {
 }
 
 body {
-  background:
-    radial-gradient(1200px 600px at 10% -10%, rgba(47, 158, 107, 0.22), transparent 55%),
-    radial-gradient(900px 500px at 90% 0%, rgba(34, 92, 70, 0.35), transparent 50%),
-    var(--color-bg);
-  color: var(--color-fg);
+  background-color: var(--bg-base);
+  background-image:
+    radial-gradient(1200px 600px at 10% -10%, var(--ambient-glow-1), transparent 55%),
+    radial-gradient(900px 500px at 90% 0%, var(--ambient-glow-2), transparent 50%);
+  color: var(--text-main);
   font-family: var(--font-body);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Accessible focus outline */
+*:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+/* Respect user reduced-motion setting */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 a {
