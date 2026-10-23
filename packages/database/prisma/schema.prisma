@@ -81,6 +81,7 @@ enum FinancialTransactionStatus {
   COMPLETED
   REVERSED
   PENDING
+  REJECTED
 }
 
 enum PlatformAnnouncementType {
@@ -229,6 +230,7 @@ model User {
   evaluationsGiven     PlayerEvaluation[]            @relation("EvaluatorUser")
   recordedTransactions AcademyFinancialTransaction[] @relation("RecordedByUser")
   reversedTransactions AcademyFinancialTransaction[] @relation("ReversedByUser")
+  approvedExpenses     AcademyFinancialTransaction[] @relation("ExpenseApprovedByUser")
   closedSessions       SessionCashierClosing[]       @relation("SessionClosedByUser")
 
   @@map("users")
@@ -937,6 +939,10 @@ model AcademyFinancialTransaction {
   reversalReason     String?                    @map("reversal_reason")
   reversedAt         DateTime?                  @map("reversed_at") @db.Timestamptz(3)
   reversedByUserId   String?                    @map("reversed_by_user_id") @db.Uuid
+  approvedByUserId   String?                    @map("approved_by_user_id") @db.Uuid
+  approvedAt         DateTime?                  @map("approved_at") @db.Timestamptz(3)
+  rejectionReason    String?                    @map("rejection_reason")
+  idempotencyKey     String?                    @map("idempotency_key")
   createdAt          DateTime                   @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt          DateTime                   @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -947,6 +953,7 @@ model AcademyFinancialTransaction {
   subscription   PlayerSubscription? @relation(fields: [tenantId, subscriptionId], references: [tenantId, id], onDelete: SetNull)
   recordedByUser User                @relation("RecordedByUser", fields: [recordedByUserId], references: [id], onDelete: Restrict)
   reversedByUser User?               @relation("ReversedByUser", fields: [reversedByUserId], references: [id], onDelete: SetNull)
+  approvedByUser User?               @relation("ExpenseApprovedByUser", fields: [approvedByUserId], references: [id], onDelete: SetNull)
 
   @@unique([tenantId, id])
   @@index([tenantId])
@@ -954,6 +961,7 @@ model AcademyFinancialTransaction {
   @@index([sessionId])
   @@index([playerId])
   @@index([tenantId, createdAt])
+  @@index([tenantId, idempotencyKey])
   @@map("academy_financial_transactions")
 }
 

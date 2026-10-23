@@ -24,6 +24,8 @@ import {
   ReverseTransactionRequestSchema,
   RecordSessionExpenseRequestSchema,
   CloseSessionCashierRequestSchema,
+  ApproveExpenseRequestSchema,
+  RejectExpenseRequestSchema,
   UuidParamSchema,
   type TenantContext,
   type CreatePlayerSubscriptionPlanRequest,
@@ -32,6 +34,8 @@ import {
   type ReverseTransactionRequest,
   type RecordSessionExpenseRequest,
   type CloseSessionCashierRequest,
+  type ApproveExpenseRequest,
+  type RejectExpenseRequest,
 } from '@academy/shared';
 
 @Controller('finance')
@@ -119,7 +123,7 @@ export class FinanceController {
   }
 
   @Get('sessions/:sessionId/cashier')
-  @RequirePermissions(Permission.PAYMENTS_READ)
+  @RequirePermissions(Permission.SESSION_EXPENSES_READ)
   async getSessionCashierSummary(@Param('sessionId') rawId: string, @Req() req: Request) {
     const sessionId = UuidParamSchema.parse(rawId);
     const tenantContext: TenantContext = (req as Request & { tenantContext: TenantContext }).tenantContext;
@@ -127,7 +131,7 @@ export class FinanceController {
   }
 
   @Post('sessions/:sessionId/expense')
-  @RequirePermissions(Permission.PAYMENTS_CREATE)
+  @RequirePermissions(Permission.SESSION_EXPENSES_CREATE)
   async recordSessionExpense(
     @Param('sessionId') rawId: string,
     @Body() body: unknown,
@@ -139,8 +143,34 @@ export class FinanceController {
     return this.financeService.recordSessionExpense(tenantContext, sessionId, dto);
   }
 
+  @Post('expenses/:id/approve')
+  @RequirePermissions(Permission.SESSION_EXPENSES_APPROVE)
+  async approveSessionExpense(
+    @Param('id') rawId: string,
+    @Body() body: unknown,
+    @Req() req: Request,
+  ) {
+    const transactionId = UuidParamSchema.parse(rawId);
+    const tenantContext: TenantContext = (req as Request & { tenantContext: TenantContext }).tenantContext;
+    const dto: ApproveExpenseRequest = ApproveExpenseRequestSchema.parse(body || {});
+    return this.financeService.approveSessionExpense(tenantContext, transactionId, dto);
+  }
+
+  @Post('expenses/:id/reject')
+  @RequirePermissions(Permission.SESSION_EXPENSES_APPROVE)
+  async rejectSessionExpense(
+    @Param('id') rawId: string,
+    @Body() body: unknown,
+    @Req() req: Request,
+  ) {
+    const transactionId = UuidParamSchema.parse(rawId);
+    const tenantContext: TenantContext = (req as Request & { tenantContext: TenantContext }).tenantContext;
+    const dto: RejectExpenseRequest = RejectExpenseRequestSchema.parse(body);
+    return this.financeService.rejectSessionExpense(tenantContext, transactionId, dto);
+  }
+
   @Post('sessions/:sessionId/close')
-  @RequirePermissions(Permission.ATTENDANCE_CLOSE)
+  @RequirePermissions(Permission.SESSION_EXPENSES_READ)
   async closeSessionCashier(
     @Param('sessionId') rawId: string,
     @Body() body: unknown,

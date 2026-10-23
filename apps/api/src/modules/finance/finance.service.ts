@@ -19,6 +19,8 @@ import {
   type RecordPlayerPaymentRequest,
   type ReverseTransactionRequest,
   type RecordSessionExpenseRequest,
+  type ApproveExpenseRequest,
+  type RejectExpenseRequest,
   type SessionCashierSummary,
   type CloseSessionCashierRequest,
   type AcademyFinancialDashboardMetrics,
@@ -600,8 +602,41 @@ export class FinanceService {
     );
   }
 
+  private mapFinancialTransaction(t: any): FinancialTransactionItem {
+    return {
+      id: t.id,
+      tenantId: t.tenantId,
+      branchId: t.branchId,
+      branchName: t.branch?.name ?? null,
+      sessionId: t.sessionId ?? null,
+      playerId: t.playerId ?? null,
+      playerName: t.player ? `${t.player.firstName} ${t.player.lastName}` : null,
+      subscriptionId: t.subscriptionId ?? null,
+      recordedByUserId: t.recordedByUserId,
+      recordedByName: t.recordedByUser?.name ?? null,
+      type: t.type as any,
+      amount: t.amount,
+      currency: t.currency,
+      paymentMethod: t.paymentMethod as any,
+      status: t.status as any,
+      receiptNumber: t.receiptNumber ?? null,
+      referenceNumber: t.referenceNumber ?? null,
+      notes: t.notes ?? null,
+      reversalReason: t.reversalReason ?? null,
+      reversedAt: t.reversedAt ? (t.reversedAt instanceof Date ? t.reversedAt.toISOString() : String(t.reversedAt)) : null,
+      approvedByUserId: t.approvedByUserId ?? null,
+      approvedByName: t.approvedByUser?.name ?? null,
+      approvedAt: t.approvedAt ? (t.approvedAt instanceof Date ? t.approvedAt.toISOString() : String(t.approvedAt)) : null,
+      rejectionReason: t.rejectionReason ?? null,
+      idempotencyKey: t.idempotencyKey ?? null,
+      createdAt: t.createdAt instanceof Date ? t.createdAt.toISOString() : String(t.createdAt),
+    };
+  }
+
   /**
    * Records an operational expense during a training session (hydration, equipment, field fee).
+   * Coaches can submit expenses for sessions they are assigned to.
+   * Expenses submitted by coaches enter PENDING status for separation-of-duties review.
    */
   async recordSessionExpense(
     tenantContext: TenantContext,
@@ -611,8 +646,26 @@ export class FinanceService {
     return this.prisma.withTenantTransaction(
       { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
       async (tx) => {
+        // 1. Validate positive amount and sanitize decimal precision
+        if (dto.amount <= 0 || isNaN(dto.amount) || !isFinite(dto.amount)) {
+          throw new BadRequestException({
+            code: ErrorCode.VALIDATION_FAILED,
+            message: 'Expense amount must be a positive number',
+          });
+        }
+        const sanitizedAmount = Math.round(dto.amount * 100) / 100;
+
+        // 2. Fetch session and its coach assignments
         const session = await tx.attendanceSession.findUnique({
           where: { tenantId_id: { tenantId: tenantContext.tenantId, id: sessionId } },
+          include: {
+            branch: { select: { name: true } },
+            group: {
+              include: {
+                coaches: true,
+              },
+            },
+          },
         });
 
         if (!session) {
@@ -622,61 +675,284 @@ export class FinanceService {
           });
         }
 
-        const now = new Date();
-        const receiptNumber = dto.receiptNumber || `EXP-${now.getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+        // 3. Verify branch constraints
+        if (dto.branchId && dto.branchId !== session.branchId) {
+          throw new BadRequestException({
+            code: ErrorCode.VALIDATION_FAILED,
+            message: 'Expense branch does not match session branch',
+          });
+        }
 
-        const transaction = await tx.academyFinancialTransaction.create({
-          data: {
+        if (tenantContext.branchId && tenantContext.branchId !== session.branchId) {
+          throw new ForbiddenException({
+            code: ErrorCode.FORBIDDEN,
+            message: 'You are not authorized to record expenses for a different branch',
+          });
+        }
+
+        // 4. Verify coach assignment for COACH role
+        const isOwnerOrManager =
+          tenantContext.role === 'OWNER' ||
+          tenantContext.role === 'MANAGER' ||
+          tenantContext.role === 'ACCOUNTANT';
+
+        if (!isOwnerOrManager) {
+          const isAssigned =
+            session.coachUserId === tenantContext.actorUserId ||
+            session.group?.coaches.some((c) => c.coachUserId === tenantContext.actorUserId);
+
+          if (!isAssigned) {
+            throw new ForbiddenException({
+              code: ErrorCode.FORBIDDEN,
+              message: 'You are only permitted to submit expenses for sessions you are assigned to',
+            });
+          }
+        }
+
+        // 5. Check Idempotency Key
+        if (dto.idempotencyKey) {
+          const existingByIdempotency = await tx.academyFinancialTransaction.findFirst({
+            where: {
+              tenantId: tenantContext.tenantId,
+              idempotencyKey: dto.idempotencyKey,
+            },
+            include: {
+              branch: { select: { name: true } },
+              recordedByUser: { select: { name: true } },
+              approvedByUser: { select: { name: true } },
+            },
+          });
+          if (existingByIdempotency) {
+            return this.mapFinancialTransaction(existingByIdempotency);
+          }
+        }
+
+        // 6. Duplicate Submission Protection (same session, submitter, amount, notes within 60s)
+        const sixtySecondsAgo = new Date(Date.now() - 60000);
+        const duplicateExpense = await tx.academyFinancialTransaction.findFirst({
+          where: {
             tenantId: tenantContext.tenantId,
-            branchId: dto.branchId,
             sessionId,
             recordedByUserId: tenantContext.actorUserId,
             type: 'SESSION_EXPENSE',
-            amount: dto.amount,
-            currency: 'SAR',
-            paymentMethod: dto.paymentMethod as any,
-            status: 'COMPLETED',
-            receiptNumber,
+            amount: sanitizedAmount,
             notes: dto.notes,
+            createdAt: { gte: sixtySecondsAgo },
           },
           include: {
             branch: { select: { name: true } },
             recordedByUser: { select: { name: true } },
+            approvedByUser: { select: { name: true } },
+          },
+        });
+
+        if (duplicateExpense) {
+          return this.mapFinancialTransaction(duplicateExpense);
+        }
+
+        // 7. Determine status: COACH expenses are PENDING review; OWNER/MANAGER/ACCOUNTANT are auto-approved (COMPLETED)
+        const now = new Date();
+        const receiptNumber =
+          dto.receiptNumber || `EXP-${now.getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+        const isAutoApproved = isOwnerOrManager;
+
+        const transaction = await tx.academyFinancialTransaction.create({
+          data: {
+            tenantId: tenantContext.tenantId,
+            branchId: session.branchId,
+            sessionId,
+            recordedByUserId: tenantContext.actorUserId,
+            type: 'SESSION_EXPENSE',
+            amount: sanitizedAmount,
+            currency: 'SAR',
+            paymentMethod: dto.paymentMethod as any,
+            status: isAutoApproved ? 'COMPLETED' : 'PENDING',
+            approvedByUserId: isAutoApproved ? tenantContext.actorUserId : null,
+            approvedAt: isAutoApproved ? now : null,
+            receiptNumber,
+            notes: dto.notes,
+            idempotencyKey: dto.idempotencyKey || null,
+          },
+          include: {
+            branch: { select: { name: true } },
+            recordedByUser: { select: { name: true } },
+            approvedByUser: { select: { name: true } },
           },
         });
 
         await this.auditService.logEvent({
           tenantId: tenantContext.tenantId,
           actorUserId: tenantContext.actorUserId,
-          action: 'SESSION_EXPENSE_RECORDED',
+          action: isAutoApproved ? 'SESSION_EXPENSE_APPROVED' : 'SESSION_EXPENSE_SUBMITTED',
           resourceType: 'AcademyFinancialTransaction',
           resourceId: transaction.id,
-          metadata: { sessionId, amount: dto.amount, reason: dto.notes },
+          metadata: {
+            sessionId,
+            amount: sanitizedAmount,
+            status: transaction.status,
+            reason: dto.notes,
+            idempotencyKey: dto.idempotencyKey,
+          },
         });
 
-        return {
-          id: transaction.id,
-          tenantId: transaction.tenantId,
-          branchId: transaction.branchId,
-          branchName: transaction.branch.name,
-          sessionId: transaction.sessionId,
-          playerId: null,
-          playerName: null,
-          subscriptionId: null,
-          recordedByUserId: transaction.recordedByUserId,
-          recordedByName: transaction.recordedByUser.name,
-          type: transaction.type as any,
-          amount: transaction.amount,
-          currency: transaction.currency,
-          paymentMethod: transaction.paymentMethod as any,
-          status: transaction.status as any,
-          receiptNumber: transaction.receiptNumber,
-          referenceNumber: null,
-          notes: transaction.notes,
-          reversalReason: null,
-          reversedAt: null,
-          createdAt: transaction.createdAt.toISOString(),
-        };
+        return this.mapFinancialTransaction(transaction);
+      },
+    );
+  }
+
+  /**
+   * Approves a pending session expense. Enforces separation of duties (no self-approval for non-owners).
+   */
+  async approveSessionExpense(
+    tenantContext: TenantContext,
+    transactionId: string,
+    dto?: ApproveExpenseRequest,
+  ): Promise<FinancialTransactionItem> {
+    return this.prisma.withTenantTransaction(
+      { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
+      async (tx) => {
+        const transaction = await tx.academyFinancialTransaction.findUnique({
+          where: { tenantId_id: { tenantId: tenantContext.tenantId, id: transactionId } },
+          include: {
+            branch: { select: { name: true } },
+            recordedByUser: { select: { name: true } },
+          },
+        });
+
+        if (!transaction || transaction.type !== 'SESSION_EXPENSE') {
+          throw new NotFoundException({
+            code: ErrorCode.NOT_FOUND,
+            message: 'Session expense not found',
+          });
+        }
+
+        if (transaction.status === 'COMPLETED') {
+          throw new BadRequestException({
+            code: ErrorCode.VALIDATION_FAILED,
+            message: 'Expense has already been approved',
+          });
+        }
+
+        if (transaction.status === 'REVERSED' || transaction.status === 'REJECTED') {
+          throw new BadRequestException({
+            code: ErrorCode.VALIDATION_FAILED,
+            message: `Cannot approve an expense that is already ${transaction.status.toLowerCase()}`,
+          });
+        }
+
+        // Enforce separation of duties: non-owner staff cannot approve their own expenses
+        if (transaction.recordedByUserId === tenantContext.actorUserId && tenantContext.role !== 'OWNER') {
+          throw new ForbiddenException({
+            code: ErrorCode.FORBIDDEN,
+            message: 'Separation of duties: you cannot approve your own submitted expense',
+          });
+        }
+
+        const now = new Date();
+        const updated = await tx.academyFinancialTransaction.update({
+          where: { id: transactionId },
+          data: {
+            status: 'COMPLETED',
+            approvedByUserId: tenantContext.actorUserId,
+            approvedAt: now,
+            notes: dto?.notes
+              ? `${transaction.notes ? transaction.notes + ' | ' : ''}Approval note: ${dto.notes}`
+              : transaction.notes,
+          },
+          include: {
+            branch: { select: { name: true } },
+            recordedByUser: { select: { name: true } },
+            approvedByUser: { select: { name: true } },
+          },
+        });
+
+        await this.auditService.logEvent({
+          tenantId: tenantContext.tenantId,
+          actorUserId: tenantContext.actorUserId,
+          action: 'SESSION_EXPENSE_APPROVED',
+          resourceType: 'AcademyFinancialTransaction',
+          resourceId: transactionId,
+          metadata: {
+            amount: transaction.amount,
+            sessionId: transaction.sessionId,
+            submitterUserId: transaction.recordedByUserId,
+            approvedByUserId: tenantContext.actorUserId,
+          },
+        });
+
+        return this.mapFinancialTransaction(updated);
+      },
+    );
+  }
+
+  /**
+   * Rejects a pending session expense with mandatory reason.
+   */
+  async rejectSessionExpense(
+    tenantContext: TenantContext,
+    transactionId: string,
+    dto: RejectExpenseRequest,
+  ): Promise<FinancialTransactionItem> {
+    return this.prisma.withTenantTransaction(
+      { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
+      async (tx) => {
+        const transaction = await tx.academyFinancialTransaction.findUnique({
+          where: { tenantId_id: { tenantId: tenantContext.tenantId, id: transactionId } },
+          include: {
+            branch: { select: { name: true } },
+            recordedByUser: { select: { name: true } },
+          },
+        });
+
+        if (!transaction || transaction.type !== 'SESSION_EXPENSE') {
+          throw new NotFoundException({
+            code: ErrorCode.NOT_FOUND,
+            message: 'Session expense not found',
+          });
+        }
+
+        if (transaction.status === 'REJECTED') {
+          throw new BadRequestException({
+            code: ErrorCode.VALIDATION_FAILED,
+            message: 'Expense has already been rejected',
+          });
+        }
+
+        if (transaction.status === 'REVERSED') {
+          throw new BadRequestException({
+            code: ErrorCode.VALIDATION_FAILED,
+            message: 'Cannot reject an expense that was reversed',
+          });
+        }
+
+        const updated = await tx.academyFinancialTransaction.update({
+          where: { id: transactionId },
+          data: {
+            status: 'REJECTED',
+            rejectionReason: dto.reason,
+          },
+          include: {
+            branch: { select: { name: true } },
+            recordedByUser: { select: { name: true } },
+            approvedByUser: { select: { name: true } },
+          },
+        });
+
+        await this.auditService.logEvent({
+          tenantId: tenantContext.tenantId,
+          actorUserId: tenantContext.actorUserId,
+          action: 'SESSION_EXPENSE_REJECTED',
+          resourceType: 'AcademyFinancialTransaction',
+          resourceId: transactionId,
+          metadata: {
+            amount: transaction.amount,
+            sessionId: transaction.sessionId,
+            rejectionReason: dto.reason,
+            rejectedByUserId: tenantContext.actorUserId,
+          },
+        });
+
+        return this.mapFinancialTransaction(updated);
       },
     );
   }
@@ -696,6 +972,11 @@ export class FinanceService {
           include: {
             branch: { select: { name: true } },
             records: true,
+            group: {
+              include: {
+                coaches: true,
+              },
+            },
             cashierClosing: { include: { closedByUser: { select: { name: true } } } },
           },
         });
@@ -707,17 +988,36 @@ export class FinanceService {
           });
         }
 
-        // Transactions recorded for this session
+        // Verify coach authorization to view session cashier
+        const isOwnerOrManager =
+          tenantContext.role === 'OWNER' ||
+          tenantContext.role === 'MANAGER' ||
+          tenantContext.role === 'ACCOUNTANT';
+
+        if (!isOwnerOrManager) {
+          const isAssigned =
+            session.coachUserId === tenantContext.actorUserId ||
+            session.group?.coaches.some((c) => c.coachUserId === tenantContext.actorUserId);
+
+          if (!isAssigned) {
+            throw new ForbiddenException({
+              code: ErrorCode.FORBIDDEN,
+              message: 'You are only permitted to view cashier summary for sessions you are assigned to',
+            });
+          }
+        }
+
+        // Transactions recorded for this session (all statuses for visibility)
         const transactions = await tx.academyFinancialTransaction.findMany({
           where: {
             tenantId: tenantContext.tenantId,
             sessionId,
-            status: 'COMPLETED',
           },
           include: {
             branch: { select: { name: true } },
             player: { select: { firstName: true, lastName: true } },
             recordedByUser: { select: { name: true } },
+            approvedByUser: { select: { name: true } },
           },
           orderBy: { createdAt: 'desc' },
         });
@@ -743,14 +1043,17 @@ export class FinanceService {
         let totalExpenses = 0;
 
         for (const t of transactions) {
-          if (t.type === 'MEMBERSHIP_FEE' || t.type === 'REGISTRATION_FEE') {
-            if (t.paymentMethod === 'CASH') {
-              totalCashCollected += t.amount;
-            } else {
-              totalElectronicCollected += t.amount;
+          // ONLY COMPLETED transactions affect cash balances
+          if (t.status === 'COMPLETED') {
+            if (t.type === 'MEMBERSHIP_FEE' || t.type === 'REGISTRATION_FEE') {
+              if (t.paymentMethod === 'CASH') {
+                totalCashCollected += t.amount;
+              } else {
+                totalElectronicCollected += t.amount;
+              }
+            } else if (t.type === 'SESSION_EXPENSE') {
+              totalExpenses += t.amount;
             }
-          } else if (t.type === 'SESSION_EXPENSE') {
-            totalExpenses += t.amount;
           }
         }
 
@@ -777,29 +1080,7 @@ export class FinanceService {
           reconciledAt: session.cashierClosing?.reconciledAt ? session.cashierClosing.reconciledAt.toISOString() : null,
           closedByUserName: session.cashierClosing?.closedByUser?.name ?? null,
           notes: session.cashierClosing?.notes ?? null,
-          transactions: transactions.map((t) => ({
-            id: t.id,
-            tenantId: t.tenantId,
-            branchId: t.branchId,
-            branchName: t.branch.name,
-            sessionId: t.sessionId,
-            playerId: t.playerId,
-            playerName: t.player ? `${t.player.firstName} ${t.player.lastName}` : null,
-            subscriptionId: t.subscriptionId,
-            recordedByUserId: t.recordedByUserId,
-            recordedByName: t.recordedByUser.name,
-            type: t.type as any,
-            amount: t.amount,
-            currency: t.currency,
-            paymentMethod: t.paymentMethod as any,
-            status: t.status as any,
-            receiptNumber: t.receiptNumber,
-            referenceNumber: t.referenceNumber,
-            notes: t.notes,
-            reversalReason: t.reversalReason,
-            reversedAt: t.reversedAt ? t.reversedAt.toISOString() : null,
-            createdAt: t.createdAt.toISOString(),
-          })),
+          transactions: transactions.map((t) => this.mapFinancialTransaction(t)),
         };
       },
     );
@@ -857,22 +1138,18 @@ export class FinanceService {
         await this.auditService.logEvent({
           tenantId: tenantContext.tenantId,
           actorUserId: tenantContext.actorUserId,
-          action: 'SESSION_CASHIER_RECONCILED',
+          action: 'SESSION_CASHIER_CLOSED',
           resourceType: 'SessionCashierClosing',
           resourceId: sessionId,
           metadata: {
+            sessionId,
             netCashMovement: summary.netCashMovement,
-            totalCashCollected: summary.totalCashCollected,
             totalExpenses: summary.totalExpenses,
+            totalCashCollected: summary.totalCashCollected,
           },
         });
 
-        return {
-          ...summary,
-          isReconciled: true,
-          reconciledAt: new Date().toISOString(),
-          notes: dto.notes ?? null,
-        };
+        return this.getSessionCashierSummary(tenantContext, sessionId);
       },
     );
   }

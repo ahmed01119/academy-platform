@@ -83,6 +83,8 @@ import type {
   RecordPlayerPaymentRequest,
   ReverseTransactionRequest,
   RecordSessionExpenseRequest,
+  ApproveExpenseRequest,
+  RejectExpenseRequest,
   SessionCashierSummary,
   CloseSessionCashierRequest,
   AcademyFinancialDashboardMetrics,
@@ -835,6 +837,26 @@ export const api = {
       data: RecordSessionExpenseRequest,
     ): Promise<FinancialTransactionItem> {
       return request(`/finance/sessions/${sessionId}/expense`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
+
+    async approveSessionExpense(
+      id: string,
+      data?: ApproveExpenseRequest,
+    ): Promise<FinancialTransactionItem> {
+      return request(`/finance/expenses/${id}/approve`, {
+        method: 'POST',
+        body: JSON.stringify(data || {}),
+      });
+    },
+
+    async rejectSessionExpense(
+      id: string,
+      data: RejectExpenseRequest,
+    ): Promise<FinancialTransactionItem> {
+      return request(`/finance/expenses/${id}/reject`, {
         method: 'POST',
         body: JSON.stringify(data),
       });

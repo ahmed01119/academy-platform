@@ -147,12 +147,17 @@ export const FinancialTransactionItemSchema = z.object({
   amount: z.number(),
   currency: z.string(),
   paymentMethod: z.enum(['CASH', 'BANK_TRANSFER', 'CARD', 'POS', 'ONLINE']),
-  status: z.enum(['COMPLETED', 'REVERSED', 'PENDING']),
+  status: z.enum(['COMPLETED', 'REVERSED', 'PENDING', 'REJECTED']),
   receiptNumber: z.string().nullable().optional(),
   referenceNumber: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
   reversalReason: z.string().nullable().optional(),
   reversedAt: z.string().or(z.date()).nullable().optional(),
+  approvedByUserId: z.string().uuid().nullable().optional(),
+  approvedByName: z.string().nullable().optional(),
+  approvedAt: z.string().or(z.date()).nullable().optional(),
+  rejectionReason: z.string().nullable().optional(),
+  idempotencyKey: z.string().nullable().optional(),
   createdAt: z.string().or(z.date()),
 });
 
@@ -184,9 +189,22 @@ export const RecordSessionExpenseRequestSchema = z.object({
   paymentMethod: z.enum(['CASH', 'BANK_TRANSFER', 'CARD', 'POS', 'ONLINE']).default('CASH'),
   receiptNumber: z.string().trim().max(100).optional(),
   notes: z.string().trim().min(3, 'Expense reason/notes required').max(500),
+  idempotencyKey: z.string().trim().max(100).optional(),
 });
 
 export type RecordSessionExpenseRequest = z.infer<typeof RecordSessionExpenseRequestSchema>;
+
+export const ApproveExpenseRequestSchema = z.object({
+  notes: z.string().trim().max(500).optional(),
+});
+
+export type ApproveExpenseRequest = z.infer<typeof ApproveExpenseRequestSchema>;
+
+export const RejectExpenseRequestSchema = z.object({
+  reason: z.string().trim().min(3, 'Rejection reason must be at least 3 characters').max(500),
+});
+
+export type RejectExpenseRequest = z.infer<typeof RejectExpenseRequestSchema>;
 
 // ==========================================
 // 4. Session Cashier Closing & Reconciliation

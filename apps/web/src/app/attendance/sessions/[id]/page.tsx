@@ -7,6 +7,8 @@ import { useAuth } from '../../../../lib/auth-context';
 import { AppShell } from '../../../../components/layout/AppShell';
 import { PageHeader } from '../../../../components/ui/PageHeader';
 import { ErrorState } from '../../../../components/ui/ErrorState';
+import { StatusBadge } from '../../../../components/ui/StatusBadge';
+import { useToast } from '../../../../components/ui/Toast';
 import { api } from '../../../../lib/api-client';
 import type {
   AttendanceEventSummary,
@@ -48,6 +50,7 @@ export default function SessionAttendancePage() {
   const params = useParams();
   const sessionId = params.id as string;
   const { user, activeTenant, isLoading } = useAuth();
+  const { toast } = useToast();
 
   const [session, setSession] = useState<SessionDetails | null>(null);
   const [isFetching, setIsFetching] = useState(true);
@@ -95,6 +98,20 @@ export default function SessionAttendancePage() {
   const [expenseAmount, setExpenseAmount] = useState<number>(0);
   const [expenseNotes, setExpenseNotes] = useState('');
   const [isSubmittingExpense, setIsSubmittingExpense] = useState(false);
+
+  // Session Expense Approval & Rejection State
+  const [approvingExpenseId, setApprovingExpenseId] = useState<string | null>(null);
+  const [rejectingExpenseId, setRejectingExpenseId] = useState<string | null>(null);
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [isSubmittingRejectExpense, setIsSubmittingRejectExpense] = useState(false);
+
+  const userRole = activeTenant?.role;
+  const canApproveExpenses =
+    Boolean(user?.isPlatformSuperAdmin) ||
+    userRole === 'OWNER' ||
+    userRole === 'MANAGER' ||
+    userRole === 'BRANCH_MANAGER' ||
+    userRole === 'ACCOUNTANT';
 
   // Close Cashier Modal
   const [isCloseCashierModalOpen, setIsCloseCashierModalOpen] = useState(false);
@@ -173,9 +190,10 @@ export default function SessionAttendancePage() {
         notes: paymentNotes.trim() || undefined,
       });
       setIsPaymentModalOpen(false);
+      toast.success('تم تسجيل الدفعة المالية بنجاح وتحديث كشف الحساب');
       await Promise.all([loadSessionDetails(), loadCashierSummary()]);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'فشل تسجيل الدفعة');
+      toast.error(err instanceof Error ? err.message : 'فشل تسجيل الدفعة');
     } finally {
       setIsSubmittingPayment(false);
     }
@@ -195,11 +213,47 @@ export default function SessionAttendancePage() {
       setIsExpenseModalOpen(false);
       setExpenseAmount(0);
       setExpenseNotes('');
+      if (userRole === 'COACH') {
+        toast.info('تم تقديم المصروف بنجاح وهو الآن قيد مراجعة واعتماد الإدارة');
+      } else {
+        toast.success('تم تسجيل المصروف واعتماده بنجاح وتحديث الصندوق');
+      }
       await loadCashierSummary();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'فشل تسجيل المصروف');
+      toast.error(err instanceof Error ? err.message : 'فشل تسجيل المصروف');
     } finally {
       setIsSubmittingExpense(false);
+    }
+  };
+
+  const handleApproveExpense = async (expenseId: string) => {
+    setApprovingExpenseId(expenseId);
+    try {
+      await api.finance.approveSessionExpense(expenseId);
+      toast.success('تم اعتماد المصروف بنجاح وتحديث رصيد الصندوق');
+      await loadCashierSummary();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'فشل اعتماد المصروف');
+    } finally {
+      setApprovingExpenseId(null);
+    }
+  };
+
+  const handleConfirmRejectExpense = async () => {
+    if (!rejectingExpenseId || !rejectionReason.trim()) return;
+    setIsSubmittingRejectExpense(true);
+    try {
+      await api.finance.rejectSessionExpense(rejectingExpenseId, {
+        reason: rejectionReason.trim(),
+      });
+      toast.success('تم رفض المصروف وتوثيق السبب في سجل التدقيق');
+      setRejectingExpenseId(null);
+      setRejectionReason('');
+      await loadCashierSummary();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'فشل رفض المصروف');
+    } finally {
+      setIsSubmittingRejectExpense(false);
     }
   };
 
@@ -212,9 +266,10 @@ export default function SessionAttendancePage() {
       });
       setIsCloseCashierModalOpen(false);
       setCloseCashierNotes('');
+      toast.success('تمت مطابقة وإغلاق الصندوق المالي بنجاح');
       await loadCashierSummary();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'فشل إغلاق الصندوق المالي');
+      toast.error(err instanceof Error ? err.message : 'فشل إغلاق الصندوق المالي');
     } finally {
       setIsSubmittingCloseCashier(false);
     }
@@ -249,7 +304,7 @@ export default function SessionAttendancePage() {
         setQrCheckInPlayerId(firstRosterItem.playerId);
       }
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'فشل توليد رمز QR');
+      toast.error(err instanceof Error ? err.message : 'فشل توليد رمز QR');
     } finally {
       setIsGeneratingQr(false);
     }
@@ -263,10 +318,11 @@ export default function SessionAttendancePage() {
         token: qrData.token,
         playerId: qrCheckInPlayerId,
       });
+      toast.success('تم تسجيل الحضور عبر رمز QR بنجاح!');
       setQrSimSuccess('تم تسجيل الحضور عبر QR بنجاح!');
       await loadSessionDetails();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'فشل التحضير بالرمز');
+      toast.error(err instanceof Error ? err.message : 'فشل التحضير بالرمز');
     }
   };
 
@@ -289,9 +345,10 @@ export default function SessionAttendancePage() {
     if (!confirm('هل أنت متأكد من إغلاق الحصة التدريبية؟ سيتم قفل التحضير.')) return;
     try {
       await api.attendance.closeSession(sessionId);
+      toast.success('تم إغلاق الحصة التدريبية بنجاح');
       await loadSessionDetails();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'فشل إغلاق الحصة');
+      toast.error(err instanceof Error ? err.message : 'فشل إغلاق الحصة');
     }
   };
 
@@ -375,7 +432,7 @@ export default function SessionAttendancePage() {
       console.error('Failed to mark attendance, rolling back:', err);
       // Rollback on error
       setSession((curr) => (curr ? { ...curr, roster: previousRoster } : null));
-      alert(err instanceof Error ? err.message : 'فشل تسجيل حالة الحضور');
+      toast.error(err instanceof Error ? err.message : 'فشل تسجيل حالة الحضور');
     } finally {
       setPendingPlayerIds((prev) => {
         const next = new Set(prev);
@@ -390,7 +447,7 @@ export default function SessionAttendancePage() {
     if (!session || session.status === 'CLOSED') return;
     const unmarkedPlayers = session.roster.filter((r) => r.status === 'UNMARKED');
     if (unmarkedPlayers.length === 0) {
-      alert('جميع اللاعبين تم تسجيل حضورهم بالفعل');
+      toast.info('جميع اللاعبين تم تسجيل حضورهم بالفعل');
       return;
     }
 
@@ -414,9 +471,10 @@ export default function SessionAttendancePage() {
           expectedVersion: p.version,
         })),
       });
+      toast.success(`تم تحضير ${unmarkedPlayers.length} لاعب بنجاح`);
       await loadSessionDetails();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'فشل التحضير الجماعي');
+      toast.error(err instanceof Error ? err.message : 'فشل التحضير الجماعي');
     } finally {
       setIsBulkMarking(false);
     }
@@ -710,38 +768,107 @@ export default function SessionAttendancePage() {
               {/* Session Transactions History */}
               {cashierSummary?.transactions && cashierSummary.transactions.length > 0 && (
                 <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] overflow-hidden text-xs">
-                  <div className="px-3.5 py-2 font-bold text-[var(--text-primary)] border-b border-[var(--border-subtle)]">
-                    حركات الصندوق المسجلة في هذه الحصة ({cashierSummary.transactions.length})
+                  <div className="px-3.5 py-2 font-bold text-[var(--text-primary)] border-b border-[var(--border-subtle)] flex items-center justify-between">
+                    <span>حركات الصندوق المسجلة في هذه الحصة ({cashierSummary.transactions.length})</span>
+                    <span className="text-[10px] text-[var(--text-muted)] font-normal">
+                      تتطلب مصروفات المدربين اعتماد الإدارة لتسويتها في الصندوق
+                    </span>
                   </div>
-                  <div className="divide-y divide-[var(--border-subtle)] max-h-48 overflow-y-auto">
+                  <div className="divide-y divide-[var(--border-subtle)] max-h-72 overflow-y-auto">
                     {cashierSummary.transactions.map((tx) => (
-                      <div key={tx.id} className="p-3 flex items-center justify-between gap-2">
-                        <div>
-                          <div className="font-bold text-[var(--text-primary)]">
-                            {tx.type === 'SESSION_EXPENSE' ? 'مصروف حصة' : tx.playerName || 'سداد اشتراك'}
+                      <div key={tx.id} className="p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-[var(--bg-surface)]/50 transition-colors">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-bold text-[var(--text-primary)]">
+                              {tx.type === 'SESSION_EXPENSE' ? 'مصروف حصة' : tx.playerName || 'سداد اشتراك'}
+                            </span>
+                            <StatusBadge status={tx.status} size="sm" />
+                            {tx.type === 'SESSION_EXPENSE' && tx.status === 'PENDING' && (
+                              <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">
+                                (قيد الاعتماد - لا يخصم من الصندوق حتى يعتمد)
+                              </span>
+                            )}
                           </div>
-                          <div className="text-[10px] text-[var(--text-muted)] flex items-center gap-2 mt-0.5">
-                            <span>{tx.receiptNumber || tx.id.slice(0, 8)}</span>
-                            <span>• {tx.paymentMethod}</span>
-                            {tx.notes && <span>• {tx.notes}</span>}
+                          <div className="text-[10px] text-[var(--text-muted)] flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
+                            <span>رقم الإيصال: {tx.receiptNumber || tx.id.slice(0, 8)}</span>
+                            <span>• طريقة الدفع: {tx.paymentMethod}</span>
+                            {tx.recordedByName && <span>• المسجل: {tx.recordedByName}</span>}
+                            {tx.notes && <span>• ملاحظة: {tx.notes}</span>}
+                            {tx.status === 'COMPLETED' && tx.approvedByName && (
+                              <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+                                • معتمد بواسطة: {tx.approvedByName}
+                              </span>
+                            )}
+                            {tx.status === 'REJECTED' && tx.rejectionReason && (
+                              <span className="text-rose-600 dark:text-rose-400 font-medium">
+                                • سبب الرفض: {tx.rejectionReason}
+                              </span>
+                            )}
                           </div>
                         </div>
-                        <div className="text-right">
-                          <span
-                            className={`font-mono font-bold ${
-                              tx.type === 'SESSION_EXPENSE' ? 'text-rose-500' : 'text-emerald-500'
-                            }`}
-                          >
-                            {tx.type === 'SESSION_EXPENSE' ? '-' : '+'}
-                            {tx.amount} ر.س
-                          </span>
-                          <div className="text-[10px] text-[var(--text-muted)]">
-                            {tx.createdAt
-                              ? new Date(tx.createdAt).toLocaleTimeString('ar-EG', {
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                })
-                              : ''}
+
+                        <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
+                          {/* Inline Approval / Rejection Controls for Pending Expenses */}
+                          {tx.type === 'SESSION_EXPENSE' && tx.status === 'PENDING' && canApproveExpenses && (
+                            <div className="flex items-center gap-1.5">
+                              {user?.id === tx.recordedByUserId && userRole !== 'OWNER' ? (
+                                <span className="text-[10px] text-[var(--text-muted)] italic bg-[var(--bg-surface)] px-2 py-0.5 rounded-md border border-[var(--border-subtle)]">
+                                  فصل الصلاحيات (بانتظار مسؤول آخر)
+                                </span>
+                              ) : (
+                                <>
+                                  <button
+                                    type="button"
+                                    disabled={approvingExpenseId === tx.id}
+                                    onClick={() => handleApproveExpense(tx.id)}
+                                    className="flex items-center gap-1 rounded-lg bg-emerald-600/10 hover:bg-emerald-600 text-emerald-700 dark:text-emerald-300 hover:text-white px-2.5 py-1 text-[11px] font-bold border border-emerald-500/30 transition-all cursor-pointer disabled:opacity-50"
+                                    title="اعتماد المصروف وإدراجه في حسابات الصندوق"
+                                  >
+                                    {approvingExpenseId === tx.id ? (
+                                      <RefreshCw className="h-3 w-3 animate-spin" />
+                                    ) : (
+                                      <Check className="h-3 w-3" />
+                                    )}
+                                    <span>اعتماد</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setRejectingExpenseId(tx.id);
+                                      setRejectionReason('');
+                                    }}
+                                    className="flex items-center gap-1 rounded-lg bg-rose-600/10 hover:bg-rose-600 text-rose-700 dark:text-rose-300 hover:text-white px-2.5 py-1 text-[11px] font-bold border border-rose-500/30 transition-all cursor-pointer"
+                                    title="رفض المصروف مع توثيق السبب"
+                                  >
+                                    <X className="h-3 w-3" />
+                                    <span>رفض</span>
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          )}
+
+                          <div className="text-right min-w-[70px]">
+                            <span
+                              className={`font-mono font-bold block ${
+                                tx.type === 'SESSION_EXPENSE'
+                                  ? tx.status === 'REJECTED'
+                                    ? 'line-through text-slate-400'
+                                    : 'text-rose-500'
+                                  : 'text-emerald-500'
+                              }`}
+                            >
+                              {tx.type === 'SESSION_EXPENSE' ? '-' : '+'}
+                              {tx.amount} ر.س
+                            </span>
+                            <div className="text-[10px] text-[var(--text-muted)]">
+                              {tx.createdAt
+                                ? new Date(tx.createdAt).toLocaleTimeString('ar-EG', {
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                  })
+                                : ''}
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -1549,6 +1676,71 @@ export default function SessionAttendancePage() {
           </div>
         </div>
       )}
+
+      {/* 4. REJECT EXPENSE MODAL */}
+      {rejectingExpenseId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="w-full max-w-md rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-2xl relative space-y-4 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
+              <div className="flex items-center gap-2">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400">
+                  <XCircle className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-[var(--text-primary)]">رفض المصروف الميداني</h3>
+                  <p className="text-xs text-[var(--text-muted)]">توثيق سبب الرفض في سجل التدقيق المالي</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRejectingExpenseId(null)}
+                className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <p className="text-xs text-[var(--text-secondary)]">
+                سيتم وضع المصروف في حالة <strong className="text-rose-600">مرفوض</strong> ولن يتم خصمه نهائياً من الصندوق المالي أو كشف الحساب.
+              </p>
+
+              <div>
+                <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1.5">
+                  سبب الرفض <span className="text-rose-500">*</span>
+                </label>
+                <textarea
+                  rows={3}
+                  value={rejectionReason}
+                  onChange={(e) => setRejectionReason(e.target.value)}
+                  placeholder="مثال: المصروف غير مشمول بسياسة الأكاديمية، أو لم يتم إرفاق فاتورة رسمية..."
+                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:border-rose-500 focus:outline-none resize-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-[var(--border-subtle)]">
+              <button
+                type="button"
+                onClick={() => setRejectingExpenseId(null)}
+                className="rounded-xl border border-[var(--border-subtle)] px-4 py-2 text-xs font-semibold text-[var(--text-muted)] hover:bg-[var(--bg-elevated)] transition-colors cursor-pointer"
+              >
+                إلغاء
+              </button>
+              <button
+                type="button"
+                disabled={isSubmittingRejectExpense || !rejectionReason.trim()}
+                onClick={handleConfirmRejectExpense}
+                className="flex items-center gap-1.5 rounded-xl bg-rose-600 px-5 py-2 text-xs font-bold text-white shadow hover:brightness-110 disabled:opacity-50 transition-all cursor-pointer"
+              >
+                {isSubmittingRejectExpense && <RefreshCw className="h-3.5 w-3.5 animate-spin" />}
+                <span>تأكيد الرفض</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppShell>
   );
 }
+

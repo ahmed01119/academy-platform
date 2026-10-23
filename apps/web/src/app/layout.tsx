@@ -3,6 +3,7 @@ import { DEFAULT_LOCALE, LOCALE_DIRECTION } from '@academy/shared';
 import { AuthProvider } from '../lib/auth-context';
 import { ThemeProvider, themeInitScript } from '../lib/theme-context';
 import { LocaleProvider } from '../lib/locale-context';
+import { ToastProvider } from '../components/ui/Toast';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -28,7 +29,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body>
         <ThemeProvider>
           <LocaleProvider>
-            <AuthProvider>{children}</AuthProvider>
+            <AuthProvider>
+              <ToastProvider>{children}</ToastProvider>
+            </AuthProvider>
           </LocaleProvider>
         </ThemeProvider>
       </body>

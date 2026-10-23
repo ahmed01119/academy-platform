@@ -22,7 +22,7 @@ interface StatusBadgeProps {
 const DEFAULT_STATUS_LABELS: Record<string, string> = {
   ACTIVE: 'نشط',
   INACTIVE: 'غير نشط',
-  PENDING: 'قيد الانتظار',
+  PENDING: 'قيد الاعتماد',
   SUSPENDED: 'معلق',
   PRESENT: 'حاضر',
   ABSENT: 'غائب',
@@ -31,8 +31,12 @@ const DEFAULT_STATUS_LABELS: Record<string, string> = {
   MAINTENANCE: 'صيانة',
   SCHEDULED: 'مجدول',
   IN_PROGRESS: 'جارية الآن',
-  COMPLETED: 'مكتملة',
+  COMPLETED: 'معتمد / مكتمل',
   CANCELLED: 'ملغاة',
+  REJECTED: 'مرفوض',
+  REVERSED: 'معكوس',
+  OVERDUE: 'متأخر سداده',
+  PARTIAL: 'سداد جزئي',
 };
 
 export function StatusBadge({
@@ -49,13 +53,13 @@ export function StatusBadge({
     const s = status.toUpperCase();
     if (['ACTIVE', 'PRESENT', 'CONFIRMED', 'PUBLISHED', 'ACCEPTED', 'COMPLETED'].includes(s)) {
       computedVariant = 'success';
-    } else if (['LATE', 'PROVISIONING', 'PENDING', 'SCHEDULED'].includes(s)) {
+    } else if (['LATE', 'PROVISIONING', 'PENDING', 'SCHEDULED', 'PARTIAL'].includes(s)) {
       computedVariant = 'warning';
-    } else if (['SUSPENDED', 'ABSENT', 'REVOKED', 'EXPIRED', 'FAILED', 'CANCELLED', 'INACTIVE'].includes(s)) {
+    } else if (['SUSPENDED', 'ABSENT', 'REVOKED', 'EXPIRED', 'FAILED', 'CANCELLED', 'INACTIVE', 'REJECTED', 'OVERDUE'].includes(s)) {
       computedVariant = 'danger';
     } else if (['IN_PROGRESS', 'INVITED'].includes(s)) {
       computedVariant = 'info';
-    } else if (['EXCUSED', 'CLOSED'].includes(s)) {
+    } else if (['EXCUSED', 'CLOSED', 'REVERSED'].includes(s)) {
       computedVariant = 'purple';
     }
   }
