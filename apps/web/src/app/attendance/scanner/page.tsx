@@ -27,6 +27,7 @@ import { useAuth } from '../../../lib/auth-context';
 import { useLocale } from '../../../lib/locale-context';
 import { AppShell } from '../../../components/layout/AppShell';
 import { PageHeader } from '../../../components/ui/PageHeader';
+import { useToast } from '../../../components/ui/Toast';
 import { apiClient } from '../../../lib/api-client';
 import { offlineStore } from '../../../lib/offline-attendance-store';
 import type {
@@ -50,6 +51,7 @@ export default function MobileAttendanceScannerPage() {
   const router = useRouter();
   const { user, activeTenant, isLoading: authLoading } = useAuth();
   const { t } = useLocale();
+  const { toast } = useToast();
 
   // Session State
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
@@ -134,8 +136,9 @@ export default function MobileAttendanceScannerPage() {
           message: `${activeFeedback.message} • تم تحصيل ${paymentAmount} ر.س بنجاح!`,
         });
       }
+      toast.success(`تم تحصيل ${paymentAmount} ر.س بنجاح وتحديث حالة اللاعب`);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'فشل تسجيل الدفعة');
+      toast.error(err instanceof Error ? err.message : 'فشل تسجيل الدفعة');
     } finally {
       setIsSubmittingPayment(false);
     }

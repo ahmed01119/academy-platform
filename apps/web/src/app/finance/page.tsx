@@ -6,6 +6,7 @@ import { useAuth } from '../../lib/auth-context';
 import { useLocale } from '../../lib/locale-context';
 import { AppShell } from '../../components/layout/AppShell';
 import { PageHeader } from '../../components/ui/PageHeader';
+import { useToast } from '../../components/ui/Toast';
 import { apiClient } from '../../lib/api-client';
 import type {
   AcademyFinancialDashboardMetrics,
@@ -38,6 +39,7 @@ export default function FinanceDashboardPage() {
   const router = useRouter();
   const { user, activeTenant, isLoading: authLoading } = useAuth();
   const { t } = useLocale();
+  const { toast } = useToast();
 
   // Active Tab
   const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'SUBSCRIPTIONS' | 'PLANS'>('OVERVIEW');
@@ -194,9 +196,10 @@ export default function FinanceDashboardPage() {
         notes: paymentNotes.trim() || undefined,
       });
       setIsCollectPaymentOpen(false);
+      toast.success('تم تسجيل الدفعة بنجاح وتحديث الحساب');
       await loadFinancialData();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'فشل تسجيل الدفعة');
+      toast.error(err instanceof Error ? err.message : 'فشل تسجيل الدفعة');
     } finally {
       setIsSubmittingPayment(false);
     }
@@ -216,9 +219,10 @@ export default function FinanceDashboardPage() {
         reason: reversalReason.trim(),
       });
       setReversalTx(null);
+      toast.success('تم عكس المعاملة المالية وتوثيق السبب في سجل التدقيق');
       await loadFinancialData();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'فشل عكس المعاملة');
+      toast.error(err instanceof Error ? err.message : 'فشل عكس المعاملة');
     } finally {
       setIsSubmittingReversal(false);
     }
@@ -239,9 +243,10 @@ export default function FinanceDashboardPage() {
         notes: subNotes.trim() || undefined,
       });
       setIsCreateSubOpen(false);
+      toast.success('تم إنشاء اشتراك اللاعب بنجاح');
       await loadFinancialData();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'فشل إنشاء الاشتراك');
+      toast.error(err instanceof Error ? err.message : 'فشل إنشاء الاشتراك');
     } finally {
       setIsSubmittingNewSub(false);
     }
@@ -264,9 +269,10 @@ export default function FinanceDashboardPage() {
       setPlanName('');
       setPlanPrice(650);
       setPlanDescription('');
+      toast.success('تم إنشاء الباقة التدريبية بنجاح');
       await loadFinancialData();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'فشل إنشاء الباقة التدريبية');
+      toast.error(err instanceof Error ? err.message : 'فشل إنشاء الباقة التدريبية');
     } finally {
       setIsSubmittingPlan(false);
     }

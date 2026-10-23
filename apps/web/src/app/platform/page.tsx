@@ -12,6 +12,7 @@ import { StatusBadge } from '../../components/ui/StatusBadge';
 import { DataTable, type Column } from '../../components/ui/DataTable';
 import { FilterBar } from '../../components/ui/FilterBar';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { useToast } from '../../components/ui/Toast';
 import {
   Building2,
   Users,
@@ -41,6 +42,7 @@ import type {
 export default function PlatformSuperAdminPage() {
   const { user, isLoading: authLoading } = useAuth();
   const { t, locale } = useLocale();
+  const { toast } = useToast();
   const router = useRouter();
 
   const [activeTab, setActiveTab] = useState<'academies' | 'users' | 'plans' | 'security' | 'audit'>('academies');
@@ -138,17 +140,17 @@ export default function PlatformSuperAdminPage() {
     const defaultReason = locale === 'ar' ? 'معالجة تذكرة دعم فني بطلب من مالك الأكاديمية' : 'Resolving support ticket requested by academy owner';
     const reason = prompt(reasonPrompt, defaultReason);
     if (!reason || reason.trim().length < 10) {
-      alert(locale === 'ar' ? 'يجب إدخال سبب واضح لا يقل عن 10 أحرف لتوثيق الجلسة في سجل الأمان' : 'Reason must be at least 10 characters for compliance logging');
+      toast.warning(locale === 'ar' ? 'يجب إدخال سبب واضح لا يقل عن 10 أحرف لتوثيق الجلسة في سجل الأمان' : 'Reason must be at least 10 characters for compliance logging');
       return;
     }
 
     setActionLoading(academy.id);
     try {
       const res = await apiClient.platform.requestSupportAccess(academy.id, { reason });
-      alert(locale === 'ar' ? `تم تفعيل جلسة الدعم الفني بنجاح حتى: ${new Date(res.expiresAt).toLocaleTimeString()}` : `Support session authorized until: ${new Date(res.expiresAt).toLocaleTimeString()}`);
+      toast.success(locale === 'ar' ? `تم تفعيل جلسة الدعم الفني بنجاح حتى: ${new Date(res.expiresAt).toLocaleTimeString()}` : `Support session authorized until: ${new Date(res.expiresAt).toLocaleTimeString()}`);
       await loadData();
     } catch (err: unknown) {
-      alert((err as Error)?.message || 'Failed to start support session');
+      toast.error((err as Error)?.message || (locale === 'ar' ? 'فشل بدء جلسة الدعم الفني' : 'Failed to start support session'));
     } finally {
       setActionLoading(null);
     }
@@ -754,7 +756,7 @@ export default function PlatformSuperAdminPage() {
                           void apiClient.platform
                             .updateSaaSPlan(p.code, { priceMonthly: Number(newPrice) })
                             .then(() => {
-                              alert(locale === 'ar' ? 'تم تحديث السعر بنجاح' : 'Price updated successfully');
+                              toast.success(locale === 'ar' ? 'تم تحديث السعر بنجاح' : 'Price updated successfully');
                               void loadData();
                             });
                         }

@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '../../../lib/auth-context';
 import { useLocale } from '../../../lib/locale-context';
 import { AppShell } from '../../../components/layout/AppShell';
+import { useToast } from '../../../components/ui/Toast';
 import { api } from '../../../lib/api-client';
 import type { PlayerSummary, TrainingGroupDetails } from '@academy/shared';
 import {
@@ -32,6 +33,7 @@ export default function GroupDetailsPage() {
   const groupId = params.id as string;
   const { user, activeTenant, isLoading } = useAuth();
   const { t } = useLocale();
+  const { toast } = useToast();
 
   const [group, setGroup] = useState<TrainingGroupDetails | null>(null);
   const [activeTab, setActiveTab] = useState<'members' | 'coaches' | 'schedules'>('members');
@@ -144,6 +146,7 @@ export default function GroupDetailsPage() {
         startDate: new Date().toISOString().slice(0, 10),
       });
       setIsAddMemberModalOpen(false);
+      toast.success('تمت إضافة اللاعب للمجموعة التدريبية بنجاح');
       await loadGroupDetails();
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'فشل إضافة اللاعب للمجموعة');
@@ -158,9 +161,10 @@ export default function GroupDetailsPage() {
     }
     try {
       await api.groups.removePlayer(groupId, playerId);
+      toast.success(`تمت إزالة اللاعب "${playerName}" من المجموعة بنجاح`);
       await loadGroupDetails();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'فشل إزالة اللاعب');
+      toast.error(err instanceof Error ? err.message : 'فشل إزالة اللاعب');
     }
   };
 
@@ -178,6 +182,7 @@ export default function GroupDetailsPage() {
         isHeadCoach,
       });
       setIsAddCoachModalOpen(false);
+      toast.success('تم تعيين المدرب للمجموعة التدريبية بنجاح');
       await loadGroupDetails();
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'فشل تعيين المدرب للمجموعة');
@@ -192,9 +197,10 @@ export default function GroupDetailsPage() {
     }
     try {
       await api.groups.removeCoach(groupId, coachUserId);
+      toast.success(`تمت إزالة المدرب "${coachName}" من تدريب المجموعة`);
       await loadGroupDetails();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'فشل إزالة المدرب');
+      toast.error(err instanceof Error ? err.message : 'فشل إزالة المدرب');
     }
   };
 
@@ -210,6 +216,7 @@ export default function GroupDetailsPage() {
         location: scheduleForm.location.trim() || undefined,
       });
       setIsAddScheduleModalOpen(false);
+      toast.success('تمت إضافة الموعد التدريبي الأسبوعي بنجاح');
       await loadGroupDetails();
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'فشل إضافة الموعد التدريبي');
@@ -224,9 +231,10 @@ export default function GroupDetailsPage() {
     }
     try {
       await api.groups.deleteSchedule(groupId, scheduleId);
+      toast.success('تم حذف الموعد التدريبي الأسبوعي');
       await loadGroupDetails();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'فشل حذف الموعد التدريبي');
+      toast.error(err instanceof Error ? err.message : 'فشل حذف الموعد التدريبي');
     }
   };
 

@@ -7,7 +7,7 @@ import { useAuth } from '../../lib/auth-context';
 import { useLocale } from '../../lib/locale-context';
 import { canAccessAdminRoutes, canAccessCoachRoutes, getRoleHomeRoute } from '../../lib/role-routing';
 import { AppShell } from '../../components/layout/AppShell';
-import { PageHeader, StatusBadge } from '../../components/ui';
+import { PageHeader, StatusBadge, useToast } from '../../components/ui';
 import { api } from '../../lib/api-client';
 import type {
   BranchSummary,
@@ -53,6 +53,7 @@ function SessionsContent() {
 
   const { user, activeTenant, isLoading } = useAuth();
   const { t, locale, isRtl } = useLocale();
+  const { toast } = useToast();
 
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [branches, setBranches] = useState<BranchSummary[]>([]);
@@ -202,9 +203,10 @@ function SessionsContent() {
     }
     try {
       await api.attendance.closeSession(sessionId);
+      toast.success(locale === 'ar' ? 'تم إغلاق الحصة التدريبية وتثبيت سجل الحضور بنجاح' : 'Session closed and attendance locked successfully');
       await loadSessions();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'فشل إغلاق الحصة');
+      toast.error(err instanceof Error ? err.message : (locale === 'ar' ? 'فشل إغلاق الحصة' : 'Failed to close session'));
     }
   };
 
