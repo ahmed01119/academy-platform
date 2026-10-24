@@ -766,7 +766,7 @@ export default function MobileAttendanceScannerPage() {
             {isCameraActive && (
               <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
                 {/* Target Square Bracket */}
-                <div className="relative h-60 w-60 rounded-2xl border-2 border-emerald-400/70 shadow-2xl">
+                <div className="relative h-52 w-52 sm:h-60 sm:w-60 rounded-2xl border-2 border-emerald-400/70 shadow-2xl">
                   {/* Glowing Corner Brackets */}
                   <div className="absolute -top-1 -right-1 h-6 w-6 border-t-4 border-r-4 border-emerald-400 rounded-tr-lg" />
                   <div className="absolute -top-1 -left-1 h-6 w-6 border-t-4 border-l-4 border-emerald-400 rounded-tl-lg" />

@@ -25,12 +25,15 @@ import {
   HeartHandshake,
   UserCheck,
   QrCode,
+  Menu,
+  X,
 } from 'lucide-react';
 
 export function Navbar() {
   const { user, activeTenant, memberships, logout, switchTenant } = useAuth();
   const { t, locale } = useLocale();
   const [isTenantMenuOpen, setIsTenantMenuOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const roleLabels: Record<string, string> = {
     OWNER: locale === 'ar' ? 'مالك الأكاديمية' : 'Academy Owner',
@@ -54,23 +57,25 @@ export function Navbar() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-[var(--border-app)] bg-[var(--bg-base)]/90 backdrop-blur-md transition-colors">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-3 sm:px-6 lg:px-8">
         {/* Brand & Nav */}
-        <div className="flex items-center gap-6 lg:gap-8">
-          <Link href="/" className="flex items-center gap-3 group">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-[var(--accent-primary)] to-[var(--accent-hover)] shadow-lg shadow-emerald-500/20 group-hover:scale-105 transition-transform duration-200">
-              <ShieldCheck className="h-6 w-6 text-emerald-950" />
+        <div className="flex items-center gap-3 sm:gap-6 lg:gap-8 min-w-0">
+          <Link href="/" className="flex items-center gap-2.5 sm:gap-3 group min-w-0">
+            <div className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-[var(--accent-primary)] to-[var(--accent-hover)] shadow-lg shadow-emerald-500/20 group-hover:scale-105 transition-transform duration-200">
+              <ShieldCheck className="h-5 w-5 sm:h-6 sm:w-6 text-emerald-950" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-bold tracking-tight text-lg text-[var(--text-main)]">
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                <span className="font-bold tracking-tight text-sm sm:text-base lg:text-lg text-[var(--text-main)] truncate max-w-[130px] xs:max-w-[170px] sm:max-w-none">
                   {t('common.academyPlatform')}
                 </span>
-                <span className="rounded-full bg-[var(--badge-bg)] px-2 py-0.5 text-xs font-semibold text-[var(--badge-text)] border border-[var(--badge-border)]">
+                <span className="hidden md:inline-flex rounded-full bg-[var(--badge-bg)] px-2 py-0.5 text-xs font-semibold text-[var(--badge-text)] border border-[var(--badge-border)] shrink-0">
                   {locale === 'ar' ? 'سحابي متكامل' : 'Cloud SaaS'}
                 </span>
               </div>
-              <p className="text-xs text-[var(--text-muted)]">Academy Management Cloud</p>
+              <p className="hidden md:block text-xs text-[var(--text-muted)]">
+                Academy Management Cloud
+              </p>
             </div>
           </Link>
 
@@ -308,31 +313,219 @@ export function Navbar() {
                 type="button"
                 onClick={() => void logout()}
                 title={t('common.logout')}
-                className="flex items-center gap-1.5 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-1.5 text-xs font-medium text-rose-400 hover:bg-rose-500/20 transition-colors"
+                className="hidden sm:flex items-center gap-1.5 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-1.5 text-xs font-medium text-rose-400 hover:bg-rose-500/20 transition-colors"
               >
                 <LogOut className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">{t('common.logout')}</span>
+                <span>{t('common.logout')}</span>
               </button>
             </div>
           ) : (
             <div className="flex items-center gap-2">
               <Link
                 href="/login"
-                className="rounded-lg border border-[var(--border-app)] px-3.5 py-1.5 text-xs font-semibold text-[var(--text-main)] hover:border-[var(--accent-primary)] hover:text-[var(--accent-primary)] transition-all"
+                className="rounded-lg border border-[var(--border-app)] px-3 py-1.5 text-xs font-semibold text-[var(--text-main)] hover:border-[var(--accent-primary)] hover:text-[var(--accent-primary)] transition-all whitespace-nowrap"
               >
                 {t('common.login')}
               </Link>
               <a
                 href="#demo-request"
-                className="flex items-center gap-1.5 rounded-lg bg-[var(--accent-primary)] px-3.5 py-1.5 text-xs font-semibold text-white shadow-md shadow-emerald-500/20 hover:opacity-90 transition-all"
+                className="hidden sm:flex items-center gap-1.5 rounded-lg bg-[var(--accent-primary)] px-3.5 py-1.5 text-xs font-semibold text-white shadow-md shadow-emerald-500/20 hover:opacity-90 transition-all whitespace-nowrap"
               >
                 <Sparkles className="h-3.5 w-3.5" />
                 <span>{t('common.requestDemo')}</span>
               </a>
             </div>
           )}
+
+          {/* Mobile hamburger menu toggle */}
+          {user && (
+            <button
+              type="button"
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="lg:hidden flex items-center justify-center p-1.5 rounded-lg border border-[var(--border-app)] bg-[var(--bg-surface)] text-[var(--text-main)] hover:text-[var(--accent-primary)] transition-colors"
+              aria-label="Toggle navigation"
+            >
+              {isMobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+            </button>
+          )}
         </div>
       </div>
+
+      {/* Mobile Drawer Menu */}
+      {user && isMobileMenuOpen && (
+        <div className="lg:hidden border-t border-[var(--border-app)] bg-[var(--bg-surface)] px-4 py-3 space-y-2 shadow-xl animate-in slide-in-from-top-2 duration-200">
+          {/* User profile row */}
+          <div className="flex items-center justify-between pb-2 border-b border-[var(--border-app)] text-xs text-[var(--text-muted)]">
+            <div className="flex items-center gap-2">
+              <UserIcon className="h-4 w-4 text-[var(--accent-primary)]" />
+              <span className="font-semibold text-[var(--text-main)]">{user.name}</span>
+              {isSuperAdmin && (
+                <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-amber-500 border border-amber-500/30">
+                  {locale === 'ar' ? 'أدمن المنصة' : 'Super Admin'}
+                </span>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => void logout()}
+              className="flex items-center gap-1 text-xs text-rose-400 hover:text-rose-300 font-medium"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+              <span>{t('common.logout')}</span>
+            </button>
+          </div>
+
+          {/* Navigation links for mobile */}
+          <nav className="grid grid-cols-2 gap-1.5 pt-1">
+            {isSuperAdmin && (
+              <Link
+                href="/platform"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="flex items-center gap-2 p-2 rounded-lg text-xs font-semibold text-amber-500 bg-amber-500/10 border border-amber-500/30 col-span-2"
+              >
+                <Globe2 className="h-4 w-4 shrink-0" />
+                <span>{t('nav.platform')}</span>
+              </Link>
+            )}
+
+            {isCoach && (
+              <>
+                <Link
+                  href="/coach"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-2 p-2 rounded-lg text-xs font-medium text-[var(--accent-primary)] bg-emerald-500/10 border border-emerald-500/30 col-span-2"
+                >
+                  <UserCheck className="h-4 w-4 shrink-0" />
+                  <span>{t('nav.coachWorkspace')}</span>
+                </Link>
+                <Link
+                  href="/attendance/scanner"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-2 p-2 rounded-lg text-xs font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/30"
+                >
+                  <QrCode className="h-4 w-4 shrink-0" />
+                  <span>{t('nav.scanner')}</span>
+                </Link>
+                <Link
+                  href="/evaluations"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-2 p-2 rounded-lg text-xs font-medium text-[var(--text-main)] hover:bg-[var(--bg-surface-subtle)]"
+                >
+                  <Award className="h-4 w-4 shrink-0 text-[var(--accent-primary)]" />
+                  <span>{t('nav.evaluations')}</span>
+                </Link>
+                <Link
+                  href="/sessions"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-2 p-2 rounded-lg text-xs font-medium text-[var(--text-main)] hover:bg-[var(--bg-surface-subtle)]"
+                >
+                  <CalendarCheck className="h-4 w-4 shrink-0 text-[var(--accent-primary)]" />
+                  <span>{t('nav.sessions')}</span>
+                </Link>
+              </>
+            )}
+
+            {isStaffOrOwner && (
+              <>
+                <Link
+                  href="/dashboard"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-2 p-2 rounded-lg text-xs font-medium text-[var(--text-main)] hover:bg-[var(--bg-surface-subtle)]"
+                >
+                  <LayoutDashboard className="h-4 w-4 shrink-0 text-[var(--accent-primary)]" />
+                  <span>{t('nav.home')}</span>
+                </Link>
+                <Link
+                  href="/attendance/scanner"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-2 p-2 rounded-lg text-xs font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/30"
+                >
+                  <QrCode className="h-4 w-4 shrink-0" />
+                  <span>{t('nav.scanner')}</span>
+                </Link>
+                <Link
+                  href="/players"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-2 p-2 rounded-lg text-xs font-medium text-[var(--text-main)] hover:bg-[var(--bg-surface-subtle)]"
+                >
+                  <Users className="h-4 w-4 shrink-0 text-[var(--accent-primary)]" />
+                  <span>{t('nav.players')}</span>
+                </Link>
+                <Link
+                  href="/groups"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-2 p-2 rounded-lg text-xs font-medium text-[var(--text-main)] hover:bg-[var(--bg-surface-subtle)]"
+                >
+                  <Layers className="h-4 w-4 shrink-0 text-[var(--accent-primary)]" />
+                  <span>{t('nav.groups')}</span>
+                </Link>
+                <Link
+                  href="/evaluations"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-2 p-2 rounded-lg text-xs font-medium text-[var(--text-main)] hover:bg-[var(--bg-surface-subtle)]"
+                >
+                  <Award className="h-4 w-4 shrink-0 text-[var(--accent-primary)]" />
+                  <span>{t('nav.evaluations')}</span>
+                </Link>
+                <Link
+                  href="/sessions"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-2 p-2 rounded-lg text-xs font-medium text-[var(--text-main)] hover:bg-[var(--bg-surface-subtle)]"
+                >
+                  <CalendarCheck className="h-4 w-4 shrink-0 text-[var(--accent-primary)]" />
+                  <span>{t('nav.sessions')}</span>
+                </Link>
+                <Link
+                  href="/attendance/reports"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-2 p-2 rounded-lg text-xs font-medium text-[var(--text-main)] hover:bg-[var(--bg-surface-subtle)]"
+                >
+                  <BarChart3 className="h-4 w-4 shrink-0 text-[var(--accent-primary)]" />
+                  <span>{t('nav.reports')}</span>
+                </Link>
+                <Link
+                  href="/branches"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-2 p-2 rounded-lg text-xs font-medium text-[var(--text-main)] hover:bg-[var(--bg-surface-subtle)]"
+                >
+                  <GitBranch className="h-4 w-4 shrink-0 text-[var(--accent-primary)]" />
+                  <span>{t('nav.branches')}</span>
+                </Link>
+                <Link
+                  href="/settings"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-2 p-2 rounded-lg text-xs font-medium text-[var(--text-main)] hover:bg-[var(--bg-surface-subtle)] col-span-2"
+                >
+                  <Settings className="h-4 w-4 shrink-0 text-[var(--accent-primary)]" />
+                  <span>{t('nav.settings')}</span>
+                </Link>
+              </>
+            )}
+
+            {hasPlayerProfile && (
+              <Link
+                href="/player"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="flex items-center gap-2 p-2 rounded-lg text-xs font-medium text-sky-400 bg-sky-500/10 border border-sky-500/30 col-span-2"
+              >
+                <UserIcon className="h-4 w-4 shrink-0" />
+                <span>{t('nav.playerPortal')}</span>
+              </Link>
+            )}
+
+            {hasGuardianProfile && (
+              <Link
+                href="/guardian"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="flex items-center gap-2 p-2 rounded-lg text-xs font-medium text-purple-400 bg-purple-500/10 border border-purple-500/30 col-span-2"
+              >
+                <HeartHandshake className="h-4 w-4 shrink-0" />
+                <span>{t('nav.guardianPortal')}</span>
+              </Link>
+            )}
+          </nav>
+        </div>
+      )}
     </header>
   );
 }

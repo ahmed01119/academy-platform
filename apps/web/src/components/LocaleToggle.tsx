@@ -26,7 +26,11 @@ export function LocaleToggle({ compact = false }: LocaleToggleProps) {
       title={locale === 'ar' ? 'Switch to English' : 'التحويل إلى العربية'}
     >
       <Languages className="h-4 w-4 text-accent-primary" />
-      {!compact && <span className="font-semibold">{locale === 'ar' ? 'English' : 'عربي'}</span>}
+      {!compact && (
+        <span className="hidden sm:inline-block font-semibold">
+          {locale === 'ar' ? 'English' : 'عربي'}
+        </span>
+      )}
     </button>
   );
 }

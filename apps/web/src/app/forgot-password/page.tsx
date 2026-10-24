@@ -47,12 +47,12 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0f1c18] text-[#e8f0ec] flex flex-col">
+    <div className="min-h-screen bg-[#0f1c18] text-[#e8f0ec] flex flex-col overflow-x-hidden">
       <Navbar />
 
-      <main className="flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-8">
-        <div className="w-full max-w-md">
-          <div className="rounded-2xl border border-[#234235] bg-[#162821]/80 p-8 shadow-2xl backdrop-blur-xl relative overflow-hidden">
+      <main className="flex-1 flex items-center justify-center p-3 sm:p-6 lg:p-8">
+        <div className="w-full max-w-md mx-auto">
+          <div className="rounded-2xl border border-[#234235] bg-[#162821]/80 p-5 sm:p-8 shadow-2xl backdrop-blur-xl relative overflow-hidden">
             <div className="text-center mb-8">
               <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-[#2f9e6b] to-[#45c387] shadow-lg shadow-[#2f9e6b]/25">
                 <KeyRound className="h-6 w-6 text-[#062016]" />

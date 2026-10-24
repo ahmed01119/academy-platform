@@ -50,12 +50,24 @@ export default function LoginPage() {
       // Will trigger useEffect or we can push directly
       router.push(getRoleHomeRoute(user, activeTenant));
     } catch (err: unknown) {
-      const message =
-        err instanceof Error
-          ? err.message
-          : locale === 'ar'
-            ? 'فشل تسجيل الدخول. يرجى التحقق من بياناتك والمحاولة مرة أخرى.'
-            : 'Login failed. Please check your credentials and try again.';
+      let message =
+        locale === 'ar'
+          ? 'فشل تسجيل الدخول. يرجى التحقق من بياناتك والمحاولة مرة أخرى.'
+          : 'Login failed. Please check your credentials and try again.';
+
+      if (err instanceof Error) {
+        if (
+          err.message.toLowerCase().includes('fetch') ||
+          err.message.toLowerCase().includes('network')
+        ) {
+          message =
+            locale === 'ar'
+              ? 'تعذر الاتصال بالخادم. يرجى التحقق من اتصالك بالإنترنت والمحاولة مجدداً.'
+              : 'Could not connect to server. Please check your network connection and try again.';
+        } else {
+          message = err.message;
+        }
+      }
       setError(message);
     } finally {
       setIsSubmitting(false);
@@ -63,13 +75,13 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[var(--bg-base)] text-[var(--text-main)] flex flex-col transition-colors">
+    <div className="min-h-screen bg-[var(--bg-base)] text-[var(--text-main)] flex flex-col transition-colors overflow-x-hidden">
       <Navbar />
 
-      <main className="flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-8">
-        <div className="w-full max-w-md">
+      <main className="flex-1 flex items-center justify-center p-3 sm:p-6 lg:p-8">
+        <div className="w-full max-w-md mx-auto">
           {/* Card container */}
-          <div className="rounded-2xl border border-[#234235] bg-[#162821]/80 p-8 shadow-2xl backdrop-blur-xl relative overflow-hidden">
+          <div className="rounded-2xl border border-[#234235] bg-[#162821]/80 p-5 sm:p-8 shadow-2xl backdrop-blur-xl relative overflow-hidden">
             {/* Top decorative glow */}
             <div className="absolute -top-12 -right-12 h-32 w-32 rounded-full bg-[#2f9e6b]/15 blur-2xl" />
             <div className="absolute -bottom-12 -left-12 h-32 w-32 rounded-full bg-[#45c387]/10 blur-2xl" />
@@ -190,9 +202,11 @@ export default function LoginPage() {
           </div>
 
           {/* Security badge note */}
-          <div className="mt-6 flex items-center justify-center gap-2 text-xs text-[#5a7a6c]">
-            <ShieldCheck className="h-4 w-4 text-[#2f9e6b]" />
-            <span>حماية مشددة: تشفير Argon2id • تدوير الجلسات • عزل كامل للبيانات</span>
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-2 text-xs text-[#5a7a6c] text-center px-2">
+            <ShieldCheck className="h-4 w-4 text-[#2f9e6b] shrink-0" />
+            <span className="leading-relaxed">
+              حماية مشددة: تشفير Argon2id • تدوير الجلسات • عزل كامل للبيانات
+            </span>
           </div>
         </div>
       </main>

@@ -104,11 +104,22 @@ import type {
   PlatformInviteUserRequest,
 } from '@academy/shared';
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  (typeof window === 'undefined'
-    ? process.env.INTERNAL_API_URL || 'http://127.0.0.1:3001/v1'
-    : '/v1');
+function resolveApiBaseUrl(): string {
+  if (typeof window !== 'undefined') {
+    // In browser: ALWAYS use relative '/v1' so client requests route via the Next.js
+    // reverse proxy on the current origin. This eliminates CORS issues, protects auth
+    // cookies on mobile Safari, and guarantees zero dependency on client localhost.
+    return '/v1';
+  }
+  // Server-side (SSR / API routes): talk to internal backend port/container
+  return (
+    process.env.INTERNAL_API_URL ||
+    process.env.NEXT_PUBLIC_API_BASE_URL ||
+    'http://127.0.0.1:3001/v1'
+  );
+}
+
+const API_BASE_URL = resolveApiBaseUrl();
 
 export class ApiError extends Error {
   constructor(

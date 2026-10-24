@@ -38,6 +38,14 @@ async function hashPassword(plain) {
 }
 
 async function main() {
+  if (process.env.NODE_ENV === 'production' && !process.env.ALLOW_DEMO_SEED_IN_PRODUCTION) {
+    console.error(
+      '[Seed] FATAL: seed-local-demo.js is strictly intended for local/ephemeral development environments.\n' +
+        'Refusing to seed static demo credentials in production without ALLOW_DEMO_SEED_IN_PRODUCTION=1.',
+    );
+    process.exit(1);
+  }
+
   console.log('[Seed] Starting local demo data seeding...');
 
   // 1. Password hashes
@@ -579,7 +587,8 @@ async function main() {
   }
 
   // 12. Platform Super Admin User
-  const superAdminPasswordHash = await hashPassword('SuperAdmin123!');
+  const superAdminRawPassword = process.env.SUPERADMIN_INITIAL_PASSWORD || 'SuperAdmin123!';
+  const superAdminPasswordHash = await hashPassword(superAdminRawPassword);
   let superAdminUser = await prisma.user.findUnique({
     where: { email: 'superadmin@platform.sa' },
   });
