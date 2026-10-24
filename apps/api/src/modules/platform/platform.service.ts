@@ -1,6 +1,7 @@
 import {
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
   BadRequestException,
   ForbiddenException,
@@ -40,6 +41,8 @@ import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class PlatformService {
+  private readonly logger = new Logger(PlatformService.name);
+
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(AuditService) private readonly auditService: AuditService,
@@ -1259,7 +1262,7 @@ export class PlatformService {
     applicationId: string,
     dto: ReviewAcademyApplicationRequest,
   ): Promise<AcademyApplicationItem> {
-    return this.prisma.withPlatformAdminTransaction({ actorUserId }, async (tx) => {
+    const result = await this.prisma.withPlatformAdminTransaction({ actorUserId }, async (tx) => {
       const application = await tx.academyApplication.findUnique({
         where: { id: applicationId },
         include: { applicant: true },
@@ -1327,31 +1330,6 @@ export class PlatformService {
             autoRenew: true,
           },
         });
-
-        await this.notificationsService.createNotification({
-          userId: application.applicantUserId,
-          tenantId: tenant.id,
-          type: 'ACADEMY_APPLICATION',
-          title: 'Academy Approved & Ready',
-          body: `Congratulations! Your academy application for "${application.academyName}" has been approved and activated.`,
-          href: '/dashboard',
-        });
-      } else if (dto.status === 'REJECTED') {
-        await this.notificationsService.createNotification({
-          userId: application.applicantUserId,
-          type: 'ACADEMY_APPLICATION',
-          title: 'Academy Application Update',
-          body: `Your application for "${application.academyName}" was reviewed: ${dto.reviewNotes ?? 'Application not approved.'}`,
-          href: '/',
-        });
-      } else if (dto.status === 'MORE_INFO_REQUESTED') {
-        await this.notificationsService.createNotification({
-          userId: application.applicantUserId,
-          type: 'ACADEMY_APPLICATION',
-          title: 'Additional Information Required',
-          body: `Additional details required for "${application.academyName}": ${dto.reviewNotes ?? ''}`,
-          href: '/',
-        });
       }
 
       const updated = await tx.academyApplication.update({
@@ -1379,25 +1357,64 @@ export class PlatformService {
       });
 
       return {
-        id: updated.id,
-        applicantUserId: updated.applicantUserId,
-        applicantName: updated.applicant.name,
-        academyName: updated.academyName,
-        academySlug: updated.academySlug,
-        sport: updated.sport,
-        city: updated.city,
-        contactPhone: updated.contactPhone,
-        contactEmail: updated.contactEmail,
-        notes: updated.notes,
-        status: updated.status as ApplicationStatus,
-        reviewNotes: updated.reviewNotes,
-        reviewedByUserId: updated.reviewedByUserId,
-        reviewedAt: updated.reviewedAt?.toISOString() ?? null,
-        provisionedTenantId: updated.provisionedTenantId,
-        createdAt: updated.createdAt.toISOString(),
-        updatedAt: updated.updatedAt.toISOString(),
+        item: {
+          id: updated.id,
+          applicantUserId: updated.applicantUserId,
+          applicantName: updated.applicant.name,
+          academyName: updated.academyName,
+          academySlug: updated.academySlug,
+          sport: updated.sport,
+          city: updated.city,
+          contactPhone: updated.contactPhone,
+          contactEmail: updated.contactEmail,
+          notes: updated.notes,
+          status: updated.status as ApplicationStatus,
+          reviewNotes: updated.reviewNotes,
+          reviewedByUserId: updated.reviewedByUserId,
+          reviewedAt: updated.reviewedAt?.toISOString() ?? null,
+          provisionedTenantId: updated.provisionedTenantId,
+          createdAt: updated.createdAt.toISOString(),
+          updatedAt: updated.updatedAt.toISOString(),
+        },
+        applicantUserId: application.applicantUserId,
+        academyName: application.academyName,
+        provisionedTenantId,
       };
     });
+
+    // Dispatch notifications safely after tenant and application transactions commit
+    try {
+      if (dto.status === 'APPROVED') {
+        await this.notificationsService.createNotification({
+          userId: result.applicantUserId,
+          tenantId: result.provisionedTenantId ?? undefined,
+          type: 'ACADEMY_APPLICATION',
+          title: 'Academy Approved & Ready',
+          body: `Congratulations! Your academy application for "${result.academyName}" has been approved and activated.`,
+          href: '/dashboard',
+        });
+      } else if (dto.status === 'REJECTED') {
+        await this.notificationsService.createNotification({
+          userId: result.applicantUserId,
+          type: 'ACADEMY_APPLICATION',
+          title: 'Academy Application Update',
+          body: `Your application for "${result.academyName}" was reviewed: ${dto.reviewNotes ?? 'Application not approved.'}`,
+          href: '/',
+        });
+      } else if (dto.status === 'MORE_INFO_REQUESTED') {
+        await this.notificationsService.createNotification({
+          userId: result.applicantUserId,
+          type: 'ACADEMY_APPLICATION',
+          title: 'Additional Information Required',
+          body: `Additional details required for "${result.academyName}": ${dto.reviewNotes ?? ''}`,
+          href: '/',
+        });
+      }
+    } catch (notifErr: any) {
+      this.logger.warn(`Failed to dispatch application notification: ${notifErr?.message ?? notifErr}`);
+    }
+
+    return result.item;
   }
 
   private formatBytes(bytes: number): string {
