@@ -21,7 +21,8 @@ const nextConfig: NextConfig = {
     ];
   },
   async rewrites() {
-    const apiTarget = process.env.INTERNAL_API_URL || 'http://127.0.0.1:3001';
+    const rawTarget = process.env.INTERNAL_API_URL || 'http://127.0.0.1:3001';
+    const apiTarget = rawTarget.replace(/\/v1\/?$/, '');
     return [
       {
         source: '/v1/:path*',
