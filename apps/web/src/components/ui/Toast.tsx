@@ -103,32 +103,33 @@ const ICONS = {
   info: Info,
 };
 
-const STYLES: Record<ToastType, { border: string; bg: string; iconColor: string; badge: string }> = {
-  success: {
-    border: 'border-emerald-500/30',
-    bg: 'bg-[var(--bg-surface)]/95 shadow-emerald-500/5',
-    iconColor: 'text-emerald-500',
-    badge: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
-  },
-  error: {
-    border: 'border-rose-500/30',
-    bg: 'bg-[var(--bg-surface)]/95 shadow-rose-500/5',
-    iconColor: 'text-rose-500',
-    badge: 'bg-rose-500/10 text-rose-600 dark:text-rose-400',
-  },
-  warning: {
-    border: 'border-amber-500/30',
-    bg: 'bg-[var(--bg-surface)]/95 shadow-amber-500/5',
-    iconColor: 'text-amber-500',
-    badge: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
-  },
-  info: {
-    border: 'border-sky-500/30',
-    bg: 'bg-[var(--bg-surface)]/95 shadow-sky-500/5',
-    iconColor: 'text-sky-500',
-    badge: 'bg-sky-500/10 text-sky-600 dark:text-sky-400',
-  },
-};
+const STYLES: Record<ToastType, { border: string; bg: string; iconColor: string; badge: string }> =
+  {
+    success: {
+      border: 'border-emerald-500/30',
+      bg: 'bg-[var(--bg-surface)]/95 shadow-emerald-500/5',
+      iconColor: 'text-emerald-500',
+      badge: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+    },
+    error: {
+      border: 'border-rose-500/30',
+      bg: 'bg-[var(--bg-surface)]/95 shadow-rose-500/5',
+      iconColor: 'text-rose-500',
+      badge: 'bg-rose-500/10 text-rose-600 dark:text-rose-400',
+    },
+    warning: {
+      border: 'border-amber-500/30',
+      bg: 'bg-[var(--bg-surface)]/95 shadow-amber-500/5',
+      iconColor: 'text-amber-500',
+      badge: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+    },
+    info: {
+      border: 'border-sky-500/30',
+      bg: 'bg-[var(--bg-surface)]/95 shadow-sky-500/5',
+      iconColor: 'text-sky-500',
+      badge: 'bg-sky-500/10 text-sky-600 dark:text-sky-400',
+    },
+  };
 
 function ToastCard({ item, onDismiss }: { item: ToastItem; onDismiss: () => void }) {
   const Icon = ICONS[item.type];
@@ -139,7 +140,9 @@ function ToastCard({ item, onDismiss }: { item: ToastItem; onDismiss: () => void
       role="status"
       className={`pointer-events-auto flex items-start gap-3 rounded-2xl border p-3.5 shadow-xl backdrop-blur-md transition-all animate-in fade-in slide-in-from-top-3 duration-200 ${style.border} ${style.bg}`}
     >
-      <div className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-xl ${style.badge}`}>
+      <div
+        className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-xl ${style.badge}`}
+      >
         <Icon className="h-4 w-4" />
       </div>
 

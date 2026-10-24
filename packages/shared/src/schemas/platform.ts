@@ -138,7 +138,9 @@ export const CreatePlatformAnnouncementRequestSchema = z.object({
   endsAt: z.string().optional(),
 });
 
-export type CreatePlatformAnnouncementRequest = z.infer<typeof CreatePlatformAnnouncementRequestSchema>;
+export type CreatePlatformAnnouncementRequest = z.infer<
+  typeof CreatePlatformAnnouncementRequestSchema
+>;
 
 export const PlatformAuditLogItemSchema = z.object({
   id: z.string().uuid(),
@@ -155,7 +157,12 @@ export type PlatformAuditLogItem = z.infer<typeof PlatformAuditLogItemSchema>;
 
 export const PlatformSecurityEventSchema = z.object({
   id: z.string(),
-  type: z.enum(['FAILED_LOGIN', 'SUSPICIOUS_TOKEN_REUSE', 'PERMISSION_DENIED', 'RATE_LIMIT_TRIGGERED']),
+  type: z.enum([
+    'FAILED_LOGIN',
+    'SUSPICIOUS_TOKEN_REUSE',
+    'PERMISSION_DENIED',
+    'RATE_LIMIT_TRIGGERED',
+  ]),
   severity: z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']),
   description: z.string(),
   ipAddress: z.string().nullable().optional(),
@@ -166,7 +173,11 @@ export const PlatformSecurityEventSchema = z.object({
 export type PlatformSecurityEvent = z.infer<typeof PlatformSecurityEventSchema>;
 
 export const RequestSupportAccessSchema = z.object({
-  reason: z.string().trim().min(10, 'A valid reason of at least 10 characters is required for audited support access').max(500),
+  reason: z
+    .string()
+    .trim()
+    .min(10, 'A valid reason of at least 10 characters is required for audited support access')
+    .max(500),
 });
 
 export type RequestSupportAccessRequest = z.infer<typeof RequestSupportAccessSchema>;
@@ -210,9 +221,7 @@ export const CreateAcademyApplicationRequestSchema = z.object({
   notes: z.string().max(1000).optional(),
 });
 
-export type CreateAcademyApplicationRequest = z.infer<
-  typeof CreateAcademyApplicationRequestSchema
->;
+export type CreateAcademyApplicationRequest = z.infer<typeof CreateAcademyApplicationRequestSchema>;
 
 export const ReviewAcademyApplicationRequestSchema = z.object({
   status: z.enum(['MORE_INFO_REQUESTED', 'APPROVED', 'REJECTED']),
@@ -220,9 +229,7 @@ export const ReviewAcademyApplicationRequestSchema = z.object({
   initialPlanCode: z.enum(['STARTER', 'PRO', 'ENTERPRISE', 'CUSTOM']).default('STARTER'),
 });
 
-export type ReviewAcademyApplicationRequest = z.infer<
-  typeof ReviewAcademyApplicationRequestSchema
->;
+export type ReviewAcademyApplicationRequest = z.infer<typeof ReviewAcademyApplicationRequestSchema>;
 
 export const AcademyApplicationItemSchema = z.object({
   id: z.string().uuid(),
@@ -357,9 +364,7 @@ export const InvitePlatformSuperAdminRequestSchema = z.object({
   permissions: z.array(z.string()).optional(),
 });
 
-export type InvitePlatformSuperAdminRequest = z.infer<
-  typeof InvitePlatformSuperAdminRequestSchema
->;
+export type InvitePlatformSuperAdminRequest = z.infer<typeof InvitePlatformSuperAdminRequestSchema>;
 
 export const PlatformInviteUserRequestSchema = z.object({
   email: z.string().email(),
@@ -381,4 +386,3 @@ export const PlatformInviteUserRequestSchema = z.object({
 });
 
 export type PlatformInviteUserRequest = z.infer<typeof PlatformInviteUserRequestSchema>;
-

@@ -5,12 +5,7 @@ import { useLocale } from '../../lib/locale-context';
 import { useAuth } from '../../lib/auth-context';
 import apiClient from '../../lib/api-client';
 import { useToast } from '../ui/Toast';
-import {
-  Shield,
-  UserPlus,
-  Crown,
-  LogOut,
-} from 'lucide-react';
+import { Shield, UserPlus, Crown, LogOut } from 'lucide-react';
 import type { PlatformUserItem, PlatformAcademyItem } from '@academy/shared';
 
 interface GovernanceTabProps {
@@ -95,9 +90,7 @@ export function GovernanceTab({
       });
 
       toast.success(
-        locale === 'ar'
-          ? 'تم إرسال دعوة المستخدم بنجاح.'
-          : 'User invited to academy successfully.',
+        locale === 'ar' ? 'تم إرسال دعوة المستخدم بنجاح.' : 'User invited to academy successfully.',
       );
 
       setIsUserModalOpen(false);
@@ -106,8 +99,7 @@ export function GovernanceTab({
       await onRefresh();
     } catch (err: unknown) {
       toast.error(
-        (err as Error)?.message ||
-          (locale === 'ar' ? 'فشل إرسال الدعوة' : 'Failed to invite user'),
+        (err as Error)?.message || (locale === 'ar' ? 'فشل إرسال الدعوة' : 'Failed to invite user'),
       );
     } finally {
       setIsSubmittingUser(false);
@@ -168,7 +160,9 @@ export function GovernanceTab({
           <div>
             <div className="flex items-center gap-2">
               <h3 className="text-sm font-bold text-[var(--text-main)]">
-                {locale === 'ar' ? 'حوكمة ملاك المنصة (Platform Governance)' : 'Platform Owner Governance'}
+                {locale === 'ar'
+                  ? 'حوكمة ملاك المنصة (Platform Governance)'
+                  : 'Platform Owner Governance'}
               </h3>
               {isCurrentPlatformOwner && (
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">
@@ -221,7 +215,9 @@ export function GovernanceTab({
             <thead className="bg-[var(--bg-surface-subtle)] border-b border-[var(--border-subtle)] text-[var(--text-muted)] font-semibold uppercase">
               <tr>
                 <th className="px-4 py-3 text-start">{locale === 'ar' ? 'المسؤول' : 'Admin'}</th>
-                <th className="px-4 py-3 text-start">{locale === 'ar' ? 'الرتبة السيادية' : 'Role'}</th>
+                <th className="px-4 py-3 text-start">
+                  {locale === 'ar' ? 'الرتبة السيادية' : 'Role'}
+                </th>
                 <th className="px-4 py-3 text-start">{locale === 'ar' ? 'الحالة' : 'Status'}</th>
                 <th className="px-4 py-3 text-start">{locale === 'ar' ? 'الجلسات' : 'Sessions'}</th>
                 <th className="px-4 py-3 text-end">{locale === 'ar' ? 'الإجراءات' : 'Actions'}</th>
@@ -229,10 +225,15 @@ export function GovernanceTab({
             </thead>
             <tbody className="divide-y divide-[var(--border-subtle)]">
               {superAdmins.map((adm) => (
-                <tr key={adm.id} className="hover:bg-[var(--bg-surface-subtle)]/50 transition-colors">
+                <tr
+                  key={adm.id}
+                  className="hover:bg-[var(--bg-surface-subtle)]/50 transition-colors"
+                >
                   <td className="px-4 py-3">
                     <div className="font-bold text-[var(--text-main)]">{adm.name}</div>
-                    <div className="text-[11px] font-mono text-[var(--text-muted)]">{adm.email}</div>
+                    <div className="text-[11px] font-mono text-[var(--text-muted)]">
+                      {adm.email}
+                    </div>
                   </td>
                   <td className="px-4 py-3">
                     {adm.isPlatformOwner ? (
@@ -315,7 +316,9 @@ export function GovernanceTab({
             <div className="border-b border-[var(--border-subtle)] pb-3">
               <h3 className="text-base font-bold text-[var(--text-primary)] flex items-center gap-2">
                 <Crown className="w-5 h-5 text-amber-400" />
-                {locale === 'ar' ? 'دعوة مسؤول منصة Super Admin جديد' : 'Invite Platform Super Admin'}
+                {locale === 'ar'
+                  ? 'دعوة مسؤول منصة Super Admin جديد'
+                  : 'Invite Platform Super Admin'}
               </h3>
               <p className="text-xs text-[var(--text-secondary)] mt-0.5">
                 {locale === 'ar'
@@ -477,10 +480,18 @@ export function GovernanceTab({
                   className="w-full px-3 py-2 rounded-xl bg-[var(--bg-surface-subtle)] border border-[var(--border-subtle)] text-xs text-[var(--text-primary)]"
                 >
                   <option value="COACH">{locale === 'ar' ? 'مدرب (COACH)' : 'Coach'}</option>
-                  <option value="BRANCH_MANAGER">{locale === 'ar' ? 'مدير فرع (BRANCH_MANAGER)' : 'Branch Manager'}</option>
-                  <option value="RECEPTIONIST">{locale === 'ar' ? 'استقبال (RECEPTIONIST)' : 'Receptionist'}</option>
-                  <option value="ACCOUNTANT">{locale === 'ar' ? 'محاسب (ACCOUNTANT)' : 'Accountant'}</option>
-                  <option value="MANAGER">{locale === 'ar' ? 'مدير عام (MANAGER)' : 'Manager'}</option>
+                  <option value="BRANCH_MANAGER">
+                    {locale === 'ar' ? 'مدير فرع (BRANCH_MANAGER)' : 'Branch Manager'}
+                  </option>
+                  <option value="RECEPTIONIST">
+                    {locale === 'ar' ? 'استقبال (RECEPTIONIST)' : 'Receptionist'}
+                  </option>
+                  <option value="ACCOUNTANT">
+                    {locale === 'ar' ? 'محاسب (ACCOUNTANT)' : 'Accountant'}
+                  </option>
+                  <option value="MANAGER">
+                    {locale === 'ar' ? 'مدير عام (MANAGER)' : 'Manager'}
+                  </option>
                   <option value="OWNER">{locale === 'ar' ? 'مالك (OWNER)' : 'Owner'}</option>
                 </select>
               </div>

@@ -13,11 +13,11 @@ None of these are billed through this repository.
 
 ## Resource budget (single academy, ~200 players)
 
-| Component | Suggested |
-|-----------|-----------|
-| CPU | 2 vCPU |
-| RAM | 4 GB |
-| Disk | 40 GB SSD + backup disk |
+| Component            | Suggested                                        |
+| -------------------- | ------------------------------------------------ |
+| CPU                  | 2 vCPU                                           |
+| RAM                  | 4 GB                                             |
+| Disk                 | 40 GB SSD + backup disk                          |
 | Postgres connections | Prisma default pool; do not expose 5432 publicly |
 
 ## Bring-up
@@ -50,11 +50,11 @@ Retention default: 14 daily dumps in `./backups/`.
 
 ## Free-hosting option (not production of record)
 
-| Vendor | Typical free limit | When quota exhausts |
-|--------|--------------------|---------------------|
-| Railway/Render/Fly trial | Sleeps, hours cap, or card required | App stops; data may be deleted after trial |
-| Neon/Supabase free Postgres | Compute suspend + storage cap | Connections fail; not an archive |
-| Cloudflare Pages (static) | Cannot run NestJS/Postgres | Unsuitable as the API |
+| Vendor                      | Typical free limit                  | When quota exhausts                        |
+| --------------------------- | ----------------------------------- | ------------------------------------------ |
+| Railway/Render/Fly trial    | Sleeps, hours cap, or card required | App stops; data may be deleted after trial |
+| Neon/Supabase free Postgres | Compute suspend + storage cap       | Connections fail; not an archive           |
+| Cloudflare Pages (static)   | Cannot run NestJS/Postgres          | Unsuitable as the API                      |
 
 Use free tiers only for demos. Authoritative data stays on the self-hosted Postgres volume and backups.
 

@@ -55,10 +55,7 @@ export class PortalController {
   @Post('claim')
   @UseGuards(JwtAuthGuard, CsrfGuard)
   @HttpCode(HttpStatus.OK)
-  async redeemClaimToken(
-    @CurrentUser('id') actorUserId: string,
-    @Body() body: unknown,
-  ) {
+  async redeemClaimToken(@CurrentUser('id') actorUserId: string, @Body() body: unknown) {
     const dto: ClaimAccountRequest = ClaimAccountRequestSchema.parse(body);
     return this.portalService.redeemClaimToken(actorUserId, dto.claimToken);
   }
@@ -77,10 +74,7 @@ export class PortalController {
 
   @Post('player-join-requests')
   @HttpCode(HttpStatus.CREATED)
-  async submitPlayerJoinRequest(
-    @Body() body: unknown,
-    @CurrentUser('id') actorUserId?: string,
-  ) {
+  async submitPlayerJoinRequest(@Body() body: unknown, @CurrentUser('id') actorUserId?: string) {
     const dto: CreatePlayerJoinRequest = CreatePlayerJoinRequestSchema.parse(body);
     return this.portalService.submitPlayerJoinRequest(dto, actorUserId);
   }
@@ -90,4 +84,3 @@ export class PortalController {
     return this.portalService.listPublicAcademies();
   }
 }
-

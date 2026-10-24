@@ -36,8 +36,8 @@ The owner requires a publicly usable, installable Academy Platform without manda
 
 ## Alternatives Considered
 
-| Option | Why not chosen as mandatory |
-|--------|-----------------------------|
-| Managed Neon/Supabase/Upstash | Recurring fees and vendor lock-in |
-| SQLite / in-process Redis as production | Breaks RLS, concurrency, and fail-closed rate limits |
+| Option                                     | Why not chosen as mandatory                          |
+| ------------------------------------------ | ---------------------------------------------------- |
+| Managed Neon/Supabase/Upstash              | Recurring fees and vendor lock-in                    |
+| SQLite / in-process Redis as production    | Breaks RLS, concurrency, and fail-closed rate limits |
 | Cloudflare Tunnel as the only public entry | Useful optionally; not a database or source of truth |

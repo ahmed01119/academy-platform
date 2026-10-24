@@ -23,7 +23,12 @@ export function ThemeToggle({ compact = false }: ThemeToggleProps) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const options: Array<{ mode: ThemeMode; labelAr: string; labelEn: string; icon: React.ReactNode }> = [
+  const options: Array<{
+    mode: ThemeMode;
+    labelAr: string;
+    labelEn: string;
+    icon: React.ReactNode;
+  }> = [
     {
       mode: 'light',
       labelAr: 'نهاري',

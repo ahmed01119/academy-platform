@@ -254,7 +254,8 @@ export class PortalService {
           }
         }
 
-        const attendanceRate = total > 0 ? Number((((present + late) / total) * 100).toFixed(1)) : 0;
+        const attendanceRate =
+          total > 0 ? Number((((present + late) / total) * 100).toFixed(1)) : 0;
         const primaryGroup = p.groupMemberships[0]?.group;
 
         children.push({
@@ -576,4 +577,3 @@ export class PortalService {
     });
   }
 }
-

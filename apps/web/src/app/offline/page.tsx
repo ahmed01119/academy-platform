@@ -8,9 +8,13 @@ export default function OfflinePage() {
       </p>
       <h1 className="text-3xl font-semibold text-[var(--text-main)]">أنت غير متصل</h1>
       <p className="text-[var(--text-muted)]">
-        يمكن تسجيل الحضور ومسودات التقييم محلياً بعد تسجيل الدخول مسبقاً. العمليات المالية والإدارية تحتاج اتصالاً.
+        يمكن تسجيل الحضور ومسودات التقييم محلياً بعد تسجيل الدخول مسبقاً. العمليات المالية والإدارية
+        تحتاج اتصالاً.
       </p>
-      <p className="text-[var(--text-muted)]">You are offline. Attendance and evaluation drafts can wait locally. Finance requires the server.</p>
+      <p className="text-[var(--text-muted)]">
+        You are offline. Attendance and evaluation drafts can wait locally. Finance requires the
+        server.
+      </p>
       <button
         type="button"
         className="mx-auto rounded-md bg-[var(--accent-primary)] px-4 py-2 text-sm font-medium text-[var(--accent-primary-fg)]"

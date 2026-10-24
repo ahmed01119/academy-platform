@@ -96,14 +96,20 @@ describe('Player Evaluation & Performance Schemas', () => {
       ageCategory: 'U-11',
       sport: 'FOOTBALL',
       timeframe: 'ALL_TIME',
-      criteriaFormula: 'المعدل الحسابي المتوازن لمحاور الأداء الأربعة: (الفني + التكتيكي + البدني + السلوكي) / 4',
+      criteriaFormula:
+        'المعدل الحسابي المتوازن لمحاور الأداء الأربعة: (الفني + التكتيكي + البدني + السلوكي) / 4',
     };
 
     expect(PerformanceRankingsResponseSchema.safeParse(validRankings).success).toBe(true);
   });
 
   it('guarantees attendance rate semantics: (present + late) / eligibleRecords and unmarked is not attended', () => {
-    const calculateAttendanceRate = (records: { present: number; late: number; absent: number; unmarked: number }) => {
+    const calculateAttendanceRate = (records: {
+      present: number;
+      late: number;
+      absent: number;
+      unmarked: number;
+    }) => {
       const eligible = records.present + records.late + records.absent;
       if (eligible === 0) return 0;
       return Number((((records.present + records.late) / eligible) * 100).toFixed(1));

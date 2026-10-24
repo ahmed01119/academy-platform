@@ -31,10 +31,7 @@ import { useToast } from '../../../components/ui/Toast';
 import { apiClient } from '../../../lib/api-client';
 import { offlineStore } from '../../../lib/offline-attendance-store';
 import { prepareForOfflineUse } from '../../../lib/offline-engine';
-import type {
-  ScanPlayerQrResponse,
-  SessionSummary,
-} from '@academy/shared';
+import type { ScanPlayerQrResponse, SessionSummary } from '@academy/shared';
 
 interface ScanFeedback {
   type: 'ON_TIME' | 'LATE' | 'DUPLICATE' | 'OFFLINE_QUEUED' | 'ERROR';
@@ -92,7 +89,9 @@ export default function MobileAttendanceScannerPage() {
     subscriptionId?: string;
   } | null>(null);
   const [paymentAmount, setPaymentAmount] = useState<number>(0);
-  const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'CARD' | 'POS' | 'BANK_TRANSFER'>('CASH');
+  const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'CARD' | 'POS' | 'BANK_TRANSFER'>(
+    'CASH',
+  );
   const [paymentNotes, setPaymentNotes] = useState('');
   const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
 
@@ -153,54 +152,57 @@ export default function MobileAttendanceScannerPage() {
   const isProcessingScanRef = useRef<boolean>(false);
 
   // Sound Synthesizer
-  const playFeedbackSound = useCallback((type: ScanFeedback['type']) => {
-    if (!soundEnabled || typeof window === 'undefined') return;
-    try {
-      const AudioCtx =
-        window.AudioContext ||
-        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      if (!AudioCtx) return;
-      const ctx = new AudioCtx();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
+  const playFeedbackSound = useCallback(
+    (type: ScanFeedback['type']) => {
+      if (!soundEnabled || typeof window === 'undefined') return;
+      try {
+        const AudioCtx =
+          window.AudioContext ||
+          (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
 
-      if (type === 'ON_TIME') {
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(880, ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.15);
-        gain.gain.setValueAtTime(0.3, ctx.currentTime);
-        gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.15);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.15);
-      } else if (type === 'LATE') {
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(660, ctx.currentTime);
-        gain.gain.setValueAtTime(0.3, ctx.currentTime);
-        gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.2);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.2);
-      } else if (type === 'DUPLICATE' || type === 'OFFLINE_QUEUED') {
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(550, ctx.currentTime);
-        gain.gain.setValueAtTime(0.2, ctx.currentTime);
-        gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.12);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.12);
-      } else {
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(350, ctx.currentTime);
-        osc.frequency.linearRampToValueAtTime(220, ctx.currentTime + 0.25);
-        gain.gain.setValueAtTime(0.3, ctx.currentTime);
-        gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.25);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.25);
+        if (type === 'ON_TIME') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(880, ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.15);
+          gain.gain.setValueAtTime(0.3, ctx.currentTime);
+          gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.15);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.15);
+        } else if (type === 'LATE') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(660, ctx.currentTime);
+          gain.gain.setValueAtTime(0.3, ctx.currentTime);
+          gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.2);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.2);
+        } else if (type === 'DUPLICATE' || type === 'OFFLINE_QUEUED') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(550, ctx.currentTime);
+          gain.gain.setValueAtTime(0.2, ctx.currentTime);
+          gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.12);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.12);
+        } else {
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(350, ctx.currentTime);
+          osc.frequency.linearRampToValueAtTime(220, ctx.currentTime + 0.25);
+          gain.gain.setValueAtTime(0.3, ctx.currentTime);
+          gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.25);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.25);
+        }
+      } catch {
+        // Audio autoplay policy catch
       }
-    } catch {
-      // Audio autoplay policy catch
-    }
-  }, [soundEnabled]);
+    },
+    [soundEnabled],
+  );
 
   // Haptic Feedback
   const triggerHaptic = useCallback((type: ScanFeedback['type']) => {
@@ -507,12 +509,7 @@ export default function MobileAttendanceScannerPage() {
         }
       }
     },
-    [
-      selectedSessionId,
-      playFeedbackSound,
-      triggerHaptic,
-      refreshPendingCount,
-    ],
+    [selectedSessionId, playFeedbackSound, triggerHaptic, refreshPendingCount],
   );
 
   // Continuous Camera Frame Scanner Loop
@@ -895,7 +892,10 @@ export default function MobileAttendanceScannerPage() {
                           )}
                           {activeFeedback.paymentStatus.status === 'OVERDUE' && (
                             <span className="text-rose-300 animate-pulse">
-                              ✕ متأخر: {activeFeedback.paymentStatus.outstandingBalance || activeFeedback.paymentStatus.feeAmount} ر.س
+                              ✕ متأخر:{' '}
+                              {activeFeedback.paymentStatus.outstandingBalance ||
+                                activeFeedback.paymentStatus.feeAmount}{' '}
+                              ر.س
                             </span>
                           )}
                           {(activeFeedback.paymentStatus.status === 'EXEMPT' ||
@@ -928,9 +928,7 @@ export default function MobileAttendanceScannerPage() {
                   </div>
                 </div>
 
-                <span className="text-[10px] opacity-75 font-mono">
-                  {activeFeedback.timestamp}
-                </span>
+                <span className="text-[10px] opacity-75 font-mono">{activeFeedback.timestamp}</span>
               </div>
             </div>
           )}
@@ -1020,7 +1018,9 @@ export default function MobileAttendanceScannerPage() {
                     </div>
                   </div>
 
-                  <span className="font-mono text-[10px] text-[var(--text-secondary)]">{scan.timestamp}</span>
+                  <span className="font-mono text-[10px] text-[var(--text-secondary)]">
+                    {scan.timestamp}
+                  </span>
                 </div>
               ))}
             </div>
@@ -1038,7 +1038,9 @@ export default function MobileAttendanceScannerPage() {
                   <CreditCard className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-[var(--text-primary)]">تحصيل فوري للاعب</h3>
+                  <h3 className="text-base font-bold text-[var(--text-primary)]">
+                    تحصيل فوري للاعب
+                  </h3>
                   <p className="text-xs text-[var(--text-muted)]">{paymentPlayer.name}</p>
                 </div>
               </div>
@@ -1081,9 +1083,7 @@ export default function MobileAttendanceScannerPage() {
                 <select
                   value={paymentMethod}
                   onChange={(e) =>
-                    setPaymentMethod(
-                      e.target.value as 'CASH' | 'CARD' | 'POS' | 'BANK_TRANSFER',
-                    )
+                    setPaymentMethod(e.target.value as 'CASH' | 'CARD' | 'POS' | 'BANK_TRANSFER')
                   }
                   className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2.5 text-xs font-semibold text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none cursor-pointer"
                 >

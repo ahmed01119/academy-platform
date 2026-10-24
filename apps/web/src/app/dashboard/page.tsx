@@ -231,7 +231,9 @@ export default function DashboardPage() {
                 id="link-view-all-players"
                 className="text-xs font-semibold text-[var(--accent-primary)] hover:underline flex items-center gap-1"
               >
-                <span>{locale === 'ar' ? `عرض الكل (${totalPlayers})` : `View All (${totalPlayers})`}</span>
+                <span>
+                  {locale === 'ar' ? `عرض الكل (${totalPlayers})` : `View All (${totalPlayers})`}
+                </span>
                 <DirectionIcon className="h-3.5 w-3.5" />
               </Link>
             </div>
@@ -257,7 +259,9 @@ export default function DashboardPage() {
                     <tr>
                       <th className="py-2.5 px-3 font-semibold text-start">{t('common.player')}</th>
                       <th className="py-2.5 px-3 font-semibold text-start">{t('common.branch')}</th>
-                      <th className="py-2.5 px-3 font-semibold text-start">{t('common.guardian')}</th>
+                      <th className="py-2.5 px-3 font-semibold text-start">
+                        {t('common.guardian')}
+                      </th>
                       <th className="py-2.5 px-3 font-semibold text-start">{t('common.status')}</th>
                       <th className="py-2.5 px-3 font-semibold text-end">{t('common.actions')}</th>
                     </tr>
@@ -314,7 +318,10 @@ export default function DashboardPage() {
                             )}
                           </td>
                           <td className="py-3 px-3">
-                            <StatusBadge status={p.status} label={t(`common.${p.status.toLowerCase()}`, p.status)} />
+                            <StatusBadge
+                              status={p.status}
+                              label={t(`common.${p.status.toLowerCase()}`, p.status)}
+                            />
                           </td>
                           <td className="py-3 px-3 text-end">
                             <Link

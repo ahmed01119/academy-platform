@@ -157,4 +157,3 @@ export const RevokePlayerQrCardRequestSchema = z.object({
 });
 
 export type RevokePlayerQrCardRequest = z.infer<typeof RevokePlayerQrCardRequestSchema>;
-

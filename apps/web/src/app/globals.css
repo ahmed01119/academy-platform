@@ -99,7 +99,9 @@ body {
     radial-gradient(900px 500px at 90% 0%, var(--ambient-glow-2), transparent 50%);
   color: var(--text-main);
   font-family: var(--font-body);
-  transition: background-color 0.2s ease, color 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
 }
 
 /* Accessible focus outline */

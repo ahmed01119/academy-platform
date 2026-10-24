@@ -46,16 +46,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    command:
-      [
-        'pnpm',
-        '--filter',
-        '@academy/database',
-        'exec',
-        'prisma',
-        'migrate',
-        'deploy',
-      ]
+    command: ['pnpm', '--filter', '@academy/database', 'exec', 'prisma', 'migrate', 'deploy']
     networks:
       - academy_internal
 

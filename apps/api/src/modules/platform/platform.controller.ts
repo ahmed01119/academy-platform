@@ -110,10 +110,7 @@ export class PlatformController {
   }
 
   @Post('users/:id/revoke-sessions')
-  async revokeUserSessions(
-    @CurrentUser('id') actorUserId: string,
-    @Param('id') rawId: string,
-  ) {
+  async revokeUserSessions(@CurrentUser('id') actorUserId: string, @Param('id') rawId: string) {
     const userId = UuidParamSchema.parse(rawId);
     return this.platformService.revokeUserSessions(actorUserId, userId);
   }
@@ -150,11 +147,9 @@ export class PlatformController {
   }
 
   @Post('announcements')
-  async createAnnouncement(
-    @CurrentUser('id') actorUserId: string,
-    @Body() body: unknown,
-  ) {
-    const dto: CreatePlatformAnnouncementRequest = CreatePlatformAnnouncementRequestSchema.parse(body);
+  async createAnnouncement(@CurrentUser('id') actorUserId: string, @Body() body: unknown) {
+    const dto: CreatePlatformAnnouncementRequest =
+      CreatePlatformAnnouncementRequestSchema.parse(body);
     return this.platformService.createAnnouncement(actorUserId, dto);
   }
 
@@ -209,19 +204,13 @@ export class PlatformController {
 
   @Post('super-admin/invite')
   @UseGuards(PlatformOwnerGuard)
-  async invitePlatformSuperAdmin(
-    @CurrentUser('id') actorUserId: string,
-    @Body() body: unknown,
-  ) {
+  async invitePlatformSuperAdmin(@CurrentUser('id') actorUserId: string, @Body() body: unknown) {
     const dto: InvitePlatformSuperAdminRequest = InvitePlatformSuperAdminRequestSchema.parse(body);
     return this.platformService.invitePlatformSuperAdmin(actorUserId, dto);
   }
 
   @Post('users/invite')
-  async inviteUser(
-    @CurrentUser('id') actorUserId: string,
-    @Body() body: unknown,
-  ) {
+  async inviteUser(@CurrentUser('id') actorUserId: string, @Body() body: unknown) {
     const dto: PlatformInviteUserRequest = PlatformInviteUserRequestSchema.parse(body);
     return this.platformService.inviteUser(actorUserId, dto);
   }
@@ -237,12 +226,9 @@ export class PlatformController {
   }
 
   @Post('storage/maintenance/execute')
-  async executeStorageMaintenance(
-    @CurrentUser('id') actorUserId: string,
-    @Body() body: unknown,
-  ) {
-    const dto: ExecuteStorageMaintenanceRequest = ExecuteStorageMaintenanceRequestSchema.parse(body);
+  async executeStorageMaintenance(@CurrentUser('id') actorUserId: string, @Body() body: unknown) {
+    const dto: ExecuteStorageMaintenanceRequest =
+      ExecuteStorageMaintenanceRequestSchema.parse(body);
     return this.platformService.executeStorageMaintenance(actorUserId, dto);
   }
 }
-

@@ -14,15 +14,7 @@ import type {
   GuardianRelationship,
   PlayerGender,
 } from '@academy/shared';
-import {
-  UserPlus,
-  AlertCircle,
-  Save,
-  User,
-  Heart,
-  Users,
-  GitBranch,
-} from 'lucide-react';
+import { UserPlus, AlertCircle, Save, User, Heart, Users, GitBranch } from 'lucide-react';
 
 export default function NewPlayerPage() {
   const router = useRouter();
@@ -202,7 +194,9 @@ export default function NewPlayerPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">الجنس *</label>
+                <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">
+                  الجنس *
+                </label>
                 <select
                   id="select-gender"
                   value={gender}

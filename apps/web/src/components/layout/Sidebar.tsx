@@ -437,9 +437,7 @@ export function Sidebar({ isMobileOpen = false, onCloseMobile }: SidebarProps) {
                   <div className="text-xs font-bold text-[var(--text-main)] truncate">
                     {user.name}
                   </div>
-                  <div className="text-[10px] text-[var(--text-muted)] truncate">
-                    {user.email}
-                  </div>
+                  <div className="text-[10px] text-[var(--text-muted)] truncate">{user.email}</div>
                 </div>
               )}
             </div>

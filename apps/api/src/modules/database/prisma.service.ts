@@ -63,4 +63,3 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     return withPortalUserTransaction(this, options, callback);
   }
 }
-

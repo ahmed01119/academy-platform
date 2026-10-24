@@ -91,7 +91,9 @@ export const CreatePlayerSubscriptionPlanRequestSchema = z.object({
   currency: z.string().max(3).default('EGP'),
 });
 
-export type CreatePlayerSubscriptionPlanRequest = z.infer<typeof CreatePlayerSubscriptionPlanRequestSchema>;
+export type CreatePlayerSubscriptionPlanRequest = z.infer<
+  typeof CreatePlayerSubscriptionPlanRequestSchema
+>;
 
 export const PlayerSubscriptionItemSchema = z.object({
   id: z.string().uuid(),
@@ -259,4 +261,6 @@ export const AcademyFinancialDashboardMetricsSchema = z.object({
   recentTransactions: z.array(FinancialTransactionItemSchema),
 });
 
-export type AcademyFinancialDashboardMetrics = z.infer<typeof AcademyFinancialDashboardMetricsSchema>;
+export type AcademyFinancialDashboardMetrics = z.infer<
+  typeof AcademyFinancialDashboardMetricsSchema
+>;

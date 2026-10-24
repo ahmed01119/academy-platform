@@ -2,18 +2,18 @@
 
 Local data is tenant-scoped, never includes JWTs or payment credentials, and is purged on logout.
 
-| Workflow | Offline | Notes |
-|----------|---------|-------|
-| App shell / install PWA | Yes | Cached static assets + `/offline` fallback only |
-| Login / register / MFA | No | Requires live auth |
-| Tenant switch | No | Membership verified server-side |
-| QR attendance scan | Yes | IndexedDB queue + `operationId` idempotency |
-| Attendance sync | When online | Batch endpoint; failed items stay queued |
-| Evaluation **draft** | Yes | Local only until coach submits |
-| Evaluation **publish** | No | Server confirmation required |
-| Finance, invoices, expenses | No | Explicit online-only |
-| Player medical / PII export | No | Never cached in SW |
-| Super Admin | No | Platform-wide data must not sit in shared caches |
+| Workflow                    | Offline     | Notes                                            |
+| --------------------------- | ----------- | ------------------------------------------------ |
+| App shell / install PWA     | Yes         | Cached static assets + `/offline` fallback only  |
+| Login / register / MFA      | No          | Requires live auth                               |
+| Tenant switch               | No          | Membership verified server-side                  |
+| QR attendance scan          | Yes         | IndexedDB queue + `operationId` idempotency      |
+| Attendance sync             | When online | Batch endpoint; failed items stay queued         |
+| Evaluation **draft**        | Yes         | Local only until coach submits                   |
+| Evaluation **publish**      | No          | Server confirmation required                     |
+| Finance, invoices, expenses | No          | Explicit online-only                             |
+| Player medical / PII export | No          | Never cached in SW                               |
+| Super Admin                 | No          | Platform-wide data must not sit in shared caches |
 
 ## Sync guarantees
 

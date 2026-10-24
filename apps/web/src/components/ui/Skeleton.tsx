@@ -21,9 +21,7 @@ export function Skeleton({ className = 'h-4 w-full', count = 1 }: SkeletonProps)
     );
   }
 
-  return (
-    <div className={`animate-pulse rounded-lg bg-[var(--bg-surface-subtle)] ${className}`} />
-  );
+  return <div className={`animate-pulse rounded-lg bg-[var(--bg-surface-subtle)] ${className}`} />;
 }
 
 export function TableRowSkeleton({ cols = 5 }: { cols?: number }) {

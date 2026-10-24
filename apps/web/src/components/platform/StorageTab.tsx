@@ -4,19 +4,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useLocale } from '../../lib/locale-context';
 import apiClient from '../../lib/api-client';
 import { useToast } from '../ui/Toast';
-import {
-  Database,
-  HardDrive,
-  ShieldCheck,
-  RefreshCw,
-  Play,
-  Eye,
-  Layers,
-} from 'lucide-react';
-import type {
-  StorageMetrics,
-  StorageMaintenanceDryRunResponse,
-} from '@academy/shared';
+import { Database, HardDrive, ShieldCheck, RefreshCw, Play, Eye, Layers } from 'lucide-react';
+import type { StorageMetrics, StorageMaintenanceDryRunResponse } from '@academy/shared';
 
 export function StorageTab() {
   const { locale } = useLocale();
@@ -241,7 +230,10 @@ export function StorageTab() {
             </thead>
             <tbody className="divide-y divide-[var(--border-subtle)]">
               {metrics?.tables.map((t) => (
-                <tr key={t.tableName} className="hover:bg-[var(--bg-surface-subtle)]/50 transition-colors">
+                <tr
+                  key={t.tableName}
+                  className="hover:bg-[var(--bg-surface-subtle)]/50 transition-colors"
+                >
                   <td className="px-4 py-3 font-mono font-semibold text-[var(--text-main)]">
                     {t.tableName}
                   </td>
@@ -306,15 +298,21 @@ export function StorageTab() {
             </div>
 
             <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-400 font-medium">
-              {locale === 'ar' ? 'المساحة التقديرية القابلة للاسترداد:' : 'Estimated Reclaimable Space:'}{' '}
-              <span className="font-bold font-mono text-sm">{dryRunData.formattedReclaimableSize}</span>
+              {locale === 'ar'
+                ? 'المساحة التقديرية القابلة للاسترداد:'
+                : 'Estimated Reclaimable Space:'}{' '}
+              <span className="font-bold font-mono text-sm">
+                {dryRunData.formattedReclaimableSize}
+              </span>
             </div>
 
             {/* Protected Records Safeguards Box */}
             <div className="p-4 rounded-xl bg-[var(--bg-surface-subtle)] border border-[var(--border-subtle)] space-y-2">
               <h5 className="text-xs font-bold text-[var(--text-primary)] flex items-center gap-1.5">
                 <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                {locale === 'ar' ? 'سجلات محمية بالكامل بموجب السياسات' : 'Strictly Protected Records (Fail-Safe)'}
+                {locale === 'ar'
+                  ? 'سجلات محمية بالكامل بموجب السياسات'
+                  : 'Strictly Protected Records (Fail-Safe)'}
               </h5>
               <div className="grid grid-cols-3 gap-2 text-center text-xs">
                 <div className="p-2 rounded-lg bg-[var(--bg-card)]">
@@ -393,7 +391,9 @@ export function StorageTab() {
                 />
                 <div>
                   <span className="text-xs font-bold text-[var(--text-primary)] block">
-                    {locale === 'ar' ? 'حذف الجلسات والرموز المنتهية' : 'Purge Expired Refresh Tokens'}
+                    {locale === 'ar'
+                      ? 'حذف الجلسات والرموز المنتهية'
+                      : 'Purge Expired Refresh Tokens'}
                   </span>
                   <span className="text-[11px] text-[var(--text-secondary)]">
                     {locale === 'ar'

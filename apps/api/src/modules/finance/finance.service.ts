@@ -59,10 +59,6 @@ export class FinanceService {
         // If subscription hasn't been created yet, fallback to default active Starter
         let sub = tenant.subscription;
         if (!sub) {
-          const starterPlan = await tx.saaSPlan.findFirst({
-            where: { code: 'STARTER' },
-          });
-
           sub = await tx.tenantSubscription.create({
             data: {
               tenantId: tenant.id,
@@ -197,7 +193,13 @@ export class FinanceService {
    */
   async listPlayerSubscriptions(
     tenantContext: TenantContext,
-    query?: { status?: string; search?: string; playerId?: string; limit?: number; offset?: number },
+    query?: {
+      status?: string;
+      search?: string;
+      playerId?: string;
+      limit?: number;
+      offset?: number;
+    },
   ): Promise<PlayerSubscriptionItem[]> {
     return this.prisma.withTenantTransaction(
       { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
@@ -430,7 +432,7 @@ export class FinanceService {
         });
 
         // 2. Synchronize PlayerSubscription balance if subscription exists
-        let sub = dto.subscriptionId
+        const sub = dto.subscriptionId
           ? await tx.playerSubscription.findUnique({ where: { id: dto.subscriptionId } })
           : await tx.playerSubscription.findFirst({
               where: { tenantId: tenantContext.tenantId, playerId: dto.playerId },
@@ -582,7 +584,9 @@ export class FinanceService {
           branchName: updated.branch.name,
           sessionId: updated.sessionId,
           playerId: updated.playerId,
-          playerName: updated.player ? `${updated.player.firstName} ${updated.player.lastName}` : null,
+          playerName: updated.player
+            ? `${updated.player.firstName} ${updated.player.lastName}`
+            : null,
           subscriptionId: updated.subscriptionId,
           recordedByUserId: updated.recordedByUserId,
           recordedByName: updated.recordedByUser.name,
@@ -623,10 +627,18 @@ export class FinanceService {
       referenceNumber: t.referenceNumber ?? null,
       notes: t.notes ?? null,
       reversalReason: t.reversalReason ?? null,
-      reversedAt: t.reversedAt ? (t.reversedAt instanceof Date ? t.reversedAt.toISOString() : String(t.reversedAt)) : null,
+      reversedAt: t.reversedAt
+        ? t.reversedAt instanceof Date
+          ? t.reversedAt.toISOString()
+          : String(t.reversedAt)
+        : null,
       approvedByUserId: t.approvedByUserId ?? null,
       approvedByName: t.approvedByUser?.name ?? null,
-      approvedAt: t.approvedAt ? (t.approvedAt instanceof Date ? t.approvedAt.toISOString() : String(t.approvedAt)) : null,
+      approvedAt: t.approvedAt
+        ? t.approvedAt instanceof Date
+          ? t.approvedAt.toISOString()
+          : String(t.approvedAt)
+        : null,
       rejectionReason: t.rejectionReason ?? null,
       idempotencyKey: t.idempotencyKey ?? null,
       createdAt: t.createdAt instanceof Date ? t.createdAt.toISOString() : String(t.createdAt),
@@ -753,7 +765,8 @@ export class FinanceService {
         // 7. Determine status: COACH expenses are PENDING review; OWNER/MANAGER/ACCOUNTANT are auto-approved (COMPLETED)
         const now = new Date();
         const receiptNumber =
-          dto.receiptNumber || `EXP-${now.getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+          dto.receiptNumber ||
+          `EXP-${now.getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
         const isAutoApproved = isOwnerOrManager;
 
         const transaction = await tx.academyFinancialTransaction.create({
@@ -841,7 +854,10 @@ export class FinanceService {
         }
 
         // Enforce separation of duties: non-owner staff cannot approve their own expenses
-        if (transaction.recordedByUserId === tenantContext.actorUserId && tenantContext.role !== 'OWNER') {
+        if (
+          transaction.recordedByUserId === tenantContext.actorUserId &&
+          tenantContext.role !== 'OWNER'
+        ) {
           throw new ForbiddenException({
             code: ErrorCode.FORBIDDEN,
             message: 'Separation of duties: you cannot approve your own submitted expense',
@@ -1002,7 +1018,8 @@ export class FinanceService {
           if (!isAssigned) {
             throw new ForbiddenException({
               code: ErrorCode.FORBIDDEN,
-              message: 'You are only permitted to view cashier summary for sessions you are assigned to',
+              message:
+                'You are only permitted to view cashier summary for sessions you are assigned to',
             });
           }
         }
@@ -1022,7 +1039,9 @@ export class FinanceService {
           orderBy: { createdAt: 'desc' },
         });
 
-        const totalAttendees = session.records.filter((r) => r.status === 'PRESENT' || r.status === 'LATE').length;
+        const totalAttendees = session.records.filter(
+          (r) => r.status === 'PRESENT' || r.status === 'LATE',
+        ).length;
         const totalAbsent = session.records.filter((r) => r.status === 'ABSENT').length;
         const totalLate = session.records.filter((r) => r.status === 'LATE').length;
 
@@ -1036,7 +1055,9 @@ export class FinanceService {
         });
 
         const totalActiveSubscribers = playerSubs.filter((s) => s.status === 'ACTIVE').length;
-        const totalOverdueSubscribers = playerSubs.filter((s) => s.status === 'OVERDUE' || s.status === 'PARTIAL').length;
+        const totalOverdueSubscribers = playerSubs.filter(
+          (s) => s.status === 'OVERDUE' || s.status === 'PARTIAL',
+        ).length;
 
         let totalCashCollected = 0;
         let totalElectronicCollected = 0;
@@ -1077,7 +1098,9 @@ export class FinanceService {
           totalExpenses,
           netCashMovement,
           isReconciled: Boolean(session.cashierClosing?.isReconciled),
-          reconciledAt: session.cashierClosing?.reconciledAt ? session.cashierClosing.reconciledAt.toISOString() : null,
+          reconciledAt: session.cashierClosing?.reconciledAt
+            ? session.cashierClosing.reconciledAt.toISOString()
+            : null,
           closedByUserName: session.cashierClosing?.closedByUser?.name ?? null,
           notes: session.cashierClosing?.notes ?? null,
           transactions: transactions.map((t) => this.mapFinancialTransaction(t)),
@@ -1229,7 +1252,10 @@ export class FinanceService {
           where: { tenantId: tenantContext.tenantId },
         });
 
-        const outstandingPlayerBalances = playerSubs.reduce((acc, s) => acc + s.outstandingBalance, 0);
+        const outstandingPlayerBalances = playerSubs.reduce(
+          (acc, s) => acc + s.outstandingBalance,
+          0,
+        );
         const overdueSubscriptionsCount = playerSubs.filter(
           (s) => s.status === 'OVERDUE' || s.status === 'PARTIAL',
         ).length;

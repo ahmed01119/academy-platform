@@ -525,7 +525,8 @@ export class AttendanceService {
         if (!activeEnrollment) {
           throw new BadRequestException({
             code: ErrorCode.VALIDATION_FAILED,
-            message: 'اللاعب غير مسجل بنشاط في هذا الفرع (Player is not actively enrolled in this branch)',
+            message:
+              'اللاعب غير مسجل بنشاط في هذا الفرع (Player is not actively enrolled in this branch)',
           });
         }
 
@@ -946,7 +947,8 @@ export class AttendanceService {
         if (!activeEnrollment) {
           throw new BadRequestException({
             code: ErrorCode.VALIDATION_FAILED,
-            message: 'اللاعب غير مسجل بنشاط في هذا الفرع (Player is not actively enrolled in this branch)',
+            message:
+              'اللاعب غير مسجل بنشاط في هذا الفرع (Player is not actively enrolled in this branch)',
           });
         }
 
@@ -1305,10 +1307,11 @@ export class AttendanceService {
           eligibleRecords > 0 ? Math.round((attendedCount / eligibleRecords) * 100) : 0;
         const onTimeRate =
           eligibleRecords > 0 ? Math.round((presentCount / eligibleRecords) * 100) : 0;
-        const lateRate =
-          eligibleRecords > 0 ? Math.round((lateCount / eligibleRecords) * 100) : 0;
+        const lateRate = eligibleRecords > 0 ? Math.round((lateCount / eligibleRecords) * 100) : 0;
         const absenceRate =
-          eligibleRecords > 0 ? Math.round(((absentCount + excusedCount) / eligibleRecords) * 100) : 0;
+          eligibleRecords > 0
+            ? Math.round(((absentCount + excusedCount) / eligibleRecords) * 100)
+            : 0;
         const excusedRate =
           eligibleRecords > 0 ? Math.round((excusedCount / eligibleRecords) * 100) : 0;
 
@@ -1492,7 +1495,8 @@ export class AttendanceService {
         if (player.qrCardRevokedAt) {
           throw new BadRequestException({
             code: ErrorCode.VALIDATION_FAILED,
-            message: 'هذه البطاقة ملغاة أو تم استبدالها (This QR card has been revoked or replaced)',
+            message:
+              'هذه البطاقة ملغاة أو تم استبدالها (This QR card has been revoked or replaced)',
           });
         }
 
@@ -1515,7 +1519,8 @@ export class AttendanceService {
         if (!activeEnrollment) {
           throw new BadRequestException({
             code: ErrorCode.VALIDATION_FAILED,
-            message: 'اللاعب غير مسجل بنشاط في هذا الفرع (Player is not actively enrolled in this branch)',
+            message:
+              'اللاعب غير مسجل بنشاط في هذا الفرع (Player is not actively enrolled in this branch)',
           });
         }
 
@@ -1543,7 +1548,9 @@ export class AttendanceService {
               outstandingBalance: playerSub.outstandingBalance,
               feeAmount: playerSub.feeAmount,
               dueDate: playerSub.dueDate.toISOString().slice(0, 10),
-              lastPaymentDate: playerSub.lastPaymentDate ? playerSub.lastPaymentDate.toISOString() : null,
+              lastPaymentDate: playerSub.lastPaymentDate
+                ? playerSub.lastPaymentDate.toISOString()
+                : null,
               subscriptionId: playerSub.id,
             }
           : undefined;

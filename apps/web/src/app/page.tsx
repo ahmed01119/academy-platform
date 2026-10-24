@@ -32,7 +32,9 @@ import apiClient from '../lib/api-client';
 export default function HomePage() {
   const { user, activeTenant } = useAuth();
   const { t, locale, isRtl } = useLocale();
-  const [activePreviewTab, setActivePreviewTab] = useState<'attendance' | 'evaluations' | 'portals' | 'finance'>('attendance');
+  const [activePreviewTab, setActivePreviewTab] = useState<
+    'attendance' | 'evaluations' | 'portals' | 'finance'
+  >('attendance');
 
   // Academy Application Form State
   const [demoAcademyName, setDemoAcademyName] = useState('');
@@ -48,7 +50,9 @@ export default function HomePage() {
 
   // Player Join Request Modal State
   const [isPlayerJoinModalOpen, setIsPlayerJoinModalOpen] = useState(false);
-  const [publicAcademies, setPublicAcademies] = useState<Array<{ id: string; name: string; slug: string }>>([]);
+  const [publicAcademies, setPublicAcademies] = useState<
+    Array<{ id: string; name: string; slug: string }>
+  >([]);
   const [isLoadingAcademies, setIsLoadingAcademies] = useState(false);
   const [joinTenantId, setJoinTenantId] = useState('');
   const [joinPlayerName, setJoinPlayerName] = useState('');
@@ -134,7 +138,9 @@ export default function HomePage() {
   const handlePlayerJoinSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!joinTenantId) {
-      setJoinError(locale === 'ar' ? 'يرجى اختيار الأكاديمية الرياضية' : 'Please select an academy');
+      setJoinError(
+        locale === 'ar' ? 'يرجى اختيار الأكاديمية الرياضية' : 'Please select an academy',
+      );
       return;
     }
     setIsSubmittingJoin(true);
@@ -320,7 +326,9 @@ export default function HomePage() {
                       {t('landing.featureAttendance')}
                     </span>
                     <h3 className="text-2xl sm:text-3xl font-bold text-[var(--text-main)]">
-                      {locale === 'ar' ? 'التحضير السريع بالباركود ومزامنة عدم الاتصال' : 'Instant QR Camera Check-in & Offline Sync'}
+                      {locale === 'ar'
+                        ? 'التحضير السريع بالباركود ومزامنة عدم الاتصال'
+                        : 'Instant QR Camera Check-in & Offline Sync'}
                     </h3>
                     <p className="text-sm text-[var(--text-muted)] leading-relaxed">
                       {t('landing.featureAttendanceDesc')}
@@ -328,15 +336,27 @@ export default function HomePage() {
                     <ul className="space-y-2.5 text-xs sm:text-sm text-[var(--text-main)]">
                       <li className="flex items-center gap-2">
                         <CheckCircle2 className="h-4 w-4 text-[var(--accent-primary)] shrink-0" />
-                        <span>{locale === 'ar' ? 'ماسح كاميرا مستمر بمعدل استجابة أقل من 50ms' : 'Continuous video stream scanning under 50ms'}</span>
+                        <span>
+                          {locale === 'ar'
+                            ? 'ماسح كاميرا مستمر بمعدل استجابة أقل من 50ms'
+                            : 'Continuous video stream scanning under 50ms'}
+                        </span>
                       </li>
                       <li className="flex items-center gap-2">
                         <CheckCircle2 className="h-4 w-4 text-[var(--accent-primary)] shrink-0" />
-                        <span>{locale === 'ar' ? 'بطاقة عضوية رقمية للاعبين مع رمز QR مشفر للتجديد' : 'Digital membership player cards with rotatable tokens'}</span>
+                        <span>
+                          {locale === 'ar'
+                            ? 'بطاقة عضوية رقمية للاعبين مع رمز QR مشفر للتجديد'
+                            : 'Digital membership player cards with rotatable tokens'}
+                        </span>
                       </li>
                       <li className="flex items-center gap-2">
                         <CheckCircle2 className="h-4 w-4 text-[var(--accent-primary)] shrink-0" />
-                        <span>{locale === 'ar' ? 'حساب تأخير الحضور بدقة بتوقيت القاهرة مع فترة سماح قابلة للضبط' : 'Authoritative Cairo lateness calculations with grace periods'}</span>
+                        <span>
+                          {locale === 'ar'
+                            ? 'حساب تأخير الحضور بدقة بتوقيت القاهرة مع فترة سماح قابلة للضبط'
+                            : 'Authoritative Cairo lateness calculations with grace periods'}
+                        </span>
                       </li>
                     </ul>
                   </div>
@@ -358,13 +378,21 @@ export default function HomePage() {
                     <div className="h-44 rounded-xl border border-dashed border-[var(--border-app)] flex flex-col items-center justify-center gap-2 bg-[var(--bg-surface)] text-center p-4">
                       <QrCode className="h-12 w-12 text-[var(--accent-primary)]" />
                       <p className="text-xs text-[var(--text-muted)]">
-                        {locale === 'ar' ? 'وجه كاميرا الهاتف إلى بطاقة اللاعب للتسجيل الفوري' : 'Point camera at player QR card for instant verification'}
+                        {locale === 'ar'
+                          ? 'وجه كاميرا الهاتف إلى بطاقة اللاعب للتسجيل الفوري'
+                          : 'Point camera at player QR card for instant verification'}
                       </p>
                     </div>
 
                     <div className="flex items-center justify-between text-xs text-[var(--text-muted)] pt-1">
-                      <span>{locale === 'ar' ? 'الحصة التدريبية: فريق U-14' : 'Session: U-14 Football Squad'}</span>
-                      <span className="font-bold text-[var(--accent-primary)]">{locale === 'ar' ? 'تم الحضور: 18 / 20' : 'Attended: 18 / 20'}</span>
+                      <span>
+                        {locale === 'ar'
+                          ? 'الحصة التدريبية: فريق U-14'
+                          : 'Session: U-14 Football Squad'}
+                      </span>
+                      <span className="font-bold text-[var(--accent-primary)]">
+                        {locale === 'ar' ? 'تم الحضور: 18 / 20' : 'Attended: 18 / 20'}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -385,20 +413,44 @@ export default function HomePage() {
                     </p>
                     <div className="grid grid-cols-2 gap-3 pt-2">
                       <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] p-3">
-                        <div className="text-xs font-bold text-emerald-500">{t('landing.pillarTechnical')}</div>
-                        <div className="text-[11px] text-[var(--text-muted)] mt-1">{locale === 'ar' ? 'التمرير، المراوغة، التسديد والتمركز' : 'Passing, dribbling, shooting & control'}</div>
+                        <div className="text-xs font-bold text-emerald-500">
+                          {t('landing.pillarTechnical')}
+                        </div>
+                        <div className="text-[11px] text-[var(--text-muted)] mt-1">
+                          {locale === 'ar'
+                            ? 'التمرير، المراوغة، التسديد والتمركز'
+                            : 'Passing, dribbling, shooting & control'}
+                        </div>
                       </div>
                       <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] p-3">
-                        <div className="text-xs font-bold text-blue-500">{t('landing.pillarTactical')}</div>
-                        <div className="text-[11px] text-[var(--text-muted)] mt-1">{locale === 'ar' ? 'رؤية الملعب وسرعة اتخاذ القرار' : 'Vision, game awareness & decisions'}</div>
+                        <div className="text-xs font-bold text-blue-500">
+                          {t('landing.pillarTactical')}
+                        </div>
+                        <div className="text-[11px] text-[var(--text-muted)] mt-1">
+                          {locale === 'ar'
+                            ? 'رؤية الملعب وسرعة اتخاذ القرار'
+                            : 'Vision, game awareness & decisions'}
+                        </div>
                       </div>
                       <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] p-3">
-                        <div className="text-xs font-bold text-amber-500">{t('landing.pillarPhysical')}</div>
-                        <div className="text-[11px] text-[var(--text-muted)] mt-1">{locale === 'ar' ? 'السرعة، الرشاقة واللياقة الهوائية' : 'Speed, agility, strength & stamina'}</div>
+                        <div className="text-xs font-bold text-amber-500">
+                          {t('landing.pillarPhysical')}
+                        </div>
+                        <div className="text-[11px] text-[var(--text-muted)] mt-1">
+                          {locale === 'ar'
+                            ? 'السرعة، الرشاقة واللياقة الهوائية'
+                            : 'Speed, agility, strength & stamina'}
+                        </div>
                       </div>
                       <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] p-3">
-                        <div className="text-xs font-bold text-purple-500">{t('landing.pillarBehavioral')}</div>
-                        <div className="text-[11px] text-[var(--text-muted)] mt-1">{locale === 'ar' ? 'الانضباط والروح الجماعية والشغف' : 'Discipline, leadership & teamwork'}</div>
+                        <div className="text-xs font-bold text-purple-500">
+                          {t('landing.pillarBehavioral')}
+                        </div>
+                        <div className="text-[11px] text-[var(--text-muted)] mt-1">
+                          {locale === 'ar'
+                            ? 'الانضباط والروح الجماعية والشغف'
+                            : 'Discipline, leadership & teamwork'}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -407,12 +459,24 @@ export default function HomePage() {
                   <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-base)] p-6 space-y-4 shadow-inner">
                     <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
                       <div>
-                        <div className="text-sm font-bold text-[var(--text-main)]">{locale === 'ar' ? 'الملف الرياضي: عمر الغامدي' : 'Development Profile: Omar Al-Ghamdi'}</div>
-                        <div className="text-xs text-[var(--text-muted)]">{locale === 'ar' ? 'الفئة: ناشئين U-13 • مركز: وسط هجومي' : 'Category: Youth U-13 • Attacking Midfielder'}</div>
+                        <div className="text-sm font-bold text-[var(--text-main)]">
+                          {locale === 'ar'
+                            ? 'الملف الرياضي: عمر الغامدي'
+                            : 'Development Profile: Omar Al-Ghamdi'}
+                        </div>
+                        <div className="text-xs text-[var(--text-muted)]">
+                          {locale === 'ar'
+                            ? 'الفئة: ناشئين U-13 • مركز: وسط هجومي'
+                            : 'Category: Youth U-13 • Attacking Midfielder'}
+                        </div>
                       </div>
                       <div className="text-right">
-                        <div className="text-lg font-extrabold text-[var(--accent-primary)]">8.75 / 10</div>
-                        <div className="text-[10px] text-emerald-500 font-bold">{locale === 'ar' ? 'المركز 1 في الفئة' : 'Rank #1 in Age Tier'}</div>
+                        <div className="text-lg font-extrabold text-[var(--accent-primary)]">
+                          8.75 / 10
+                        </div>
+                        <div className="text-[10px] text-emerald-500 font-bold">
+                          {locale === 'ar' ? 'المركز 1 في الفئة' : 'Rank #1 in Age Tier'}
+                        </div>
                       </div>
                     </div>
 
@@ -466,7 +530,9 @@ export default function HomePage() {
                       {t('landing.featureFinance')}
                     </span>
                     <h3 className="text-2xl sm:text-3xl font-bold text-[var(--text-main)]">
-                      {locale === 'ar' ? 'إدارة التحصيلات وتسوية الصناديق اليومية' : 'Session Cashier Reconciliation & Player Subscriptions'}
+                      {locale === 'ar'
+                        ? 'إدارة التحصيلات وتسوية الصناديق اليومية'
+                        : 'Session Cashier Reconciliation & Player Subscriptions'}
                     </h3>
                     <p className="text-sm text-[var(--text-muted)] leading-relaxed">
                       {t('landing.featureFinanceDesc')}
@@ -474,15 +540,27 @@ export default function HomePage() {
                     <ul className="space-y-2.5 text-xs sm:text-sm text-[var(--text-main)]">
                       <li className="flex items-center gap-2">
                         <CheckCircle2 className="h-4 w-4 text-[var(--accent-primary)] shrink-0" />
-                        <span>{locale === 'ar' ? 'عرض حالة السداد والمبالغ المستحقة فورياً أثناء التحضير' : 'View live payment balance directly beside attendance scanner'}</span>
+                        <span>
+                          {locale === 'ar'
+                            ? 'عرض حالة السداد والمبالغ المستحقة فورياً أثناء التحضير'
+                            : 'View live payment balance directly beside attendance scanner'}
+                        </span>
                       </li>
                       <li className="flex items-center gap-2">
                         <CheckCircle2 className="h-4 w-4 text-[var(--accent-primary)] shrink-0" />
-                        <span>{locale === 'ar' ? 'تسوية صندوق الحصة التدريبية (نقدية، تحويلات، مصروفات)' : 'Full session cashier closing (cash, bank transfers, expenses)'}</span>
+                        <span>
+                          {locale === 'ar'
+                            ? 'تسوية صندوق الحصة التدريبية (نقدية، تحويلات، مصروفات)'
+                            : 'Full session cashier closing (cash, bank transfers, expenses)'}
+                        </span>
                       </li>
                       <li className="flex items-center gap-2">
                         <CheckCircle2 className="h-4 w-4 text-[var(--accent-primary)] shrink-0" />
-                        <span>{locale === 'ar' ? 'إيصالات دفع فورية وتتبع تفصيلي للأرصدة المتأخرة' : 'Instant receipts and authoritative overdue receivables tracking'}</span>
+                        <span>
+                          {locale === 'ar'
+                            ? 'إيصالات دفع فورية وتتبع تفصيلي للأرصدة المتأخرة'
+                            : 'Instant receipts and authoritative overdue receivables tracking'}
+                        </span>
                       </li>
                     </ul>
                   </div>
@@ -491,8 +569,16 @@ export default function HomePage() {
                   <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-base)] p-5 space-y-4 shadow-inner">
                     <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
                       <div>
-                        <div className="text-xs font-bold text-[var(--text-main)]">{locale === 'ar' ? 'تسوية صندوق الحصة #S-104' : 'Session Cashier Closing #S-104'}</div>
-                        <div className="text-[11px] text-[var(--text-muted)]">{locale === 'ar' ? 'الفرع: النادي الرئيسي • المدرب المسؤول: كابتن أحمد' : 'Main Branch • Coach: Capt. Ahmed'}</div>
+                        <div className="text-xs font-bold text-[var(--text-main)]">
+                          {locale === 'ar'
+                            ? 'تسوية صندوق الحصة #S-104'
+                            : 'Session Cashier Closing #S-104'}
+                        </div>
+                        <div className="text-[11px] text-[var(--text-muted)]">
+                          {locale === 'ar'
+                            ? 'الفرع: النادي الرئيسي • المدرب المسؤول: كابتن أحمد'
+                            : 'Main Branch • Coach: Capt. Ahmed'}
+                        </div>
                       </div>
                       <span className="text-[11px] font-bold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
                         {locale === 'ar' ? 'تمت المطابقة' : 'Reconciled'}
@@ -501,16 +587,26 @@ export default function HomePage() {
 
                     <div className="grid grid-cols-3 gap-2">
                       <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3 text-center">
-                        <div className="text-[10px] text-[var(--text-muted)]">{locale === 'ar' ? 'تحصيلات كاش' : 'Cash Collected'}</div>
-                        <div className="text-sm font-extrabold text-[var(--accent-primary)] mt-1">1,800 ج.م</div>
+                        <div className="text-[10px] text-[var(--text-muted)]">
+                          {locale === 'ar' ? 'تحصيلات كاش' : 'Cash Collected'}
+                        </div>
+                        <div className="text-sm font-extrabold text-[var(--accent-primary)] mt-1">
+                          1,800 ج.م
+                        </div>
                       </div>
                       <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3 text-center">
-                        <div className="text-[10px] text-[var(--text-muted)]">{locale === 'ar' ? 'تحويل إلكتروني' : 'Electronic'}</div>
+                        <div className="text-[10px] text-[var(--text-muted)]">
+                          {locale === 'ar' ? 'تحويل إلكتروني' : 'Electronic'}
+                        </div>
                         <div className="text-sm font-extrabold text-blue-500 mt-1">2,400 ج.م</div>
                       </div>
                       <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3 text-center">
-                        <div className="text-[10px] text-[var(--text-muted)]">{locale === 'ar' ? 'صافي الحصة' : 'Net Cash'}</div>
-                        <div className="text-sm font-extrabold text-emerald-500 mt-1">4,200 ج.م</div>
+                        <div className="text-[10px] text-[var(--text-muted)]">
+                          {locale === 'ar' ? 'صافي الحصة' : 'Net Cash'}
+                        </div>
+                        <div className="text-sm font-extrabold text-emerald-500 mt-1">
+                          4,200 ج.م
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -535,7 +631,9 @@ export default function HomePage() {
                         <ShieldCheck className="h-4 w-4" />
                         <span>{t('landing.roleSuperAdminTitle')}</span>
                       </div>
-                      <p className="text-xs text-[var(--text-muted)] leading-relaxed">{t('landing.roleSuperAdminDesc')}</p>
+                      <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+                        {t('landing.roleSuperAdminDesc')}
+                      </p>
                     </div>
 
                     <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-base)] p-4 space-y-2">
@@ -543,7 +641,9 @@ export default function HomePage() {
                         <Building2 className="h-4 w-4" />
                         <span>{t('landing.roleAcademyTitle')}</span>
                       </div>
-                      <p className="text-xs text-[var(--text-muted)] leading-relaxed">{t('landing.roleAcademyDesc')}</p>
+                      <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+                        {t('landing.roleAcademyDesc')}
+                      </p>
                     </div>
 
                     <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-base)] p-4 space-y-2">
@@ -551,7 +651,9 @@ export default function HomePage() {
                         <CalendarCheck className="h-4 w-4" />
                         <span>{t('landing.roleCoachTitle')}</span>
                       </div>
-                      <p className="text-xs text-[var(--text-muted)] leading-relaxed">{t('landing.roleCoachDesc')}</p>
+                      <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+                        {t('landing.roleCoachDesc')}
+                      </p>
                     </div>
 
                     <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-base)] p-4 space-y-2">
@@ -559,7 +661,9 @@ export default function HomePage() {
                         <Trophy className="h-4 w-4" />
                         <span>{t('landing.rolePlayerTitle')}</span>
                       </div>
-                      <p className="text-xs text-[var(--text-muted)] leading-relaxed">{t('landing.rolePlayerDesc')}</p>
+                      <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+                        {t('landing.rolePlayerDesc')}
+                      </p>
                     </div>
 
                     <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-base)] p-4 space-y-2">
@@ -567,7 +671,9 @@ export default function HomePage() {
                         <HeartHandshake className="h-4 w-4" />
                         <span>{t('landing.roleGuardianTitle')}</span>
                       </div>
-                      <p className="text-xs text-[var(--text-muted)] leading-relaxed">{t('landing.roleGuardianDesc')}</p>
+                      <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+                        {t('landing.roleGuardianDesc')}
+                      </p>
                     </div>
 
                     <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-base)] p-4 space-y-2">
@@ -575,7 +681,9 @@ export default function HomePage() {
                         <Lock className="h-4 w-4" />
                         <span>{t('landing.featureSecurity')}</span>
                       </div>
-                      <p className="text-xs text-[var(--text-muted)] leading-relaxed">{t('landing.featureSecurityDesc')}</p>
+                      <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+                        {t('landing.featureSecurityDesc')}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -585,17 +693,24 @@ export default function HomePage() {
         </section>
 
         {/* Academy Application Section */}
-        <section id="academy-application" className="py-20 bg-[var(--bg-base)] border-b border-[var(--border-subtle)] relative">
+        <section
+          id="academy-application"
+          className="py-20 bg-[var(--bg-base)] border-b border-[var(--border-subtle)] relative"
+        >
           <div id="demo-request" className="absolute -top-10" />
           <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
             <div className="rounded-3xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-6 sm:p-12 shadow-2xl space-y-8">
               <div className="text-center space-y-3">
                 <div className="inline-flex items-center gap-2 rounded-full border border-[var(--border-app)] bg-[var(--badge-bg)] px-4 py-1 text-xs font-bold text-[var(--accent-primary)]">
                   <Sparkles className="h-4 w-4" />
-                  <span>{locale === 'ar' ? 'طلب اعتماد وتسجيل أكاديمية' : 'Academy Application'}</span>
+                  <span>
+                    {locale === 'ar' ? 'طلب اعتماد وتسجيل أكاديمية' : 'Academy Application'}
+                  </span>
                 </div>
                 <h2 className="text-2xl sm:text-4xl font-extrabold text-[var(--text-main)]">
-                  {locale === 'ar' ? 'جاهز لنقل أكاديميتك إلى المستوى الاحترافي؟' : 'Ready to Elevate Your Sports Academy?'}
+                  {locale === 'ar'
+                    ? 'جاهز لنقل أكاديميتك إلى المستوى الاحترافي؟'
+                    : 'Ready to Elevate Your Sports Academy?'}
                 </h2>
                 <p className="text-xs sm:text-sm text-[var(--text-muted)] max-w-2xl mx-auto">
                   {locale === 'ar'
@@ -614,7 +729,9 @@ export default function HomePage() {
                 <div className="rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-8 text-center space-y-3 animate-in fade-in">
                   <CheckCircle2 className="h-12 w-12 text-emerald-500 mx-auto" />
                   <h3 className="text-xl font-bold text-[var(--text-main)]">
-                    {locale === 'ar' ? 'تم استلام طلب اعتماد الأكاديمية بنجاح!' : 'Academy Application Submitted!'}
+                    {locale === 'ar'
+                      ? 'تم استلام طلب اعتماد الأكاديمية بنجاح!'
+                      : 'Academy Application Submitted!'}
                   </h3>
                   <p className="text-sm text-[var(--text-muted)] max-w-md mx-auto">
                     {locale === 'ar'
@@ -626,30 +743,42 @@ export default function HomePage() {
                 <form onSubmit={handleDemoSubmit} className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-[var(--text-main)]">{t('landing.demoAcademyName')} *</label>
+                      <label className="text-xs font-bold text-[var(--text-main)]">
+                        {t('landing.demoAcademyName')} *
+                      </label>
                       <input
                         type="text"
                         required
                         value={demoAcademyName}
                         onChange={(e) => setDemoAcademyName(e.target.value)}
-                        placeholder={locale === 'ar' ? 'مثال: أكاديمية النجوم الدولية' : 'e.g. Star Sports Academy'}
+                        placeholder={
+                          locale === 'ar'
+                            ? 'مثال: أكاديمية النجوم الدولية'
+                            : 'e.g. Star Sports Academy'
+                        }
                         className="w-full rounded-xl border border-[var(--border-app)] bg-[var(--bg-base)] px-4 py-2.5 text-sm text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none"
                       />
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-[var(--text-main)]">{t('landing.demoSport')} *</label>
+                      <label className="text-xs font-bold text-[var(--text-main)]">
+                        {t('landing.demoSport')} *
+                      </label>
                       <select
                         value={demoSport}
                         onChange={(e) => setDemoSport(e.target.value as 'FOOTBALL')}
                         className="w-full rounded-xl border border-[var(--border-app)] bg-[var(--bg-base)] px-4 py-2.5 text-sm text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none"
                       >
-                        <option value="FOOTBALL">⚽ {locale === 'ar' ? 'كرة قدم (Football)' : 'Football (Soccer)'}</option>
+                        <option value="FOOTBALL">
+                          ⚽ {locale === 'ar' ? 'كرة قدم (Football)' : 'Football (Soccer)'}
+                        </option>
                       </select>
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-[var(--text-main)]">{t('landing.demoContactName')} *</label>
+                      <label className="text-xs font-bold text-[var(--text-main)]">
+                        {t('landing.demoContactName')} *
+                      </label>
                       <input
                         type="text"
                         required
@@ -661,7 +790,9 @@ export default function HomePage() {
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-[var(--text-main)]">{t('landing.demoCity')} *</label>
+                      <label className="text-xs font-bold text-[var(--text-main)]">
+                        {t('landing.demoCity')} *
+                      </label>
                       <input
                         type="text"
                         required
@@ -673,7 +804,9 @@ export default function HomePage() {
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-[var(--text-main)]">{t('landing.demoEmail')} *</label>
+                      <label className="text-xs font-bold text-[var(--text-main)]">
+                        {t('landing.demoEmail')} *
+                      </label>
                       <input
                         type="email"
                         required
@@ -685,7 +818,9 @@ export default function HomePage() {
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-[var(--text-main)]">{t('landing.demoPhone')} *</label>
+                      <label className="text-xs font-bold text-[var(--text-main)]">
+                        {t('landing.demoPhone')} *
+                      </label>
                       <input
                         type="tel"
                         required
@@ -698,16 +833,26 @@ export default function HomePage() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-[var(--text-main)]">{t('landing.demoPlayersCount')}</label>
+                    <label className="text-xs font-bold text-[var(--text-main)]">
+                      {t('landing.demoPlayersCount')}
+                    </label>
                     <select
                       value={demoPlayersCount}
                       onChange={(e) => setDemoPlayersCount(e.target.value)}
                       className="w-full rounded-xl border border-[var(--border-app)] bg-[var(--bg-base)] px-4 py-2.5 text-sm text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none"
                     >
-                      <option value="50-150">50 - 150 {locale === 'ar' ? 'لاعب' : 'players'}</option>
-                      <option value="150-300">150 - 300 {locale === 'ar' ? 'لاعب' : 'players'}</option>
-                      <option value="300-600">300 - 600 {locale === 'ar' ? 'لاعب' : 'players'}</option>
-                      <option value="600+">600+ {locale === 'ar' ? 'لاعب (فروع متعددة)' : 'players (multi-branch)'}</option>
+                      <option value="50-150">
+                        50 - 150 {locale === 'ar' ? 'لاعب' : 'players'}
+                      </option>
+                      <option value="150-300">
+                        150 - 300 {locale === 'ar' ? 'لاعب' : 'players'}
+                      </option>
+                      <option value="300-600">
+                        300 - 600 {locale === 'ar' ? 'لاعب' : 'players'}
+                      </option>
+                      <option value="600+">
+                        600+ {locale === 'ar' ? 'لاعب (فروع متعددة)' : 'players (multi-branch)'}
+                      </option>
                     </select>
                   </div>
 
@@ -717,7 +862,9 @@ export default function HomePage() {
                     className="w-full flex items-center justify-center gap-2 rounded-xl bg-[var(--accent-primary)] px-6 py-3.5 text-sm font-bold text-white shadow-xl shadow-emerald-600/20 hover:opacity-95 transition-all disabled:opacity-50 cursor-pointer"
                   >
                     <Send className="h-4 w-4" />
-                    <span>{isSubmittingDemo ? t('landing.demoSubmitting') : t('landing.demoSubmit')}</span>
+                    <span>
+                      {isSubmittingDemo ? t('landing.demoSubmitting') : t('landing.demoSubmit')}
+                    </span>
                   </button>
                 </form>
               )}
@@ -726,7 +873,10 @@ export default function HomePage() {
         </section>
 
         {/* FAQ Section */}
-        <section id="faq" className="py-20 bg-[var(--bg-surface-subtle)] border-b border-[var(--border-subtle)]">
+        <section
+          id="faq"
+          className="py-20 bg-[var(--bg-surface-subtle)] border-b border-[var(--border-subtle)]"
+        >
           <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 space-y-8">
             <div className="text-center space-y-2">
               <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[var(--accent-primary)] bg-[var(--badge-bg)] px-3 py-1 rounded-full border border-[var(--badge-border)]">
@@ -778,7 +928,9 @@ export default function HomePage() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[var(--text-muted)]">
           <div className="flex items-center gap-2 font-bold text-[var(--text-main)]">
             <ShieldCheck className="h-5 w-5 text-[var(--accent-primary)]" />
-            <span>{t('common.academyPlatform')} &copy; {new Date().getFullYear()}</span>
+            <span>
+              {t('common.academyPlatform')} &copy; {new Date().getFullYear()}
+            </span>
           </div>
 
           <div className="flex items-center gap-4">
@@ -787,7 +939,10 @@ export default function HomePage() {
               <span>Multi-Tenant RLS Protected</span>
             </span>
             <span>•</span>
-            <a href="#academy-application" className="hover:text-[var(--text-main)] transition-colors">
+            <a
+              href="#academy-application"
+              className="hover:text-[var(--text-main)] transition-colors"
+            >
               {locale === 'ar' ? 'تسجيل أكاديمية' : 'Apply for Academy'}
             </a>
             <span>•</span>
@@ -834,7 +989,9 @@ export default function HomePage() {
               <div className="text-center py-6 space-y-4">
                 <CheckCircle2 className="h-14 w-14 text-emerald-500 mx-auto" />
                 <h4 className="text-lg font-bold text-[var(--text-main)]">
-                  {locale === 'ar' ? 'تم إرسال طلب الانضمام بنجاح!' : 'Join Request Submitted Successfully!'}
+                  {locale === 'ar'
+                    ? 'تم إرسال طلب الانضمام بنجاح!'
+                    : 'Join Request Submitted Successfully!'}
                 </h4>
                 <p className="text-sm text-[var(--text-muted)] max-w-sm mx-auto">
                   {locale === 'ar'
@@ -859,7 +1016,9 @@ export default function HomePage() {
 
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-[var(--text-main)]">
-                    {locale === 'ar' ? 'الأكاديمية الرياضية المراد الانضمام إليها *' : 'Select Target Academy *'}
+                    {locale === 'ar'
+                      ? 'الأكاديمية الرياضية المراد الانضمام إليها *'
+                      : 'Select Target Academy *'}
                   </label>
                   {isLoadingAcademies ? (
                     <div className="text-xs text-[var(--text-muted)] py-2">
@@ -867,7 +1026,9 @@ export default function HomePage() {
                     </div>
                   ) : publicAcademies.length === 0 ? (
                     <div className="text-xs text-amber-500 py-1">
-                      {locale === 'ar' ? 'لا توجد أكاديميات نشطة متاحة حالياً' : 'No active academies available at the moment'}
+                      {locale === 'ar'
+                        ? 'لا توجد أكاديميات نشطة متاحة حالياً'
+                        : 'No active academies available at the moment'}
                     </div>
                   ) : (
                     <select

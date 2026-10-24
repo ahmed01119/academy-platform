@@ -1411,7 +1411,9 @@ export class PlatformService {
         });
       }
     } catch (notifErr: any) {
-      this.logger.warn(`Failed to dispatch application notification: ${notifErr?.message ?? notifErr}`);
+      this.logger.warn(
+        `Failed to dispatch application notification: ${notifErr?.message ?? notifErr}`,
+      );
     }
 
     return result.item;
@@ -1521,9 +1523,7 @@ export class PlatformService {
   /**
    * Evaluates storage cleanup candidates without modifying any data.
    */
-  async dryRunStorageMaintenance(
-    actorUserId: string,
-  ): Promise<StorageMaintenanceDryRunResponse> {
+  async dryRunStorageMaintenance(actorUserId: string): Promise<StorageMaintenanceDryRunResponse> {
     return this.prisma.withPlatformAdminTransaction({ actorUserId }, async (tx) => {
       const now = new Date();
       const ninetyDaysAgo = new Date(Date.now() - 90 * 86400000);
@@ -1537,10 +1537,7 @@ export class PlatformService {
       ] = await Promise.all([
         tx.refreshToken.count({
           where: {
-            OR: [
-              { expiresAt: { lt: now } },
-              { isRevoked: true },
-            ],
+            OR: [{ expiresAt: { lt: now } }, { isRevoked: true }],
           },
         }),
         tx.auditLog.count({
@@ -1561,8 +1558,7 @@ export class PlatformService {
         tx.playerSubscription.count({ where: { status: 'ACTIVE' } }),
       ]);
 
-      const estimatedReclaimableBytes =
-        expiredTokensCount * 256 + purgeableAuditLogsCount * 350;
+      const estimatedReclaimableBytes = expiredTokensCount * 256 + purgeableAuditLogsCount * 350;
 
       return {
         expiredSessionsCount: expiredTokensCount,
@@ -1585,7 +1581,12 @@ export class PlatformService {
   async executeStorageMaintenance(
     actorUserId: string,
     dto: ExecuteStorageMaintenanceRequest,
-  ): Promise<{ success: boolean; purgedTokensCount: number; purgedLogsCount: number; message: string }> {
+  ): Promise<{
+    success: boolean;
+    purgedTokensCount: number;
+    purgedLogsCount: number;
+    message: string;
+  }> {
     return this.prisma.withPlatformAdminTransaction({ actorUserId }, async (tx) => {
       const now = new Date();
       let purgedTokensCount = 0;
@@ -1594,10 +1595,7 @@ export class PlatformService {
       if (dto.purgeExpiredTokens) {
         const tokenRes = await tx.refreshToken.deleteMany({
           where: {
-            OR: [
-              { expiresAt: { lt: now } },
-              { isRevoked: true },
-            ],
+            OR: [{ expiresAt: { lt: now } }, { isRevoked: true }],
           },
         });
         purgedTokensCount = tokenRes.count;
@@ -1644,4 +1642,3 @@ export class PlatformService {
     });
   }
 }
-

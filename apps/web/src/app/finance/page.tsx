@@ -59,9 +59,13 @@ export default function FinanceDashboardPage() {
 
   // Modals
   const [isCollectPaymentOpen, setIsCollectPaymentOpen] = useState(false);
-  const [selectedSubForPayment, setSelectedSubForPayment] = useState<PlayerSubscriptionItem | null>(null);
+  const [selectedSubForPayment, setSelectedSubForPayment] = useState<PlayerSubscriptionItem | null>(
+    null,
+  );
   const [paymentAmount, setPaymentAmount] = useState<number>(0);
-  const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'CARD' | 'POS' | 'BANK_TRANSFER'>('CASH');
+  const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'CARD' | 'POS' | 'BANK_TRANSFER'>(
+    'CASH',
+  );
   const [paymentRefNumber, setPaymentRefNumber] = useState('');
   const [paymentNotes, setPaymentNotes] = useState('');
   const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
@@ -91,7 +95,9 @@ export default function FinanceDashboardPage() {
   const [isCreatePlanOpen, setIsCreatePlanOpen] = useState(false);
   const [planName, setPlanName] = useState('');
   const [planPrice, setPlanPrice] = useState<number>(650);
-  const [planPeriod, setPlanPeriod] = useState<'MONTHLY' | 'QUARTERLY' | 'ANNUAL' | 'PER_SESSION'>('MONTHLY');
+  const [planPeriod, setPlanPeriod] = useState<'MONTHLY' | 'QUARTERLY' | 'ANNUAL' | 'PER_SESSION'>(
+    'MONTHLY',
+  );
   const [planDescription, setPlanDescription] = useState('');
   const [isSubmittingPlan, setIsSubmittingPlan] = useState(false);
 
@@ -132,16 +138,19 @@ export default function FinanceDashboardPage() {
   // Load players for new subscription dropdown
   useEffect(() => {
     if (isCreateSubOpen && allPlayers.length === 0) {
-      apiClient.players.list({ limit: 100 }).then((res) => {
-        const formatted = res.items.map((p) => ({
-          id: p.id,
-          name: `${p.firstName} ${p.lastName}`,
-        }));
-        setAllPlayers(formatted);
-        if (formatted.length > 0 && !selectedPlayerId && formatted[0]) {
-          setSelectedPlayerId(formatted[0].id);
-        }
-      }).catch(console.error);
+      apiClient.players
+        .list({ limit: 100 })
+        .then((res) => {
+          const formatted = res.items.map((p) => ({
+            id: p.id,
+            name: `${p.firstName} ${p.lastName}`,
+          }));
+          setAllPlayers(formatted);
+          if (formatted.length > 0 && !selectedPlayerId && formatted[0]) {
+            setSelectedPlayerId(formatted[0].id);
+          }
+        })
+        .catch(console.error);
     }
   }, [isCreateSubOpen, allPlayers.length, selectedPlayerId]);
 
@@ -280,7 +289,17 @@ export default function FinanceDashboardPage() {
 
   const handleExportCsv = () => {
     if (!filteredTransactions.length) return;
-    const headers = ['رقم الإيصال', 'التاريخ', 'المستفيد / اللاعب', 'الفرع', 'النوع', 'المبلغ (ر.س)', 'طريقة الدفع', 'الحالة', 'ملاحظات'];
+    const headers = [
+      'رقم الإيصال',
+      'التاريخ',
+      'المستفيد / اللاعب',
+      'الفرع',
+      'النوع',
+      'المبلغ (ر.س)',
+      'طريقة الدفع',
+      'الحالة',
+      'ملاحظات',
+    ];
     const rows = filteredTransactions.map((tx) => [
       tx.receiptNumber || tx.id.slice(0, 8),
       new Date(tx.createdAt).toLocaleDateString('ar-EG'),
@@ -299,7 +318,10 @@ export default function FinanceDashboardPage() {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `financial-statement-${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute(
+      'download',
+      `financial-statement-${new Date().toISOString().slice(0, 10)}.csv`,
+    );
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -311,7 +333,9 @@ export default function FinanceDashboardPage() {
         <div className="flex h-[60vh] items-center justify-center">
           <div className="flex flex-col items-center gap-3">
             <RefreshCw className="h-8 w-8 animate-spin text-[var(--brand-primary)]" />
-            <p className="text-sm font-medium text-[var(--text-muted)]">جارٍ تحميل بيانات العمليات المالية والاشتراكات...</p>
+            <p className="text-sm font-medium text-[var(--text-muted)]">
+              جارٍ تحميل بيانات العمليات المالية والاشتراكات...
+            </p>
           </div>
         </div>
       </AppShell>
@@ -359,11 +383,14 @@ export default function FinanceDashboardPage() {
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
             <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 shadow-sm">
               <div className="flex items-center justify-between text-[var(--text-muted)] mb-1">
-                <span className="text-[11px] font-semibold">{t('finance.todayCollections', 'تحصيلات اليوم')}</span>
+                <span className="text-[11px] font-semibold">
+                  {t('finance.todayCollections', 'تحصيلات اليوم')}
+                </span>
                 <Clock className="h-4 w-4 text-emerald-500" />
               </div>
               <div className="text-xl font-extrabold text-emerald-600 dark:text-emerald-400">
-                {metrics.todayCollections.toLocaleString()} <span className="text-xs font-normal">ر.س</span>
+                {metrics.todayCollections.toLocaleString()}{' '}
+                <span className="text-xs font-normal">ر.س</span>
               </div>
             </div>
 
@@ -373,47 +400,60 @@ export default function FinanceDashboardPage() {
                 <Wallet className="h-4 w-4 text-blue-500" />
               </div>
               <div className="text-xl font-extrabold text-blue-600 dark:text-blue-400">
-                {metrics.sessionCollections.toLocaleString()} <span className="text-xs font-normal">ر.س</span>
+                {metrics.sessionCollections.toLocaleString()}{' '}
+                <span className="text-xs font-normal">ر.س</span>
               </div>
             </div>
 
             <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 shadow-sm">
               <div className="flex items-center justify-between text-[var(--text-muted)] mb-1">
-                <span className="text-[11px] font-semibold">{t('finance.monthlyRevenue', 'إيرادات الشهر')}</span>
+                <span className="text-[11px] font-semibold">
+                  {t('finance.monthlyRevenue', 'إيرادات الشهر')}
+                </span>
                 <TrendingUp className="h-4 w-4 text-[var(--brand-primary)]" />
               </div>
               <div className="text-xl font-extrabold text-[var(--text-primary)]">
-                {metrics.monthlyRevenue.toLocaleString()} <span className="text-xs font-normal">ر.س</span>
+                {metrics.monthlyRevenue.toLocaleString()}{' '}
+                <span className="text-xs font-normal">ر.س</span>
               </div>
             </div>
 
             <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 shadow-sm">
               <div className="flex items-center justify-between text-[var(--text-muted)] mb-1">
-                <span className="text-[11px] font-semibold">{t('finance.outstandingBalances', 'الأرصدة المستحقة')}</span>
+                <span className="text-[11px] font-semibold">
+                  {t('finance.outstandingBalances', 'الأرصدة المستحقة')}
+                </span>
                 <AlertCircle className="h-4 w-4 text-amber-500" />
               </div>
               <div className="text-xl font-extrabold text-amber-600 dark:text-amber-400">
-                {metrics.outstandingPlayerBalances.toLocaleString()} <span className="text-xs font-normal">ر.س</span>
+                {metrics.outstandingPlayerBalances.toLocaleString()}{' '}
+                <span className="text-xs font-normal">ر.س</span>
               </div>
             </div>
 
             <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 shadow-sm">
               <div className="flex items-center justify-between text-[var(--text-muted)] mb-1">
-                <span className="text-[11px] font-semibold">{t('finance.overdueCount', 'اشتراكات متأخرة')}</span>
+                <span className="text-[11px] font-semibold">
+                  {t('finance.overdueCount', 'اشتراكات متأخرة')}
+                </span>
                 <XCircle className="h-4 w-4 text-rose-500" />
               </div>
               <div className="text-xl font-extrabold text-rose-600 dark:text-rose-400">
-                {metrics.overdueSubscriptionsCount} <span className="text-xs font-normal">لاعب</span>
+                {metrics.overdueSubscriptionsCount}{' '}
+                <span className="text-xs font-normal">لاعب</span>
               </div>
             </div>
 
             <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 shadow-sm">
               <div className="flex items-center justify-between text-[var(--text-muted)] mb-1">
-                <span className="text-[11px] font-semibold">{t('finance.netCashMovement', 'صافي الحركة النقدية')}</span>
+                <span className="text-[11px] font-semibold">
+                  {t('finance.netCashMovement', 'صافي الحركة النقدية')}
+                </span>
                 <Receipt className="h-4 w-4 text-violet-500" />
               </div>
               <div className="text-xl font-extrabold text-violet-600 dark:text-violet-400">
-                {metrics.netCashMovement.toLocaleString()} <span className="text-xs font-normal">ر.س</span>
+                {metrics.netCashMovement.toLocaleString()}{' '}
+                <span className="text-xs font-normal">ر.س</span>
               </div>
             </div>
           </div>
@@ -470,13 +510,17 @@ export default function FinanceDashboardPage() {
               <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 shadow-sm space-y-4">
                 <div className="flex items-center gap-2">
                   <CreditCard className="h-4 w-4 text-[var(--brand-primary)]" />
-                  <h3 className="text-sm font-bold text-[var(--text-primary)]">{t('finance.paymentMethods', 'طرق الدفع المعتمدة')}</h3>
+                  <h3 className="text-sm font-bold text-[var(--text-primary)]">
+                    {t('finance.paymentMethods', 'طرق الدفع المعتمدة')}
+                  </h3>
                 </div>
 
                 <div className="space-y-3">
                   {metrics &&
                     Object.entries(metrics.paymentMethodBreakdown).map(([method, amount]) => {
-                      const total = Object.values(metrics.paymentMethodBreakdown).reduce((a, b) => a + b, 0) || 1;
+                      const total =
+                        Object.values(metrics.paymentMethodBreakdown).reduce((a, b) => a + b, 0) ||
+                        1;
                       const percentage = Math.round((amount / total) * 100);
 
                       return (
@@ -513,12 +557,16 @@ export default function FinanceDashboardPage() {
               <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 shadow-sm space-y-4">
                 <div className="flex items-center gap-2">
                   <Building2 className="h-4 w-4 text-[var(--brand-primary)]" />
-                  <h3 className="text-sm font-bold text-[var(--text-primary)]">إيرادات الفروع والملاعب</h3>
+                  <h3 className="text-sm font-bold text-[var(--text-primary)]">
+                    إيرادات الفروع والملاعب
+                  </h3>
                 </div>
 
                 <div className="space-y-3">
                   {metrics && Object.keys(metrics.branchRevenue).length === 0 ? (
-                    <p className="text-xs text-[var(--text-muted)] py-4 text-center">لا توجد إيرادات مسجلة بالفروع حتى الآن.</p>
+                    <p className="text-xs text-[var(--text-muted)] py-4 text-center">
+                      لا توجد إيرادات مسجلة بالفروع حتى الآن.
+                    </p>
                   ) : (
                     metrics &&
                     Object.entries(metrics.branchRevenue).map(([branchName, amount]) => (
@@ -526,7 +574,9 @@ export default function FinanceDashboardPage() {
                         key={branchName}
                         className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 text-xs flex justify-between items-center"
                       >
-                        <span className="font-semibold text-[var(--text-primary)]">{branchName}</span>
+                        <span className="font-semibold text-[var(--text-primary)]">
+                          {branchName}
+                        </span>
                         <span className="font-extrabold text-emerald-600 dark:text-emerald-400">
                           {amount.toLocaleString()} ر.س
                         </span>
@@ -541,7 +591,9 @@ export default function FinanceDashboardPage() {
             <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 shadow-sm space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
-                  <h3 className="text-sm font-bold text-[var(--text-primary)]">سجل القيود والمعاملات المالية</h3>
+                  <h3 className="text-sm font-bold text-[var(--text-primary)]">
+                    سجل القيود والمعاملات المالية
+                  </h3>
                   <p className="text-xs text-[var(--text-muted)]">
                     سجل شامل لجميع المقبوضات ومصروفات الحصص مع إمكانية عكس القيود المحاسبية.
                   </p>
@@ -594,7 +646,10 @@ export default function FinanceDashboardPage() {
                     </thead>
                     <tbody className="divide-y divide-[var(--border-subtle)]">
                       {filteredTransactions.map((tx) => (
-                        <tr key={tx.id} className="hover:bg-[var(--bg-elevated)]/50 transition-colors">
+                        <tr
+                          key={tx.id}
+                          className="hover:bg-[var(--bg-elevated)]/50 transition-colors"
+                        >
                           <td className="py-3 px-3 font-mono font-bold text-[var(--brand-primary)]">
                             {tx.receiptNumber || tx.id.slice(0, 8)}
                           </td>
@@ -627,13 +682,21 @@ export default function FinanceDashboardPage() {
                             </span>
                           </td>
                           <td className="py-3 px-3 font-mono font-extrabold">
-                            <span className={tx.type === 'SESSION_EXPENSE' ? 'text-rose-600' : 'text-emerald-600 dark:text-emerald-400'}>
+                            <span
+                              className={
+                                tx.type === 'SESSION_EXPENSE'
+                                  ? 'text-rose-600'
+                                  : 'text-emerald-600 dark:text-emerald-400'
+                              }
+                            >
                               {tx.type === 'SESSION_EXPENSE' ? '-' : '+'}
                               {tx.amount.toLocaleString()} ر.س
                             </span>
                           </td>
                           <td className="py-3 px-3 text-[var(--text-muted)]">{tx.paymentMethod}</td>
-                          <td className="py-3 px-3 text-[var(--text-muted)]">{tx.recordedByName || 'النظام'}</td>
+                          <td className="py-3 px-3 text-[var(--text-muted)]">
+                            {tx.recordedByName || 'النظام'}
+                          </td>
                           <td className="py-3 px-3">
                             <span
                               className={`px-2 py-0.5 rounded text-[10px] font-bold ${
@@ -730,9 +793,16 @@ export default function FinanceDashboardPage() {
                     </thead>
                     <tbody className="divide-y divide-[var(--border-subtle)]">
                       {filteredSubscriptions.map((sub) => (
-                        <tr key={sub.id} className="hover:bg-[var(--bg-elevated)]/40 transition-colors">
-                          <td className="py-3 px-4 font-bold text-[var(--text-primary)]">{sub.playerName}</td>
-                          <td className="py-3 px-4 text-[var(--text-muted)]">{sub.planName || 'باقة مخصصة'}</td>
+                        <tr
+                          key={sub.id}
+                          className="hover:bg-[var(--bg-elevated)]/40 transition-colors"
+                        >
+                          <td className="py-3 px-4 font-bold text-[var(--text-primary)]">
+                            {sub.playerName}
+                          </td>
+                          <td className="py-3 px-4 text-[var(--text-muted)]">
+                            {sub.planName || 'باقة مخصصة'}
+                          </td>
                           <td className="py-3 px-4 font-mono text-[var(--text-muted)]">
                             {String(sub.startDate).slice(0, 10)}
                           </td>
@@ -746,7 +816,13 @@ export default function FinanceDashboardPage() {
                             {sub.paidAmount.toLocaleString()} ر.س
                           </td>
                           <td className="py-3 px-4 font-mono font-bold">
-                            <span className={sub.outstandingBalance > 0 ? 'text-amber-500' : 'text-[var(--text-muted)]'}>
+                            <span
+                              className={
+                                sub.outstandingBalance > 0
+                                  ? 'text-amber-500'
+                                  : 'text-[var(--text-muted)]'
+                              }
+                            >
                               {sub.outstandingBalance.toLocaleString()} ر.س
                             </span>
                           </td>
@@ -810,13 +886,16 @@ export default function FinanceDashboardPage() {
                         </span>
                       </div>
                       <p className="text-xs text-[var(--text-muted)] mt-0.5">
-                        الباقة المفعلة تشمل حتى {tenantSub.maxBranches} فروع و {tenantSub.maxPlayers} لاعب نشط.
+                        الباقة المفعلة تشمل حتى {tenantSub.maxBranches} فروع و{' '}
+                        {tenantSub.maxPlayers} لاعب نشط.
                       </p>
                     </div>
                   </div>
 
                   <div className="text-left font-mono">
-                    <span className="text-xs text-[var(--text-muted)] block">قيمة الاشتراك الشهري (MRR)</span>
+                    <span className="text-xs text-[var(--text-muted)] block">
+                      قيمة الاشتراك الشهري (MRR)
+                    </span>
                     <span className="text-xl font-black text-[var(--brand-primary)]">
                       {tenantSub.currentPrice.toLocaleString()} {tenantSub.currency || 'ر.س'}
                     </span>
@@ -831,18 +910,28 @@ export default function FinanceDashboardPage() {
                     </span>
                   </div>
                   <div>
-                    <span className="text-[var(--text-muted)] block mb-0.5">تاريخ التجديد القادم:</span>
+                    <span className="text-[var(--text-muted)] block mb-0.5">
+                      تاريخ التجديد القادم:
+                    </span>
                     <span className="font-mono font-bold text-[var(--text-primary)]">
                       {String(tenantSub.renewalDate).slice(0, 10)}
                     </span>
                   </div>
                   <div>
-                    <span className="text-[var(--text-muted)] block mb-0.5">الحد الأقصى للفروع:</span>
-                    <span className="font-bold text-[var(--text-primary)]">{tenantSub.maxBranches} فروع</span>
+                    <span className="text-[var(--text-muted)] block mb-0.5">
+                      الحد الأقصى للفروع:
+                    </span>
+                    <span className="font-bold text-[var(--text-primary)]">
+                      {tenantSub.maxBranches} فروع
+                    </span>
                   </div>
                   <div>
-                    <span className="text-[var(--text-muted)] block mb-0.5">الحد الأقصى للاعبين:</span>
-                    <span className="font-bold text-[var(--text-primary)]">{tenantSub.maxPlayers} لاعب</span>
+                    <span className="text-[var(--text-muted)] block mb-0.5">
+                      الحد الأقصى للاعبين:
+                    </span>
+                    <span className="font-bold text-[var(--text-primary)]">
+                      {tenantSub.maxPlayers} لاعب
+                    </span>
                   </div>
                 </div>
               </div>
@@ -852,8 +941,12 @@ export default function FinanceDashboardPage() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-sm font-bold text-[var(--text-primary)]">باقات العضويات والتدريب للأكاديمية</h3>
-                  <p className="text-xs text-[var(--text-muted)]">الباقات المتاحة لتسجيل اللاعبين والاشتراكات الدورية.</p>
+                  <h3 className="text-sm font-bold text-[var(--text-primary)]">
+                    باقات العضويات والتدريب للأكاديمية
+                  </h3>
+                  <p className="text-xs text-[var(--text-muted)]">
+                    الباقات المتاحة لتسجيل اللاعبين والاشتراكات الدورية.
+                  </p>
                 </div>
 
                 <button
@@ -879,7 +972,9 @@ export default function FinanceDashboardPage() {
                           {p.billingPeriod === 'MONTHLY' ? 'شهري' : p.billingPeriod}
                         </span>
                       </div>
-                      <p className="text-xs text-[var(--text-muted)] mt-1">{p.description || 'باقة تدريب رسمية'}</p>
+                      <p className="text-xs text-[var(--text-muted)] mt-1">
+                        {p.description || 'باقة تدريب رسمية'}
+                      </p>
                     </div>
 
                     <div className="pt-4 border-t border-[var(--border-subtle)] flex items-baseline justify-between">
@@ -887,7 +982,9 @@ export default function FinanceDashboardPage() {
                         <span className="text-2xl font-black text-[var(--text-primary)]">
                           {p.feeAmount.toLocaleString()}
                         </span>
-                        <span className="text-xs text-[var(--text-muted)] font-semibold mr-1">ر.س / دورة</span>
+                        <span className="text-xs text-[var(--text-muted)] font-semibold mr-1">
+                          ر.س / دورة
+                        </span>
                       </div>
                       <span className="text-xs text-[var(--brand-primary)] font-bold">
                         {p.billingPeriod === 'MONTHLY'
@@ -915,8 +1012,12 @@ export default function FinanceDashboardPage() {
                   <CreditCard className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-[var(--text-primary)]">تحصيل دفعة مالية للاعب</h3>
-                  <p className="text-xs text-[var(--text-muted)]">{selectedSubForPayment.playerName}</p>
+                  <h3 className="text-base font-bold text-[var(--text-primary)]">
+                    تحصيل دفعة مالية للاعب
+                  </h3>
+                  <p className="text-xs text-[var(--text-muted)]">
+                    {selectedSubForPayment.playerName}
+                  </p>
                 </div>
               </div>
               <button
@@ -952,13 +1053,13 @@ export default function FinanceDashboardPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">طريقة التحصيل *</label>
+                <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                  طريقة التحصيل *
+                </label>
                 <select
                   value={paymentMethod}
                   onChange={(e) =>
-                    setPaymentMethod(
-                      e.target.value as 'CASH' | 'CARD' | 'POS' | 'BANK_TRANSFER',
-                    )
+                    setPaymentMethod(e.target.value as 'CASH' | 'CARD' | 'POS' | 'BANK_TRANSFER')
                   }
                   className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2.5 text-xs font-semibold text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none cursor-pointer"
                 >
@@ -970,7 +1071,9 @@ export default function FinanceDashboardPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">رقم الإيصال / المرجع</label>
+                <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                  رقم الإيصال / المرجع
+                </label>
                 <input
                   type="text"
                   placeholder="رقم الإيصال أو الحوالة..."
@@ -981,7 +1084,9 @@ export default function FinanceDashboardPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">ملاحظات</label>
+                <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                  ملاحظات
+                </label>
                 <input
                   type="text"
                   placeholder="ملاحظات توثيقية إضافية..."
@@ -1023,8 +1128,12 @@ export default function FinanceDashboardPage() {
                   <RotateCcw className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-[var(--text-primary)]">عكس المعاملة وإلغاء القيد</h3>
-                  <p className="text-xs text-[var(--text-muted)]">{reversalTx.receiptNumber || reversalTx.id.slice(0, 8)}</p>
+                  <h3 className="text-base font-bold text-[var(--text-primary)]">
+                    عكس المعاملة وإلغاء القيد
+                  </h3>
+                  <p className="text-xs text-[var(--text-muted)]">
+                    {reversalTx.receiptNumber || reversalTx.id.slice(0, 8)}
+                  </p>
                 </div>
               </div>
               <button
@@ -1038,8 +1147,8 @@ export default function FinanceDashboardPage() {
 
             <form onSubmit={handleSubmitReversal} className="space-y-4">
               <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-700 dark:text-rose-300">
-                سيتم إلغاء هذه المعاملة ({reversalTx.amount} ر.س) وعكس أثرها المالي على رصيد اللاعب وسجل الأكاديمية
-                فوراً مع توثيق سبب الإلغاء في سجل التدقيق.
+                سيتم إلغاء هذه المعاملة ({reversalTx.amount} ر.س) وعكس أثرها المالي على رصيد اللاعب
+                وسجل الأكاديمية فوراً مع توثيق سبب الإلغاء في سجل التدقيق.
               </div>
 
               <div>
@@ -1088,8 +1197,12 @@ export default function FinanceDashboardPage() {
                   <PlusCircle className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-[var(--text-primary)]">تسجيل اشتراك جديد للاعب</h3>
-                  <p className="text-xs text-[var(--text-muted)]">إضافة دورة اشتراك تدريبي وتحديد رسوم العضوية</p>
+                  <h3 className="text-base font-bold text-[var(--text-primary)]">
+                    تسجيل اشتراك جديد للاعب
+                  </h3>
+                  <p className="text-xs text-[var(--text-muted)]">
+                    إضافة دورة اشتراك تدريبي وتحديد رسوم العضوية
+                  </p>
                 </div>
               </div>
               <button
@@ -1103,7 +1216,9 @@ export default function FinanceDashboardPage() {
 
             <form onSubmit={handleSubmitNewSubscription} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">اختيار اللاعب *</label>
+                <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                  اختيار اللاعب *
+                </label>
                 <select
                   required
                   value={selectedPlayerId}
@@ -1201,7 +1316,9 @@ export default function FinanceDashboardPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">ملاحظات الاشتراك</label>
+                <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                  ملاحظات الاشتراك
+                </label>
                 <textarea
                   rows={2}
                   value={subNotes}
@@ -1243,8 +1360,12 @@ export default function FinanceDashboardPage() {
                   <Layers className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-[var(--text-primary)]">إنشاء باقة تدريبية جديدة</h3>
-                  <p className="text-xs text-[var(--text-muted)]">إضافة خطة اشتراك للناشئين واللاعبين</p>
+                  <h3 className="text-base font-bold text-[var(--text-primary)]">
+                    إنشاء باقة تدريبية جديدة
+                  </h3>
+                  <p className="text-xs text-[var(--text-muted)]">
+                    إضافة خطة اشتراك للناشئين واللاعبين
+                  </p>
                 </div>
               </div>
               <button
@@ -1258,7 +1379,9 @@ export default function FinanceDashboardPage() {
 
             <form onSubmit={handleSubmitNewPlan} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">اسم الباقة التدريبية *</label>
+                <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                  اسم الباقة التدريبية *
+                </label>
                 <input
                   type="text"
                   required
@@ -1286,7 +1409,9 @@ export default function FinanceDashboardPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">دورة الفوترة *</label>
+                  <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                    دورة الفوترة *
+                  </label>
                   <select
                     value={planPeriod}
                     onChange={(e) =>
@@ -1305,7 +1430,9 @@ export default function FinanceDashboardPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">وصف ومميزات الباقة</label>
+                <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                  وصف ومميزات الباقة
+                </label>
                 <textarea
                   rows={2}
                   value={planDescription}

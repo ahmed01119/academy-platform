@@ -11,7 +11,10 @@ if (fs.existsSync(envPath)) {
       const idx = trimmed.indexOf('=');
       if (idx !== -1) {
         const key = trimmed.slice(0, idx).trim();
-        const val = trimmed.slice(idx + 1).trim().replace(/^["']|["']$/g, '');
+        const val = trimmed
+          .slice(idx + 1)
+          .trim()
+          .replace(/^["']|["']$/g, '');
         if (!process.env[key]) {
           process.env[key] = val;
         }
@@ -668,14 +671,45 @@ async function main() {
         tenantId: tenant.id,
         sport: 'FOOTBALL',
         name: 'نموذج تقييم كرة القدم الشامل (معياري)',
-        description: 'تقييم الأداء الرباعي المتوازن: المهارات الفنية، الوعي التكتيكي، الجاهزية البدنية، والسلوك الرياضي',
+        description:
+          'تقييم الأداء الرباعي المتوازن: المهارات الفنية، الوعي التكتيكي، الجاهزية البدنية، والسلوك الرياضي',
         isDefault: true,
         criteria: [
-          { id: 'crit-1', name: 'التحكم بالكرة والمراوغة', category: 'TECHNICAL', weight: 1, maxScore: 10 },
-          { id: 'crit-2', name: 'دقة وسرعة التمرير', category: 'TECHNICAL', weight: 1, maxScore: 10 },
-          { id: 'crit-3', name: 'التمركز والرؤية الميدانية', category: 'TACTICAL', weight: 1, maxScore: 10 },
-          { id: 'crit-4', name: 'السرعة والرشاقة بالكرة', category: 'PHYSICAL', weight: 1, maxScore: 10 },
-          { id: 'crit-5', name: 'الانضباط والروح الرياضية', category: 'BEHAVIORAL', weight: 1, maxScore: 10 },
+          {
+            id: 'crit-1',
+            name: 'التحكم بالكرة والمراوغة',
+            category: 'TECHNICAL',
+            weight: 1,
+            maxScore: 10,
+          },
+          {
+            id: 'crit-2',
+            name: 'دقة وسرعة التمرير',
+            category: 'TECHNICAL',
+            weight: 1,
+            maxScore: 10,
+          },
+          {
+            id: 'crit-3',
+            name: 'التمركز والرؤية الميدانية',
+            category: 'TACTICAL',
+            weight: 1,
+            maxScore: 10,
+          },
+          {
+            id: 'crit-4',
+            name: 'السرعة والرشاقة بالكرة',
+            category: 'PHYSICAL',
+            weight: 1,
+            maxScore: 10,
+          },
+          {
+            id: 'crit-5',
+            name: 'الانضباط والروح الرياضية',
+            category: 'BEHAVIORAL',
+            weight: 1,
+            maxScore: 10,
+          },
         ],
       },
     });
@@ -696,10 +730,34 @@ async function main() {
         description: 'معايير تقييم مبسطة تركز على الشغف باللعبة والمهارة الأساسية والعمل الجماعي',
         isDefault: false,
         criteria: [
-          { id: 'u11-1', name: 'الاستلام والتسليم', category: 'TECHNICAL', weight: 1, maxScore: 10 },
-          { id: 'u11-2', name: 'التسديد نحو المرمى', category: 'TECHNICAL', weight: 1, maxScore: 10 },
-          { id: 'u11-3', name: 'التوافق العضلي والسرعة', category: 'PHYSICAL', weight: 1, maxScore: 10 },
-          { id: 'u11-4', name: 'الاستماع لتوجيهات المدرب', category: 'BEHAVIORAL', weight: 1, maxScore: 10 },
+          {
+            id: 'u11-1',
+            name: 'الاستلام والتسليم',
+            category: 'TECHNICAL',
+            weight: 1,
+            maxScore: 10,
+          },
+          {
+            id: 'u11-2',
+            name: 'التسديد نحو المرمى',
+            category: 'TECHNICAL',
+            weight: 1,
+            maxScore: 10,
+          },
+          {
+            id: 'u11-3',
+            name: 'التوافق العضلي والسرعة',
+            category: 'PHYSICAL',
+            weight: 1,
+            maxScore: 10,
+          },
+          {
+            id: 'u11-4',
+            name: 'الاستماع لتوجيهات المدرب',
+            category: 'BEHAVIORAL',
+            weight: 1,
+            maxScore: 10,
+          },
         ],
       },
     });
@@ -967,7 +1025,6 @@ async function main() {
     });
     console.log('[Seed] Seeded session expense: 120 SAR for hydration');
   }
-
 
   console.log('\n=========================================');
   console.log(' Academy Platform — 5-Role Demo Ready! ');

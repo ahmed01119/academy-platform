@@ -103,20 +103,27 @@ export const translations = {
       apiChecking: 'جارٍ التحقق...',
       apiOffline: 'غير متصل محلياً (منفذ 3001)',
       rolesSectionTitle: '5 تجارب متخصصة مصممة لكل فرد في المنظومة',
-      rolesSectionDesc: 'واجهات عمل متقنة تمنح كل مستخدم الأدوات المناسبة لدوره مع ضمان أقصى درجات الخصوصية وعزل الصلاحيات.',
+      rolesSectionDesc:
+        'واجهات عمل متقنة تمنح كل مستخدم الأدوات المناسبة لدوره مع ضمان أقصى درجات الخصوصية وعزل الصلاحيات.',
       roleSuperAdminTitle: 'وحدة المشرف العام للمنصة',
-      roleSuperAdminDesc: 'مراقبة جميع الأكاديميات المشتركة عبر المستأجرين، تجميد أو تنشيط الاشتراكات، وسجلات التدقيق والأمان المركزية.',
+      roleSuperAdminDesc:
+        'مراقبة جميع الأكاديميات المشتركة عبر المستأجرين، تجميد أو تنشيط الاشتراكات، وسجلات التدقيق والأمان المركزية.',
       roleAcademyTitle: 'مساحة عمل إدارة الأكاديمية',
-      roleAcademyDesc: 'إدارة شاملة للفروع، الملاعب، المجموعات، المدربين، وقوائم اللاعبين مع تقارير الحضور المالي والتشغيلي.',
+      roleAcademyDesc:
+        'إدارة شاملة للفروع، الملاعب، المجموعات، المدربين، وقوائم اللاعبين مع تقارير الحضور المالي والتشغيلي.',
       roleCoachTitle: 'مساحة تدريب المدربين',
-      roleCoachDesc: 'جدول تدريبات اليوم، تحضير الحصص بالـ QR، تسجيل تقييمات اللاعبين الفنية وملاحظات التطوير الفردية.',
+      roleCoachDesc:
+        'جدول تدريبات اليوم، تحضير الحصص بالـ QR، تسجيل تقييمات اللاعبين الفنية وملاحظات التطوير الفردية.',
       rolePlayerTitle: 'بوابة اللاعب الرياضي',
-      rolePlayerDesc: 'متابعة جدول الحصص، بطاقة الحضور برمز QR، استعراض المهارات الفنية، والأهداف الشخصية الموضوعة من المدرب.',
+      rolePlayerDesc:
+        'متابعة جدول الحصص، بطاقة الحضور برمز QR، استعراض المهارات الفنية، والأهداف الشخصية الموضوعة من المدرب.',
       roleGuardianTitle: 'بوابة أولياء الأمور',
-      roleGuardianDesc: 'لوحة واحدة لمتابعة جميع الأبناء: نسبة الحضور الدقيقة، تقارير الأداء المعتمدة، والتغذية الراجعة التوجيهية.',
+      roleGuardianDesc:
+        'لوحة واحدة لمتابعة جميع الأبناء: نسبة الحضور الدقيقة، تقارير الأداء المعتمدة، والتغذية الراجعة التوجيهية.',
       radarSectionBadge: 'ذكاء تقييم أداء اللاعبين والمواهب',
       radarSectionTitle: 'نظام التقييم الرباعي الشامل وفقاً لأحدث معايير الأكاديميات الدولية',
-      radarSectionDesc: 'تقييمات معيارية قابلة للتخصيص بحسب الفئة السنية، مع حساب رياضي عادل للمعدل الإجمالي وترتيب تنافسي موثوق.',
+      radarSectionDesc:
+        'تقييمات معيارية قابلة للتخصيص بحسب الفئة السنية، مع حساب رياضي عادل للمعدل الإجمالي وترتيب تنافسي موثوق.',
       pillarTechnical: 'المحور الفني (Technical)',
       pillarTactical: 'المحور التكتيكي (Tactical)',
       pillarPhysical: 'المحور البدني (Physical)',
@@ -124,27 +131,37 @@ export const translations = {
       fairRankingsTitle: 'ترتيب عادل حسب الفئة العمرية',
       privacyTiersTitle: 'مستويات خصوصية صارمة',
       featuresTitle: 'المميزات الرئيسية للمنصة التجارية',
-      featuresDesc: 'أدوات متطورة وشاملة صممت خصيصاً لتلبية متطلبات الأكاديميات الرياضية الكبرى والمتنامية.',
+      featuresDesc:
+        'أدوات متطورة وشاملة صممت خصيصاً لتلبية متطلبات الأكاديميات الرياضية الكبرى والمتنامية.',
       featureBranches: 'إدارة الفروع والملاعب المتعددة',
-      featureBranchesDesc: 'إدارة تفصيلية للفروع والملاعب والمجموعات بحسب الفئات السنية والقدرة الاستيعابية.',
+      featureBranchesDesc:
+        'إدارة تفصيلية للفروع والملاعب والمجموعات بحسب الفئات السنية والقدرة الاستيعابية.',
       featureAttendance: 'التحضير السريع بالـ QR ودعم عدم الاتصال',
-      featureAttendanceDesc: 'ماسح كاميرا مستمر وبطاقات عضوية ذكية تعمل بسلاسة ومزامنة تلقائية عند عودة الاتصال.',
+      featureAttendanceDesc:
+        'ماسح كاميرا مستمر وبطاقات عضوية ذكية تعمل بسلاسة ومزامنة تلقائية عند عودة الاتصال.',
       featureFinance: 'الاشتراكات والعمليات المالية',
-      featureFinanceDesc: 'تحصيل الرسوم وتسوية صندوق الحصة التدريبية ومتابعة الأرصدة المتأخرة وكشوفات الحساب.',
+      featureFinanceDesc:
+        'تحصيل الرسوم وتسوية صندوق الحصة التدريبية ومتابعة الأرصدة المتأخرة وكشوفات الحساب.',
       featureSecurity: 'أمان المؤسسات وعزل المستأجرين',
-      featureSecurityDesc: 'حماية على مستوى السجلات (RLS) وتشفير Argon2id وسجلات تدقيق ومصادقة صارمة متعددة الصلاحيات.',
+      featureSecurityDesc:
+        'حماية على مستوى السجلات (RLS) وتشفير Argon2id وسجلات تدقيق ومصادقة صارمة متعددة الصلاحيات.',
       faqTitle: 'الأسئلة الشائعة حول المنصة',
       faqDesc: 'كل ما تحتاج لمعرفته حول تشغيل وإدارة أكاديميتك الرياضية عبر منصتنا.',
       faq1Q: 'كيف يتم تفعيل حساب الأكاديمية على المنصة؟',
-      faq1A: 'يتم اعتماد وتفعيل الأكاديمية مركزياً عبر إدارة المنصة بعد اختيار الخطة التجارية المناسبة، لضمان أعلى معايير الجودة والاستقرار.',
+      faq1A:
+        'يتم اعتماد وتفعيل الأكاديمية مركزياً عبر إدارة المنصة بعد اختيار الخطة التجارية المناسبة، لضمان أعلى معايير الجودة والاستقرار.',
       faq2Q: 'هل يمكن للمدرب تحضير اللاعبين دون إنترنت في الملعب؟',
-      faq2A: 'نعم، يدعم ماسح الحضور تقنية IndexedDB المحلية، حيث يتم حفظ المسحات فوراً ومزامنتها مع الخادم بمجرد الاتصال بالإنترنت.',
+      faq2A:
+        'نعم، يدعم ماسح الحضور تقنية IndexedDB المحلية، حيث يتم حفظ المسحات فوراً ومزامنتها مع الخادم بمجرد الاتصال بالإنترنت.',
       faq3Q: 'هل بيانات كل أكاديمية معزولة تماماً؟',
-      faq3A: 'بالتأكيد، تطبق المنظومة سياسات Row-Level Security في قاعدة البيانات وعزل متعدد المستأجرين صارم يمنع أي تداخل بين الأكاديميات.',
+      faq3A:
+        'بالتأكيد، تطبق المنظومة سياسات Row-Level Security في قاعدة البيانات وعزل متعدد المستأجرين صارم يمنع أي تداخل بين الأكاديميات.',
       faq4Q: 'هل يمكن لولي الأمر متابعة أكثر من لاعب في نفس الوقت؟',
-      faq4A: 'نعم، تتيح بوابة ولي الأمر التبديل الفوري بين الأبناء واستعراض نسبة حضور وتقييمات ورسوم كل ابن بشكل مستقل.',
+      faq4A:
+        'نعم، تتيح بوابة ولي الأمر التبديل الفوري بين الأبناء واستعراض نسبة حضور وتقييمات ورسوم كل ابن بشكل مستقل.',
       demoModalTitle: 'طلب عرض تجريبي مخصص (Request Live Demo)',
-      demoModalDesc: 'املأ النموذج وسيقوم مستشار الحلول الرياضية بالتواصل معك لترتيب جلسة عرض حي مخصصة لأكاديميتك.',
+      demoModalDesc:
+        'املأ النموذج وسيقوم مستشار الحلول الرياضية بالتواصل معك لترتيب جلسة عرض حي مخصصة لأكاديميتك.',
       demoAcademyName: 'اسم الأكاديمية الرياضية',
       demoSport: 'الرياضة الرئيسية',
       demoCity: 'المدينة والدولة',
@@ -155,11 +172,13 @@ export const translations = {
       demoSubmit: 'إرسال طلب العرض التجريبي',
       demoSubmitting: 'جارٍ الإرسال...',
       demoSuccessTitle: 'تم إرسال طلبك بنجاح!',
-      demoSuccessDesc: 'شكراً لاهتمامك. سيتواصل معك فريق المنصة خلال 24 ساعة لترتيب العرض المباشر وتفعيل الحساب التجريبي.',
+      demoSuccessDesc:
+        'شكراً لاهتمامك. سيتواصل معك فريق المنصة خلال 24 ساعة لترتيب العرض المباشر وتفعيل الحساب التجريبي.',
     },
     platform: {
       title: 'وحدة المشرف العام للمنصة (Platform Console)',
-      subtitle: 'مراقبة الأكاديميات المشتركة عبر المنظومة المركزية، تجميد أو تنشيط الاشتراكات، وسجلات الأمان.',
+      subtitle:
+        'مراقبة الأكاديميات المشتركة عبر المنظومة المركزية، تجميد أو تنشيط الاشتراكات، وسجلات الأمان.',
       kpiTotalAcademies: 'إجمالي الأكاديميات',
       kpiActiveAcademies: 'أكاديميات نشطة',
       kpiSuspendedAcademies: 'أكاديميات معلقة',
@@ -196,7 +215,8 @@ export const translations = {
     },
     coach: {
       title: 'مساحة عمل المدرب الرياضي',
-      subtitle: 'جدول تدريبات اليوم، التحضير السريع برمز الاستجابة السريعة (QR)، وتقييم أداء اللاعبين.',
+      subtitle:
+        'جدول تدريبات اليوم، التحضير السريع برمز الاستجابة السريعة (QR)، وتقييم أداء اللاعبين.',
       todaySessions: 'تدريبات اليوم',
       noSessionsToday: 'لا توجد حصص تدريبية مجدولة لليوم',
       assignedGroups: 'المجموعات والفرق المسندة إليك',
@@ -219,7 +239,8 @@ export const translations = {
     },
     guardian: {
       title: 'بوابة أولياء الأمور',
-      subtitle: 'متابعة الحضور، الالتزام، التطور الفني والتوجيهات المعتمدة للأبناء المسجلين بالأكاديمية.',
+      subtitle:
+        'متابعة الحضور، الالتزام، التطور الفني والتوجيهات المعتمدة للأبناء المسجلين بالأكاديمية.',
       switchChild: 'الملف النشط:',
       attendanceOverview: 'سجل الحضور والالتزام',
       presentCount: 'حاضر',
@@ -230,7 +251,8 @@ export const translations = {
       coachFeedbackTitle: 'رسالة التوجيه من الكابتن لولي الأمر:',
       claimChildButton: 'ربط ابن جديد برمز المطالبة',
       claimChildModalTitle: 'ربط لاعب بحساب ولي الأمر',
-      claimChildDesc: 'أدخل رمز المطالبة المسلم لك من إدارة الأكاديمية لربط ملف ابنك بحسابك فورياً.',
+      claimChildDesc:
+        'أدخل رمز المطالبة المسلم لك من إدارة الأكاديمية لربط ملف ابنك بحسابك فورياً.',
     },
     evaluations: {
       title: 'مركز تقييم الأداء والذكاء الرياضي',
@@ -269,11 +291,13 @@ export const translations = {
       modeDark: 'المظهر الليلي (Dark Mode)',
       modeSystem: 'تلقائي حسب نظام التشغيل (System)',
       languageSection: 'لغة العرض والاتجاه',
-      languageDesc: 'التبديل بين اللغتين العربية (من اليمين لليسار) والإنجليزية (من اليسار لليمين).',
+      languageDesc:
+        'التبديل بين اللغتين العربية (من اليمين لليسار) والإنجليزية (من اليسار لليمين).',
       langArabic: 'العربية (RTL)',
       langEnglish: 'English (LTR)',
       timezoneSection: 'المنطقة الزمنية المعتمدة للأكاديمية',
-      timezoneDesc: 'تُحسب مواعيد الحصص وجداول التمارين افتراضياً بتوقيت القاهرة / مصر (Africa/Cairo).',
+      timezoneDesc:
+        'تُحسب مواعيد الحصص وجداول التمارين افتراضياً بتوقيت القاهرة / مصر (Africa/Cairo).',
     },
     attendance: {
       title: 'إدارة وتحضير الحضور',
@@ -453,20 +477,28 @@ export const translations = {
       apiChecking: 'Checking...',
       apiOffline: 'Offline locally (Port 3001)',
       rolesSectionTitle: '5 Specialized Experiences Built for Every Stakeholder',
-      rolesSectionDesc: 'Tailored workspaces providing the exact tools required for each role with strict privacy and fail-closed permission isolation.',
+      rolesSectionDesc:
+        'Tailored workspaces providing the exact tools required for each role with strict privacy and fail-closed permission isolation.',
       roleSuperAdminTitle: 'Platform Super Admin Console',
-      roleSuperAdminDesc: 'Monitor all tenant academies, manage subscription states (Active/Suspended), and track centralized audit & security events.',
+      roleSuperAdminDesc:
+        'Monitor all tenant academies, manage subscription states (Active/Suspended), and track centralized audit & security events.',
       roleAcademyTitle: 'Academy Management Workspace',
-      roleAcademyDesc: 'Comprehensive operations for branches, venues, groups, coaches, and player rosters with attendance and financial reporting.',
+      roleAcademyDesc:
+        'Comprehensive operations for branches, venues, groups, coaches, and player rosters with attendance and financial reporting.',
       roleCoachTitle: 'Coach Training Workspace',
-      roleCoachDesc: "Today's sessions schedule, rapid QR check-in scanning, player performance scoring, and development feedback.",
+      roleCoachDesc:
+        "Today's sessions schedule, rapid QR check-in scanning, player performance scoring, and development feedback.",
       rolePlayerTitle: 'Player Athlete Portal',
-      rolePlayerDesc: 'Personalized training schedule, QR check-in card, validated skill scores, and targets assigned by coaching staff.',
+      rolePlayerDesc:
+        'Personalized training schedule, QR check-in card, validated skill scores, and targets assigned by coaching staff.',
       roleGuardianTitle: 'Parent & Guardian Portal',
-      roleGuardianDesc: 'Unified dashboard for all enrolled children: precise attendance rates, approved evaluations, and direct coach feedback.',
+      roleGuardianDesc:
+        'Unified dashboard for all enrolled children: precise attendance rates, approved evaluations, and direct coach feedback.',
       radarSectionBadge: 'Player Performance Intelligence & Talent Analytics',
-      radarSectionTitle: 'Comprehensive 4-Pillar Evaluation Standardized to International Academy Benchmarks',
-      radarSectionDesc: 'Age-appropriate objective rubrics with transparent overall scoring formulas and fair peer rankings.',
+      radarSectionTitle:
+        'Comprehensive 4-Pillar Evaluation Standardized to International Academy Benchmarks',
+      radarSectionDesc:
+        'Age-appropriate objective rubrics with transparent overall scoring formulas and fair peer rankings.',
       pillarTechnical: 'Technical Pillar',
       pillarTactical: 'Tactical Pillar',
       pillarPhysical: 'Physical Pillar',
@@ -474,27 +506,38 @@ export const translations = {
       fairRankingsTitle: 'Fair Age-Appropriate Leaderboards',
       privacyTiersTitle: 'Strict Privacy Tiers',
       featuresTitle: 'Enterprise Commercial SaaS Capabilities',
-      featuresDesc: 'Comprehensive features architected specifically for growing and multi-branch sports academies.',
+      featuresDesc:
+        'Comprehensive features architected specifically for growing and multi-branch sports academies.',
       featureBranches: 'Multi-Branch & Venue Management',
-      featureBranchesDesc: 'Detailed branch, pitch, and training group configurations by age category and capacity.',
+      featureBranchesDesc:
+        'Detailed branch, pitch, and training group configurations by age category and capacity.',
       featureAttendance: 'Instant QR Check-in with Offline Sync',
-      featureAttendanceDesc: 'Continuous camera barcode scanner, digital player cards, and automatic reconnection synchronization.',
+      featureAttendanceDesc:
+        'Continuous camera barcode scanner, digital player cards, and automatic reconnection synchronization.',
       featureFinance: 'Subscriptions & Session Financials',
-      featureFinanceDesc: 'Player fee collections, training session cashier reconciliation, and revenue breakdown.',
+      featureFinanceDesc:
+        'Player fee collections, training session cashier reconciliation, and revenue breakdown.',
       featureSecurity: 'Enterprise Security & Tenancy Isolation',
-      featureSecurityDesc: 'PostgreSQL Row-Level Security, Argon2id encryption, full audit logging, and role segregation.',
+      featureSecurityDesc:
+        'PostgreSQL Row-Level Security, Argon2id encryption, full audit logging, and role segregation.',
       faqTitle: 'Frequently Asked Questions',
-      faqDesc: 'Everything you need to know about operating your academy on our enterprise cloud platform.',
+      faqDesc:
+        'Everything you need to know about operating your academy on our enterprise cloud platform.',
       faq1Q: 'How is an academy onboarded to the platform?',
-      faq1A: 'Academy accounts are provisioned centrally by platform administrators following plan selection to guarantee dedicated security and reliability.',
+      faq1A:
+        'Academy accounts are provisioned centrally by platform administrators following plan selection to guarantee dedicated security and reliability.',
       faq2Q: 'Does attendance check-in work without pitch internet?',
-      faq2A: 'Yes, the scanner leverages local IndexedDB storage to record check-ins offline and automatically synchronizes when connectivity restores.',
+      faq2A:
+        'Yes, the scanner leverages local IndexedDB storage to record check-ins offline and automatically synchronizes when connectivity restores.',
       faq3Q: 'Is each academy data isolated from other organizations?',
-      faq3A: 'Absolutely. Strict PostgreSQL Row-Level Security and multi-tenant policies ensure complete data separation across all entities.',
+      faq3A:
+        'Absolutely. Strict PostgreSQL Row-Level Security and multi-tenant policies ensure complete data separation across all entities.',
       faq4Q: 'Can parents manage multiple children under one account?',
-      faq4A: 'Yes, the parent portal provides instant switching between siblings with individualized attendance, evaluation cards, and fee receipts.',
+      faq4A:
+        'Yes, the parent portal provides instant switching between siblings with individualized attendance, evaluation cards, and fee receipts.',
       demoModalTitle: 'Request a Live Academy Demo',
-      demoModalDesc: 'Fill in your academy details and a sports solution consultant will contact you to schedule a personalized live demo.',
+      demoModalDesc:
+        'Fill in your academy details and a sports solution consultant will contact you to schedule a personalized live demo.',
       demoAcademyName: 'Sports Academy Name',
       demoSport: 'Primary Sport',
       demoCity: 'City & Country',
@@ -505,11 +548,13 @@ export const translations = {
       demoSubmit: 'Submit Demo Request',
       demoSubmitting: 'Submitting...',
       demoSuccessTitle: 'Demo Request Received!',
-      demoSuccessDesc: 'Thank you for your interest. A solutions advisor will contact you within 24 hours to arrange your guided demo.',
+      demoSuccessDesc:
+        'Thank you for your interest. A solutions advisor will contact you within 24 hours to arrange your guided demo.',
     },
     platform: {
       title: 'Platform Operations Console',
-      subtitle: 'Centralized oversight of all academies, subscription lifecycle management, and security monitoring.',
+      subtitle:
+        'Centralized oversight of all academies, subscription lifecycle management, and security monitoring.',
       kpiTotalAcademies: 'Total Academies',
       kpiActiveAcademies: 'Active Academies',
       kpiSuspendedAcademies: 'Suspended',
@@ -536,7 +581,8 @@ export const translations = {
       activateAction: 'Reactivate',
       approveAction: 'Approve & Activate',
       supportAccessAction: 'Audited Support Session',
-      supportAccessConfirm: 'A temporary support session will be logged in the security audit trail with the required rationale.',
+      supportAccessConfirm:
+        'A temporary support session will be logged in the security audit trail with the required rationale.',
       forceLogoutAction: 'Force Logout Sessions',
       requirePasswordResetAction: 'Require Password Reset',
       userSearchPlaceholder: 'Search users by name or email...',
@@ -546,7 +592,8 @@ export const translations = {
     },
     coach: {
       title: 'Coach Training Workspace',
-      subtitle: "Today's training schedule, instant QR attendance scanning, and session evaluations.",
+      subtitle:
+        "Today's training schedule, instant QR attendance scanning, and session evaluations.",
       todaySessions: "Today's Sessions",
       noSessionsToday: 'No training sessions scheduled for today',
       assignedGroups: 'Assigned Groups & Squads',
@@ -569,7 +616,8 @@ export const translations = {
     },
     guardian: {
       title: 'Parent & Guardian Portal',
-      subtitle: 'Monitor attendance, commitment, technical progression, and direct coach guidance for your children.',
+      subtitle:
+        'Monitor attendance, commitment, technical progression, and direct coach guidance for your children.',
       switchChild: 'Active Child Profile:',
       attendanceOverview: 'Attendance Breakdown',
       presentCount: 'Present',
@@ -580,11 +628,13 @@ export const translations = {
       coachFeedbackTitle: 'Coach Guidance to Guardian:',
       claimChildButton: 'Link Another Child with Claim Token',
       claimChildModalTitle: 'Link Child to Guardian Account',
-      claimChildDesc: 'Enter the claim token provided by the academy administration to link your child immediately.',
+      claimChildDesc:
+        'Enter the claim token provided by the academy administration to link your child immediately.',
     },
     evaluations: {
       title: 'Performance & Talent Intelligence Center',
-      subtitle: '4-pillar developmental monitoring with fair, age-appropriate rankings and transparent rubrics.',
+      subtitle:
+        '4-pillar developmental monitoring with fair, age-appropriate rankings and transparent rubrics.',
       newEvaluationButton: 'Evaluate Player',
       tabRankings: 'Fair Age-Appropriate Leaderboards',
       tabForm: 'New Player Evaluation Form',
@@ -623,7 +673,8 @@ export const translations = {
       langArabic: 'Arabic (العربية - RTL)',
       langEnglish: 'English (LTR)',
       timezoneSection: 'Academy Default Timezone',
-      timezoneDesc: 'Session schedules and attendance check-ins default to Cairo / Egypt time (Africa/Cairo).',
+      timezoneDesc:
+        'Session schedules and attendance check-ins default to Cairo / Egypt time (Africa/Cairo).',
     },
     attendance: {
       title: 'Attendance Management & Check-in',

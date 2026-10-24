@@ -86,9 +86,12 @@ export default function SessionAttendancePage() {
 
   // Payment Collection Modal
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
-  const [selectedPlayerForPayment, setSelectedPlayerForPayment] = useState<AttendanceRosterItem | null>(null);
+  const [selectedPlayerForPayment, setSelectedPlayerForPayment] =
+    useState<AttendanceRosterItem | null>(null);
   const [paymentAmount, setPaymentAmount] = useState<number>(0);
-  const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'CARD' | 'POS' | 'BANK_TRANSFER'>('CASH');
+  const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'CARD' | 'POS' | 'BANK_TRANSFER'>(
+    'CASH',
+  );
   const [paymentRefNumber, setPaymentRefNumber] = useState('');
   const [paymentNotes, setPaymentNotes] = useState('');
   const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
@@ -407,8 +410,11 @@ export default function SessionAttendancePage() {
       });
 
       // Synchronize exact server version while safely preserving playerName and photoUrl
-      const rawRecord = (updatedItem as { record?: Partial<AttendanceRosterItem> & { id?: string } })?.record;
-      const serverItem: Partial<AttendanceRosterItem> & { id?: string } = rawRecord || (updatedItem as Partial<AttendanceRosterItem> & { id?: string });
+      const rawRecord = (
+        updatedItem as { record?: Partial<AttendanceRosterItem> & { id?: string } }
+      )?.record;
+      const serverItem: Partial<AttendanceRosterItem> & { id?: string } =
+        rawRecord || (updatedItem as Partial<AttendanceRosterItem> & { id?: string });
       setSession((curr) => {
         if (!curr) return null;
         return {
@@ -486,7 +492,9 @@ export default function SessionAttendancePage() {
         <div className="flex h-[60vh] items-center justify-center">
           <div className="flex flex-col items-center gap-3">
             <RefreshCw className="h-8 w-8 animate-spin text-[var(--brand-primary)]" />
-            <p className="text-sm font-medium text-[var(--text-muted)]">جارٍ تحميل كشف الحضور للحصة التدريبية...</p>
+            <p className="text-sm font-medium text-[var(--text-muted)]">
+              جارٍ تحميل كشف الحضور للحصة التدريبية...
+            </p>
           </div>
         </div>
       </AppShell>
@@ -608,7 +616,9 @@ export default function SessionAttendancePage() {
 
             <span className="flex items-center gap-1.5 text-xs text-[var(--text-muted)]">
               <Clock className="h-3.5 w-3.5 text-[var(--brand-primary)]" />
-              <span>{session.startTime} - {session.endTime}</span>
+              <span>
+                {session.startTime} - {session.endTime}
+              </span>
             </span>
           </div>
 
@@ -616,42 +626,54 @@ export default function SessionAttendancePage() {
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 pt-4 border-t border-[var(--border-subtle)]">
             <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 text-center">
               <span className="text-[11px] text-[var(--text-muted)] block mb-1">إجمالي الكشف</span>
-              <span className="text-xl font-extrabold text-[var(--text-primary)]">{totalRoster}</span>
+              <span className="text-xl font-extrabold text-[var(--text-primary)]">
+                {totalRoster}
+              </span>
             </div>
 
             <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3 text-center">
               <span className="text-[11px] text-emerald-600 dark:text-emerald-400 block mb-1 font-semibold">
                 حاضر (Present)
               </span>
-              <span className="text-xl font-extrabold text-emerald-600 dark:text-emerald-400">{session.totalPresent}</span>
+              <span className="text-xl font-extrabold text-emerald-600 dark:text-emerald-400">
+                {session.totalPresent}
+              </span>
             </div>
 
             <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-center">
               <span className="text-[11px] text-amber-600 dark:text-amber-400 block mb-1 font-semibold">
                 متأخر (Late)
               </span>
-              <span className="text-xl font-extrabold text-amber-600 dark:text-amber-400">{session.totalLate}</span>
+              <span className="text-xl font-extrabold text-amber-600 dark:text-amber-400">
+                {session.totalLate}
+              </span>
             </div>
 
             <div className="rounded-xl border border-rose-500/20 bg-rose-500/5 p-3 text-center">
               <span className="text-[11px] text-rose-600 dark:text-rose-400 block mb-1 font-semibold">
                 غائب (Absent)
               </span>
-              <span className="text-xl font-extrabold text-rose-600 dark:text-rose-400">{session.totalAbsent}</span>
+              <span className="text-xl font-extrabold text-rose-600 dark:text-rose-400">
+                {session.totalAbsent}
+              </span>
             </div>
 
             <div className="rounded-xl border border-sky-500/20 bg-sky-500/5 p-3 text-center">
               <span className="text-[11px] text-sky-600 dark:text-sky-400 block mb-1 font-semibold">
                 معذور (Excused)
               </span>
-              <span className="text-xl font-extrabold text-sky-600 dark:text-sky-400">{session.totalExcused}</span>
+              <span className="text-xl font-extrabold text-sky-600 dark:text-sky-400">
+                {session.totalExcused}
+              </span>
             </div>
 
             <div className="rounded-xl border border-slate-500/20 bg-slate-500/5 p-3 text-center">
               <span className="text-[11px] text-slate-500 dark:text-slate-400 block mb-1 font-semibold">
                 غير محدد (Unmarked)
               </span>
-              <span className="text-xl font-extrabold text-slate-600 dark:text-slate-300">{session.totalUnmarked}</span>
+              <span className="text-xl font-extrabold text-slate-600 dark:text-slate-300">
+                {session.totalUnmarked}
+              </span>
             </div>
           </div>
         </div>
@@ -678,7 +700,10 @@ export default function SessionAttendancePage() {
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
                   <CheckCircle2 className="h-3.5 w-3.5" />
                   <span>
-                    تمت المطابقة والإغلاق {cashierSummary.closedByUserName ? `بواسطة ${cashierSummary.closedByUserName}` : ''}
+                    تمت المطابقة والإغلاق{' '}
+                    {cashierSummary.closedByUserName
+                      ? `بواسطة ${cashierSummary.closedByUserName}`
+                      : ''}
                   </span>
                 </span>
               ) : (
@@ -693,7 +718,11 @@ export default function SessionAttendancePage() {
                 onClick={() => setIsCashierExpanded(!isCashierExpanded)}
                 className="p-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
               >
-                {isCashierExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                {isCashierExpanded ? (
+                  <ChevronUp className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
+                )}
               </button>
             </div>
           </div>
@@ -707,7 +736,8 @@ export default function SessionAttendancePage() {
                     التحصيل النقدي (كاش)
                   </span>
                   <span className="text-lg font-extrabold text-[var(--text-primary)]">
-                    {cashierSummary?.totalCashCollected ?? 0} <span className="text-xs font-normal">ر.س</span>
+                    {cashierSummary?.totalCashCollected ?? 0}{' '}
+                    <span className="text-xs font-normal">ر.س</span>
                   </span>
                 </div>
 
@@ -716,7 +746,8 @@ export default function SessionAttendancePage() {
                     التحصيل الإلكتروني (مدى/بطاقة)
                   </span>
                   <span className="text-lg font-extrabold text-[var(--text-primary)]">
-                    {cashierSummary?.totalElectronicCollected ?? 0} <span className="text-xs font-normal">ر.س</span>
+                    {cashierSummary?.totalElectronicCollected ?? 0}{' '}
+                    <span className="text-xs font-normal">ر.س</span>
                   </span>
                 </div>
 
@@ -725,7 +756,8 @@ export default function SessionAttendancePage() {
                     مصروفات الحصة (ماء/تجهيز)
                   </span>
                   <span className="text-lg font-extrabold text-[var(--text-primary)]">
-                    {cashierSummary?.totalExpenses ?? 0} <span className="text-xs font-normal">ر.س</span>
+                    {cashierSummary?.totalExpenses ?? 0}{' '}
+                    <span className="text-xs font-normal">ر.س</span>
                   </span>
                 </div>
 
@@ -734,7 +766,8 @@ export default function SessionAttendancePage() {
                     صافي الحركة النقدية
                   </span>
                   <span className="text-lg font-extrabold text-[var(--text-primary)]">
-                    {cashierSummary?.netCashMovement ?? 0} <span className="text-xs font-normal">ر.س</span>
+                    {cashierSummary?.netCashMovement ?? 0}{' '}
+                    <span className="text-xs font-normal">ر.س</span>
                   </span>
                 </div>
               </div>
@@ -769,18 +802,25 @@ export default function SessionAttendancePage() {
               {cashierSummary?.transactions && cashierSummary.transactions.length > 0 && (
                 <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] overflow-hidden text-xs">
                   <div className="px-3.5 py-2 font-bold text-[var(--text-primary)] border-b border-[var(--border-subtle)] flex items-center justify-between">
-                    <span>حركات الصندوق المسجلة في هذه الحصة ({cashierSummary.transactions.length})</span>
+                    <span>
+                      حركات الصندوق المسجلة في هذه الحصة ({cashierSummary.transactions.length})
+                    </span>
                     <span className="text-[10px] text-[var(--text-muted)] font-normal">
                       تتطلب مصروفات المدربين اعتماد الإدارة لتسويتها في الصندوق
                     </span>
                   </div>
                   <div className="divide-y divide-[var(--border-subtle)] max-h-72 overflow-y-auto">
                     {cashierSummary.transactions.map((tx) => (
-                      <div key={tx.id} className="p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-[var(--bg-surface)]/50 transition-colors">
+                      <div
+                        key={tx.id}
+                        className="p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-[var(--bg-surface)]/50 transition-colors"
+                      >
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-bold text-[var(--text-primary)]">
-                              {tx.type === 'SESSION_EXPENSE' ? 'مصروف حصة' : tx.playerName || 'سداد اشتراك'}
+                              {tx.type === 'SESSION_EXPENSE'
+                                ? 'مصروف حصة'
+                                : tx.playerName || 'سداد اشتراك'}
                             </span>
                             <StatusBadge status={tx.status} size="sm" />
                             {tx.type === 'SESSION_EXPENSE' && tx.status === 'PENDING' && (
@@ -809,44 +849,46 @@ export default function SessionAttendancePage() {
 
                         <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
                           {/* Inline Approval / Rejection Controls for Pending Expenses */}
-                          {tx.type === 'SESSION_EXPENSE' && tx.status === 'PENDING' && canApproveExpenses && (
-                            <div className="flex items-center gap-1.5">
-                              {user?.id === tx.recordedByUserId && userRole !== 'OWNER' ? (
-                                <span className="text-[10px] text-[var(--text-muted)] italic bg-[var(--bg-surface)] px-2 py-0.5 rounded-md border border-[var(--border-subtle)]">
-                                  فصل الصلاحيات (بانتظار مسؤول آخر)
-                                </span>
-                              ) : (
-                                <>
-                                  <button
-                                    type="button"
-                                    disabled={approvingExpenseId === tx.id}
-                                    onClick={() => handleApproveExpense(tx.id)}
-                                    className="flex items-center gap-1 rounded-lg bg-emerald-600/10 hover:bg-emerald-600 text-emerald-700 dark:text-emerald-300 hover:text-white px-2.5 py-1 text-[11px] font-bold border border-emerald-500/30 transition-all cursor-pointer disabled:opacity-50"
-                                    title="اعتماد المصروف وإدراجه في حسابات الصندوق"
-                                  >
-                                    {approvingExpenseId === tx.id ? (
-                                      <RefreshCw className="h-3 w-3 animate-spin" />
-                                    ) : (
-                                      <Check className="h-3 w-3" />
-                                    )}
-                                    <span>اعتماد</span>
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setRejectingExpenseId(tx.id);
-                                      setRejectionReason('');
-                                    }}
-                                    className="flex items-center gap-1 rounded-lg bg-rose-600/10 hover:bg-rose-600 text-rose-700 dark:text-rose-300 hover:text-white px-2.5 py-1 text-[11px] font-bold border border-rose-500/30 transition-all cursor-pointer"
-                                    title="رفض المصروف مع توثيق السبب"
-                                  >
-                                    <X className="h-3 w-3" />
-                                    <span>رفض</span>
-                                  </button>
-                                </>
-                              )}
-                            </div>
-                          )}
+                          {tx.type === 'SESSION_EXPENSE' &&
+                            tx.status === 'PENDING' &&
+                            canApproveExpenses && (
+                              <div className="flex items-center gap-1.5">
+                                {user?.id === tx.recordedByUserId && userRole !== 'OWNER' ? (
+                                  <span className="text-[10px] text-[var(--text-muted)] italic bg-[var(--bg-surface)] px-2 py-0.5 rounded-md border border-[var(--border-subtle)]">
+                                    فصل الصلاحيات (بانتظار مسؤول آخر)
+                                  </span>
+                                ) : (
+                                  <>
+                                    <button
+                                      type="button"
+                                      disabled={approvingExpenseId === tx.id}
+                                      onClick={() => handleApproveExpense(tx.id)}
+                                      className="flex items-center gap-1 rounded-lg bg-emerald-600/10 hover:bg-emerald-600 text-emerald-700 dark:text-emerald-300 hover:text-white px-2.5 py-1 text-[11px] font-bold border border-emerald-500/30 transition-all cursor-pointer disabled:opacity-50"
+                                      title="اعتماد المصروف وإدراجه في حسابات الصندوق"
+                                    >
+                                      {approvingExpenseId === tx.id ? (
+                                        <RefreshCw className="h-3 w-3 animate-spin" />
+                                      ) : (
+                                        <Check className="h-3 w-3" />
+                                      )}
+                                      <span>اعتماد</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setRejectingExpenseId(tx.id);
+                                        setRejectionReason('');
+                                      }}
+                                      className="flex items-center gap-1 rounded-lg bg-rose-600/10 hover:bg-rose-600 text-rose-700 dark:text-rose-300 hover:text-white px-2.5 py-1 text-[11px] font-bold border border-rose-500/30 transition-all cursor-pointer"
+                                      title="رفض المصروف مع توثيق السبب"
+                                    >
+                                      <X className="h-3 w-3" />
+                                      <span>رفض</span>
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            )}
 
                           <div className="text-right min-w-[70px]">
                             <span
@@ -1041,7 +1083,9 @@ export default function SessionAttendancePage() {
 
                     <div>
                       <div className="flex items-center gap-2">
-                        <h3 className="text-base font-bold text-[var(--text-primary)]">{item.playerName}</h3>
+                        <h3 className="text-base font-bold text-[var(--text-primary)]">
+                          {item.playerName}
+                        </h3>
                         {item.jerseyNumber && (
                           <span className="rounded-full bg-[var(--bg-elevated)] px-2 py-0.5 text-[10px] font-bold text-[var(--brand-primary)] border border-[var(--border-subtle)]">
                             #{item.jerseyNumber}
@@ -1077,7 +1121,9 @@ export default function SessionAttendancePage() {
                         {item.status === 'UNMARKED' && (
                           <span className="text-[var(--text-muted)] italic">لم يسجل بعد</span>
                         )}
-                        {item.remarks && <span className="text-[var(--text-muted)]">• {item.remarks}</span>}
+                        {item.remarks && (
+                          <span className="text-[var(--text-muted)]">• {item.remarks}</span>
+                        )}
                       </div>
 
                       {/* Payment Status & Quick Fee Collection */}
@@ -1213,7 +1259,9 @@ export default function SessionAttendancePage() {
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--brand-surface)] text-[var(--brand-primary)]">
                   <QrCode className="h-5 w-5" />
                 </div>
-                <h3 className="text-base font-bold text-[var(--text-primary)]">رمز QR المؤقت للتحضير</h3>
+                <h3 className="text-base font-bold text-[var(--text-primary)]">
+                  رمز QR المؤقت للتحضير
+                </h3>
               </div>
               <button
                 type="button"
@@ -1337,7 +1385,9 @@ export default function SessionAttendancePage() {
                   <History className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-[var(--text-primary)]">سجل العمليات والتدقيق التراكمي</h3>
+                  <h3 className="text-base font-bold text-[var(--text-primary)]">
+                    سجل العمليات والتدقيق التراكمي
+                  </h3>
                   <p className="text-xs text-[var(--text-muted)]">
                     سجل غير قابل للتعديل (Append-Only Event Stream) لجميع حركات التحضير والتصحيح.
                   </p>
@@ -1370,7 +1420,9 @@ export default function SessionAttendancePage() {
                   >
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-[var(--text-primary)]">{ev.playerName}</span>
+                        <span className="font-bold text-[var(--text-primary)]">
+                          {ev.playerName}
+                        </span>
                         <span className="text-[var(--text-muted)]">←</span>
                         <span
                           className={`font-bold px-2 py-0.5 rounded text-[10px] ${
@@ -1385,7 +1437,9 @@ export default function SessionAttendancePage() {
                         >
                           {ev.newStatus}
                         </span>
-                        <span className="text-[10px] text-[var(--text-muted)]">(المصدر: {ev.source})</span>
+                        <span className="text-[10px] text-[var(--text-muted)]">
+                          (المصدر: {ev.source})
+                        </span>
                       </div>
                       {ev.reason && (
                         <p className="text-[11px] text-[var(--text-muted)]">السبب: {ev.reason}</p>
@@ -1394,7 +1448,9 @@ export default function SessionAttendancePage() {
 
                     <div className="text-left text-[10px] text-[var(--text-muted)]">
                       <div>{ev.eventAt.slice(0, 10)}</div>
-                      <div className="font-mono text-[var(--text-secondary)]">{ev.eventAt.slice(11, 19)}</div>
+                      <div className="font-mono text-[var(--text-secondary)]">
+                        {ev.eventAt.slice(11, 19)}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -1414,8 +1470,12 @@ export default function SessionAttendancePage() {
                   <CreditCard className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-[var(--text-primary)]">تحصيل دفعة مالية للاعب</h3>
-                  <p className="text-xs text-[var(--text-muted)]">{selectedPlayerForPayment.playerName}</p>
+                  <h3 className="text-base font-bold text-[var(--text-primary)]">
+                    تحصيل دفعة مالية للاعب
+                  </h3>
+                  <p className="text-xs text-[var(--text-muted)]">
+                    {selectedPlayerForPayment.playerName}
+                  </p>
                 </div>
               </div>
               <button
@@ -1431,7 +1491,10 @@ export default function SessionAttendancePage() {
               <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 text-xs flex justify-between items-center">
                 <span className="text-[var(--text-muted)]">المتبقي على الاشتراك:</span>
                 <span className="font-extrabold text-[var(--brand-primary)]">
-                  {selectedPlayerForPayment.outstandingBalance ?? selectedPlayerForPayment.amountDue ?? 0} ر.س
+                  {selectedPlayerForPayment.outstandingBalance ??
+                    selectedPlayerForPayment.amountDue ??
+                    0}{' '}
+                  ر.س
                 </span>
               </div>
 
@@ -1457,9 +1520,7 @@ export default function SessionAttendancePage() {
                 <select
                   value={paymentMethod}
                   onChange={(e) =>
-                    setPaymentMethod(
-                      e.target.value as 'CASH' | 'CARD' | 'POS' | 'BANK_TRANSFER',
-                    )
+                    setPaymentMethod(e.target.value as 'CASH' | 'CARD' | 'POS' | 'BANK_TRANSFER')
                   }
                   className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2.5 text-xs font-semibold text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none cursor-pointer"
                 >
@@ -1528,8 +1589,12 @@ export default function SessionAttendancePage() {
                   <PlusCircle className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-[var(--text-primary)]">تسجيل مصروف للحصة التدريبية</h3>
-                  <p className="text-xs text-[var(--text-muted)]">يتم خصم هذا المبلغ من كاش الصندوق الميداني للحصة</p>
+                  <h3 className="text-base font-bold text-[var(--text-primary)]">
+                    تسجيل مصروف للحصة التدريبية
+                  </h3>
+                  <p className="text-xs text-[var(--text-muted)]">
+                    يتم خصم هذا المبلغ من كاش الصندوق الميداني للحصة
+                  </p>
                 </div>
               </div>
               <button
@@ -1604,8 +1669,12 @@ export default function SessionAttendancePage() {
                   <Receipt className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-[var(--text-primary)]">مطابقة وإغلاق الصندوق المالي</h3>
-                  <p className="text-xs text-[var(--text-muted)]">إغلاق الصندوق وتثبيت الحركة المحاسبية للحصة</p>
+                  <h3 className="text-base font-bold text-[var(--text-primary)]">
+                    مطابقة وإغلاق الصندوق المالي
+                  </h3>
+                  <p className="text-xs text-[var(--text-muted)]">
+                    إغلاق الصندوق وتثبيت الحركة المحاسبية للحصة
+                  </p>
                 </div>
               </div>
               <button
@@ -1687,8 +1756,12 @@ export default function SessionAttendancePage() {
                   <XCircle className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-[var(--text-primary)]">رفض المصروف الميداني</h3>
-                  <p className="text-xs text-[var(--text-muted)]">توثيق سبب الرفض في سجل التدقيق المالي</p>
+                  <h3 className="text-base font-bold text-[var(--text-primary)]">
+                    رفض المصروف الميداني
+                  </h3>
+                  <p className="text-xs text-[var(--text-muted)]">
+                    توثيق سبب الرفض في سجل التدقيق المالي
+                  </p>
                 </div>
               </div>
               <button
@@ -1702,7 +1775,8 @@ export default function SessionAttendancePage() {
 
             <div className="space-y-3">
               <p className="text-xs text-[var(--text-secondary)]">
-                سيتم وضع المصروف في حالة <strong className="text-rose-600">مرفوض</strong> ولن يتم خصمه نهائياً من الصندوق المالي أو كشف الحساب.
+                سيتم وضع المصروف في حالة <strong className="text-rose-600">مرفوض</strong> ولن يتم
+                خصمه نهائياً من الصندوق المالي أو كشف الحساب.
               </p>
 
               <div>
@@ -1743,4 +1817,3 @@ export default function SessionAttendancePage() {
     </AppShell>
   );
 }
-

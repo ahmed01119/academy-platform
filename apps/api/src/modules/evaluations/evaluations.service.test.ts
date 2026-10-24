@@ -62,7 +62,9 @@ describe('EvaluationsService', () => {
       trainingSession: {
         findFirst: vi.fn(),
       },
-      withTenantTransaction: vi.fn().mockImplementation((_tenantId, callback) => callback(mockPrisma)),
+      withTenantTransaction: vi
+        .fn()
+        .mockImplementation((_tenantId, callback) => callback(mockPrisma)),
     };
 
     mockAudit = {

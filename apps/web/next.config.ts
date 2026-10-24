@@ -20,6 +20,15 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async rewrites() {
+    const apiTarget = process.env.INTERNAL_API_URL || 'http://127.0.0.1:3001';
+    return [
+      {
+        source: '/v1/:path*',
+        destination: `${apiTarget}/v1/:path*`,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

@@ -106,8 +106,9 @@ import type {
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ||
-  process.env.NEXT_PUBLIC_API_URL ||
-  'http://localhost:3001/v1';
+  (typeof window === 'undefined'
+    ? process.env.INTERNAL_API_URL || 'http://127.0.0.1:3001/v1'
+    : '/v1');
 
 export class ApiError extends Error {
   constructor(
@@ -432,7 +433,10 @@ export const api = {
       });
     },
 
-    async rotateQrCard(id: string, data?: RotatePlayerQrCardRequest): Promise<PlayerQrCardResponse> {
+    async rotateQrCard(
+      id: string,
+      data?: RotatePlayerQrCardRequest,
+    ): Promise<PlayerQrCardResponse> {
       return request(`/players/${id}/qr-card/rotate`, {
         method: 'POST',
         body: JSON.stringify(data || {}),
@@ -638,7 +642,10 @@ export const api = {
       });
     },
 
-    async scanPlayerQr(sessionId: string, data: ScanPlayerQrRequest): Promise<ScanPlayerQrResponse> {
+    async scanPlayerQr(
+      sessionId: string,
+      data: ScanPlayerQrRequest,
+    ): Promise<ScanPlayerQrResponse> {
       return request(`/attendance/sessions/${sessionId}/scan-player-qr`, {
         method: 'POST',
         body: JSON.stringify(data),
@@ -703,7 +710,10 @@ export const api = {
       return request('/platform/metrics', { method: 'GET' });
     },
 
-    async listAcademies(params?: { status?: string; search?: string }): Promise<PlatformAcademyItem[]> {
+    async listAcademies(params?: {
+      status?: string;
+      search?: string;
+    }): Promise<PlatformAcademyItem[]> {
       const query = new URLSearchParams();
       if (params?.status) query.set('status', params.status);
       if (params?.search) query.set('search', params.search);
@@ -711,7 +721,10 @@ export const api = {
       return request(`/platform/academies${qs}`, { method: 'GET' });
     },
 
-    async updateAcademyStatus(id: string, data: UpdateAcademyStatusRequest): Promise<PlatformAcademyItem> {
+    async updateAcademyStatus(
+      id: string,
+      data: UpdateAcademyStatusRequest,
+    ): Promise<PlatformAcademyItem> {
       return request(`/platform/academies/${id}/status`, {
         method: 'PATCH',
         body: JSON.stringify(data),
@@ -728,7 +741,10 @@ export const api = {
       });
     },
 
-    async listAuditLogs(params?: { limit?: number; offset?: number }): Promise<PlatformAuditLogItem[]> {
+    async listAuditLogs(params?: {
+      limit?: number;
+      offset?: number;
+    }): Promise<PlatformAuditLogItem[]> {
       const query = new URLSearchParams();
       if (params?.limit) query.set('limit', String(params.limit));
       if (params?.offset) query.set('offset', String(params.offset));
@@ -740,7 +756,11 @@ export const api = {
       return request('/platform/security-events', { method: 'GET' });
     },
 
-    async listUsers(params?: { search?: string; limit?: number; offset?: number }): Promise<PlatformUserItem[]> {
+    async listUsers(params?: {
+      search?: string;
+      limit?: number;
+      offset?: number;
+    }): Promise<PlatformUserItem[]> {
       const query = new URLSearchParams();
       if (params?.search) query.set('search', params.search);
       if (params?.limit) query.set('limit', String(params.limit));
@@ -788,14 +808,18 @@ export const api = {
       return request('/platform/announcements', { method: 'GET' });
     },
 
-    async createAnnouncement(data: CreatePlatformAnnouncementRequest): Promise<PlatformAnnouncementItem> {
+    async createAnnouncement(
+      data: CreatePlatformAnnouncementRequest,
+    ): Promise<PlatformAnnouncementItem> {
       return request('/platform/announcements', {
         method: 'POST',
         body: JSON.stringify(data),
       });
     },
 
-    async submitAcademyApplication(data: CreateAcademyApplicationRequest): Promise<AcademyApplicationItem> {
+    async submitAcademyApplication(
+      data: CreateAcademyApplicationRequest,
+    ): Promise<AcademyApplicationItem> {
       return request('/platform/applications', {
         method: 'POST',
         body: JSON.stringify(data),
@@ -870,7 +894,9 @@ export const api = {
       return request(`/finance/player-plans${qs}`, { method: 'GET' });
     },
 
-    async createPlayerPlan(data: CreatePlayerSubscriptionPlanRequest): Promise<PlayerSubscriptionPlanItem> {
+    async createPlayerPlan(
+      data: CreatePlayerSubscriptionPlanRequest,
+    ): Promise<PlayerSubscriptionPlanItem> {
       return request('/finance/player-plans', {
         method: 'POST',
         body: JSON.stringify(data),
@@ -898,7 +924,9 @@ export const api = {
       return request(`/finance/player-subscriptions/player/${playerId}`, { method: 'GET' });
     },
 
-    async createPlayerSubscription(data: CreatePlayerSubscriptionRequest): Promise<PlayerSubscriptionItem> {
+    async createPlayerSubscription(
+      data: CreatePlayerSubscriptionRequest,
+    ): Promise<PlayerSubscriptionItem> {
       return request('/finance/player-subscriptions', {
         method: 'POST',
         body: JSON.stringify(data),
@@ -912,7 +940,10 @@ export const api = {
       });
     },
 
-    async reverseTransaction(id: string, data: ReverseTransactionRequest): Promise<FinancialTransactionItem> {
+    async reverseTransaction(
+      id: string,
+      data: ReverseTransactionRequest,
+    ): Promise<FinancialTransactionItem> {
       return request(`/finance/transactions/${id}/reverse`, {
         method: 'POST',
         body: JSON.stringify(data),
@@ -1109,4 +1140,3 @@ export const api = {
 
 export const apiClient = api;
 export default api;
-

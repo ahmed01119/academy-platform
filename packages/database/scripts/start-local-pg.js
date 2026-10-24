@@ -37,7 +37,9 @@ async function main() {
     console.log('[Local Postgres] Database "academy" ready.');
   }
 
-  console.log('[Local Postgres] Ready for connections at: postgresql://academy:academy@localhost:5432/academy');
+  console.log(
+    '[Local Postgres] Ready for connections at: postgresql://academy:academy@localhost:5432/academy',
+  );
 
   // Keep process alive
   setInterval(() => {}, 1000 * 60 * 60);

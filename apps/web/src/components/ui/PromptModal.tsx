@@ -61,7 +61,9 @@ export function PromptModal({
       await onConfirm(value.trim());
       onClose();
     } catch (err: unknown) {
-      setError((err as Error)?.message || (locale === 'ar' ? 'حدث خطأ أثناء التنفيذ' : 'Action failed'));
+      setError(
+        (err as Error)?.message || (locale === 'ar' ? 'حدث خطأ أثناء التنفيذ' : 'Action failed'),
+      );
     } finally {
       setIsSubmitting(false);
     }

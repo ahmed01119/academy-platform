@@ -23,12 +23,7 @@ interface PlayerQrCardProps {
   onClose?: () => void;
 }
 
-export function PlayerQrCard({
-  card,
-  isAdmin = false,
-  onCardUpdated,
-  onClose,
-}: PlayerQrCardProps) {
+export function PlayerQrCard({ card, isAdmin = false, onCardUpdated, onClose }: PlayerQrCardProps) {
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const [isRotating, setIsRotating] = useState(false);
   const [isRevoking, setIsRevoking] = useState(false);
@@ -298,7 +293,9 @@ export function PlayerQrCard({
               <h3 className="text-base font-bold text-white">تأكيد استبدال وتدوير رمز البطاقة</h3>
             </div>
             <p className="text-xs text-[#9bb5a8] leading-relaxed">
-              سيؤدي تدوير الرمز إلى إبطال البطاقة الحالية فوراً وتوليد رمز QR مشفر جديد تماماً. استخدم هذا الخيار إذا فقد اللاعب بطاقته المطبوعة أو تعرض الرمز للمشاركة غير المصرح بها.
+              سيؤدي تدوير الرمز إلى إبطال البطاقة الحالية فوراً وتوليد رمز QR مشفر جديد تماماً.
+              استخدم هذا الخيار إذا فقد اللاعب بطاقته المطبوعة أو تعرض الرمز للمشاركة غير المصرح
+              بها.
             </p>
             <div className="flex items-center justify-end gap-3 pt-2">
               <button

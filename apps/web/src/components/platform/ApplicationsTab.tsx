@@ -37,9 +37,9 @@ export function ApplicationsTab({
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [reviewingApp, setReviewingApp] = useState<AcademyApplicationItem | null>(null);
-  const [reviewStatus, setReviewStatus] = useState<
-    'APPROVED' | 'REJECTED' | 'MORE_INFO_REQUESTED'
-  >('APPROVED');
+  const [reviewStatus, setReviewStatus] = useState<'APPROVED' | 'REJECTED' | 'MORE_INFO_REQUESTED'>(
+    'APPROVED',
+  );
   const [initialPlanCode, setInitialPlanCode] = useState<'STARTER' | 'PRO' | 'ENTERPRISE'>('PRO');
   const [reviewNotes, setReviewNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);

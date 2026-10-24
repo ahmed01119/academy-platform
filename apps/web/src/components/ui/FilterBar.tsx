@@ -68,7 +68,9 @@ export function FilterBar({
         <div className="flex items-center gap-2 flex-wrap">
           {filters?.map((f) => (
             <div key={f.id} className="flex items-center gap-1.5">
-              {f.label && <span className="text-xs text-[var(--text-muted)] font-medium">{f.label}:</span>}
+              {f.label && (
+                <span className="text-xs text-[var(--text-muted)] font-medium">{f.label}:</span>
+              )}
               <select
                 value={f.value}
                 onChange={(e) => f.onChange(e.target.value)}

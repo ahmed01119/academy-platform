@@ -568,9 +568,9 @@ describe('PlayersService', () => {
       };
       mockPrisma.player.findUnique.mockResolvedValue(mockPlayer);
 
-      await expect(
-        service.getPlayerQrCard(branchScopedContext, mockPlayer.id),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(service.getPlayerQrCard(branchScopedContext, mockPlayer.id)).rejects.toThrow(
+        ForbiddenException,
+      );
     });
   });
 });

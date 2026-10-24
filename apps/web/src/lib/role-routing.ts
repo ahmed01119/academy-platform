@@ -87,9 +87,7 @@ export function canAccessCoachRoutes(
 /**
  * Checks whether the current user is authorized to view Player portal (/player).
  */
-export function canAccessPlayerPortal(
-  user: UserSummary | null | undefined,
-): boolean {
+export function canAccessPlayerPortal(user: UserSummary | null | undefined): boolean {
   if (!user) return false;
   return Boolean(user.isPlatformSuperAdmin || user.hasPlayerProfile);
 }
@@ -97,9 +95,7 @@ export function canAccessPlayerPortal(
 /**
  * Checks whether the current user is authorized to view Guardian portal (/guardian).
  */
-export function canAccessGuardianPortal(
-  user: UserSummary | null | undefined,
-): boolean {
+export function canAccessGuardianPortal(user: UserSummary | null | undefined): boolean {
   if (!user) return false;
   return Boolean(user.isPlatformSuperAdmin || user.hasGuardianProfile);
 }

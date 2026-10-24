@@ -87,9 +87,7 @@ export function Topbar({ onOpenMobile, breadcrumbs: customBreadcrumbs }: TopbarP
     try {
       await api.notifications.markAllRead();
       setUnreadCount(0);
-      setNotifications((prev) =>
-        prev.map((n) => ({ ...n, readAt: new Date().toISOString() })),
-      );
+      setNotifications((prev) => prev.map((n) => ({ ...n, readAt: new Date().toISOString() })));
     } catch {
       // ignore
     }
@@ -102,9 +100,7 @@ export function Topbar({ onOpenMobile, breadcrumbs: customBreadcrumbs }: TopbarP
         await api.notifications.markRead(item.id);
         setUnreadCount((prev) => Math.max(0, prev - 1));
         setNotifications((prev) =>
-          prev.map((n) =>
-            n.id === item.id ? { ...n, readAt: new Date().toISOString() } : n,
-          ),
+          prev.map((n) => (n.id === item.id ? { ...n, readAt: new Date().toISOString() } : n)),
         );
       } catch {
         // ignore
@@ -313,122 +309,124 @@ export function Topbar({ onOpenMobile, breadcrumbs: customBreadcrumbs }: TopbarP
                               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0 mt-1" />
                             )}
                           </div>
-                        <div className="text-[10px] text-[var(--text-muted)] leading-relaxed">
-                          {item.body}
+                          <div className="text-[10px] text-[var(--text-muted)] leading-relaxed">
+                            {item.body}
+                          </div>
+                          <div className="text-[9px] text-[var(--text-muted)]/70 pt-0.5">
+                            {new Date(item.createdAt).toLocaleDateString(
+                              locale === 'ar' ? 'ar-EG' : 'en-US',
+                              {
+                                month: 'short',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              },
+                            )}
+                          </div>
                         </div>
-                        <div className="text-[9px] text-[var(--text-muted)]/70 pt-0.5">
-                          {new Date(item.createdAt).toLocaleDateString(
-                            locale === 'ar' ? 'ar-EG' : 'en-US',
-                            {
-                              month: 'short',
-                              day: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            },
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-                </div>
-              </div>
-            )}
-          </div>
-
-        {/* Language & Theme Controls */}
-        <div className="flex items-center gap-1 border-s border-e border-[var(--border-app)] px-2">
-          <LocaleToggle />
-          <ThemeToggle />
-        </div>
-
-        {/* User Profile Pill / Dropdown */}
-        {user ? (
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setIsProfileOpen(!isProfileOpen)}
-              className="flex items-center gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-1.5 ps-2 text-xs text-[var(--text-main)] hover:border-emerald-500/50 transition-all shadow-sm"
-            >
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-tr from-emerald-600 to-teal-600 text-[11px] font-bold text-white shadow-inner">
-                {user.name.slice(0, 2).toUpperCase()}
-              </div>
-              <div className="hidden sm:flex flex-col text-start">
-                <span className="font-bold text-[11px] text-[var(--text-main)] max-w-[90px] truncate leading-tight">
-                  {user.name}
-                </span>
-                <span className="text-[9px] text-[var(--text-muted)]">
-                  {isSuperAdmin
-                    ? locale === 'ar'
-                      ? 'أدمن المنصة'
-                      : 'Super Admin'
-                    : activeTenant?.role
-                      ? roleLabels[activeTenant.role] || activeTenant.role
-                      : ''}
-                </span>
-              </div>
-              <ChevronDown className="h-3 w-3 text-[var(--text-muted)]" />
-            </button>
-
-            {isProfileOpen && (
-              <div className="absolute end-0 mt-2 w-56 rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-2 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150">
-                <div className="px-2.5 py-2 border-b border-[var(--border-subtle)]">
-                  <div className="font-bold text-xs text-[var(--text-main)] truncate">
-                    {user.name}
-                  </div>
-                  <div className="text-[10px] text-[var(--text-muted)] truncate">{user.email}</div>
-                  {isSuperAdmin && (
-                    <span className="mt-1 inline-flex items-center gap-1 rounded bg-amber-500/20 px-1.5 py-0.5 text-[9px] font-bold text-amber-500 border border-amber-500/30">
-                      <ShieldAlert className="h-2.5 w-2.5" />
-                      {locale === 'ar' ? 'مشرف المنصة العام' : 'Super Admin'}
-                    </span>
+                      );
+                    })
                   )}
                 </div>
-
-                <div className="mt-1 space-y-1">
-                  <Link
-                    href="/settings"
-                    onClick={() => setIsProfileOpen(false)}
-                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-xs text-[var(--text-main)] hover:bg-[var(--bg-surface-subtle)] transition-colors"
-                  >
-                    <Settings className="h-3.5 w-3.5 text-[var(--text-muted)]" />
-                    <span>{t('nav.settings', 'الإعدادات')}</span>
-                  </Link>
-
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      setIsProfileOpen(false);
-                      await logout();
-                    }}
-                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-xs text-rose-400 hover:bg-rose-500/10 transition-colors"
-                  >
-                    <LogOut className="h-3.5 w-3.5" />
-                    <span>{t('common.logout', 'تسجيل الخروج')}</span>
-                  </button>
-                </div>
               </div>
             )}
           </div>
-        ) : (
-          <div className="flex items-center gap-2">
-            <Link
-              href="/login"
-              className="rounded-xl border border-[var(--border-app)] px-3 py-1.5 text-xs font-semibold text-[var(--text-main)] hover:border-[var(--accent-primary)] hover:text-[var(--accent-primary)] transition-all"
-            >
-              {t('common.login', 'تسجيل الدخول')}
-            </Link>
-            <Link
-              href="/register"
-              className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-[var(--accent-primary)] to-emerald-500 px-3 py-1.5 text-xs font-bold text-emerald-950 shadow-md shadow-emerald-500/20 hover:brightness-110 transition-all"
-            >
-              <Sparkles className="h-3.5 w-3.5" />
-              <span>{t('common.register', 'تسجيل جديد')}</span>
-            </Link>
+
+          {/* Language & Theme Controls */}
+          <div className="flex items-center gap-1 border-s border-e border-[var(--border-app)] px-2">
+            <LocaleToggle />
+            <ThemeToggle />
           </div>
-        )}
-      </div>
-    </header>
+
+          {/* User Profile Pill / Dropdown */}
+          {user ? (
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setIsProfileOpen(!isProfileOpen)}
+                className="flex items-center gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-1.5 ps-2 text-xs text-[var(--text-main)] hover:border-emerald-500/50 transition-all shadow-sm"
+              >
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-tr from-emerald-600 to-teal-600 text-[11px] font-bold text-white shadow-inner">
+                  {user.name.slice(0, 2).toUpperCase()}
+                </div>
+                <div className="hidden sm:flex flex-col text-start">
+                  <span className="font-bold text-[11px] text-[var(--text-main)] max-w-[90px] truncate leading-tight">
+                    {user.name}
+                  </span>
+                  <span className="text-[9px] text-[var(--text-muted)]">
+                    {isSuperAdmin
+                      ? locale === 'ar'
+                        ? 'أدمن المنصة'
+                        : 'Super Admin'
+                      : activeTenant?.role
+                        ? roleLabels[activeTenant.role] || activeTenant.role
+                        : ''}
+                  </span>
+                </div>
+                <ChevronDown className="h-3 w-3 text-[var(--text-muted)]" />
+              </button>
+
+              {isProfileOpen && (
+                <div className="absolute end-0 mt-2 w-56 rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-2 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="px-2.5 py-2 border-b border-[var(--border-subtle)]">
+                    <div className="font-bold text-xs text-[var(--text-main)] truncate">
+                      {user.name}
+                    </div>
+                    <div className="text-[10px] text-[var(--text-muted)] truncate">
+                      {user.email}
+                    </div>
+                    {isSuperAdmin && (
+                      <span className="mt-1 inline-flex items-center gap-1 rounded bg-amber-500/20 px-1.5 py-0.5 text-[9px] font-bold text-amber-500 border border-amber-500/30">
+                        <ShieldAlert className="h-2.5 w-2.5" />
+                        {locale === 'ar' ? 'مشرف المنصة العام' : 'Super Admin'}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="mt-1 space-y-1">
+                    <Link
+                      href="/settings"
+                      onClick={() => setIsProfileOpen(false)}
+                      className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-xs text-[var(--text-main)] hover:bg-[var(--bg-surface-subtle)] transition-colors"
+                    >
+                      <Settings className="h-3.5 w-3.5 text-[var(--text-muted)]" />
+                      <span>{t('nav.settings', 'الإعدادات')}</span>
+                    </Link>
+
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        setIsProfileOpen(false);
+                        await logout();
+                      }}
+                      className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-xs text-rose-400 hover:bg-rose-500/10 transition-colors"
+                    >
+                      <LogOut className="h-3.5 w-3.5" />
+                      <span>{t('common.logout', 'تسجيل الخروج')}</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <Link
+                href="/login"
+                className="rounded-xl border border-[var(--border-app)] px-3 py-1.5 text-xs font-semibold text-[var(--text-main)] hover:border-[var(--accent-primary)] hover:text-[var(--accent-primary)] transition-all"
+              >
+                {t('common.login', 'تسجيل الدخول')}
+              </Link>
+              <Link
+                href="/register"
+                className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-[var(--accent-primary)] to-emerald-500 px-3 py-1.5 text-xs font-bold text-emerald-950 shadow-md shadow-emerald-500/20 hover:brightness-110 transition-all"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                <span>{t('common.register', 'تسجيل جديد')}</span>
+              </Link>
+            </div>
+          )}
+        </div>
+      </header>
     </>
   );
 }

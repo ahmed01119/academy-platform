@@ -152,7 +152,10 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       id: 'nav-players',
       category: 'navigation',
       title: locale === 'ar' ? 'سجل اللاعبين' : 'Players Directory',
-      subtitle: locale === 'ar' ? 'إدارة اللاعبين والعضويات وبطاقات QR' : 'Manage players, memberships & QR',
+      subtitle:
+        locale === 'ar'
+          ? 'إدارة اللاعبين والعضويات وبطاقات QR'
+          : 'Manage players, memberships & QR',
       href: '/players',
       icon: <Users className="w-4 h-4 text-blue-400" />,
     },
@@ -160,7 +163,8 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       id: 'nav-sessions',
       category: 'navigation',
       title: locale === 'ar' ? 'حصص التدريب والحضور' : 'Training Sessions & Attendance',
-      subtitle: locale === 'ar' ? 'الجداول والتحضير الفوري' : 'Schedules and live attendance check-in',
+      subtitle:
+        locale === 'ar' ? 'الجداول والتحضير الفوري' : 'Schedules and live attendance check-in',
       href: '/sessions',
       icon: <Calendar className="w-4 h-4 text-amber-400" />,
     },
@@ -168,7 +172,10 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       id: 'nav-scanner',
       category: 'navigation',
       title: locale === 'ar' ? 'ماسح الحضور السريع QR' : 'QR Attendance Scanner',
-      subtitle: locale === 'ar' ? 'مسح فوري بالكاميرا حتى دون اتصال' : 'Instant camera check-in, works offline',
+      subtitle:
+        locale === 'ar'
+          ? 'مسح فوري بالكاميرا حتى دون اتصال'
+          : 'Instant camera check-in, works offline',
       href: '/scanner',
       icon: <QrCode className="w-4 h-4 text-teal-400" />,
     },
@@ -176,7 +183,8 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       id: 'nav-groups',
       category: 'navigation',
       title: locale === 'ar' ? 'المجموعات والفرق' : 'Training Groups & Squads',
-      subtitle: locale === 'ar' ? 'توزيع الفئات السنية والمدربين' : 'Age categories and coaching staff',
+      subtitle:
+        locale === 'ar' ? 'توزيع الفئات السنية والمدربين' : 'Age categories and coaching staff',
       href: '/groups',
       icon: <Building className="w-4 h-4 text-purple-400" />,
     },
@@ -184,7 +192,10 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       id: 'nav-evaluations',
       category: 'navigation',
       title: locale === 'ar' ? 'تقييمات الأداء الفني' : 'Player Evaluations',
-      subtitle: locale === 'ar' ? 'التقييمات الفنية والبدنية والتطوير' : 'Technical & physical progress metrics',
+      subtitle:
+        locale === 'ar'
+          ? 'التقييمات الفنية والبدنية والتطوير'
+          : 'Technical & physical progress metrics',
       href: '/evaluations',
       icon: <Award className="w-4 h-4 text-rose-400" />,
     },
@@ -192,7 +203,10 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       id: 'nav-finance',
       category: 'navigation',
       title: locale === 'ar' ? 'الإدارة المالية والمصروفات' : 'Finance & Subscriptions',
-      subtitle: locale === 'ar' ? 'الاشتراكات والمدفوعات وإغلاق الخزينة' : 'Player billing, expenses & cashier closing',
+      subtitle:
+        locale === 'ar'
+          ? 'الاشتراكات والمدفوعات وإغلاق الخزينة'
+          : 'Player billing, expenses & cashier closing',
       href: '/finance',
       icon: <DollarSign className="w-4 h-4 text-emerald-400" />,
     },
@@ -200,7 +214,8 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       id: 'nav-branches',
       category: 'navigation',
       title: locale === 'ar' ? 'الفروع والملاعب' : 'Branches & Locations',
-      subtitle: locale === 'ar' ? 'إدارة فروع ومقرات الأكاديمية' : 'Manage academy branches & facilities',
+      subtitle:
+        locale === 'ar' ? 'إدارة فروع ومقرات الأكاديمية' : 'Manage academy branches & facilities',
       href: '/branches',
       icon: <Building className="w-4 h-4 text-indigo-400" />,
     },
@@ -208,7 +223,8 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       id: 'nav-settings',
       category: 'navigation',
       title: locale === 'ar' ? 'إعدادات الأكاديمية' : 'Academy Settings',
-      subtitle: locale === 'ar' ? 'الهوية وسياسات الحضور والاشتراك' : 'Identity, grace period & policies',
+      subtitle:
+        locale === 'ar' ? 'الهوية وسياسات الحضور والاشتراك' : 'Identity, grace period & policies',
       href: '/settings',
       icon: <Settings className="w-4 h-4 text-slate-400" />,
     },
@@ -220,7 +236,10 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       id: 'nav-platform',
       category: 'navigation',
       title: locale === 'ar' ? 'مركز إدارة المنصة (Super Admin)' : 'Platform Control Center',
-      subtitle: locale === 'ar' ? 'الأكاديميات، الطلبات، التخزين، والحوكمة' : 'Academies, requests, storage & governance',
+      subtitle:
+        locale === 'ar'
+          ? 'الأكاديميات، الطلبات، التخزين، والحوكمة'
+          : 'Academies, requests, storage & governance',
       href: '/platform',
       icon: <Shield className="w-4 h-4 text-amber-400" />,
       superAdminOnly: true,
@@ -233,7 +252,10 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       id: 'action-new-player',
       category: 'actions',
       title: locale === 'ar' ? 'تسجيل لاعب جديد' : 'Register New Player',
-      subtitle: locale === 'ar' ? 'إضافة لاعب مع إصدار بطاقة QR فورية' : 'Enroll player with instant QR code',
+      subtitle:
+        locale === 'ar'
+          ? 'إضافة لاعب مع إصدار بطاقة QR فورية'
+          : 'Enroll player with instant QR code',
       href: '/players/new',
       icon: <Users className="w-4 h-4 text-emerald-400" />,
     },
@@ -241,7 +263,8 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       id: 'action-open-scanner',
       category: 'actions',
       title: locale === 'ar' ? 'فتح ماسح الحضور' : 'Open Attendance Scanner',
-      subtitle: locale === 'ar' ? 'بدء تسجيل حضور الحصة التدريبية' : 'Start scanning session attendance',
+      subtitle:
+        locale === 'ar' ? 'بدء تسجيل حضور الحصة التدريبية' : 'Start scanning session attendance',
       href: '/scanner',
       icon: <QrCode className="w-4 h-4 text-teal-400" />,
     },
@@ -376,11 +399,15 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
                       }`}
                     >
                       <div className="flex items-center gap-3">
-                        <div className="p-1.5 rounded-lg bg-[var(--bg-surface-subtle)]">{item.icon}</div>
+                        <div className="p-1.5 rounded-lg bg-[var(--bg-surface-subtle)]">
+                          {item.icon}
+                        </div>
                         <div>
                           <div className="text-xs font-semibold">{item.title}</div>
                           {item.subtitle && (
-                            <div className="text-[11px] text-[var(--text-muted)]">{item.subtitle}</div>
+                            <div className="text-[11px] text-[var(--text-muted)]">
+                              {item.subtitle}
+                            </div>
                           )}
                         </div>
                       </div>
@@ -418,11 +445,15 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
                       }`}
                     >
                       <div className="flex items-center gap-3">
-                        <div className="p-1.5 rounded-lg bg-[var(--bg-surface-subtle)]">{item.icon}</div>
+                        <div className="p-1.5 rounded-lg bg-[var(--bg-surface-subtle)]">
+                          {item.icon}
+                        </div>
                         <div>
                           <div className="text-xs font-semibold">{item.title}</div>
                           {item.subtitle && (
-                            <div className="text-[11px] text-[var(--text-muted)]">{item.subtitle}</div>
+                            <div className="text-[11px] text-[var(--text-muted)]">
+                              {item.subtitle}
+                            </div>
                           )}
                         </div>
                       </div>
@@ -460,11 +491,15 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
                       }`}
                     >
                       <div className="flex items-center gap-3">
-                        <div className="p-1.5 rounded-lg bg-[var(--bg-surface-subtle)]">{item.icon}</div>
+                        <div className="p-1.5 rounded-lg bg-[var(--bg-surface-subtle)]">
+                          {item.icon}
+                        </div>
                         <div>
                           <div className="text-xs font-semibold">{item.title}</div>
                           {item.subtitle && (
-                            <div className="text-[11px] text-[var(--text-muted)]">{item.subtitle}</div>
+                            <div className="text-[11px] text-[var(--text-muted)]">
+                              {item.subtitle}
+                            </div>
                           )}
                         </div>
                       </div>

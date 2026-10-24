@@ -243,7 +243,9 @@ export default function GroupDetailsPage() {
       <AppShell>
         <div className="flex h-96 flex-col items-center justify-center gap-3">
           <RefreshCw className="h-8 w-8 animate-spin text-[var(--brand-primary)]" />
-          <p className="text-sm font-medium text-[var(--text-secondary)]">جارٍ تحميل تفاصيل المجموعة التدريبية...</p>
+          <p className="text-sm font-medium text-[var(--text-secondary)]">
+            جارٍ تحميل تفاصيل المجموعة التدريبية...
+          </p>
         </div>
       </AppShell>
     );
@@ -256,8 +258,12 @@ export default function GroupDetailsPage() {
           <div className="h-12 w-12 rounded-2xl bg-red-500/10 text-red-500 flex items-center justify-center mx-auto">
             <AlertCircle className="h-6 w-6" />
           </div>
-          <h2 className="text-xl font-bold text-[var(--text-primary)]">لم نتمكن من العثور على المجموعة</h2>
-          <p className="text-sm text-[var(--text-secondary)]">{errorMsg || 'المجموعة غير موجودة أو تم حذفها'}</p>
+          <h2 className="text-xl font-bold text-[var(--text-primary)]">
+            لم نتمكن من العثور على المجموعة
+          </h2>
+          <p className="text-sm text-[var(--text-secondary)]">
+            {errorMsg || 'المجموعة غير موجودة أو تم حذفها'}
+          </p>
           <Link
             href="/groups"
             className="inline-flex items-center gap-2 rounded-xl bg-[var(--brand-primary)] text-white px-4 py-2 text-xs font-semibold hover:brightness-110"
@@ -275,12 +281,7 @@ export default function GroupDetailsPage() {
     : 0;
 
   return (
-    <AppShell
-      breadcrumbs={[
-        { label: t('nav.groups'), href: '/groups' },
-        { label: group.name },
-      ]}
-    >
+    <AppShell breadcrumbs={[{ label: t('nav.groups'), href: '/groups' }, { label: group.name }]}>
       <div className="space-y-8">
         {/* Hero Group Card */}
         <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 sm:p-8 shadow-sm relative overflow-hidden">
@@ -307,9 +308,13 @@ export default function GroupDetailsPage() {
                 </span>
               </div>
 
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-[var(--text-primary)]">{group.name}</h1>
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-[var(--text-primary)]">
+                {group.name}
+              </h1>
               {group.description && (
-                <p className="text-sm text-[var(--text-secondary)] max-w-2xl">{group.description}</p>
+                <p className="text-sm text-[var(--text-secondary)] max-w-2xl">
+                  {group.description}
+                </p>
               )}
             </div>
 
@@ -326,7 +331,9 @@ export default function GroupDetailsPage() {
                   <div className="h-2 w-full rounded-full bg-[var(--bg-surface)] overflow-hidden">
                     <div
                       className={`h-full rounded-full ${
-                        group.members.length >= capacity ? 'bg-red-500' : 'bg-[var(--brand-primary)]'
+                        group.members.length >= capacity
+                          ? 'bg-red-500'
+                          : 'bg-[var(--brand-primary)]'
                       }`}
                       style={{ width: `${fillPercentage}%` }}
                     />
@@ -396,9 +403,12 @@ export default function GroupDetailsPage() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-base font-bold text-[var(--text-primary)]">اللاعبين المقيدين بالمجموعة</h3>
+                <h3 className="text-base font-bold text-[var(--text-primary)]">
+                  اللاعبين المقيدين بالمجموعة
+                </h3>
                 <p className="text-xs text-[var(--text-secondary)]">
-                  هؤلاء اللاعبين سيتم إدراجهم تلقائياً في كشف الحضور عند بدء أي حصة تدريبية للمجموعة.
+                  هؤلاء اللاعبين سيتم إدراجهم تلقائياً في كشف الحضور عند بدء أي حصة تدريبية
+                  للمجموعة.
                 </p>
               </div>
               <button
@@ -442,7 +452,9 @@ export default function GroupDetailsPage() {
                         {member.playerName.slice(0, 2)}
                       </div>
                       <div>
-                        <h4 className="text-sm font-bold text-[var(--text-primary)]">{member.playerName}</h4>
+                        <h4 className="text-sm font-bold text-[var(--text-primary)]">
+                          {member.playerName}
+                        </h4>
                         <div className="flex items-center gap-2 text-[11px] text-[var(--text-secondary)] mt-0.5">
                           <span>{member.playerGender === 'MALE' ? 'ذكر' : 'أنثى'}</span>
                           <span>•</span>
@@ -472,7 +484,9 @@ export default function GroupDetailsPage() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-base font-bold text-[var(--text-primary)]">المدربين المسؤولين عن المجموعة</h3>
+                <h3 className="text-base font-bold text-[var(--text-primary)]">
+                  المدربين المسؤولين عن المجموعة
+                </h3>
                 <p className="text-xs text-[var(--text-secondary)]">
                   المدرب المعين يتمتع بصلاحية أخذ الحضور وإدارة جلسات وتدريبات هذه المجموعة.
                 </p>
@@ -520,14 +534,18 @@ export default function GroupDetailsPage() {
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
-                            <h4 className="text-sm font-bold text-[var(--text-primary)]">{c.coachName}</h4>
+                            <h4 className="text-sm font-bold text-[var(--text-primary)]">
+                              {c.coachName}
+                            </h4>
                             {c.isHeadCoach && (
                               <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400 border border-amber-500/30">
                                 مدرب رئيسي
                               </span>
                             )}
                           </div>
-                          <p className="text-xs text-[var(--text-secondary)] mt-0.5">{c.coachEmail}</p>
+                          <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+                            {c.coachEmail}
+                          </p>
                         </div>
                       </div>
 
@@ -553,7 +571,9 @@ export default function GroupDetailsPage() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-base font-bold text-[var(--text-primary)]">المواعيد التدريبية الأسبوعية</h3>
+                <h3 className="text-base font-bold text-[var(--text-primary)]">
+                  المواعيد التدريبية الأسبوعية
+                </h3>
                 <p className="text-xs text-[var(--text-secondary)]">
                   أوقات التمارين الدورية التي تكرر أسبوعياً لهذه المجموعة على أرض الملعب.
                 </p>
@@ -575,7 +595,9 @@ export default function GroupDetailsPage() {
             {group.schedules.length === 0 ? (
               <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-10 text-center text-[var(--text-secondary)] space-y-3">
                 <Clock className="h-8 w-8 mx-auto text-[var(--brand-primary)]" />
-                <p className="text-sm font-semibold text-[var(--text-primary)]">لا توجد مواعيد أسبوعية مسجلة</p>
+                <p className="text-sm font-semibold text-[var(--text-primary)]">
+                  لا توجد مواعيد أسبوعية مسجلة
+                </p>
                 <p className="text-xs text-[var(--text-secondary)]">
                   أضف أيام وساعات التمرين المنتظمة لتسهيل إنشاء الحصص التدريبية.
                 </p>
@@ -642,7 +664,9 @@ export default function GroupDetailsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
           <div className="w-full max-w-md rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-2xl relative space-y-5">
             <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-4">
-              <h3 className="text-base font-bold text-[var(--text-primary)]">إضافة لاعب للمجموعة التدريبية</h3>
+              <h3 className="text-base font-bold text-[var(--text-primary)]">
+                إضافة لاعب للمجموعة التدريبية
+              </h3>
               <button
                 type="button"
                 onClick={() => setIsAddMemberModalOpen(false)}
@@ -715,7 +739,9 @@ export default function GroupDetailsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
           <div className="w-full max-w-md rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-2xl relative space-y-5">
             <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-4">
-              <h3 className="text-base font-bold text-[var(--text-primary)]">تعيين مدرب للمجموعة</h3>
+              <h3 className="text-base font-bold text-[var(--text-primary)]">
+                تعيين مدرب للمجموعة
+              </h3>
               <button
                 type="button"
                 onClick={() => setIsAddCoachModalOpen(false)}
@@ -800,7 +826,9 @@ export default function GroupDetailsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
           <div className="w-full max-w-md rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-2xl relative space-y-5">
             <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-4">
-              <h3 className="text-base font-bold text-[var(--text-primary)]">إضافة موعد تدريبي أسبوعي</h3>
+              <h3 className="text-base font-bold text-[var(--text-primary)]">
+                إضافة موعد تدريبي أسبوعي
+              </h3>
               <button
                 type="button"
                 onClick={() => setIsAddScheduleModalOpen(false)}

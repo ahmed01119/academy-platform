@@ -5,7 +5,11 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '../../lib/auth-context';
 import { useLocale } from '../../lib/locale-context';
-import { canAccessAdminRoutes, canAccessCoachRoutes, getRoleHomeRoute } from '../../lib/role-routing';
+import {
+  canAccessAdminRoutes,
+  canAccessCoachRoutes,
+  getRoleHomeRoute,
+} from '../../lib/role-routing';
 import { AppShell } from '../../components/layout/AppShell';
 import { PageHeader, StatusBadge, useToast } from '../../components/ui';
 import { api } from '../../lib/api-client';
@@ -162,7 +166,9 @@ function SessionsContent() {
       return;
     }
     if (!createForm.groupId) {
-      setCreateError(locale === 'ar' ? 'يرجى تحديد المجموعة التدريبية' : 'Please select a training group');
+      setCreateError(
+        locale === 'ar' ? 'يرجى تحديد المجموعة التدريبية' : 'Please select a training group',
+      );
       return;
     }
 
@@ -203,10 +209,20 @@ function SessionsContent() {
     }
     try {
       await api.attendance.closeSession(sessionId);
-      toast.success(locale === 'ar' ? 'تم إغلاق الحصة التدريبية وتثبيت سجل الحضور بنجاح' : 'Session closed and attendance locked successfully');
+      toast.success(
+        locale === 'ar'
+          ? 'تم إغلاق الحصة التدريبية وتثبيت سجل الحضور بنجاح'
+          : 'Session closed and attendance locked successfully',
+      );
       await loadSessions();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : (locale === 'ar' ? 'فشل إغلاق الحصة' : 'Failed to close session'));
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : locale === 'ar'
+            ? 'فشل إغلاق الحصة'
+            : 'Failed to close session',
+      );
     }
   };
 
@@ -352,7 +368,9 @@ function SessionsContent() {
               <CalendarCheck className="h-6 w-6" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-[var(--text-main)]">{t('common.noResults')}</h3>
+              <h3 className="text-base font-bold text-[var(--text-main)]">
+                {t('common.noResults')}
+              </h3>
               <p className="text-xs text-[var(--text-muted)] mt-1">
                 {locale === 'ar'
                   ? 'قم بإنشاء حصة تدريبية لمجموعة للبدء بأخذ الحضور إلكترونياً.'
@@ -738,7 +756,11 @@ function SessionsContent() {
                   disabled={isSubmitting}
                   className="rounded-xl bg-[var(--accent-primary)] px-5 py-2.5 text-xs font-bold text-white hover:brightness-110 disabled:opacity-50 transition-all shadow-md"
                 >
-                  {isSubmitting ? t('common.loading') : locale === 'ar' ? 'إنشاء الحصة' : 'Create Session'}
+                  {isSubmitting
+                    ? t('common.loading')
+                    : locale === 'ar'
+                      ? 'إنشاء الحصة'
+                      : 'Create Session'}
                 </button>
               </div>
             </form>

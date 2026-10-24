@@ -125,10 +125,7 @@ export default function SettingsPage() {
     <AppShell>
       <div className="max-w-4xl space-y-6">
         <PageHeader
-          breadcrumbs={[
-            { label: 'الرئيسية', href: '/dashboard' },
-            { label: 'إعدادات الأكاديمية' },
-          ]}
+          breadcrumbs={[{ label: 'الرئيسية', href: '/dashboard' }, { label: 'إعدادات الأكاديمية' }]}
           title="إعدادات وهوية الأكاديمية"
           description="إدارة الاسم الرسمي ومعلومات الاتصال والموقع والعملة المعيارية للمدفوعات."
         />
@@ -155,7 +152,9 @@ export default function SettingsPage() {
               <span className="text-[11px] text-[var(--text-muted)] block mb-0.5">
                 معرف الأكاديمية (Slug)
               </span>
-              <span className="font-mono text-xs font-bold text-[var(--text-primary)]">{profile.slug}</span>
+              <span className="font-mono text-xs font-bold text-[var(--text-primary)]">
+                {profile.slug}
+              </span>
             </div>
 
             <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3.5 text-center">
@@ -166,14 +165,18 @@ export default function SettingsPage() {
             </div>
 
             <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3.5 text-center">
-              <span className="text-[11px] text-[var(--text-muted)] block mb-0.5">إجمالي اللاعبين</span>
+              <span className="text-[11px] text-[var(--text-muted)] block mb-0.5">
+                إجمالي اللاعبين
+              </span>
               <span className="text-sm font-bold text-blue-500">
                 {profile._count?.players || 0} لاعب
               </span>
             </div>
 
             <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3.5 text-center">
-              <span className="text-[11px] text-[var(--text-muted)] block mb-0.5">الكادر النشط</span>
+              <span className="text-[11px] text-[var(--text-muted)] block mb-0.5">
+                الكادر النشط
+              </span>
               <span className="text-sm font-bold text-purple-500">
                 {profile._count?.memberships || 0} عضو
               </span>

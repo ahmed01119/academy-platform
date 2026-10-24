@@ -44,4 +44,3 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
   ],
 })
 export class AppModule {}
-

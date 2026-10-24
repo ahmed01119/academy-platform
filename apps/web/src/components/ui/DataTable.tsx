@@ -116,8 +116,8 @@ export function DataTable<T>({
                       {renderFn
                         ? renderFn(item)
                         : rawKey
-                        ? String((item as Record<string, unknown>)[rawKey] ?? '')
-                        : null}
+                          ? String((item as Record<string, unknown>)[rawKey] ?? '')
+                          : null}
                     </td>
                   );
                 })}

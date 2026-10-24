@@ -71,4 +71,3 @@ export const PlayerPortalEvaluationSchema = z.object({
 });
 
 export type PlayerPortalEvaluation = z.infer<typeof PlayerPortalEvaluationSchema>;
-

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { FinanceService } from './finance.service';
-import { NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import type { PrismaService } from '../database/prisma.service';
 import type { AuditService } from '../audit/audit.service';
 import type { TenantContext } from '@academy/shared';
@@ -555,9 +555,9 @@ describe('FinanceService', () => {
         recordedByUser: { name: 'Manager Sarah' },
       });
 
-      await expect(
-        service.approveSessionExpense(managerContext, 'exp-pending-2'),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(service.approveSessionExpense(managerContext, 'exp-pending-2')).rejects.toThrow(
+        ForbiddenException,
+      );
     });
 
     it('rejects approval on already completed or rejected expenses', async () => {

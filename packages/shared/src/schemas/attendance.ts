@@ -52,7 +52,9 @@ export const AttendanceRosterItemSchema = z.object({
   checkInTime: z.string().nullable().optional(),
   remarks: z.string().max(250).nullable().optional(),
   version: z.number().int().default(1),
-  subscriptionStatus: z.enum(['ACTIVE', 'PARTIAL', 'OVERDUE', 'EXEMPT', 'PAUSED', 'EXPIRED']).optional(),
+  subscriptionStatus: z
+    .enum(['ACTIVE', 'PARTIAL', 'OVERDUE', 'EXEMPT', 'PAUSED', 'EXPIRED'])
+    .optional(),
   outstandingBalance: z.number().optional(),
   amountDue: z.number().optional(),
   nextPaymentDate: z.string().nullable().optional(),
@@ -306,7 +308,9 @@ export const OfflineAttendanceBatchSyncRequestSchema = z.object({
   items: z.array(OfflineAttendanceBatchItemSchema).min(1).max(500),
 });
 
-export type OfflineAttendanceBatchSyncRequest = z.infer<typeof OfflineAttendanceBatchSyncRequestSchema>;
+export type OfflineAttendanceBatchSyncRequest = z.infer<
+  typeof OfflineAttendanceBatchSyncRequestSchema
+>;
 
 export const OfflineAttendanceBatchSyncResponseSchema = z.object({
   syncedCount: z.number(),
@@ -328,5 +332,6 @@ export const OfflineAttendanceBatchSyncResponseSchema = z.object({
   ),
 });
 
-export type OfflineAttendanceBatchSyncResponse = z.infer<typeof OfflineAttendanceBatchSyncResponseSchema>;
-
+export type OfflineAttendanceBatchSyncResponse = z.infer<
+  typeof OfflineAttendanceBatchSyncResponseSchema
+>;

@@ -13,4 +13,3 @@ import { NotificationsModule } from '../notifications/notifications.module';
   exports: [PortalService],
 })
 export class PortalModule {}
-

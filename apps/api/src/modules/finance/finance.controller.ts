@@ -1,14 +1,4 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Inject,
-  Param,
-  Post,
-  Query,
-  Req,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Get, Inject, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
 import { FinanceService } from './finance.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -46,22 +36,26 @@ export class FinanceController {
   @Get('subscription')
   @RequirePermissions(Permission.PAYMENTS_READ)
   async getTenantSubscription(@Req() req: Request) {
-    const tenantContext: TenantContext = (req as Request & { tenantContext: TenantContext }).tenantContext;
+    const tenantContext: TenantContext = (req as Request & { tenantContext: TenantContext })
+      .tenantContext;
     return this.financeService.getTenantSubscription(tenantContext);
   }
 
   @Get('player-plans')
   @RequirePermissions(Permission.PAYMENTS_READ)
   async listPlayerSubscriptionPlans(@Query('branchId') branchId: string, @Req() req: Request) {
-    const tenantContext: TenantContext = (req as Request & { tenantContext: TenantContext }).tenantContext;
+    const tenantContext: TenantContext = (req as Request & { tenantContext: TenantContext })
+      .tenantContext;
     return this.financeService.listPlayerSubscriptionPlans(tenantContext, branchId);
   }
 
   @Post('player-plans')
   @RequirePermissions(Permission.PAYMENTS_CREATE)
   async createPlayerSubscriptionPlan(@Body() body: unknown, @Req() req: Request) {
-    const tenantContext: TenantContext = (req as Request & { tenantContext: TenantContext }).tenantContext;
-    const dto: CreatePlayerSubscriptionPlanRequest = CreatePlayerSubscriptionPlanRequestSchema.parse(body);
+    const tenantContext: TenantContext = (req as Request & { tenantContext: TenantContext })
+      .tenantContext;
+    const dto: CreatePlayerSubscriptionPlanRequest =
+      CreatePlayerSubscriptionPlanRequestSchema.parse(body);
     return this.financeService.createPlayerSubscriptionPlan(tenantContext, dto);
   }
 
@@ -75,7 +69,8 @@ export class FinanceController {
     @Query('offset') offset: string,
     @Req() req: Request,
   ) {
-    const tenantContext: TenantContext = (req as Request & { tenantContext: TenantContext }).tenantContext;
+    const tenantContext: TenantContext = (req as Request & { tenantContext: TenantContext })
+      .tenantContext;
     return this.financeService.listPlayerSubscriptions(tenantContext, {
       status,
       search,
@@ -89,14 +84,16 @@ export class FinanceController {
   @RequirePermissions(Permission.PAYMENTS_READ)
   async getPlayerSubscription(@Param('playerId') rawId: string, @Req() req: Request) {
     const playerId = UuidParamSchema.parse(rawId);
-    const tenantContext: TenantContext = (req as Request & { tenantContext: TenantContext }).tenantContext;
+    const tenantContext: TenantContext = (req as Request & { tenantContext: TenantContext })
+      .tenantContext;
     return this.financeService.getPlayerSubscription(tenantContext, playerId);
   }
 
   @Post('player-subscriptions')
   @RequirePermissions(Permission.PAYMENTS_CREATE)
   async createPlayerSubscription(@Body() body: unknown, @Req() req: Request) {
-    const tenantContext: TenantContext = (req as Request & { tenantContext: TenantContext }).tenantContext;
+    const tenantContext: TenantContext = (req as Request & { tenantContext: TenantContext })
+      .tenantContext;
     const dto: CreatePlayerSubscriptionRequest = CreatePlayerSubscriptionRequestSchema.parse(body);
     return this.financeService.createPlayerSubscription(tenantContext, dto);
   }
@@ -104,20 +101,18 @@ export class FinanceController {
   @Post('payments/collect')
   @RequirePermissions(Permission.PAYMENTS_CREATE)
   async recordPayment(@Body() body: unknown, @Req() req: Request) {
-    const tenantContext: TenantContext = (req as Request & { tenantContext: TenantContext }).tenantContext;
+    const tenantContext: TenantContext = (req as Request & { tenantContext: TenantContext })
+      .tenantContext;
     const dto: RecordPlayerPaymentRequest = RecordPlayerPaymentRequestSchema.parse(body);
     return this.financeService.recordPayment(tenantContext, dto);
   }
 
   @Post('transactions/:id/reverse')
   @RequirePermissions(Permission.PAYMENTS_REFUND)
-  async reverseTransaction(
-    @Param('id') rawId: string,
-    @Body() body: unknown,
-    @Req() req: Request,
-  ) {
+  async reverseTransaction(@Param('id') rawId: string, @Body() body: unknown, @Req() req: Request) {
     const transactionId = UuidParamSchema.parse(rawId);
-    const tenantContext: TenantContext = (req as Request & { tenantContext: TenantContext }).tenantContext;
+    const tenantContext: TenantContext = (req as Request & { tenantContext: TenantContext })
+      .tenantContext;
     const dto: ReverseTransactionRequest = ReverseTransactionRequestSchema.parse(body);
     return this.financeService.reverseTransaction(tenantContext, transactionId, dto);
   }
@@ -126,7 +121,8 @@ export class FinanceController {
   @RequirePermissions(Permission.SESSION_EXPENSES_READ)
   async getSessionCashierSummary(@Param('sessionId') rawId: string, @Req() req: Request) {
     const sessionId = UuidParamSchema.parse(rawId);
-    const tenantContext: TenantContext = (req as Request & { tenantContext: TenantContext }).tenantContext;
+    const tenantContext: TenantContext = (req as Request & { tenantContext: TenantContext })
+      .tenantContext;
     return this.financeService.getSessionCashierSummary(tenantContext, sessionId);
   }
 
@@ -138,7 +134,8 @@ export class FinanceController {
     @Req() req: Request,
   ) {
     const sessionId = UuidParamSchema.parse(rawId);
-    const tenantContext: TenantContext = (req as Request & { tenantContext: TenantContext }).tenantContext;
+    const tenantContext: TenantContext = (req as Request & { tenantContext: TenantContext })
+      .tenantContext;
     const dto: RecordSessionExpenseRequest = RecordSessionExpenseRequestSchema.parse(body);
     return this.financeService.recordSessionExpense(tenantContext, sessionId, dto);
   }
@@ -151,7 +148,8 @@ export class FinanceController {
     @Req() req: Request,
   ) {
     const transactionId = UuidParamSchema.parse(rawId);
-    const tenantContext: TenantContext = (req as Request & { tenantContext: TenantContext }).tenantContext;
+    const tenantContext: TenantContext = (req as Request & { tenantContext: TenantContext })
+      .tenantContext;
     const dto: ApproveExpenseRequest = ApproveExpenseRequestSchema.parse(body || {});
     return this.financeService.approveSessionExpense(tenantContext, transactionId, dto);
   }
@@ -164,7 +162,8 @@ export class FinanceController {
     @Req() req: Request,
   ) {
     const transactionId = UuidParamSchema.parse(rawId);
-    const tenantContext: TenantContext = (req as Request & { tenantContext: TenantContext }).tenantContext;
+    const tenantContext: TenantContext = (req as Request & { tenantContext: TenantContext })
+      .tenantContext;
     const dto: RejectExpenseRequest = RejectExpenseRequestSchema.parse(body);
     return this.financeService.rejectSessionExpense(tenantContext, transactionId, dto);
   }
@@ -177,7 +176,8 @@ export class FinanceController {
     @Req() req: Request,
   ) {
     const sessionId = UuidParamSchema.parse(rawId);
-    const tenantContext: TenantContext = (req as Request & { tenantContext: TenantContext }).tenantContext;
+    const tenantContext: TenantContext = (req as Request & { tenantContext: TenantContext })
+      .tenantContext;
     const dto: CloseSessionCashierRequest = CloseSessionCashierRequestSchema.parse(body || {});
     return this.financeService.closeSessionCashier(tenantContext, sessionId, dto);
   }
@@ -185,7 +185,8 @@ export class FinanceController {
   @Get('dashboard')
   @RequirePermissions(Permission.PAYMENTS_READ)
   async getDashboardMetrics(@Query('branchId') branchId: string, @Req() req: Request) {
-    const tenantContext: TenantContext = (req as Request & { tenantContext: TenantContext }).tenantContext;
+    const tenantContext: TenantContext = (req as Request & { tenantContext: TenantContext })
+      .tenantContext;
     return this.financeService.getDashboardMetrics(tenantContext, branchId);
   }
 }

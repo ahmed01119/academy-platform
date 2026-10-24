@@ -199,10 +199,7 @@ export default function BranchesPage() {
     <AppShell>
       <div className="space-y-6">
         <PageHeader
-          breadcrumbs={[
-            { label: 'الرئيسية', href: '/dashboard' },
-            { label: 'الفروع' },
-          ]}
+          breadcrumbs={[{ label: 'الرئيسية', href: '/dashboard' }, { label: 'الفروع' }]}
           title="إدارة الفروع التشغيلية"
           description="إدارة مقرات الأكاديمية والملاعب المتاحة وسعة كل فرع وقيد اللاعبين."
           badge={
@@ -247,7 +244,9 @@ export default function BranchesPage() {
         ) : branches.length === 0 ? (
           <div className="py-20 text-center text-[var(--text-muted)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-2xl">
             <Building className="h-12 w-12 mx-auto text-[var(--border-subtle)] mb-3" />
-            <h3 className="text-base font-bold text-[var(--text-primary)] mb-1">لا توجد فروع مسجلة بعد</h3>
+            <h3 className="text-base font-bold text-[var(--text-primary)] mb-1">
+              لا توجد فروع مسجلة بعد
+            </h3>
             <p className="text-xs text-[var(--text-muted)] max-w-sm mx-auto mb-5">
               قم بإنشاء الفرع الأول للأكاديمية لتبدأ في تسجيل المدربين واللاعبين به.
             </p>
@@ -277,7 +276,9 @@ export default function BranchesPage() {
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <div className="flex items-center gap-2">
-                          <h3 className="font-bold text-[var(--text-primary)] text-base">{b.name}</h3>
+                          <h3 className="font-bold text-[var(--text-primary)] text-base">
+                            {b.name}
+                          </h3>
                           {b.code && (
                             <span className="rounded bg-[var(--bg-elevated)] px-2 py-0.5 text-[10px] font-mono text-[var(--brand-primary)] border border-[var(--border-subtle)]">
                               {b.code}
@@ -313,7 +314,9 @@ export default function BranchesPage() {
                         <span className="font-bold text-[var(--text-primary)]">
                           {activeCount}{' '}
                           {capacityVal > 0 ? (
-                            <span className="text-[var(--text-muted)] font-normal">/ {capacityVal}</span>
+                            <span className="text-[var(--text-muted)] font-normal">
+                              / {capacityVal}
+                            </span>
                           ) : (
                             <span className="text-[var(--text-muted)] text-[10px] font-normal">
                               (غير محدد السعة)
@@ -577,7 +580,9 @@ export default function BranchesPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">العنوان</label>
+                  <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
+                    العنوان
+                  </label>
                   <input
                     type="text"
                     value={address}

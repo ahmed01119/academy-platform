@@ -37,7 +37,9 @@ export default function CoachWorkspacePage() {
     try {
       const todayStr = new Date().toISOString().split('T')[0]!;
       const [sessionsRes, groupsRes] = await Promise.all([
-        apiClient.attendance.listSessions({ dateFrom: todayStr, dateTo: todayStr }).catch(() => ({ items: [] })),
+        apiClient.attendance
+          .listSessions({ dateFrom: todayStr, dateTo: todayStr })
+          .catch(() => ({ items: [] })),
         apiClient.groups.list().catch(() => ({ items: [] })),
       ]);
       setTodaySessions(sessionsRes.items || []);
@@ -169,15 +171,17 @@ export default function CoachWorkspacePage() {
                 >
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-bold text-[var(--text-main)]">{session.groupName}</span>
+                      <span className="text-sm font-bold text-[var(--text-main)]">
+                        {session.groupName}
+                      </span>
                       <StatusBadge
                         status={session.status}
                         label={
                           session.status === 'IN_PROGRESS'
                             ? 'جارية الآن'
                             : session.status === 'CLOSED'
-                            ? 'مكتملة'
-                            : 'مجدولة'
+                              ? 'مكتملة'
+                              : 'مجدولة'
                         }
                       />
                     </div>

@@ -262,7 +262,8 @@ export function Navbar() {
                   {isTenantMenuOpen && (
                     <div className="absolute end-0 mt-2 w-64 rounded-xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-2 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150">
                       <div className="px-2 py-1.5 text-xs font-medium text-[var(--text-muted)] border-b border-[var(--border-app)]">
-                        {locale === 'ar' ? 'الأكاديميات المتاحة' : 'Available Academies'} ({memberships.length})
+                        {locale === 'ar' ? 'الأكاديميات المتاحة' : 'Available Academies'} (
+                        {memberships.length})
                       </div>
                       <div className="mt-1 space-y-1">
                         {memberships.map((m) => (

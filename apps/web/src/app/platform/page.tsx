@@ -54,7 +54,14 @@ export default function PlatformSuperAdminPage() {
   const router = useRouter();
 
   const [activeTab, setActiveTab] = useState<
-    'academies' | 'applications' | 'users' | 'plans' | 'storage' | 'governance' | 'security' | 'audit'
+    | 'academies'
+    | 'applications'
+    | 'users'
+    | 'plans'
+    | 'storage'
+    | 'governance'
+    | 'security'
+    | 'audit'
   >('academies');
   const [metrics, setMetrics] = useState<PlatformOverviewMetrics | null>(null);
   const [academies, setAcademies] = useState<PlatformAcademyItem[]>([]);
@@ -180,12 +187,14 @@ export default function PlatformSuperAdminPage() {
   const handleSupportAccess = (academy: PlatformAcademyItem) => {
     setPromptConfig({
       isOpen: true,
-      title: locale === 'ar' ? `طلب جلسة دعم فني: ${academy.name}` : `Support Access: ${academy.name}`,
+      title:
+        locale === 'ar' ? `طلب جلسة دعم فني: ${academy.name}` : `Support Access: ${academy.name}`,
       description:
         locale === 'ar'
           ? 'جلسة الدعم مؤقتة ومسجلة في سجل الأمان المركزي لمساعدة إدارة الأكاديمية.'
           : 'Temporary support session logged in the central security audit trail.',
-      inputLabel: locale === 'ar' ? 'سبب طلب جلسة الدعم (10 أحرف على الأقل)' : 'Reason for support session',
+      inputLabel:
+        locale === 'ar' ? 'سبب طلب جلسة الدعم (10 أحرف على الأقل)' : 'Reason for support session',
       defaultValue:
         locale === 'ar'
           ? 'معالجة تذكرة دعم فني بطلب من مالك الأكاديمية'
@@ -1128,11 +1137,7 @@ export default function PlatformSuperAdminPage() {
 
         {/* Tab: Applications */}
         {activeTab === 'applications' && (
-          <ApplicationsTab
-            applications={applications}
-            onRefresh={loadData}
-            isLoading={isLoading}
-          />
+          <ApplicationsTab applications={applications} onRefresh={loadData} isLoading={isLoading} />
         )}
 
         {/* Tab: Storage & Lifecycle */}

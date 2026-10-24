@@ -1,8 +1,4 @@
-import {
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import {
@@ -113,10 +109,7 @@ export class EvaluationsService {
 
       const overallScore = Number(
         (
-          (dto.technicalScore +
-            dto.tacticalScore +
-            dto.physicalScore +
-            dto.behavioralScore) /
+          (dto.technicalScore + dto.tacticalScore + dto.physicalScore + dto.behavioralScore) /
           4
         ).toFixed(2),
       );
@@ -176,7 +169,9 @@ export class EvaluationsService {
         playerName: `${evaluation.player.firstName} ${evaluation.player.lastName}`,
         playerPhotoUrl: evaluation.player.photoUrl,
         sessionId: evaluation.sessionId,
-        sessionDate: evaluation.session?.sessionDate ? evaluation.session.sessionDate.toISOString() : undefined,
+        sessionDate: evaluation.session?.sessionDate
+          ? evaluation.session.sessionDate.toISOString()
+          : undefined,
         groupName: evaluation.session?.group?.name,
         evaluatorUserId: evaluation.evaluatorUserId,
         evaluatorName: evaluation.evaluatorUser.name,

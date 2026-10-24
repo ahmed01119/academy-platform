@@ -1,13 +1,4 @@
-import {
-  Controller,
-  Get,
-  Inject,
-  Param,
-  Patch,
-  Post,
-  Query,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Inject, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CsrfGuard } from '../auth/guards/csrf.guard';
@@ -38,28 +29,19 @@ export class NotificationsController {
   }
 
   @Get('unread-count')
-  async getUnreadCount(
-    @CurrentUser('id') userId: string,
-    @Query('tenantId') tenantId?: string,
-  ) {
+  async getUnreadCount(@CurrentUser('id') userId: string, @Query('tenantId') tenantId?: string) {
     const count = await this.notificationsService.getUnreadCount(userId, tenantId);
     return { unreadCount: count };
   }
 
   @Patch(':id/read')
-  async markAsRead(
-    @CurrentUser('id') userId: string,
-    @Param('id') rawId: string,
-  ) {
+  async markAsRead(@CurrentUser('id') userId: string, @Param('id') rawId: string) {
     const notificationId = UuidParamSchema.parse(rawId);
     return this.notificationsService.markAsRead(userId, notificationId);
   }
 
   @Post('mark-all-read')
-  async markAllAsRead(
-    @CurrentUser('id') userId: string,
-    @Query('tenantId') tenantId?: string,
-  ) {
+  async markAllAsRead(@CurrentUser('id') userId: string, @Query('tenantId') tenantId?: string) {
     return this.notificationsService.markAllAsRead(userId, tenantId);
   }
 }

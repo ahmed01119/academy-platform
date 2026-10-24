@@ -12,10 +12,7 @@ describe('Localization Completeness & Translation Parity', () => {
     for (const section of Object.keys(translations.ar) as Array<keyof typeof translations.ar>) {
       const arSubKeys = Object.keys(translations.ar[section]).sort();
       const enSubKeys = Object.keys(translations.en[section]).sort();
-      expect(
-        arSubKeys,
-        `Mismatch in translation keys for section: ${section}`,
-      ).toEqual(enSubKeys);
+      expect(arSubKeys, `Mismatch in translation keys for section: ${section}`).toEqual(enSubKeys);
     }
   });
 

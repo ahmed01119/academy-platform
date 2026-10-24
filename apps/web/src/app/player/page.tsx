@@ -48,7 +48,10 @@ export default function PlayerPortalPage() {
   } | null>(null);
 
   const [claimTokenInput, setClaimTokenInput] = useState('');
-  const [claimStatus, setClaimStatus] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [claimStatus, setClaimStatus] = useState<{
+    type: 'success' | 'error';
+    text: string;
+  } | null>(null);
   const [isClaiming, setIsClaiming] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [qrCard, setQrCard] = useState<PlayerQrCardResponse | null>(null);
@@ -109,7 +112,9 @@ export default function PlayerPortalPage() {
         <div className="flex h-[60vh] items-center justify-center">
           <div className="flex flex-col items-center gap-3">
             <RefreshCw className="h-8 w-8 animate-spin text-[var(--brand-primary)]" />
-            <p className="text-sm font-medium text-[var(--text-muted)]">جارٍ تحميل بوابة اللاعب الرياضي...</p>
+            <p className="text-sm font-medium text-[var(--text-muted)]">
+              جارٍ تحميل بوابة اللاعب الرياضي...
+            </p>
           </div>
         </div>
       </AppShell>
@@ -127,9 +132,12 @@ export default function PlayerPortalPage() {
             </div>
 
             <div>
-              <h1 className="text-2xl font-bold text-[var(--text-primary)]">ربط ملف اللاعب بحسابك</h1>
+              <h1 className="text-2xl font-bold text-[var(--text-primary)]">
+                ربط ملف اللاعب بحسابك
+              </h1>
               <p className="text-sm text-[var(--text-muted)] mt-2 leading-relaxed">
-                لم يتم ربط حسابك بملف لاعب حتى الآن. يرجى إدخال رمز المطالبة (Claim Code) الممنوح لك من قِبل إدارة الأكاديمية.
+                لم يتم ربط حسابك بملف لاعب حتى الآن. يرجى إدخال رمز المطالبة (Claim Code) الممنوح لك
+                من قِبل إدارة الأكاديمية.
               </p>
             </div>
 
@@ -165,7 +173,11 @@ export default function PlayerPortalPage() {
                 disabled={isClaiming}
                 className="w-full rounded-xl bg-[var(--brand-primary)] py-3 text-sm font-bold text-white hover:brightness-110 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm disabled:opacity-50"
               >
-                {isClaiming ? <RefreshCw className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                {isClaiming ? (
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="h-4 w-4" />
+                )}
                 <span>تأكيد وربط ملف اللاعب</span>
               </button>
             </form>
@@ -222,7 +234,8 @@ export default function PlayerPortalPage() {
                 </span>
               </div>
               <p className="text-xs text-[var(--text-muted)]">
-                {profile.groupName || 'فريق التدريب'} • تاريخ الميلاد: {profile.dateOfBirth || 'غير محدد'}
+                {profile.groupName || 'فريق التدريب'} • تاريخ الميلاد:{' '}
+                {profile.dateOfBirth || 'غير محدد'}
               </p>
             </div>
           </div>
@@ -242,26 +255,40 @@ export default function PlayerPortalPage() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 shadow-sm">
             <span className="text-xs text-[var(--text-muted)]">إجمالي الحصص المقررة</span>
-            <div className="text-2xl font-bold text-[var(--text-primary)] mt-1">{attendanceSummary.totalEligible}</div>
+            <div className="text-2xl font-bold text-[var(--text-primary)] mt-1">
+              {attendanceSummary.totalEligible}
+            </div>
             <span className="text-[11px] text-[var(--text-muted)] mt-1 block">حصة تدريبية</span>
           </div>
 
           <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 shadow-sm">
             <span className="text-xs text-[var(--text-muted)]">حضور مبكر ومنضبط</span>
-            <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">{attendanceSummary.present}</div>
-            <span className="text-[11px] text-emerald-600 dark:text-emerald-400/80 mt-1 block">في الوقت المحدد</span>
+            <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">
+              {attendanceSummary.present}
+            </div>
+            <span className="text-[11px] text-emerald-600 dark:text-emerald-400/80 mt-1 block">
+              في الوقت المحدد
+            </span>
           </div>
 
           <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 shadow-sm">
             <span className="text-xs text-[var(--text-muted)]">حضور متأخر</span>
-            <div className="text-2xl font-bold text-amber-600 dark:text-amber-400 mt-1">{attendanceSummary.late}</div>
-            <span className="text-[11px] text-amber-600 dark:text-amber-400/80 mt-1 block">تأخر بعذر / مقبول</span>
+            <div className="text-2xl font-bold text-amber-600 dark:text-amber-400 mt-1">
+              {attendanceSummary.late}
+            </div>
+            <span className="text-[11px] text-amber-600 dark:text-amber-400/80 mt-1 block">
+              تأخر بعذر / مقبول
+            </span>
           </div>
 
           <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 shadow-sm">
             <span className="text-xs text-[var(--text-muted)]">الغياب</span>
-            <div className="text-2xl font-bold text-rose-600 dark:text-rose-400 mt-1">{attendanceSummary.absent}</div>
-            <span className="text-[11px] text-rose-600 dark:text-rose-400/80 mt-1 block">غياب غير محتسب</span>
+            <div className="text-2xl font-bold text-rose-600 dark:text-rose-400 mt-1">
+              {attendanceSummary.absent}
+            </div>
+            <span className="text-[11px] text-rose-600 dark:text-rose-400/80 mt-1 block">
+              غياب غير محتسب
+            </span>
           </div>
         </div>
 
@@ -277,8 +304,12 @@ export default function PlayerPortalPage() {
             {upcomingSessions.length === 0 ? (
               <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-8 text-center text-[var(--text-muted)] shadow-sm">
                 <Clock className="h-10 w-10 text-[var(--brand-primary)] mx-auto mb-2 opacity-50" />
-                <div className="font-semibold text-[var(--text-primary)]">لا توجد حصص قادمة مجدولة حالياً</div>
-                <p className="text-xs mt-1">سيتم إشعارك فور قيام المدرب بجدولة التدريبات القادمة.</p>
+                <div className="font-semibold text-[var(--text-primary)]">
+                  لا توجد حصص قادمة مجدولة حالياً
+                </div>
+                <p className="text-xs mt-1">
+                  سيتم إشعارك فور قيام المدرب بجدولة التدريبات القادمة.
+                </p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -288,10 +319,14 @@ export default function PlayerPortalPage() {
                     className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 hover:border-[var(--brand-primary)]/40 transition-colors flex items-center justify-between shadow-sm"
                   >
                     <div>
-                      <h4 className="font-bold text-sm text-[var(--text-primary)]">{session.groupName}</h4>
+                      <h4 className="font-bold text-sm text-[var(--text-primary)]">
+                        {session.groupName}
+                      </h4>
                       <div className="text-xs text-[var(--text-muted)] flex items-center gap-3 mt-1">
                         <span>📅 {session.sessionDate}</span>
-                        <span>⏰ {session.startTime} - {session.endTime}</span>
+                        <span>
+                          ⏰ {session.startTime} - {session.endTime}
+                        </span>
                       </div>
                     </div>
 
@@ -314,7 +349,9 @@ export default function PlayerPortalPage() {
             {recentEvaluations.length === 0 ? (
               <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-8 text-center text-[var(--text-muted)] shadow-sm">
                 <Award className="h-10 w-10 text-amber-500 mx-auto mb-2 opacity-50" />
-                <div className="font-semibold text-[var(--text-primary)]">لا توجد تقييمات منشورة حتى الآن</div>
+                <div className="font-semibold text-[var(--text-primary)]">
+                  لا توجد تقييمات منشورة حتى الآن
+                </div>
                 <p className="text-xs mt-1">
                   يقوم الجهاز التدريبي بتقييم أداء اللاعب بانتظام وستظهر النتائج هنا فور اعتمادها.
                 </p>
@@ -328,7 +365,9 @@ export default function PlayerPortalPage() {
                   >
                     <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
                       <div>
-                        <span className="text-xs text-[var(--text-muted)]">تاريخ التقييم: {evalItem.evaluationDate}</span>
+                        <span className="text-xs text-[var(--text-muted)]">
+                          تاريخ التقييم: {evalItem.evaluationDate}
+                        </span>
                         <div className="text-xs font-semibold text-[var(--text-primary)] mt-0.5">
                           المدرب: {evalItem.evaluatorName}
                         </div>
@@ -345,19 +384,27 @@ export default function PlayerPortalPage() {
                     <div className="grid grid-cols-4 gap-2 text-center text-xs">
                       <div className="bg-[var(--bg-elevated)] p-2 rounded-lg">
                         <span className="text-[10px] text-[var(--text-muted)] block">فني</span>
-                        <span className="font-bold text-[var(--text-primary)]">{evalItem.technicalScore}</span>
+                        <span className="font-bold text-[var(--text-primary)]">
+                          {evalItem.technicalScore}
+                        </span>
                       </div>
                       <div className="bg-[var(--bg-elevated)] p-2 rounded-lg">
                         <span className="text-[10px] text-[var(--text-muted)] block">تكتيكي</span>
-                        <span className="font-bold text-[var(--text-primary)]">{evalItem.tacticalScore}</span>
+                        <span className="font-bold text-[var(--text-primary)]">
+                          {evalItem.tacticalScore}
+                        </span>
                       </div>
                       <div className="bg-[var(--bg-elevated)] p-2 rounded-lg">
                         <span className="text-[10px] text-[var(--text-muted)] block">بدني</span>
-                        <span className="font-bold text-[var(--text-primary)]">{evalItem.physicalScore}</span>
+                        <span className="font-bold text-[var(--text-primary)]">
+                          {evalItem.physicalScore}
+                        </span>
                       </div>
                       <div className="bg-[var(--bg-elevated)] p-2 rounded-lg">
                         <span className="text-[10px] text-[var(--text-muted)] block">سلوكي</span>
-                        <span className="font-bold text-[var(--text-primary)]">{evalItem.behavioralScore}</span>
+                        <span className="font-bold text-[var(--text-primary)]">
+                          {evalItem.behavioralScore}
+                        </span>
                       </div>
                     </div>
 
@@ -365,15 +412,21 @@ export default function PlayerPortalPage() {
                     <div className="space-y-2 text-xs">
                       {evalItem.strengths && (
                         <div className="bg-[var(--bg-elevated)] p-3 rounded-lg border-r-2 border-emerald-500">
-                          <span className="font-bold text-emerald-600 dark:text-emerald-400 block mb-0.5">نقاط قوتك:</span>
+                          <span className="font-bold text-emerald-600 dark:text-emerald-400 block mb-0.5">
+                            نقاط قوتك:
+                          </span>
                           <p className="text-[var(--text-primary)]">{evalItem.strengths}</p>
                         </div>
                       )}
 
                       {evalItem.areasForImprovement && (
                         <div className="bg-[var(--bg-elevated)] p-3 rounded-lg border-r-2 border-amber-500">
-                          <span className="font-bold text-amber-600 dark:text-amber-400 block mb-0.5">ركز على تطوير:</span>
-                          <p className="text-[var(--text-primary)]">{evalItem.areasForImprovement}</p>
+                          <span className="font-bold text-amber-600 dark:text-amber-400 block mb-0.5">
+                            ركز على تطوير:
+                          </span>
+                          <p className="text-[var(--text-primary)]">
+                            {evalItem.areasForImprovement}
+                          </p>
                         </div>
                       )}
 
@@ -381,7 +434,9 @@ export default function PlayerPortalPage() {
                         <div className="bg-[var(--bg-elevated)] p-3 rounded-lg border-r-2 border-sky-500 flex items-start gap-2">
                           <Target className="h-4 w-4 text-sky-500 flex-shrink-0 mt-0.5" />
                           <div>
-                            <span className="font-bold text-sky-600 dark:text-sky-400 block mb-0.5">أهدافك القادمة:</span>
+                            <span className="font-bold text-sky-600 dark:text-sky-400 block mb-0.5">
+                              أهدافك القادمة:
+                            </span>
                             <p className="text-[var(--text-primary)]">{evalItem.suggestedGoals}</p>
                           </div>
                         </div>

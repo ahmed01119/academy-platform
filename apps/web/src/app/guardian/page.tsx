@@ -30,7 +30,10 @@ export default function GuardianPortalPage() {
   // Claim account state
   const [isClaimModalOpen, setIsClaimModalOpen] = useState(false);
   const [claimTokenInput, setClaimTokenInput] = useState('');
-  const [claimStatus, setClaimStatus] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [claimStatus, setClaimStatus] = useState<{
+    type: 'success' | 'error';
+    text: string;
+  } | null>(null);
   const [isClaiming, setIsClaiming] = useState(false);
 
   const loadGuardianData = React.useCallback(async () => {
@@ -102,7 +105,9 @@ export default function GuardianPortalPage() {
         <div className="flex h-[60vh] items-center justify-center">
           <div className="flex flex-col items-center gap-3">
             <RefreshCw className="h-8 w-8 animate-spin text-[var(--brand-primary)]" />
-            <p className="text-sm font-medium text-[var(--text-muted)]">جارٍ تحميل بوابة ولي الأمر...</p>
+            <p className="text-sm font-medium text-[var(--text-muted)]">
+              جارٍ تحميل بوابة ولي الأمر...
+            </p>
           </div>
         </div>
       </AppShell>
@@ -122,7 +127,8 @@ export default function GuardianPortalPage() {
             <div>
               <h1 className="text-2xl font-bold text-[var(--text-primary)]">بوابة ولي الأمر</h1>
               <p className="text-sm text-[var(--text-muted)] mt-2 leading-relaxed">
-                لم يتم ربط أي أبناء مسجلين بحسابك حتى الآن. يرجى إدخال رمز المطالبة (Claim Code) الممنوح لك من قِبل الأكاديمية لربط ملف ابنك ومتابعة حضوره وأدائه.
+                لم يتم ربط أي أبناء مسجلين بحسابك حتى الآن. يرجى إدخال رمز المطالبة (Claim Code)
+                الممنوح لك من قِبل الأكاديمية لربط ملف ابنك ومتابعة حضوره وأدائه.
               </p>
             </div>
 
@@ -158,7 +164,11 @@ export default function GuardianPortalPage() {
                 disabled={isClaiming}
                 className="w-full rounded-xl bg-purple-600 py-3 text-sm font-bold text-white hover:bg-purple-700 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm disabled:opacity-50"
               >
-                {isClaiming ? <RefreshCw className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                {isClaiming ? (
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="h-4 w-4" />
+                )}
                 <span>تأكيد وربط الابن بالحساب</span>
               </button>
             </form>
@@ -172,16 +182,14 @@ export default function GuardianPortalPage() {
     );
   }
 
-  const selectedChild = guardianData.children.find((c) => c.playerId === selectedChildId) || guardianData.children[0]!;
+  const selectedChild =
+    guardianData.children.find((c) => c.playerId === selectedChildId) || guardianData.children[0]!;
 
   return (
     <AppShell>
       <div className="space-y-8">
         <PageHeader
-          breadcrumbs={[
-            { label: 'الرئيسية', href: '/dashboard' },
-            { label: 'بوابة ولي الأمر' },
-          ]}
+          breadcrumbs={[{ label: 'الرئيسية', href: '/dashboard' }, { label: 'بوابة ولي الأمر' }]}
           title={`أهلاً بك، ${guardianData.name} 👨‍👩‍👧‍👦`}
           description="متابعة حضور وتطور وملاحظات المدربين لأبنائك المسجلين في الأكاديميات الرياضية."
           actions={
@@ -199,7 +207,9 @@ export default function GuardianPortalPage() {
         {/* Multi-Child Selector Tabs */}
         {guardianData.children.length > 1 && (
           <div className="flex items-center gap-3 overflow-x-auto pb-2">
-            <span className="text-xs text-[var(--text-muted)] font-medium flex-shrink-0">اختيار الابن:</span>
+            <span className="text-xs text-[var(--text-muted)] font-medium flex-shrink-0">
+              اختيار الابن:
+            </span>
             {guardianData.children.map((child) => (
               <button
                 key={child.playerId}
@@ -211,7 +221,9 @@ export default function GuardianPortalPage() {
                     : 'bg-[var(--bg-surface)] text-[var(--text-muted)] border border-[var(--border-subtle)] hover:text-[var(--text-primary)]'
                 }`}
               >
-                <span>{child.firstName} {child.lastName}</span>
+                <span>
+                  {child.firstName} {child.lastName}
+                </span>
                 <span className="text-[10px] opacity-80">({child.tenantName})</span>
               </button>
             ))}
@@ -239,15 +251,21 @@ export default function GuardianPortalPage() {
             <div className="space-y-2 text-xs border-t border-[var(--border-subtle)] pt-3 text-[var(--text-muted)]">
               <div className="flex justify-between">
                 <span>الفريق:</span>
-                <span className="text-[var(--text-primary)] font-semibold">{selectedChild.groupName || 'فريق البراعم'}</span>
+                <span className="text-[var(--text-primary)] font-semibold">
+                  {selectedChild.groupName || 'فريق البراعم'}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span>صلة القرابة:</span>
-                <span className="text-[var(--text-primary)] font-semibold">{selectedChild.relationship === 'FATHER' ? 'الوالد' : 'ولي الأمر'}</span>
+                <span className="text-[var(--text-primary)] font-semibold">
+                  {selectedChild.relationship === 'FATHER' ? 'الوالد' : 'ولي الأمر'}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span>تاريخ الميلاد:</span>
-                <span className="text-[var(--text-primary)] font-semibold">{selectedChild.dateOfBirth}</span>
+                <span className="text-[var(--text-primary)] font-semibold">
+                  {selectedChild.dateOfBirth}
+                </span>
               </div>
             </div>
           </div>
@@ -264,7 +282,8 @@ export default function GuardianPortalPage() {
               </div>
             </div>
             <p className="text-xs text-[var(--text-muted)] mt-4 leading-relaxed">
-              المواظبة على التدريبات الأسبوعية تعزز من لياقة وانضباط اللاعب وتطوره الفني داخل الملعب.
+              المواظبة على التدريبات الأسبوعية تعزز من لياقة وانضباط اللاعب وتطوره الفني داخل
+              الملعب.
             </p>
           </div>
 
@@ -301,7 +320,9 @@ export default function GuardianPortalPage() {
           {childEvaluations.length === 0 ? (
             <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-8 text-center text-[var(--text-muted)] shadow-sm">
               <Award className="h-10 w-10 text-purple-400 mx-auto mb-2 opacity-50" />
-              <div className="font-semibold text-[var(--text-primary)]">لا توجد ملاحظات منشورة حتى الآن</div>
+              <div className="font-semibold text-[var(--text-primary)]">
+                لا توجد ملاحظات منشورة حتى الآن
+              </div>
               <p className="text-xs mt-1">
                 ستظهر هنا رسائل المدرب الخاصة بولي الأمر فور اعتماد تقييم التدريب القادم.
               </p>
@@ -315,7 +336,9 @@ export default function GuardianPortalPage() {
                 >
                   <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
                     <div>
-                      <span className="text-xs text-[var(--text-muted)]">تاريخ الحصة: {item.evaluationDate}</span>
+                      <span className="text-xs text-[var(--text-muted)]">
+                        تاريخ الحصة: {item.evaluationDate}
+                      </span>
                       <div className="text-xs font-semibold text-[var(--text-primary)] mt-0.5">
                         المدرب المقيّم: {item.evaluatorName}
                       </div>
@@ -335,7 +358,9 @@ export default function GuardianPortalPage() {
                         <span className="font-bold text-purple-600 dark:text-purple-300 block mb-1">
                           رسالة وتوجيهات الكابتن لولي الأمر:
                         </span>
-                        <p className="text-[var(--text-primary)] leading-relaxed">{item.guardianFeedback}</p>
+                        <p className="text-[var(--text-primary)] leading-relaxed">
+                          {item.guardianFeedback}
+                        </p>
                       </div>
                     ) : (
                       <div className="bg-[var(--bg-elevated)] p-3 rounded-lg text-[var(--text-muted)]">
@@ -363,7 +388,9 @@ export default function GuardianPortalPage() {
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
             <div className="w-full max-w-md rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-2xl space-y-4 text-right">
               <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
-                <h3 className="font-bold text-base text-[var(--text-primary)]">ربط ابن جديد بحسابك</h3>
+                <h3 className="font-bold text-base text-[var(--text-primary)]">
+                  ربط ابن جديد بحسابك
+                </h3>
                 <button
                   type="button"
                   onClick={() => setIsClaimModalOpen(false)}
@@ -374,7 +401,8 @@ export default function GuardianPortalPage() {
               </div>
 
               <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                أدخل رمز المطالبة (Claim Code) الممنوح لك من إدارة الأكاديمية لربط ملف ابن آخر بحسابك.
+                أدخل رمز المطالبة (Claim Code) الممنوح لك من إدارة الأكاديمية لربط ملف ابن آخر
+                بحسابك.
               </p>
 
               {claimStatus && (
@@ -410,7 +438,11 @@ export default function GuardianPortalPage() {
                     disabled={isClaiming}
                     className="flex-1 rounded-xl bg-purple-600 py-2.5 text-xs font-bold text-white hover:bg-purple-700 transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
                   >
-                    {isClaiming ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+                    {isClaiming ? (
+                      <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                    )}
                     <span>تأكيد الربط</span>
                   </button>
                   <button

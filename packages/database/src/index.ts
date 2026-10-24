@@ -11,4 +11,3 @@ export {
   type PlatformAdminTransactionOptions,
   type PortalUserTransactionOptions,
 } from './tenant-transaction';
-

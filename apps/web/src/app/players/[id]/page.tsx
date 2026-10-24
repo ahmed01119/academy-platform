@@ -207,7 +207,10 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
         <div className="py-20 text-center">
           <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-3" />
           <p className="text-[var(--text-primary)] font-bold">اللاعب غير موجود أو تم حذفه</p>
-          <Link href="/players" className="mt-4 inline-block text-xs text-[var(--brand-primary)] hover:underline">
+          <Link
+            href="/players"
+            className="mt-4 inline-block text-xs text-[var(--brand-primary)] hover:underline"
+          >
             العودة لقائمة اللاعبين
           </Link>
         </div>
@@ -271,20 +274,28 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
                 </div>
                 <p className="text-xs text-[var(--text-secondary)]">
                   تاريخ الميلاد:{' '}
-                  <span className="text-[var(--text-primary)] font-mono">{player.dateOfBirth.slice(0, 10)}</span> •
-                  الجنس:{' '}
-                  <span className="text-[var(--text-primary)]">{player.gender === 'MALE' ? 'ذكر' : 'أنثى'}</span>
+                  <span className="text-[var(--text-primary)] font-mono">
+                    {player.dateOfBirth.slice(0, 10)}
+                  </span>{' '}
+                  • الجنس:{' '}
+                  <span className="text-[var(--text-primary)]">
+                    {player.gender === 'MALE' ? 'ذكر' : 'أنثى'}
+                  </span>
                   {player.nationalId ? (
                     <>
                       {' '}
                       • الرقم القومي:{' '}
-                      <span className="text-[var(--text-primary)] font-mono">{player.nationalId}</span>
+                      <span className="text-[var(--text-primary)] font-mono">
+                        {player.nationalId}
+                      </span>
                     </>
                   ) : !canViewSensitive ? (
                     <>
                       {' '}
                       • الرقم القومي:{' '}
-                      <span className="text-[var(--text-muted)] italic text-[11px]">محجوب للخصوصية</span>
+                      <span className="text-[var(--text-muted)] italic text-[11px]">
+                        محجوب للخصوصية
+                      </span>
                     </>
                   ) : null}
                 </p>
@@ -340,7 +351,9 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
               <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
                 <div className="flex items-center gap-2">
                   <GitBranch className="h-5 w-5 text-blue-500" />
-                  <h2 className="text-base font-bold text-[var(--text-primary)]">الفرع الحالي المقيد به</h2>
+                  <h2 className="text-base font-bold text-[var(--text-primary)]">
+                    الفرع الحالي المقيد به
+                  </h2>
                 </div>
                 {activeEnrollment && (
                   <span className="rounded-full bg-blue-500/10 px-2.5 py-0.5 text-xs font-semibold text-blue-500 border border-blue-500/30">
@@ -381,7 +394,9 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
                     </div>
                     <div>
                       <span className="block text-[11px]">ملاحظات القيد:</span>
-                      <span className="text-[var(--text-primary)]">{activeEnrollment.notes || 'لا توجد'}</span>
+                      <span className="text-[var(--text-primary)]">
+                        {activeEnrollment.notes || 'لا توجد'}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -419,7 +434,9 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
                           {en.endDate ? `إلى: ${en.endDate.slice(0, 10)}` : ''}
                         </div>
                         {en.notes && (
-                          <div className="text-[11px] text-[var(--text-secondary)] mt-1">{en.notes}</div>
+                          <div className="text-[11px] text-[var(--text-secondary)] mt-1">
+                            {en.notes}
+                          </div>
                         )}
                       </div>
                       <span className="rounded bg-[var(--bg-surface)] px-2 py-0.5 text-[10px] text-[var(--text-secondary)] border border-[var(--border-subtle)]">
@@ -482,15 +499,21 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
 
               <div className="space-y-3 text-xs">
                 <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3.5">
-                  <span className="text-[11px] text-[var(--text-secondary)] block mb-1">جهة اتصال الطوارئ:</span>
-                  <div className="font-bold text-[var(--text-primary)]">{player.emergencyContactName}</div>
+                  <span className="text-[11px] text-[var(--text-secondary)] block mb-1">
+                    جهة اتصال الطوارئ:
+                  </span>
+                  <div className="font-bold text-[var(--text-primary)]">
+                    {player.emergencyContactName}
+                  </div>
                   <div className="font-mono text-[var(--brand-primary)] mt-0.5 flex items-center gap-1">
                     <Phone className="h-3 w-3" /> {player.emergencyContactPhone}
                   </div>
                 </div>
 
                 <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3.5">
-                  <span className="text-[11px] text-[var(--text-secondary)] block mb-1">الملاحظات الطبية:</span>
+                  <span className="text-[11px] text-[var(--text-secondary)] block mb-1">
+                    الملاحظات الطبية:
+                  </span>
                   <div className="text-[var(--text-primary)]">
                     {canViewSensitive
                       ? player.medicalNotes || 'لا توجد ملاحظات طبية أو حساسية مسجلة'

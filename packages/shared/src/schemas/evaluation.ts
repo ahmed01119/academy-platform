@@ -73,7 +73,10 @@ export const CreatePlayerEvaluationSchema = z.object({
   playerId: z.string().uuid(),
   sessionId: z.string().uuid().optional(),
   templateId: z.string().uuid().optional(),
-  evaluationDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  evaluationDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
   technicalScore: z.number().min(1).max(10),
   tacticalScore: z.number().min(1).max(10),
   physicalScore: z.number().min(1).max(10),

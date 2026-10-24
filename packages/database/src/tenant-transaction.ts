@@ -122,4 +122,3 @@ export async function withPortalUserTransaction<T>(
     return operation(tx);
   });
 }
-

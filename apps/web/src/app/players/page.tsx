@@ -142,7 +142,11 @@ export default function PlayersPage() {
                 id="input-search-players"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder={locale === 'ar' ? 'بحث بالاسم أو الرقم القومي...' : 'Search name or national ID...'}
+                placeholder={
+                  locale === 'ar'
+                    ? 'بحث بالاسم أو الرقم القومي...'
+                    : 'Search name or national ID...'
+                }
                 className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] ps-10 pe-9 py-2.5 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:bg-[var(--bg-surface)] transition-all outline-none"
               />
               {searchTerm && (
@@ -183,8 +187,12 @@ export default function PlayersPage() {
               >
                 <option value="">{locale === 'ar' ? 'كل الحالات' : 'All Statuses'}</option>
                 <option value="ACTIVE">{locale === 'ar' ? 'نشط (Active)' : 'Active'}</option>
-                <option value="INACTIVE">{locale === 'ar' ? 'غير نشط (Inactive)' : 'Inactive'}</option>
-                <option value="SUSPENDED">{locale === 'ar' ? 'موقوف (Suspended)' : 'Suspended'}</option>
+                <option value="INACTIVE">
+                  {locale === 'ar' ? 'غير نشط (Inactive)' : 'Inactive'}
+                </option>
+                <option value="SUSPENDED">
+                  {locale === 'ar' ? 'موقوف (Suspended)' : 'Suspended'}
+                </option>
               </select>
             </div>
 

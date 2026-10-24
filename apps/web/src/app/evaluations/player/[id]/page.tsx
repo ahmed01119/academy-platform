@@ -52,7 +52,9 @@ export default function PlayerDevelopmentProfilePage() {
         <div className="flex min-h-[50vh] items-center justify-center">
           <div className="flex flex-col items-center gap-3">
             <RefreshCw className="h-8 w-8 animate-spin text-[var(--brand-primary)]" />
-            <p className="text-sm text-[var(--text-muted)]">جارٍ تحميل الملف التنموي والذكاء الرياضي...</p>
+            <p className="text-sm text-[var(--text-muted)]">
+              جارٍ تحميل الملف التنموي والذكاء الرياضي...
+            </p>
           </div>
         </div>
       </AppShell>
@@ -66,8 +68,12 @@ export default function PlayerDevelopmentProfilePage() {
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-500 mb-4">
             <Award className="h-7 w-7" />
           </div>
-          <h1 className="text-xl font-bold text-[var(--text-primary)] mb-2">الملف التنموي غير متوفر</h1>
-          <p className="text-sm text-[var(--text-muted)] mb-6">{error || 'لم يتم العثور على اللاعب المطلوب'}</p>
+          <h1 className="text-xl font-bold text-[var(--text-primary)] mb-2">
+            الملف التنموي غير متوفر
+          </h1>
+          <p className="text-sm text-[var(--text-muted)] mb-6">
+            {error || 'لم يتم العثور على اللاعب المطلوب'}
+          </p>
           <Link
             href="/evaluations"
             className="inline-flex items-center gap-2 rounded-xl bg-[var(--brand-primary)] px-4 py-2 text-sm font-semibold text-white"
@@ -179,7 +185,10 @@ export default function PlayerDevelopmentProfilePage() {
             ) : (
               <ul className="space-y-2 text-xs">
                 {profile.strongestSkills.map((s, i) => (
-                  <li key={i} className="flex items-start gap-2 bg-[var(--bg-elevated)] p-2.5 rounded-lg text-emerald-600 dark:text-emerald-300">
+                  <li
+                    key={i}
+                    className="flex items-start gap-2 bg-[var(--bg-elevated)] p-2.5 rounded-lg text-emerald-600 dark:text-emerald-300"
+                  >
                     <CheckCircle2 className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" />
                     <span>{s}</span>
                   </li>
@@ -198,7 +207,10 @@ export default function PlayerDevelopmentProfilePage() {
             ) : (
               <ul className="space-y-2 text-xs">
                 {profile.areasNeedingImprovement.map((a, i) => (
-                  <li key={i} className="flex items-start gap-2 bg-[var(--bg-elevated)] p-2.5 rounded-lg text-amber-600 dark:text-amber-300">
+                  <li
+                    key={i}
+                    className="flex items-start gap-2 bg-[var(--bg-elevated)] p-2.5 rounded-lg text-amber-600 dark:text-amber-300"
+                  >
                     <span className="text-amber-500 font-bold">•</span>
                     <span>{a}</span>
                   </li>
@@ -217,7 +229,10 @@ export default function PlayerDevelopmentProfilePage() {
             ) : (
               <ul className="space-y-2 text-xs">
                 {profile.goals.map((g, i) => (
-                  <li key={i} className="flex items-start gap-2 bg-[var(--bg-elevated)] p-2.5 rounded-lg text-sky-600 dark:text-sky-300">
+                  <li
+                    key={i}
+                    className="flex items-start gap-2 bg-[var(--bg-elevated)] p-2.5 rounded-lg text-sky-600 dark:text-sky-300"
+                  >
                     <span className="text-sky-500 font-bold">🎯</span>
                     <span>{g}</span>
                   </li>
@@ -273,7 +288,9 @@ export default function PlayerDevelopmentProfilePage() {
                   </div>
                   <div className="bg-[var(--bg-elevated)] p-2 rounded-lg">
                     <span className="text-[10px] text-[var(--text-muted)] block">سلوكي</span>
-                    <span className="font-bold text-[var(--text-primary)]">{e.behavioralScore}</span>
+                    <span className="font-bold text-[var(--text-primary)]">
+                      {e.behavioralScore}
+                    </span>
                   </div>
                 </div>
 
@@ -281,14 +298,18 @@ export default function PlayerDevelopmentProfilePage() {
                 <div className="space-y-3 pt-2 text-xs">
                   {e.strengths && (
                     <div className="bg-[var(--bg-elevated)] p-3 rounded-lg border-r-2 border-emerald-500">
-                      <span className="font-bold text-emerald-600 dark:text-emerald-400 block mb-0.5">نقاط القوة:</span>
+                      <span className="font-bold text-emerald-600 dark:text-emerald-400 block mb-0.5">
+                        نقاط القوة:
+                      </span>
                       <p className="text-[var(--text-primary)]">{e.strengths}</p>
                     </div>
                   )}
 
                   {e.areasForImprovement && (
                     <div className="bg-[var(--bg-elevated)] p-3 rounded-lg border-r-2 border-amber-500">
-                      <span className="font-bold text-amber-600 dark:text-amber-400 block mb-0.5">مجالات التحسين:</span>
+                      <span className="font-bold text-amber-600 dark:text-amber-400 block mb-0.5">
+                        مجالات التحسين:
+                      </span>
                       <p className="text-[var(--text-primary)]">{e.areasForImprovement}</p>
                     </div>
                   )}
@@ -297,7 +318,9 @@ export default function PlayerDevelopmentProfilePage() {
                     <div className="bg-[var(--bg-elevated)] p-3 rounded-lg border-r-2 border-sky-500 flex items-start gap-2">
                       <HeartHandshake className="h-4 w-4 text-sky-500 flex-shrink-0 mt-0.5" />
                       <div>
-                        <span className="font-bold text-sky-600 dark:text-sky-400 block mb-0.5">توجيهات لولي الأمر:</span>
+                        <span className="font-bold text-sky-600 dark:text-sky-400 block mb-0.5">
+                          توجيهات لولي الأمر:
+                        </span>
                         <p className="text-[var(--text-primary)]">{e.guardianFeedback}</p>
                       </div>
                     </div>

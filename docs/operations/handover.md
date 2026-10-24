@@ -7,15 +7,15 @@
 
 ## What is live vs not live
 
-| Item | Status |
-|------|--------|
-| Staging URL | Not provisioned — needs owner host/VPS |
-| Production URL | Not provisioned |
-| Frontend | Next.js PWA in `apps/web`; serve via Caddy in Compose |
-| API | NestJS in `apps/api` |
-| Database / Redis | Self-hosted Postgres 16 + Redis 7 in `docker-compose.prod.yml` |
-| Monthly software subscription | **$0 mandatory** |
-| Unavoidable costs | Electricity, connectivity, hardware or VPS, optional domain, backup media |
+| Item                          | Status                                                                    |
+| ----------------------------- | ------------------------------------------------------------------------- |
+| Staging URL                   | Not provisioned — needs owner host/VPS                                    |
+| Production URL                | Not provisioned                                                           |
+| Frontend                      | Next.js PWA in `apps/web`; serve via Caddy in Compose                     |
+| API                           | NestJS in `apps/api`                                                      |
+| Database / Redis              | Self-hosted Postgres 16 + Redis 7 in `docker-compose.prod.yml`            |
+| Monthly software subscription | **$0 mandatory**                                                          |
+| Unavoidable costs             | Electricity, connectivity, hardware or VPS, optional domain, backup media |
 
 ## Environment variables
 

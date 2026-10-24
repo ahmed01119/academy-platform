@@ -74,21 +74,18 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
     [applyLocale],
   );
 
-  const resolveKey = useCallback(
-    (loc: SupportedLocale, keyPath: string): string | null => {
-      const parts = keyPath.split('.');
-      let current: unknown = translations[loc];
-      for (const part of parts) {
-        if (current && typeof current === 'object' && part in current) {
-          current = (current as Record<string, unknown>)[part];
-        } else {
-          return null;
-        }
+  const resolveKey = useCallback((loc: SupportedLocale, keyPath: string): string | null => {
+    const parts = keyPath.split('.');
+    let current: unknown = translations[loc];
+    for (const part of parts) {
+      if (current && typeof current === 'object' && part in current) {
+        current = (current as Record<string, unknown>)[part];
+      } else {
+        return null;
       }
-      return typeof current === 'string' ? current : null;
-    },
-    [],
-  );
+    }
+    return typeof current === 'string' ? current : null;
+  }, []);
 
   const t = useCallback(
     (path: string, fallback?: string): string => {

@@ -553,7 +553,7 @@ model Player {
   emergencyContactPhone String        @map("emergency_contact_phone")
   medicalNotes          String?       @map("medical_notes")
   status                PlayerStatus  @default(ACTIVE)
-  userId                String?       @unique @map("user_id") @db.Uuid
+  userId                String?       @unique(map: "players_user_id_key") @map("user_id") @db.Uuid
   claimToken            String?       @map("claim_token")
   claimExpiresAt        DateTime?     @map("claim_expires_at") @db.Timestamptz(3)
   membershipNumber      String?       @map("membership_number")
@@ -576,7 +576,7 @@ model Player {
   @@unique([tenantId, id])
   @@index([tenantId])
   @@index([tenantId, status])
-  @@index([tenantId, nationalId])
+  @@index([tenantId, nationalId], map: "players_tenant_id_national_id_idx")
   @@index([tenantId, qrCardCode])
   @@index([tenantId, lastName, firstName])
   @@map("players")
@@ -803,10 +803,10 @@ model PlayerEvaluation {
   updatedAt           DateTime            @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   tenant        Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  player        Player              @relation(fields: [tenantId, playerId], references: [tenantId, id], onDelete: Cascade)
-  session       AttendanceSession?  @relation(fields: [tenantId, sessionId], references: [tenantId, id], onDelete: SetNull)
+  player        Player              @relation(fields: [tenantId, playerId], references: [tenantId, id], onDelete: Cascade, map: "player_evaluations_player_id_fkey")
+  session       AttendanceSession?  @relation(fields: [tenantId, sessionId], references: [tenantId, id], onDelete: SetNull, map: "player_evaluations_session_id_fkey")
   evaluatorUser User                @relation("EvaluatorUser", fields: [evaluatorUserId], references: [id], onDelete: Cascade)
-  template      EvaluationTemplate? @relation(fields: [tenantId, templateId], references: [tenantId, id], onDelete: SetNull)
+  template      EvaluationTemplate? @relation(fields: [tenantId, templateId], references: [tenantId, id], onDelete: SetNull, map: "player_evaluations_template_id_fkey")
 
   @@unique([tenantId, id])
   @@index([tenantId])
@@ -903,7 +903,7 @@ model PlayerSubscriptionPlan {
   updatedAt     DateTime            @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   tenant        Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  branch        Branch?              @relation(fields: [tenantId, branchId], references: [tenantId, id], onDelete: Restrict)
+  branch        Branch?              @relation(fields: [tenantId, branchId], references: [tenantId, id], onDelete: Restrict, map: "player_subscription_plans_branch_fkey")
   subscriptions PlayerSubscription[]
 
   @@unique([tenantId, id])
@@ -933,8 +933,8 @@ model PlayerSubscription {
   updatedAt          DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   tenant       Tenant                        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  player       Player                        @relation(fields: [tenantId, playerId], references: [tenantId, id], onDelete: Cascade)
-  plan         PlayerSubscriptionPlan?       @relation(fields: [tenantId, planId], references: [tenantId, id], onDelete: SetNull)
+  player       Player                        @relation(fields: [tenantId, playerId], references: [tenantId, id], onDelete: Cascade, map: "player_subscriptions_player_fkey")
+  plan         PlayerSubscriptionPlan?       @relation(fields: [tenantId, planId], references: [tenantId, id], onDelete: SetNull, map: "player_subscriptions_plan_fkey")
   transactions AcademyFinancialTransaction[]
 
   @@unique([tenantId, id])
@@ -972,20 +972,20 @@ model AcademyFinancialTransaction {
   updatedAt          DateTime                   @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   tenant         Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  branch         Branch              @relation(fields: [tenantId, branchId], references: [tenantId, id], onDelete: Restrict)
-  session        AttendanceSession?  @relation(fields: [tenantId, sessionId], references: [tenantId, id], onDelete: SetNull)
-  player         Player?             @relation(fields: [tenantId, playerId], references: [tenantId, id], onDelete: SetNull)
-  subscription   PlayerSubscription? @relation(fields: [tenantId, subscriptionId], references: [tenantId, id], onDelete: SetNull)
+  branch         Branch              @relation(fields: [tenantId, branchId], references: [tenantId, id], onDelete: Restrict, map: "academy_financial_transactions_branch_fkey")
+  session        AttendanceSession?  @relation(fields: [tenantId, sessionId], references: [tenantId, id], onDelete: SetNull, map: "academy_financial_transactions_session_fkey")
+  player         Player?             @relation(fields: [tenantId, playerId], references: [tenantId, id], onDelete: SetNull, map: "academy_financial_transactions_player_fkey")
+  subscription   PlayerSubscription? @relation(fields: [tenantId, subscriptionId], references: [tenantId, id], onDelete: SetNull, map: "academy_financial_transactions_sub_fkey")
   recordedByUser User                @relation("RecordedByUser", fields: [recordedByUserId], references: [id], onDelete: Restrict)
   reversedByUser User?               @relation("ReversedByUser", fields: [reversedByUserId], references: [id], onDelete: SetNull)
   approvedByUser User?               @relation("ExpenseApprovedByUser", fields: [approvedByUserId], references: [id], onDelete: SetNull)
 
   @@unique([tenantId, id])
-  @@index([tenantId])
-  @@index([branchId])
-  @@index([sessionId])
-  @@index([playerId])
-  @@index([tenantId, createdAt])
+  @@index([tenantId], map: "academy_fin_tx_tenant_id_idx")
+  @@index([branchId], map: "academy_fin_tx_branch_id_idx")
+  @@index([sessionId], map: "academy_fin_tx_session_id_idx")
+  @@index([playerId], map: "academy_fin_tx_player_id_idx")
+  @@index([tenantId, createdAt], map: "academy_fin_tx_created_at_idx")
   @@index([tenantId, idempotencyKey])
   @@map("academy_financial_transactions")
 }
@@ -1013,8 +1013,8 @@ model SessionCashierClosing {
   updatedAt                  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   tenant         Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  branch         Branch            @relation(fields: [tenantId, branchId], references: [tenantId, id], onDelete: Restrict)
-  session        AttendanceSession @relation(fields: [tenantId, sessionId], references: [tenantId, id], onDelete: Cascade)
+  branch         Branch            @relation(fields: [tenantId, branchId], references: [tenantId, id], onDelete: Restrict, map: "session_cashier_closings_branch_fkey")
+  session        AttendanceSession @relation(fields: [tenantId, sessionId], references: [tenantId, id], onDelete: Cascade, map: "session_cashier_closings_session_fkey")
   closedByUser   User              @relation("SessionClosedByUser", fields: [closedByUserId], references: [id], onDelete: Restrict)
 
   @@unique([tenantId, id])

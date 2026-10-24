@@ -52,7 +52,9 @@ export function StatCard({
   return (
     <div className="group rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-5 shadow-sm hover:border-emerald-500/40 hover:shadow-md transition-all duration-200">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-xs font-semibold text-[var(--text-muted)] truncate">{displayTitle}</span>
+        <span className="text-xs font-semibold text-[var(--text-muted)] truncate">
+          {displayTitle}
+        </span>
         {Icon && (
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--badge-bg)] text-[var(--accent-primary)] group-hover:scale-105 transition-transform">
             <Icon className="h-4 w-4" />
@@ -82,9 +84,7 @@ export function StatCard({
         )}
       </div>
 
-      {subtitle && (
-        <p className="mt-1 text-[11px] text-[var(--text-muted)] truncate">{subtitle}</p>
-      )}
+      {subtitle && <p className="mt-1 text-[11px] text-[var(--text-muted)] truncate">{subtitle}</p>}
     </div>
   );
 }

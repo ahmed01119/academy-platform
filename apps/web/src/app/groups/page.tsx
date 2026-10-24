@@ -5,7 +5,11 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../lib/auth-context';
 import { useLocale } from '../../lib/locale-context';
-import { canAccessAdminRoutes, canAccessCoachRoutes, getRoleHomeRoute } from '../../lib/role-routing';
+import {
+  canAccessAdminRoutes,
+  canAccessCoachRoutes,
+  getRoleHomeRoute,
+} from '../../lib/role-routing';
 import { AppShell } from '../../components/layout/AppShell';
 import { PageHeader, StatusBadge } from '../../components/ui';
 import { api } from '../../lib/api-client';
@@ -118,7 +122,9 @@ export default function GroupsPage() {
     setCreateError(null);
 
     if (!createForm.name.trim()) {
-      setCreateError(locale === 'ar' ? 'يرجى إدخال اسم المجموعة التدريبية' : 'Please enter group name');
+      setCreateError(
+        locale === 'ar' ? 'يرجى إدخال اسم المجموعة التدريبية' : 'Please enter group name',
+      );
       return;
     }
     if (!createForm.branchId) {
@@ -205,7 +211,11 @@ export default function GroupsPage() {
                 id="input-search-groups"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder={locale === 'ar' ? 'البحث باسم المجموعة أو الوصف...' : 'Search group name or description...'}
+                placeholder={
+                  locale === 'ar'
+                    ? 'البحث باسم المجموعة أو الوصف...'
+                    : 'Search group name or description...'
+                }
                 className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] ps-10 pe-9 py-2.5 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:bg-[var(--bg-surface)] transition-all outline-none"
               />
               {searchTerm && (
@@ -292,7 +302,9 @@ export default function GroupsPage() {
               <Layers className="h-6 w-6" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-[var(--text-main)]">{t('common.noResults')}</h3>
+              <h3 className="text-base font-bold text-[var(--text-main)]">
+                {t('common.noResults')}
+              </h3>
               <p className="text-xs text-[var(--text-muted)] mt-1">
                 {locale === 'ar'
                   ? 'قم بإضافة مجموعة تدريبية جديدة لتوزيع اللاعبين وجدولة الحصص التدريبية.'
@@ -383,7 +395,11 @@ export default function GroupsPage() {
                         </span>
                         <span className="font-bold text-[var(--text-main)]">
                           {group.memberCount}{' '}
-                          {capacity ? `/ ${capacity} (${fillPercentage}%)` : locale === 'ar' ? 'لاعب' : 'players'}
+                          {capacity
+                            ? `/ ${capacity} (${fillPercentage}%)`
+                            : locale === 'ar'
+                              ? 'لاعب'
+                              : 'players'}
                         </span>
                       </div>
                       {capacity && (
@@ -406,11 +422,17 @@ export default function GroupsPage() {
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3 py-2 flex items-center justify-between">
                         <span className="text-[var(--text-muted)]">{t('common.coach')}</span>
-                        <span className="font-bold text-[var(--text-main)]">{group.coachCount}</span>
+                        <span className="font-bold text-[var(--text-main)]">
+                          {group.coachCount}
+                        </span>
                       </div>
                       <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3 py-2 flex items-center justify-between">
-                        <span className="text-[var(--text-muted)]">{locale === 'ar' ? 'المواعيد' : 'Schedules'}</span>
-                        <span className="font-bold text-[var(--text-main)]">{group.scheduleCount}</span>
+                        <span className="text-[var(--text-muted)]">
+                          {locale === 'ar' ? 'المواعيد' : 'Schedules'}
+                        </span>
+                        <span className="font-bold text-[var(--text-main)]">
+                          {group.scheduleCount}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -529,7 +551,9 @@ export default function GroupsPage() {
                   id="create-group-name"
                   value={createForm.name}
                   onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
-                  placeholder={locale === 'ar' ? 'مثال: فريق النمور U14 (أ)' : 'e.g. U14 Tigers (A)'}
+                  placeholder={
+                    locale === 'ar' ? 'مثال: فريق النمور U14 (أ)' : 'e.g. U14 Tigers (A)'
+                  }
                   required
                   className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:bg-[var(--bg-surface)] transition-all outline-none"
                 />
@@ -628,7 +652,11 @@ export default function GroupsPage() {
                   disabled={isSubmitting}
                   className="rounded-xl bg-[var(--accent-primary)] px-5 py-2.5 text-xs font-bold text-white hover:brightness-110 disabled:opacity-50 transition-all shadow-md"
                 >
-                  {isSubmitting ? t('common.loading') : locale === 'ar' ? 'حفظ وإنشاء' : 'Save & Create'}
+                  {isSubmitting
+                    ? t('common.loading')
+                    : locale === 'ar'
+                      ? 'حفظ وإنشاء'
+                      : 'Save & Create'}
                 </button>
               </div>
             </form>
