@@ -16,7 +16,6 @@
     "build": "prisma generate && tsc -p tsconfig.json",
     "clean": "rimraf dist",
     "generate": "prisma generate",
-
     "migrate:dev": "prisma migrate dev",
     "migrate:deploy": "prisma migrate deploy",
     "studio": "prisma studio",
@@ -30,7 +29,9 @@
   "devDependencies": {
     "@academy/eslint-config": "workspace:*",
     "@academy/typescript-config": "workspace:*",
+    "@embedded-postgres/windows-x64": "18.4.0-beta.17",
     "@types/node": "^22.15.29",
+    "embedded-postgres": "18.4.0-beta.17",
     "eslint": "^9.28.0",
     "prisma": "^6.9.0",
     "rimraf": "^6.0.1",

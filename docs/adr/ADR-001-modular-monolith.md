@@ -37,7 +37,7 @@ Ship a **modular monolith**:
 
 ## Alternatives Considered
 
-| Option | Why not chosen |
-|--------|----------------|
-| Microservices from day one | Premature complexity for Egypt launch |
+| Option                               | Why not chosen                                    |
+| ------------------------------------ | ------------------------------------------------- |
+| Microservices from day one           | Premature complexity for Egypt launch             |
 | Backend-for-frontend only in Next.js | Weakens shared API for Flutter and future clients |

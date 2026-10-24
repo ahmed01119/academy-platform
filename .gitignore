@@ -40,5 +40,7 @@ Thumbs.db
 packages/database/prisma/*.db
 packages/database/prisma/*.db-journal
 
-# Docker volumes (if ever mounted into repo)
+# Docker volumes / Local DB data / backups
 .data
+packages/database/data
+backups

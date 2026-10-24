@@ -65,6 +65,43 @@ jobs:
       - name: Generate Prisma client
         run: pnpm db:generate
 
+      - name: Validate Prisma schema
+        run: pnpm --filter @academy/database exec prisma validate
+
+      - name: Deploy Prisma migrations
+        run: pnpm --filter @academy/database exec prisma migrate deploy
+
+      - name: Verify migration status
+        run: pnpm --filter @academy/database exec prisma migrate status
+
+      - name: Validate schema drift
+        run: pnpm --filter @academy/database exec prisma migrate diff --from-schema-datamodel prisma/schema.prisma --to-schema-datasource prisma/schema.prisma --exit-code
+
+      - name: Test audit-log append-only protection
+        env:
+          PGPASSWORD: academy
+        run: psql -v ON_ERROR_STOP=1 -h localhost -U academy -d academy -f packages/database/tests/audit-append-only.sql
+
+      - name: Provision restricted CI runtime database role
+        env:
+          PGPASSWORD: academy
+        run: psql -v ON_ERROR_STOP=1 -h localhost -U academy -d academy -f packages/database/tests/runtime-role-setup.sql
+
+      - name: Test runtime database privilege boundaries
+        env:
+          PGPASSWORD: academy
+        run: psql -v ON_ERROR_STOP=1 -h localhost -U academy -d academy -f packages/database/tests/runtime-role-privileges.sql
+
+      - name: Test tenant RLS isolation
+        env:
+          PGPASSWORD: academy
+        run: psql -v ON_ERROR_STOP=1 -h localhost -U academy -d academy -f packages/database/tests/tenant-rls.sql
+
+      - name: Test onboarding and invitation security boundaries
+        env:
+          PGPASSWORD: academy
+        run: psql -v ON_ERROR_STOP=1 -h localhost -U academy -d academy -f packages/database/tests/onboarding-and-invitations.sql
+
       - name: Format check
         run: pnpm format:check
 
@@ -79,3 +116,14 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+      - name: Validate production Compose file
+        run: docker compose -f docker-compose.prod.yml config
+        env:
+          POSTGRES_PASSWORD: ci-placeholder
+          POSTGRES_RUNTIME_PASSWORD: ci-placeholder-runtime
+          DATABASE_URL: postgresql://academy_runtime:ci@postgres:5432/academy?schema=public
+          DATABASE_ADMIN_URL: postgresql://academy:ci@postgres:5432/academy?schema=public
+          JWT_SECRET: ci-placeholder-jwt-secret-32chars
+          CORS_ORIGIN: https://app.example.test
+          NEXT_PUBLIC_API_BASE_URL: https://api.example.test/v1

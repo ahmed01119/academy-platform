@@ -12,7 +12,6 @@ export const nestConfig = [
       },
     },
     rules: {
-      // NestJS relies on constructor DI and decorator metadata.
       '@typescript-eslint/no-unused-vars': [
         'error',
         {
@@ -21,6 +20,7 @@ export const nestConfig = [
           ignoreRestSiblings: true,
         },
       ],
+      '@typescript-eslint/no-explicit-any': 'warn',
       'no-console': 'off',
     },
   },

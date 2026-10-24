@@ -1,0 +1,69 @@
+{
+  "id": "/",
+  "name": "Academy Platform | منصة الأكاديمية الرياضية",
+  "short_name": "Academy",
+  "description": "منصة سحابية متكاملة لإدارة الأكاديميات الرياضية، الحضور الذكي بالـ QR، وتقييم أداء اللاعبين",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0b1411",
+  "theme_color": "#059669",
+  "lang": "ar",
+  "dir": "auto",
+  "categories": ["sports", "business", "productivity"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/apple-icon",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "ماسح الحضور السريع",
+      "short_name": "الماسح",
+      "description": "تسجيل حضور الحصص التدريبية بالباركود",
+      "url": "/attendance/scanner",
+      "icons": [{ "src": "/icon", "sizes": "512x512" }]
+    },
+    {
+      "name": "لوحة التحكم",
+      "short_name": "الرئيسية",
+      "description": "متابعة مؤشرات الأكاديمية والعمليات",
+      "url": "/dashboard",
+      "icons": [{ "src": "/icon", "sizes": "512x512" }]
+    }
+  ]
+}
