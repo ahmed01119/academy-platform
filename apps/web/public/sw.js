@@ -1,7 +1,7 @@
 /* Academy Platform service worker.
  * Cache static shell only. Never cache /v1 API, cookies, or authenticated HTML.
  */
-const VERSION = 'academy-shell-v1';
+const VERSION = 'academy-shell-v2';
 const PRECACHE = ['/offline', '/manifest.webmanifest'];
 
 self.addEventListener('install', (event) => {

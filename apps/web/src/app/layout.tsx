@@ -13,6 +13,17 @@ export const metadata: Metadata = {
   description: 'نظام سحابي متكامل لإدارة الأكاديميات الرياضية، الفروع، الاشتراكات والحضور',
   applicationName: 'Academy Platform',
   manifest: '/manifest.webmanifest',
+  icons: {
+    icon: [
+      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icon-512.png', sizes: '512x512', type: 'image/png' },
+      { url: '/icon' },
+    ],
+    apple: [
+      { url: '/apple-touch-icon.png', sizes: '192x192', type: 'image/png' },
+      { url: '/apple-icon' },
+    ],
+  },
   appleWebApp: {
     capable: true,
     title: 'Academy Platform',
