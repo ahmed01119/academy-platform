@@ -98,6 +98,23 @@ enum PlatformAnnouncementTarget {
   GUARDIAN
 }
 
+enum ApplicationStatus {
+  PENDING_REVIEW
+  MORE_INFO_REQUESTED
+  APPROVED
+  REJECTED
+}
+
+enum NotificationType {
+  ACADEMY_APPLICATION
+  PLAYER_REGISTRATION
+  EXPENSE_APPROVAL
+  EVALUATION_PUBLISHED
+  SUBSCRIPTION
+  SECURITY
+  SYSTEM
+}
+
 enum BranchStatus {
   ACTIVE
   INACTIVE
@@ -213,6 +230,7 @@ model User {
   redemptionChallenge        String?   @map("redemption_challenge")
   redemptionExpiresAt        DateTime? @map("redemption_expires_at") @db.Timestamptz(3)
   isPlatformSuperAdmin       Boolean   @default(false) @map("is_platform_super_admin")
+  isPlatformOwner            Boolean   @default(false) @map("is_platform_owner")
   mustResetPassword          Boolean   @default(false) @map("must_reset_password")
   isSuspended                Boolean   @default(false) @map("is_suspended")
   suspendedReason            String?   @map("suspended_reason")
@@ -232,6 +250,11 @@ model User {
   reversedTransactions AcademyFinancialTransaction[] @relation("ReversedByUser")
   approvedExpenses     AcademyFinancialTransaction[] @relation("ExpenseApprovedByUser")
   closedSessions       SessionCashierClosing[]       @relation("SessionClosedByUser")
+  academyApplications  AcademyApplication[]          @relation("AcademyApplicant")
+  reviewedApplications AcademyApplication[]          @relation("AcademyApplicationReviewer")
+  playerJoinRequests   PlayerRegistrationRequest[]   @relation("PlayerJoinApplicant")
+  reviewedJoinRequests PlayerRegistrationRequest[]   @relation("PlayerJoinReviewer")
+  notifications        AppNotification[]
 
   @@map("users")
 }
@@ -294,6 +317,8 @@ model Tenant {
   playerSubscriptions     PlayerSubscription[]
   financialTransactions   AcademyFinancialTransaction[]
   sessionCashierClosings  SessionCashierClosing[]
+  playerJoinRequests      PlayerRegistrationRequest[]
+  notifications           AppNotification[]
 
   @@map("tenants")
 }
@@ -1013,6 +1038,78 @@ model PlatformAnnouncement {
   updatedAt  DateTime                   @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   @@map("platform_announcements")
+}
+
+/// Public academy applications. Must be approved before a tenant is provisioned.
+model AcademyApplication {
+  id                   String            @id @default(uuid()) @db.Uuid
+  applicantUserId      String            @map("applicant_user_id") @db.Uuid
+  academyName          String            @map("academy_name")
+  academySlug          String            @map("academy_slug")
+  sport                SportCode         @default(FOOTBALL)
+  city                 String?
+  contactPhone         String?           @map("contact_phone")
+  contactEmail         String            @map("contact_email")
+  notes                String?
+  status               ApplicationStatus @default(PENDING_REVIEW)
+  reviewNotes          String?           @map("review_notes")
+  reviewedByUserId     String?           @map("reviewed_by_user_id") @db.Uuid
+  reviewedAt           DateTime?         @map("reviewed_at") @db.Timestamptz(3)
+  provisionedTenantId  String?           @map("provisioned_tenant_id") @db.Uuid
+  createdAt            DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt            DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  applicant  User  @relation("AcademyApplicant", fields: [applicantUserId], references: [id], onDelete: Cascade)
+  reviewedBy User? @relation("AcademyApplicationReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([applicantUserId])
+  @@index([academySlug])
+  @@map("academy_applications")
+}
+
+/// Player/guardian requests to join an existing academy. Academy staff must approve.
+model PlayerRegistrationRequest {
+  id               String            @id @default(uuid()) @db.Uuid
+  tenantId         String            @map("tenant_id") @db.Uuid
+  applicantUserId  String?           @map("applicant_user_id") @db.Uuid
+  playerName       String            @map("player_name")
+  contactEmail     String            @map("contact_email")
+  contactPhone     String?           @map("contact_phone")
+  dateOfBirth      DateTime?         @map("date_of_birth") @db.Date
+  guardianName     String?           @map("guardian_name")
+  status           ApplicationStatus @default(PENDING_REVIEW)
+  reviewNotes      String?           @map("review_notes")
+  reviewedByUserId String?           @map("reviewed_by_user_id") @db.Uuid
+  reviewedAt       DateTime?         @map("reviewed_at") @db.Timestamptz(3)
+  createdAt        DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  tenant     Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  applicant  User?  @relation("PlayerJoinApplicant", fields: [applicantUserId], references: [id], onDelete: SetNull)
+  reviewedBy User?  @relation("PlayerJoinReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status])
+  @@map("player_registration_requests")
+}
+
+model AppNotification {
+  id        String           @id @default(uuid()) @db.Uuid
+  userId    String           @map("user_id") @db.Uuid
+  tenantId  String?          @map("tenant_id") @db.Uuid
+  type      NotificationType
+  title     String
+  body      String
+  href      String?
+  readAt    DateTime?        @map("read_at") @db.Timestamptz(3)
+  createdAt DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([userId, readAt])
+  @@map("app_notifications")
 }
 
 

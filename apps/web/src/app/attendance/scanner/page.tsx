@@ -30,6 +30,7 @@ import { PageHeader } from '../../../components/ui/PageHeader';
 import { useToast } from '../../../components/ui/Toast';
 import { apiClient } from '../../../lib/api-client';
 import { offlineStore } from '../../../lib/offline-attendance-store';
+import { prepareForOfflineUse } from '../../../lib/offline-engine';
 import type {
   ScanPlayerQrResponse,
   SessionSummary,
@@ -75,6 +76,8 @@ export default function MobileAttendanceScannerPage() {
   const [pendingQueueCount, setPendingQueueCount] = useState(0);
   const [isSyncingOffline, setIsSyncingOffline] = useState(false);
   const [syncStatusBanner, setSyncStatusBanner] = useState<string | null>(null);
+  const [isPreparingOffline, setIsPreparingOffline] = useState(false);
+  const [offlinePreparedBanner, setOfflinePreparedBanner] = useState<string | null>(null);
 
   // Manual Input Fallback
   const [manualCode, setManualCode] = useState('');
@@ -243,6 +246,24 @@ export default function MobileAttendanceScannerPage() {
       setIsSyncingOffline(false);
     }
   }, [selectedSessionId, isSyncingOffline, refreshPendingCount]);
+
+  // Prepare for Offline Use (caches rosters & upcoming sessions into IndexedDB)
+  const handlePrepareOffline = useCallback(async () => {
+    if (!activeTenant?.tenantId) return;
+    setIsPreparingOffline(true);
+    setOfflinePreparedBanner(null);
+    try {
+      const currentSession = sessions.find((s) => s.id === selectedSessionId);
+      const res = await prepareForOfflineUse(activeTenant.tenantId, currentSession?.branchId);
+      const msg = `جاهز للعمل دون اتصال: تم تخزين ${res.sessionsCached} حصص و ${res.playersCached} لاعباً في الذاكرة المحلية بنجاح`;
+      setOfflinePreparedBanner(msg);
+      toast.success(msg);
+    } catch (err: unknown) {
+      toast.error((err as Error)?.message || 'فشل تجهيز البيانات للاستخدام دون إنترنت');
+    } finally {
+      setIsPreparingOffline(false);
+    }
+  }, [activeTenant?.tenantId, selectedSessionId, sessions, toast]);
 
   // Online / Offline Listeners
   useEffect(() => {
@@ -611,6 +632,17 @@ export default function MobileAttendanceScannerPage() {
                 </button>
               )}
 
+              <button
+                type="button"
+                onClick={handlePrepareOffline}
+                disabled={isPreparingOffline || !isOnline}
+                title="تحميل الحصص وقوائم اللاعبين إلى التخزين المحلي للاستخدام عند انقطاع الإنترنت"
+                className="flex items-center gap-1.5 rounded-full bg-[var(--accent-primary)]/10 border border-[var(--accent-primary)]/30 px-3 py-1 text-[11px] font-bold text-[var(--accent-primary)] hover:bg-[var(--accent-primary)]/20 transition-all cursor-pointer disabled:opacity-50"
+              >
+                <Sparkles className={`h-3.5 w-3.5 ${isPreparingOffline ? 'animate-spin' : ''}`} />
+                <span>{isPreparingOffline ? 'جارٍ التجهيز...' : 'تجهيز لعدم الاتصال'}</span>
+              </button>
+
               <span
                 className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold border ${
                   isOnline
@@ -642,6 +674,23 @@ export default function MobileAttendanceScannerPage() {
               type="button"
               onClick={() => setSyncStatusBanner(null)}
               className="text-emerald-600 dark:text-emerald-400 hover:underline text-xs cursor-pointer"
+            >
+              إغلاق
+            </button>
+          </div>
+        )}
+
+        {/* Offline Readiness Banner */}
+        {offlinePreparedBanner && (
+          <div className="rounded-xl border border-[var(--accent-primary)]/40 bg-[var(--accent-primary)]/10 p-3 text-xs text-[var(--accent-primary)] flex items-center justify-between shadow-sm">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 shrink-0" />
+              <span className="font-semibold">{offlinePreparedBanner}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setOfflinePreparedBanner(null)}
+              className="text-[var(--accent-primary)] hover:underline text-xs cursor-pointer"
             >
               إغلاق
             </button>

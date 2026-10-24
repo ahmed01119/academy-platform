@@ -21,6 +21,11 @@ import {
   UpdateSaaSPlanRequestSchema,
   UpdateTenantSubscriptionRequestSchema,
   CreatePlatformAnnouncementRequestSchema,
+  CreateAcademyApplicationRequestSchema,
+  ReviewAcademyApplicationRequestSchema,
+  ExecuteStorageMaintenanceRequestSchema,
+  InvitePlatformSuperAdminRequestSchema,
+  PlatformInviteUserRequestSchema,
   UuidParamSchema,
   type RequestSupportAccessRequest,
   type UpdateAcademyStatusRequest,
@@ -28,7 +33,15 @@ import {
   type UpdateSaaSPlanRequest,
   type UpdateTenantSubscriptionRequest,
   type CreatePlatformAnnouncementRequest,
+  type CreateAcademyApplicationRequest,
+  type ReviewAcademyApplicationRequest,
+  type ExecuteStorageMaintenanceRequest,
+  type InvitePlatformSuperAdminRequest,
+  type PlatformInviteUserRequest,
+  type ApplicationStatus,
 } from '@academy/shared';
+import { PlatformOwnerGuard } from '../auth/guards/platform-owner.guard';
+import { Public } from '../auth/guards/public.decorator';
 
 @Controller('platform')
 @UseGuards(JwtAuthGuard, PlatformSuperAdminGuard, CsrfGuard)
@@ -161,4 +174,75 @@ export class PlatformController {
   async getSecurityEvents(@CurrentUser('id') actorUserId: string) {
     return this.platformService.getSecurityEvents(actorUserId);
   }
+
+  @Public()
+  @Post('applications/public')
+  async submitAcademyApplicationPublic(
+    @Body() body: unknown,
+    @CurrentUser('id') actorUserId?: string,
+  ) {
+    const dto: CreateAcademyApplicationRequest = CreateAcademyApplicationRequestSchema.parse(body);
+    return this.platformService.submitAcademyApplication(actorUserId ?? '', dto);
+  }
+
+  @Get('applications')
+  async listAcademyApplications(
+    @CurrentUser('id') actorUserId: string,
+    @Query('status') status?: string,
+  ) {
+    return this.platformService.listAcademyApplications(
+      actorUserId,
+      status as ApplicationStatus | undefined,
+    );
+  }
+
+  @Patch('applications/:id/review')
+  async reviewAcademyApplication(
+    @CurrentUser('id') actorUserId: string,
+    @Param('id') rawId: string,
+    @Body() body: unknown,
+  ) {
+    const applicationId = UuidParamSchema.parse(rawId);
+    const dto: ReviewAcademyApplicationRequest = ReviewAcademyApplicationRequestSchema.parse(body);
+    return this.platformService.reviewAcademyApplication(actorUserId, applicationId, dto);
+  }
+
+  @Post('super-admin/invite')
+  @UseGuards(PlatformOwnerGuard)
+  async invitePlatformSuperAdmin(
+    @CurrentUser('id') actorUserId: string,
+    @Body() body: unknown,
+  ) {
+    const dto: InvitePlatformSuperAdminRequest = InvitePlatformSuperAdminRequestSchema.parse(body);
+    return this.platformService.invitePlatformSuperAdmin(actorUserId, dto);
+  }
+
+  @Post('users/invite')
+  async inviteUser(
+    @CurrentUser('id') actorUserId: string,
+    @Body() body: unknown,
+  ) {
+    const dto: PlatformInviteUserRequest = PlatformInviteUserRequestSchema.parse(body);
+    return this.platformService.inviteUser(actorUserId, dto);
+  }
+
+  @Get('storage/stats')
+  async getStorageMetrics(@CurrentUser('id') actorUserId: string) {
+    return this.platformService.getStorageMetrics(actorUserId);
+  }
+
+  @Post('storage/maintenance/dry-run')
+  async dryRunStorageMaintenance(@CurrentUser('id') actorUserId: string) {
+    return this.platformService.dryRunStorageMaintenance(actorUserId);
+  }
+
+  @Post('storage/maintenance/execute')
+  async executeStorageMaintenance(
+    @CurrentUser('id') actorUserId: string,
+    @Body() body: unknown,
+  ) {
+    const dto: ExecuteStorageMaintenanceRequest = ExecuteStorageMaintenanceRequestSchema.parse(body);
+    return this.platformService.executeStorageMaintenance(actorUserId, dto);
+  }
 }
+

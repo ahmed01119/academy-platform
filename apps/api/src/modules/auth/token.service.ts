@@ -12,6 +12,7 @@ export interface JwtPayload {
   role?: TenantRole;
   branchId?: string;
   isPlatformSuperAdmin?: boolean;
+  isPlatformOwner?: boolean;
 }
 
 export interface GeneratedTokens {
@@ -50,6 +51,7 @@ export class TokenService {
     ipAddress?: string,
     existingFamilyId?: string,
     isPlatformSuperAdmin?: boolean,
+    isPlatformOwner?: boolean,
   ): Promise<GeneratedTokens> {
     const payload: JwtPayload = {
       sub: userId,
@@ -58,6 +60,7 @@ export class TokenService {
       role: activeTenant?.role,
       branchId: activeTenant?.branchId,
       isPlatformSuperAdmin: isPlatformSuperAdmin ?? false,
+      isPlatformOwner: isPlatformOwner ?? false,
     };
 
     const accessToken = await this.jwtService.signAsync(payload, {
@@ -159,6 +162,7 @@ export class TokenService {
         sub: existingToken.userId,
         email: existingToken.user.email,
         isPlatformSuperAdmin: existingToken.user.isPlatformSuperAdmin,
+        isPlatformOwner: existingToken.user.isPlatformOwner,
       };
 
       const accessToken = await this.jwtService.signAsync(payload, {

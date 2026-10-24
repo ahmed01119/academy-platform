@@ -25,13 +25,18 @@ import {
   type PlayerQrCardResponse,
   type RotatePlayerQrCardRequest,
   type RevokePlayerQrCardRequest,
+  type PlayerJoinRequestItem,
+  type ReviewPlayerJoinRequest,
+  type ApplicationStatus,
 } from '@academy/shared';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class PlayersService {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(AuditService) private readonly auditService: AuditService,
+    @Inject(NotificationsService) private readonly notificationsService: NotificationsService,
   ) {}
 
   /**
@@ -983,4 +988,189 @@ export class PlayersService {
       },
     );
   }
+
+  /**
+   * Lists registration join requests for the current academy.
+   */
+  async listPlayerJoinRequests(
+    tenantContext: TenantContext,
+    status?: ApplicationStatus,
+  ): Promise<PlayerJoinRequestItem[]> {
+    return this.prisma.withTenantTransaction(tenantContext, async (tx) => {
+      const items = await tx.playerRegistrationRequest.findMany({
+        where: {
+          tenantId: tenantContext.tenantId,
+          ...(status ? { status: status as any } : {}),
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      return items.map((req) => ({
+        id: req.id,
+        tenantId: req.tenantId,
+        applicantUserId: req.applicantUserId,
+        playerName: req.playerName,
+        contactEmail: req.contactEmail,
+        contactPhone: req.contactPhone,
+        dateOfBirth: req.dateOfBirth ? req.dateOfBirth.toISOString().split('T')[0] : null,
+        guardianName: req.guardianName,
+        status: req.status as ApplicationStatus,
+        reviewNotes: req.reviewNotes,
+        reviewedByUserId: req.reviewedByUserId,
+        reviewedAt: req.reviewedAt?.toISOString() || null,
+        createdAt: req.createdAt.toISOString(),
+      }));
+    });
+  }
+
+  /**
+   * Reviews and approves or rejects a player join request.
+   */
+  async reviewPlayerJoinRequest(
+    tenantContext: TenantContext,
+    requestId: string,
+    dto: ReviewPlayerJoinRequest,
+  ): Promise<PlayerJoinRequestItem> {
+    return this.prisma.withTenantTransaction(tenantContext, async (tx) => {
+      const request = await tx.playerRegistrationRequest.findFirst({
+        where: {
+          id: requestId,
+          tenantId: tenantContext.tenantId,
+        },
+      });
+
+      if (!request) {
+        throw new NotFoundException({
+          code: ErrorCode.NOT_FOUND,
+          message: 'Player registration request not found in this academy',
+        });
+      }
+
+      if (request.status === 'APPROVED') {
+        throw new BadRequestException({
+          code: ErrorCode.VALIDATION_FAILED,
+          message: 'Registration request has already been approved',
+        });
+      }
+
+      if (dto.status === 'APPROVED') {
+        const names = request.playerName.trim().split(' ');
+        const firstName = names[0] || request.playerName.trim();
+        const lastName = names.slice(1).join(' ') || '-';
+
+        const membershipNumber = `MEM-${new Date().getFullYear()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+        const qrCardCode = `QR-${tenantContext.tenantId.slice(0, 8)}-${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
+
+        let effectiveBranchId = dto.branchId || tenantContext.branchId;
+        if (!effectiveBranchId) {
+          const mainBranch = await tx.branch.findFirst({
+            where: { tenantId: tenantContext.tenantId, status: 'ACTIVE' },
+          });
+          effectiveBranchId = mainBranch?.id;
+        }
+
+        const player = await tx.player.create({
+          data: {
+            tenantId: tenantContext.tenantId,
+            userId: request.applicantUserId,
+            firstName,
+            lastName,
+            emergencyContactName: request.guardianName || 'Guardian',
+            emergencyContactPhone: request.contactPhone || '-',
+            dateOfBirth: request.dateOfBirth || new Date(2012, 0, 1),
+            gender: 'MALE',
+            status: 'ACTIVE',
+            membershipNumber,
+            qrCardCode,
+            qrCardIssuedAt: new Date(),
+          },
+        });
+
+        if (effectiveBranchId) {
+          await tx.playerEnrollment.create({
+            data: {
+              tenantId: tenantContext.tenantId,
+              playerId: player.id,
+              branchId: effectiveBranchId,
+              status: 'ACTIVE',
+              startDate: new Date(),
+            },
+          });
+        }
+
+        if (dto.groupId) {
+          await tx.groupMember.create({
+            data: {
+              tenantId: tenantContext.tenantId,
+              playerId: player.id,
+              groupId: dto.groupId,
+              status: 'ACTIVE',
+            },
+          });
+        }
+
+        if (request.applicantUserId) {
+          await this.notificationsService.createNotification({
+            userId: request.applicantUserId,
+            tenantId: tenantContext.tenantId,
+            type: 'PLAYER_REGISTRATION',
+            title: 'Academy Registration Approved',
+            body: `Your request to join the academy for "${request.playerName}" has been approved!`,
+            href: '/player',
+          });
+        }
+      } else if (dto.status === 'REJECTED' && request.applicantUserId) {
+        await this.notificationsService.createNotification({
+          userId: request.applicantUserId,
+          tenantId: tenantContext.tenantId,
+          type: 'PLAYER_REGISTRATION',
+          title: 'Registration Request Update',
+          body: `Your registration request for "${request.playerName}" was rejected: ${dto.reviewNotes ?? 'Not accepted at this time.'}`,
+          href: '/',
+        });
+      }
+
+      const updated = await tx.playerRegistrationRequest.update({
+        where: { id: requestId },
+        data: {
+          status: dto.status as any,
+          reviewNotes: dto.reviewNotes?.trim() || null,
+          reviewedByUserId: tenantContext.actorUserId,
+          reviewedAt: new Date(),
+        },
+      });
+
+      await this.auditService.logEvent(
+        {
+          tenantId: tenantContext.tenantId,
+          actorUserId: tenantContext.actorUserId,
+          action: `PLAYER_JOIN_REQUEST_${dto.status}`,
+          resourceType: 'PlayerRegistrationRequest',
+          resourceId: requestId,
+          metadata: {
+            playerName: request.playerName,
+            status: dto.status,
+          },
+        },
+        tx,
+      );
+
+      return {
+        id: updated.id,
+        tenantId: updated.tenantId,
+        applicantUserId: updated.applicantUserId,
+        playerName: updated.playerName,
+        contactEmail: updated.contactEmail,
+        contactPhone: updated.contactPhone,
+        dateOfBirth: updated.dateOfBirth ? updated.dateOfBirth.toISOString().split('T')[0] : null,
+        guardianName: updated.guardianName,
+        status: updated.status as ApplicationStatus,
+        reviewNotes: updated.reviewNotes,
+        reviewedByUserId: updated.reviewedByUserId,
+        reviewedAt: updated.reviewedAt?.toISOString() || null,
+        createdAt: updated.createdAt.toISOString(),
+      };
+    });
+  }
 }
+

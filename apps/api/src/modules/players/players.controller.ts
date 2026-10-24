@@ -25,10 +25,13 @@ import {
   RevokePlayerQrCardRequestSchema,
   RotatePlayerQrCardRequestSchema,
   UpdatePlayerSchema,
+  ReviewPlayerJoinRequestSchema,
   UuidParamSchema,
   type CreatePlayerRequest,
   type RevokePlayerQrCardRequest,
   type RotatePlayerQrCardRequest,
+  type ReviewPlayerJoinRequest,
+  type ApplicationStatus,
   type TenantContext,
   type UpdatePlayerRequest,
 } from '@academy/shared';
@@ -43,6 +46,30 @@ export class PlayersController {
   async listPlayers(@CurrentTenantContext() tenantContext: TenantContext, @Query() query: unknown) {
     const validated = PlayerQuerySchema.parse(query);
     return this.playersService.listPlayers(tenantContext, validated);
+  }
+
+  @RequirePermissions(Permission.PLAYERS_READ)
+  @Get('registration-requests')
+  async listPlayerJoinRequests(
+    @CurrentTenantContext() tenantContext: TenantContext,
+    @Query('status') status?: string,
+  ) {
+    return this.playersService.listPlayerJoinRequests(
+      tenantContext,
+      status as ApplicationStatus | undefined,
+    );
+  }
+
+  @RequirePermissions(Permission.PLAYERS_CREATE)
+  @Post('registration-requests/:id/review')
+  async reviewPlayerJoinRequest(
+    @CurrentTenantContext() tenantContext: TenantContext,
+    @Param('id') rawId: string,
+    @Body() body: unknown,
+  ) {
+    const requestId = UuidParamSchema.parse(rawId);
+    const dto: ReviewPlayerJoinRequest = ReviewPlayerJoinRequestSchema.parse(body);
+    return this.playersService.reviewPlayerJoinRequest(tenantContext, requestId, dto);
   }
 
   @RequirePermissions(Permission.PLAYERS_READ)

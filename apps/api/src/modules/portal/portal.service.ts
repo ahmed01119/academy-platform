@@ -17,7 +17,11 @@ import {
   type PlayerPortalProfile,
   type PlayerQrCardResponse,
   type TenantContext,
+  type CreatePlayerJoinRequest,
+  type PlayerJoinRequestItem,
+  type ApplicationStatus,
 } from '@academy/shared';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class PortalService {
@@ -25,6 +29,7 @@ export class PortalService {
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(AuditService) private readonly auditService: AuditService,
     @Inject(TokenService) private readonly tokenService: TokenService,
+    @Inject(NotificationsService) private readonly notificationsService: NotificationsService,
   ) {}
 
   /**
@@ -488,4 +493,87 @@ export class PortalService {
       };
     });
   }
+
+  /**
+   * Submits a player/guardian request to join an existing academy.
+   */
+  async submitPlayerJoinRequest(
+    dto: CreatePlayerJoinRequest,
+    applicantUserId?: string,
+  ): Promise<PlayerJoinRequestItem> {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: dto.tenantId },
+      select: { id: true, name: true },
+    });
+
+    if (!tenant) {
+      throw new NotFoundException({
+        code: ErrorCode.NOT_FOUND,
+        message: 'Academy not found',
+      });
+    }
+
+    const request = await this.prisma.playerRegistrationRequest.create({
+      data: {
+        tenantId: dto.tenantId,
+        applicantUserId: applicantUserId || null,
+        playerName: dto.playerName.trim(),
+        contactEmail: dto.contactEmail.trim().toLowerCase(),
+        contactPhone: dto.contactPhone?.trim() || null,
+        dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : null,
+        guardianName: dto.guardianName?.trim() || null,
+        status: 'PENDING_REVIEW',
+      },
+    });
+
+    // Notify academy managers & owners
+    const academyStaff = await this.prisma.tenantMembership.findMany({
+      where: {
+        tenantId: dto.tenantId,
+        role: { in: ['OWNER', 'MANAGER', 'BRANCH_MANAGER'] },
+        status: 'ACTIVE',
+      },
+      select: { userId: true },
+    });
+
+    for (const staff of academyStaff) {
+      await this.notificationsService.createNotification({
+        userId: staff.userId,
+        tenantId: dto.tenantId,
+        type: 'PLAYER_REGISTRATION',
+        title: 'New Player Join Request',
+        body: `"${dto.playerName}" submitted a join request for review.`,
+        href: '/players',
+      });
+    }
+
+    return {
+      id: request.id,
+      tenantId: request.tenantId,
+      tenantName: tenant.name,
+      applicantUserId: request.applicantUserId,
+      playerName: request.playerName,
+      contactEmail: request.contactEmail,
+      contactPhone: request.contactPhone,
+      dateOfBirth: request.dateOfBirth ? request.dateOfBirth.toISOString().split('T')[0] : null,
+      guardianName: request.guardianName,
+      status: request.status as ApplicationStatus,
+      reviewNotes: request.reviewNotes,
+      reviewedByUserId: request.reviewedByUserId,
+      reviewedAt: request.reviewedAt?.toISOString() || null,
+      createdAt: request.createdAt.toISOString(),
+    };
+  }
+
+  /**
+   * List active academies for public join request dropdown.
+   */
+  async listPublicAcademies(): Promise<Array<{ id: string; name: string; slug: string }>> {
+    return this.prisma.tenant.findMany({
+      where: { status: 'ACTIVE' },
+      select: { id: true, name: true, slug: true },
+      orderBy: { name: 'asc' },
+    });
+  }
 }
+

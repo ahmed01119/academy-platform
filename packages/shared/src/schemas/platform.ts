@@ -58,6 +58,7 @@ export const PlatformUserItemSchema = z.object({
   name: z.string(),
   phone: z.string().nullable().optional(),
   isPlatformSuperAdmin: z.boolean(),
+  isPlatformOwner: z.boolean().default(false),
   mustResetPassword: z.boolean(),
   isSuspended: z.boolean(),
   suspendedReason: z.string().nullable().optional(),
@@ -181,3 +182,203 @@ export const SupportAccessResponseSchema = z.object({
 });
 
 export type SupportAccessResponse = z.infer<typeof SupportAccessResponseSchema>;
+
+// ==========================================
+// Academy Applications & Approvals
+// ==========================================
+
+export const ApplicationStatusSchema = z.enum([
+  'PENDING_REVIEW',
+  'MORE_INFO_REQUESTED',
+  'APPROVED',
+  'REJECTED',
+]);
+
+export type ApplicationStatus = z.infer<typeof ApplicationStatusSchema>;
+
+export const CreateAcademyApplicationRequestSchema = z.object({
+  academyName: z.string().min(2, 'Academy name must be at least 2 characters').max(100),
+  academySlug: z
+    .string()
+    .min(2)
+    .max(50)
+    .regex(/^[a-z0-9-]+$/, 'Slug must only contain lowercase letters, numbers, and dashes'),
+  sport: z.enum(['FOOTBALL']).default('FOOTBALL'),
+  city: z.string().max(100).optional(),
+  contactPhone: z.string().max(30).optional(),
+  contactEmail: z.string().email(),
+  notes: z.string().max(1000).optional(),
+});
+
+export type CreateAcademyApplicationRequest = z.infer<
+  typeof CreateAcademyApplicationRequestSchema
+>;
+
+export const ReviewAcademyApplicationRequestSchema = z.object({
+  status: z.enum(['MORE_INFO_REQUESTED', 'APPROVED', 'REJECTED']),
+  reviewNotes: z.string().max(1000).optional(),
+  initialPlanCode: z.enum(['STARTER', 'PRO', 'ENTERPRISE', 'CUSTOM']).default('STARTER'),
+});
+
+export type ReviewAcademyApplicationRequest = z.infer<
+  typeof ReviewAcademyApplicationRequestSchema
+>;
+
+export const AcademyApplicationItemSchema = z.object({
+  id: z.string().uuid(),
+  applicantUserId: z.string().uuid(),
+  applicantName: z.string().optional(),
+  academyName: z.string(),
+  academySlug: z.string(),
+  sport: z.string(),
+  city: z.string().nullable().optional(),
+  contactPhone: z.string().nullable().optional(),
+  contactEmail: z.string(),
+  notes: z.string().nullable().optional(),
+  status: ApplicationStatusSchema,
+  reviewNotes: z.string().nullable().optional(),
+  reviewedByUserId: z.string().uuid().nullable().optional(),
+  reviewedAt: z.string().or(z.date()).nullable().optional(),
+  provisionedTenantId: z.string().uuid().nullable().optional(),
+  createdAt: z.string().or(z.date()),
+  updatedAt: z.string().or(z.date()),
+});
+
+export type AcademyApplicationItem = z.infer<typeof AcademyApplicationItemSchema>;
+
+// ==========================================
+// Player Join Requests & Approvals
+// ==========================================
+
+export const CreatePlayerJoinRequestSchema = z.object({
+  tenantId: z.string().uuid(),
+  playerName: z.string().min(2).max(100),
+  contactEmail: z.string().email(),
+  contactPhone: z.string().max(30).optional(),
+  dateOfBirth: z.string().optional(),
+  guardianName: z.string().max(100).optional(),
+  branchId: z.string().uuid().optional(),
+});
+
+export type CreatePlayerJoinRequest = z.infer<typeof CreatePlayerJoinRequestSchema>;
+
+export const ReviewPlayerJoinRequestSchema = z.object({
+  status: z.enum(['APPROVED', 'REJECTED', 'MORE_INFO_REQUESTED']),
+  branchId: z.string().uuid().optional(),
+  groupId: z.string().uuid().optional(),
+  reviewNotes: z.string().max(500).optional(),
+});
+
+export type ReviewPlayerJoinRequest = z.infer<typeof ReviewPlayerJoinRequestSchema>;
+
+export const PlayerJoinRequestItemSchema = z.object({
+  id: z.string().uuid(),
+  tenantId: z.string().uuid(),
+  tenantName: z.string().optional(),
+  applicantUserId: z.string().uuid().nullable().optional(),
+  playerName: z.string(),
+  contactEmail: z.string(),
+  contactPhone: z.string().nullable().optional(),
+  dateOfBirth: z.string().nullable().optional(),
+  guardianName: z.string().nullable().optional(),
+  status: ApplicationStatusSchema,
+  reviewNotes: z.string().nullable().optional(),
+  reviewedByUserId: z.string().uuid().nullable().optional(),
+  reviewedAt: z.string().or(z.date()).nullable().optional(),
+  createdAt: z.string().or(z.date()),
+});
+
+export type PlayerJoinRequestItem = z.infer<typeof PlayerJoinRequestItemSchema>;
+
+// ==========================================
+// Storage & Data Lifecycle Schemas
+// ==========================================
+
+export const TableStorageStatSchema = z.object({
+  tableName: z.string(),
+  rowCount: z.number(),
+  totalBytes: z.number(),
+  indexBytes: z.number(),
+  formattedSize: z.string(),
+});
+
+export type TableStorageStat = z.infer<typeof TableStorageStatSchema>;
+
+export const StorageMetricsSchema = z.object({
+  databaseSizeBytes: z.number(),
+  formattedDatabaseSize: z.string(),
+  totalTables: z.number(),
+  tables: z.array(TableStorageStatSchema),
+  auditLogsCount: z.number(),
+  auditLogsSizeBytes: z.number(),
+  mediaStorageBytes: z.number(),
+  availableDiskBytes: z.number().optional(),
+  cacheKeysCount: z.number(),
+  estimatedMonthlyGrowthBytes: z.number(),
+});
+
+export type StorageMetrics = z.infer<typeof StorageMetricsSchema>;
+
+export const StorageMaintenanceDryRunResponseSchema = z.object({
+  expiredSessionsCount: z.number(),
+  expiredTokensCount: z.number(),
+  purgeableAuditLogsCount: z.number(),
+  estimatedReclaimableBytes: z.number(),
+  formattedReclaimableSize: z.string(),
+  protectedRecordsSummary: z.object({
+    financialTransactionsCount: z.number(),
+    activePlayersCount: z.number(),
+    activeSubscriptionsCount: z.number(),
+  }),
+});
+
+export type StorageMaintenanceDryRunResponse = z.infer<
+  typeof StorageMaintenanceDryRunResponseSchema
+>;
+
+export const ExecuteStorageMaintenanceRequestSchema = z.object({
+  confirm: z.literal(true),
+  purgeExpiredSessions: z.boolean().default(true),
+  purgeExpiredTokens: z.boolean().default(true),
+  archiveOperationalLogsOlderThanDays: z.number().min(30).optional(),
+});
+
+export type ExecuteStorageMaintenanceRequest = z.infer<
+  typeof ExecuteStorageMaintenanceRequestSchema
+>;
+
+// ==========================================
+// Platform User & Super Admin Invitations
+// ==========================================
+
+export const InvitePlatformSuperAdminRequestSchema = z.object({
+  email: z.string().email(),
+  name: z.string().min(2).max(100),
+  permissions: z.array(z.string()).optional(),
+});
+
+export type InvitePlatformSuperAdminRequest = z.infer<
+  typeof InvitePlatformSuperAdminRequestSchema
+>;
+
+export const PlatformInviteUserRequestSchema = z.object({
+  email: z.string().email(),
+  name: z.string().min(2).max(100),
+  phone: z.string().max(30).optional(),
+  role: z.enum([
+    'SUPER_ADMIN',
+    'OWNER',
+    'MANAGER',
+    'BRANCH_MANAGER',
+    'COACH',
+    'RECEPTIONIST',
+    'ACCOUNTANT',
+    'PLAYER',
+    'GUARDIAN',
+  ]),
+  tenantId: z.string().uuid().optional(),
+  branchId: z.string().uuid().optional(),
+});
+
+export type PlatformInviteUserRequest = z.infer<typeof PlatformInviteUserRequestSchema>;
+

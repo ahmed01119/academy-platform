@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { Navbar } from '../components/Navbar';
 import { useAuth } from '../lib/auth-context';
@@ -10,7 +10,6 @@ import {
   Trophy,
   Sparkles,
   Lock,
-  Activity,
   ChevronLeft,
   ChevronRight,
   Users,
@@ -25,17 +24,19 @@ import {
   HelpCircle,
   ChevronDown,
   Zap,
+  UserPlus,
+  X,
 } from 'lucide-react';
+import apiClient from '../lib/api-client';
 
 export default function HomePage() {
   const { user, activeTenant } = useAuth();
   const { t, locale, isRtl } = useLocale();
-  const [apiHealth, setApiHealth] = useState<'checking' | 'healthy' | 'offline'>('checking');
   const [activePreviewTab, setActivePreviewTab] = useState<'attendance' | 'evaluations' | 'portals' | 'finance'>('attendance');
 
-  // Demo Request Form State
+  // Academy Application Form State
   const [demoAcademyName, setDemoAcademyName] = useState('');
-  const [demoSport, setDemoSport] = useState('FOOTBALL');
+  const [demoSport, setDemoSport] = useState<'FOOTBALL'>('FOOTBALL');
   const [demoCity, setDemoCity] = useState('');
   const [demoContactName, setDemoContactName] = useState('');
   const [demoEmail, setDemoEmail] = useState('');
@@ -43,15 +44,24 @@ export default function HomePage() {
   const [demoPlayersCount, setDemoPlayersCount] = useState('100-300');
   const [isSubmittingDemo, setIsSubmittingDemo] = useState(false);
   const [demoSubmitted, setDemoSubmitted] = useState(false);
+  const [demoError, setDemoError] = useState<string | null>(null);
+
+  // Player Join Request Modal State
+  const [isPlayerJoinModalOpen, setIsPlayerJoinModalOpen] = useState(false);
+  const [publicAcademies, setPublicAcademies] = useState<Array<{ id: string; name: string; slug: string }>>([]);
+  const [isLoadingAcademies, setIsLoadingAcademies] = useState(false);
+  const [joinTenantId, setJoinTenantId] = useState('');
+  const [joinPlayerName, setJoinPlayerName] = useState('');
+  const [joinEmail, setJoinEmail] = useState('');
+  const [joinPhone, setJoinPhone] = useState('');
+  const [joinDob, setJoinDob] = useState('');
+  const [joinGuardianName, setJoinGuardianName] = useState('');
+  const [isSubmittingJoin, setIsSubmittingJoin] = useState(false);
+  const [joinSubmitted, setJoinSubmitted] = useState(false);
+  const [joinError, setJoinError] = useState<string | null>(null);
 
   // FAQ Accordion State
   const [openFaq, setOpenFaq] = useState<number | null>(0);
-
-  useEffect(() => {
-    fetch('http://localhost:3001/v1/health')
-      .then((res) => (res.ok ? setApiHealth('healthy') : setApiHealth('offline')))
-      .catch(() => setApiHealth('offline'));
-  }, []);
 
   const getDashboardHref = () => {
     if (!user) return '/dashboard';
@@ -71,14 +81,79 @@ export default function HomePage() {
     return t('nav.dashboard');
   };
 
-  const handleDemoSubmit = (e: React.FormEvent) => {
+  const handleDemoSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmittingDemo(true);
-    // Simulate API request dispatch
-    setTimeout(() => {
-      setIsSubmittingDemo(false);
+    setDemoError(null);
+    try {
+      const generatedSlug =
+        demoAcademyName
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '')
+          .slice(0, 40) || `academy-${Date.now().toString(36)}`;
+
+      await apiClient.platform.submitAcademyApplication({
+        academyName: demoAcademyName.trim(),
+        academySlug: generatedSlug.length < 2 ? `${generatedSlug}-hub` : generatedSlug,
+        sport: demoSport,
+        city: demoCity.trim() || undefined,
+        contactEmail: demoEmail.trim(),
+        contactPhone: demoPhone.trim() || undefined,
+        notes: `Contact: ${demoContactName.trim()} | Estimated Players: ${demoPlayersCount}`,
+      });
       setDemoSubmitted(true);
-    }, 800);
+    } catch (err: unknown) {
+      setDemoError((err as Error)?.message || 'Failed to submit application');
+    } finally {
+      setIsSubmittingDemo(false);
+    }
+  };
+
+  const openPlayerJoinModal = async () => {
+    setIsPlayerJoinModalOpen(true);
+    setJoinSubmitted(false);
+    setJoinError(null);
+    if (publicAcademies.length === 0) {
+      setIsLoadingAcademies(true);
+      try {
+        const list = await apiClient.portal.listPublicAcademies();
+        setPublicAcademies(list);
+        const first = list[0];
+        if (first && !joinTenantId) {
+          setJoinTenantId(first.id);
+        }
+      } catch {
+        // Fallback gracefully
+      } finally {
+        setIsLoadingAcademies(false);
+      }
+    }
+  };
+
+  const handlePlayerJoinSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!joinTenantId) {
+      setJoinError(locale === 'ar' ? 'يرجى اختيار الأكاديمية الرياضية' : 'Please select an academy');
+      return;
+    }
+    setIsSubmittingJoin(true);
+    setJoinError(null);
+    try {
+      await apiClient.portal.submitPlayerJoinRequest({
+        tenantId: joinTenantId,
+        playerName: joinPlayerName.trim(),
+        contactEmail: joinEmail.trim(),
+        contactPhone: joinPhone.trim() || undefined,
+        dateOfBirth: joinDob || undefined,
+        guardianName: joinGuardianName.trim() || undefined,
+      });
+      setJoinSubmitted(true);
+    } catch (err: unknown) {
+      setJoinError((err as Error)?.message || 'Failed to submit player join request');
+    } finally {
+      setIsSubmittingJoin(false);
+    }
   };
 
   const ChevronIcon = isRtl ? ChevronLeft : ChevronRight;
@@ -138,20 +213,22 @@ export default function HomePage() {
                 ) : (
                   <>
                     <a
-                      href="#demo-request"
+                      href="#academy-application"
                       className="flex items-center gap-2 rounded-xl bg-[var(--accent-primary)] px-6 py-3.5 text-sm font-bold text-white shadow-xl shadow-emerald-600/25 hover:opacity-90 active:scale-95 transition-all cursor-pointer"
                     >
                       <Sparkles className="h-4 w-4" />
-                      <span>{t('landing.requestDemoCta')}</span>
+                      <span>{locale === 'ar' ? 'تسجيل أكاديمية جديدة' : 'Apply for Academy'}</span>
                       <ChevronIcon className="h-4 w-4" />
                     </a>
 
-                    <a
-                      href="#faq"
-                      className="flex items-center gap-2 rounded-xl border border-[var(--border-app)] bg-[var(--bg-surface)] px-6 py-3.5 text-sm font-semibold text-[var(--text-main)] hover:border-[var(--accent-primary)] hover:text-[var(--accent-primary)] transition-all shadow-sm"
+                    <button
+                      type="button"
+                      onClick={openPlayerJoinModal}
+                      className="flex items-center gap-2 rounded-xl border border-[var(--border-app)] bg-[var(--bg-surface)] px-5 py-3.5 text-sm font-semibold text-[var(--text-main)] hover:border-[var(--accent-primary)] hover:text-[var(--accent-primary)] transition-all shadow-sm cursor-pointer"
                     >
-                      <span>{t('landing.contactSalesCta')}</span>
-                    </a>
+                      <UserPlus className="h-4 w-4 text-[var(--accent-primary)]" />
+                      <span>{locale === 'ar' ? 'طلب انضمام لاعب / ناشئ' : 'Join as Player'}</span>
+                    </button>
 
                     <Link
                       href="/login"
@@ -161,29 +238,6 @@ export default function HomePage() {
                     </Link>
                   </>
                 )}
-              </div>
-
-              {/* Health Indicator */}
-              <div className="pt-4 flex items-center justify-center gap-2 text-xs text-[var(--text-muted)]">
-                <Activity
-                  className={`h-4 w-4 ${
-                    apiHealth === 'healthy'
-                      ? 'text-emerald-500'
-                      : apiHealth === 'checking'
-                        ? 'text-amber-500 animate-pulse'
-                        : 'text-rose-500'
-                  }`}
-                />
-                <span>
-                  {t('landing.apiHealth')}{' '}
-                  {apiHealth === 'healthy' ? (
-                    <strong className="text-emerald-500">{t('landing.apiConnected')}</strong>
-                  ) : apiHealth === 'checking' ? (
-                    <strong className="text-amber-500">{t('landing.apiChecking')}</strong>
-                  ) : (
-                    <strong className="text-rose-500">{t('landing.apiOffline')}</strong>
-                  )}
-                </span>
               </div>
             </div>
           </div>
@@ -530,28 +584,43 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Demo Request Section */}
-        <section id="demo-request" className="py-20 bg-[var(--bg-base)] border-b border-[var(--border-subtle)]">
+        {/* Academy Application Section */}
+        <section id="academy-application" className="py-20 bg-[var(--bg-base)] border-b border-[var(--border-subtle)] relative">
+          <div id="demo-request" className="absolute -top-10" />
           <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
             <div className="rounded-3xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-6 sm:p-12 shadow-2xl space-y-8">
               <div className="text-center space-y-3">
                 <div className="inline-flex items-center gap-2 rounded-full border border-[var(--border-app)] bg-[var(--badge-bg)] px-4 py-1 text-xs font-bold text-[var(--accent-primary)]">
                   <Sparkles className="h-4 w-4" />
-                  <span>{t('landing.demoModalTitle')}</span>
+                  <span>{locale === 'ar' ? 'طلب اعتماد وتسجيل أكاديمية' : 'Academy Application'}</span>
                 </div>
                 <h2 className="text-2xl sm:text-4xl font-extrabold text-[var(--text-main)]">
                   {locale === 'ar' ? 'جاهز لنقل أكاديميتك إلى المستوى الاحترافي؟' : 'Ready to Elevate Your Sports Academy?'}
                 </h2>
                 <p className="text-xs sm:text-sm text-[var(--text-muted)] max-w-2xl mx-auto">
-                  {t('landing.demoModalDesc')}
+                  {locale === 'ar'
+                    ? 'قدم بيانات أكاديميتك الرياضية ليتم مراجعتها واعتماد المستأجر والفرع وتجهيز بيئة العمل السحابية.'
+                    : 'Submit your academy details for platform review, workspace provisioning, and onboarding.'}
                 </p>
               </div>
+
+              {demoError && (
+                <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 p-4 text-xs sm:text-sm text-rose-500 text-center">
+                  {demoError}
+                </div>
+              )}
 
               {demoSubmitted ? (
                 <div className="rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-8 text-center space-y-3 animate-in fade-in">
                   <CheckCircle2 className="h-12 w-12 text-emerald-500 mx-auto" />
-                  <h3 className="text-xl font-bold text-[var(--text-main)]">{t('landing.demoSuccessTitle')}</h3>
-                  <p className="text-sm text-[var(--text-muted)] max-w-md mx-auto">{t('landing.demoSuccessDesc')}</p>
+                  <h3 className="text-xl font-bold text-[var(--text-main)]">
+                    {locale === 'ar' ? 'تم استلام طلب اعتماد الأكاديمية بنجاح!' : 'Academy Application Submitted!'}
+                  </h3>
+                  <p className="text-sm text-[var(--text-muted)] max-w-md mx-auto">
+                    {locale === 'ar'
+                      ? 'شكراً لاهتمامكم. سيقوم المشرف العام للمنصة بمراجعة الطلب واعتماد الأكاديمية وتفعيل حساب المدير الرئيسي.'
+                      : 'Thank you for applying. A platform administrator will review your application and provision your workspace.'}
+                  </p>
                 </div>
               ) : (
                 <form onSubmit={handleDemoSubmit} className="space-y-4">
@@ -572,15 +641,10 @@ export default function HomePage() {
                       <label className="text-xs font-bold text-[var(--text-main)]">{t('landing.demoSport')} *</label>
                       <select
                         value={demoSport}
-                        onChange={(e) => setDemoSport(e.target.value)}
+                        onChange={(e) => setDemoSport(e.target.value as 'FOOTBALL')}
                         className="w-full rounded-xl border border-[var(--border-app)] bg-[var(--bg-base)] px-4 py-2.5 text-sm text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none"
                       >
                         <option value="FOOTBALL">⚽ {locale === 'ar' ? 'كرة قدم (Football)' : 'Football (Soccer)'}</option>
-                        <option value="PADEL">🎾 {locale === 'ar' ? 'بادل (Padel)' : 'Padel'}</option>
-                        <option value="SWIMMING">🏊 {locale === 'ar' ? 'سباحة (Swimming)' : 'Swimming'}</option>
-                        <option value="BASKETBALL">🏀 {locale === 'ar' ? 'كرة سلة (Basketball)' : 'Basketball'}</option>
-                        <option value="TENNIS">🎾 {locale === 'ar' ? 'تنس أرضي (Tennis)' : 'Tennis'}</option>
-                        <option value="OTHER">🏆 {locale === 'ar' ? 'رياضة أخرى' : 'Other Sport'}</option>
                       </select>
                     </div>
 
@@ -723,9 +787,17 @@ export default function HomePage() {
               <span>Multi-Tenant RLS Protected</span>
             </span>
             <span>•</span>
-            <a href="#demo-request" className="hover:text-[var(--text-main)] transition-colors">
-              {t('landing.requestDemoCta')}
+            <a href="#academy-application" className="hover:text-[var(--text-main)] transition-colors">
+              {locale === 'ar' ? 'تسجيل أكاديمية' : 'Apply for Academy'}
             </a>
+            <span>•</span>
+            <button
+              type="button"
+              onClick={openPlayerJoinModal}
+              className="hover:text-[var(--text-main)] transition-colors cursor-pointer"
+            >
+              {locale === 'ar' ? 'طلب انضمام لاعب' : 'Join as Player'}
+            </button>
             <span>•</span>
             <Link href="/login" className="hover:text-[var(--text-main)] transition-colors">
               {t('common.login')}
@@ -733,6 +805,186 @@ export default function HomePage() {
           </div>
         </div>
       </footer>
+
+      {/* Player Join Request Modal */}
+      {isPlayerJoinModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="w-full max-w-lg rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] shadow-2xl p-6 sm:p-8 space-y-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-4">
+              <div className="flex items-center gap-2">
+                <UserPlus className="h-5 w-5 text-[var(--accent-primary)]" />
+                <h3 className="text-lg font-bold text-[var(--text-main)]">
+                  {locale === 'ar' ? 'طلب انضمام لاعب / ناشئ' : 'Player / Guardian Join Request'}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsPlayerJoinModalOpen(false)}
+                className="rounded-lg p-1 text-[var(--text-muted)] hover:bg-[var(--bg-base)] hover:text-[var(--text-main)] transition-colors cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {joinSubmitted ? (
+              <div className="text-center py-6 space-y-4">
+                <CheckCircle2 className="h-14 w-14 text-emerald-500 mx-auto" />
+                <h4 className="text-lg font-bold text-[var(--text-main)]">
+                  {locale === 'ar' ? 'تم إرسال طلب الانضمام بنجاح!' : 'Join Request Submitted Successfully!'}
+                </h4>
+                <p className="text-sm text-[var(--text-muted)] max-w-sm mx-auto">
+                  {locale === 'ar'
+                    ? 'سيقوم الجهاز الإداري للأكاديمية بمراجعة الطلب وتسكين اللاعب في المجموعة والفرع المناسب وتوليد بطاقة العضوية الذكية.'
+                    : 'The academy staff will review your application, assign appropriate branch/group, and issue the player digital membership card.'}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setIsPlayerJoinModalOpen(false)}
+                  className="rounded-xl bg-[var(--accent-primary)] px-6 py-2.5 text-sm font-bold text-white shadow-md hover:opacity-90 transition-all cursor-pointer"
+                >
+                  {locale === 'ar' ? 'حسناً، فهمت' : 'Done'}
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handlePlayerJoinSubmit} className="space-y-4">
+                {joinError && (
+                  <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 p-3 text-xs text-rose-500">
+                    {joinError}
+                  </div>
+                )}
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-[var(--text-main)]">
+                    {locale === 'ar' ? 'الأكاديمية الرياضية المراد الانضمام إليها *' : 'Select Target Academy *'}
+                  </label>
+                  {isLoadingAcademies ? (
+                    <div className="text-xs text-[var(--text-muted)] py-2">
+                      {locale === 'ar' ? 'جارٍ تحميل قائمة الأكاديميات...' : 'Loading academies...'}
+                    </div>
+                  ) : publicAcademies.length === 0 ? (
+                    <div className="text-xs text-amber-500 py-1">
+                      {locale === 'ar' ? 'لا توجد أكاديميات نشطة متاحة حالياً' : 'No active academies available at the moment'}
+                    </div>
+                  ) : (
+                    <select
+                      value={joinTenantId}
+                      onChange={(e) => setJoinTenantId(e.target.value)}
+                      required
+                      className="w-full rounded-xl border border-[var(--border-app)] bg-[var(--bg-base)] px-4 py-2.5 text-sm text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none"
+                    >
+                      {publicAcademies.map((ac) => (
+                        <option key={ac.id} value={ac.id}>
+                          {ac.name} ({ac.slug})
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-[var(--text-main)]">
+                    {locale === 'ar' ? 'اسم اللاعب بالكامل *' : 'Player Full Name *'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={joinPlayerName}
+                    onChange={(e) => setJoinPlayerName(e.target.value)}
+                    placeholder={locale === 'ar' ? 'مثال: يوسف أحمد محمود' : 'e.g. Youssef Ahmed'}
+                    className="w-full rounded-xl border border-[var(--border-app)] bg-[var(--bg-base)] px-4 py-2.5 text-sm text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-[var(--text-main)]">
+                      {locale === 'ar' ? 'البريد الإلكتروني للتواصل *' : 'Contact Email *'}
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      value={joinEmail}
+                      onChange={(e) => setJoinEmail(e.target.value)}
+                      placeholder="parent@example.com"
+                      className="w-full rounded-xl border border-[var(--border-app)] bg-[var(--bg-base)] px-4 py-2.5 text-sm text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-[var(--text-main)]">
+                      {locale === 'ar' ? 'رقم الهاتف / الواتساب' : 'Phone / WhatsApp'}
+                    </label>
+                    <input
+                      type="tel"
+                      value={joinPhone}
+                      onChange={(e) => setJoinPhone(e.target.value)}
+                      placeholder="+20 100 123 4567"
+                      className="w-full rounded-xl border border-[var(--border-app)] bg-[var(--bg-base)] px-4 py-2.5 text-sm text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-[var(--text-main)]">
+                      {locale === 'ar' ? 'تاريخ الميلاد' : 'Date of Birth'}
+                    </label>
+                    <input
+                      type="date"
+                      value={joinDob}
+                      onChange={(e) => setJoinDob(e.target.value)}
+                      className="w-full rounded-xl border border-[var(--border-app)] bg-[var(--bg-base)] px-4 py-2.5 text-sm text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-[var(--text-main)]">
+                      {locale === 'ar' ? 'اسم ولي الأمر (اختياري)' : 'Guardian Name (Optional)'}
+                    </label>
+                    <input
+                      type="text"
+                      value={joinGuardianName}
+                      onChange={(e) => setJoinGuardianName(e.target.value)}
+                      placeholder={locale === 'ar' ? 'اسم الأب أو الأم' : 'Parent / Guardian name'}
+                      className="w-full rounded-xl border border-[var(--border-app)] bg-[var(--bg-base)] px-4 py-2.5 text-sm text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-2 flex items-center justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsPlayerJoinModalOpen(false)}
+                    className="rounded-xl border border-[var(--border-app)] bg-[var(--bg-surface)] px-4 py-2.5 text-xs font-semibold text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer"
+                  >
+                    {locale === 'ar' ? 'إلغاء' : 'Cancel'}
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmittingJoin || !joinTenantId}
+                    className="flex items-center gap-2 rounded-xl bg-[var(--accent-primary)] px-6 py-2.5 text-xs font-bold text-white shadow-md hover:opacity-90 transition-all disabled:opacity-50 cursor-pointer"
+                  >
+                    <UserPlus className="h-4 w-4" />
+                    <span>
+                      {isSubmittingJoin
+                        ? locale === 'ar'
+                          ? 'جارٍ الإرسال...'
+                          : 'Submitting...'
+                        : locale === 'ar'
+                          ? 'إرسال طلب الانضمام'
+                          : 'Submit Join Request'}
+                    </span>
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

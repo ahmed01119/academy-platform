@@ -90,6 +90,18 @@ import type {
   AcademyFinancialDashboardMetrics,
   RequestSupportAccessRequest,
   SupportAccessResponse,
+  AppNotificationItem,
+  AcademyApplicationItem,
+  CreateAcademyApplicationRequest,
+  ReviewAcademyApplicationRequest,
+  PlayerJoinRequestItem,
+  CreatePlayerJoinRequest,
+  ReviewPlayerJoinRequest,
+  StorageMetrics,
+  StorageMaintenanceDryRunResponse,
+  ExecuteStorageMaintenanceRequest,
+  InvitePlatformSuperAdminRequest,
+  PlatformInviteUserRequest,
 } from '@academy/shared';
 
 const API_BASE_URL =
@@ -433,6 +445,21 @@ export const api = {
         body: JSON.stringify(data),
       });
     },
+
+    async listJoinRequests(status?: string): Promise<PlayerJoinRequestItem[]> {
+      const qs = status ? `?status=${encodeURIComponent(status)}` : '';
+      return request(`/players/join-requests${qs}`, { method: 'GET' });
+    },
+
+    async reviewJoinRequest(
+      id: string,
+      data: ReviewPlayerJoinRequest,
+    ): Promise<PlayerJoinRequestItem> {
+      return request(`/players/join-requests/${id}/review`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
   },
 
   enrollments: {
@@ -767,6 +794,70 @@ export const api = {
         body: JSON.stringify(data),
       });
     },
+
+    async submitAcademyApplication(data: CreateAcademyApplicationRequest): Promise<AcademyApplicationItem> {
+      return request('/platform/applications', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
+
+    async listAcademyApplications(status?: string): Promise<AcademyApplicationItem[]> {
+      const qs = status ? `?status=${encodeURIComponent(status)}` : '';
+      return request(`/platform/applications${qs}`, { method: 'GET' });
+    },
+
+    async reviewAcademyApplication(
+      id: string,
+      data: ReviewAcademyApplicationRequest,
+    ): Promise<AcademyApplicationItem> {
+      return request(`/platform/applications/${id}/review`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
+
+    async getStorageMetrics(): Promise<StorageMetrics> {
+      return request('/platform/storage/metrics', { method: 'GET' });
+    },
+
+    async dryRunStorageMaintenance(): Promise<StorageMaintenanceDryRunResponse> {
+      return request('/platform/storage/maintenance/dry-run', { method: 'POST' });
+    },
+
+    async executeStorageMaintenance(data: ExecuteStorageMaintenanceRequest): Promise<{
+      success: boolean;
+      purgedTokensCount: number;
+      purgedLogsCount: number;
+      message: string;
+    }> {
+      return request('/platform/storage/maintenance/execute', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
+
+    async inviteSuperAdmin(data: InvitePlatformSuperAdminRequest): Promise<{
+      success: boolean;
+      message: string;
+      userId: string;
+    }> {
+      return request('/platform/super-admins/invite', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
+
+    async inviteUser(data: PlatformInviteUserRequest): Promise<{
+      success: boolean;
+      message: string;
+      userId: string;
+    }> {
+      return request('/platform/users/invite', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
   },
 
   finance: {
@@ -974,6 +1065,44 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(data),
       });
+    },
+
+    async listPublicAcademies(): Promise<Array<{ id: string; name: string; slug: string }>> {
+      return request('/portal/academies', { method: 'GET' });
+    },
+
+    async submitPlayerJoinRequest(data: CreatePlayerJoinRequest): Promise<PlayerJoinRequestItem> {
+      return request('/portal/player-join-requests', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
+  },
+
+  notifications: {
+    async list(params?: { unreadOnly?: boolean; limit?: number; offset?: number }): Promise<{
+      items: AppNotificationItem[];
+      total: number;
+      unreadCount: number;
+    }> {
+      const query = new URLSearchParams();
+      if (params?.unreadOnly) query.set('unreadOnly', 'true');
+      if (params?.limit) query.set('limit', String(params.limit));
+      if (params?.offset) query.set('offset', String(params.offset));
+      const qs = query.toString() ? `?${query.toString()}` : '';
+      return request(`/notifications${qs}`, { method: 'GET' });
+    },
+
+    async getUnreadCount(): Promise<{ unreadCount: number }> {
+      return request('/notifications/unread-count', { method: 'GET' });
+    },
+
+    async markRead(id: string): Promise<AppNotificationItem> {
+      return request(`/notifications/${id}/read`, { method: 'PATCH' });
+    },
+
+    async markAllRead(): Promise<{ success: boolean; markedCount: number }> {
+      return request('/notifications/read-all', { method: 'PATCH' });
     },
   },
 };

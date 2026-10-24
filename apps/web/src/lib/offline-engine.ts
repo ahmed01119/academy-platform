@@ -1,4 +1,6 @@
 import { offlineStore } from './offline-attendance-store';
+import { apiClient } from './api-client';
+import type { SessionSummary } from '@academy/shared';
 
 const DB_PREFIX = 'academy_offline_';
 const DB_VERSION = 1;
@@ -188,3 +190,48 @@ export class OfflineEngine {
 }
 
 export const offlineEngine = new OfflineEngine();
+
+export interface OfflinePreparationResult {
+  sessionsCached: number;
+  playersCached: number;
+  cachedAt: string;
+}
+
+export async function prepareForOfflineUse(
+  tenantId: string,
+  branchId?: string,
+): Promise<OfflinePreparationResult> {
+  const todayStr = new Date().toISOString().slice(0, 10);
+  let sessions: SessionSummary[] = [];
+  try {
+    const res = await apiClient.attendance.listSessions({
+      branchId,
+      dateFrom: todayStr,
+      limit: 15,
+    });
+    sessions = res.items;
+    if (sessions.length === 0) {
+      const fallback = await apiClient.attendance.listSessions({ branchId, limit: 10 });
+      sessions = fallback.items;
+    }
+  } catch {
+    sessions = [];
+  }
+
+  let totalPlayers = 0;
+  for (const session of sessions) {
+    try {
+      const details = await apiClient.attendance.getSession(session.id);
+      await offlineStore.cacheSessionRoster(details);
+      totalPlayers += details.roster?.length || 0;
+    } catch {
+      // Continue caching remaining sessions
+    }
+  }
+
+  return {
+    sessionsCached: sessions.length,
+    playersCached: totalPlayers,
+    cachedAt: new Date().toISOString(),
+  };
+}

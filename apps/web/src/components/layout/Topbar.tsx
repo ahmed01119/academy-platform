@@ -1,12 +1,15 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '../../lib/auth-context';
 import { useLocale } from '../../lib/locale-context';
 import { ThemeToggle } from '../ThemeToggle';
 import { LocaleToggle } from '../LocaleToggle';
+import { CommandPalette } from '../CommandPalette';
+import api from '../../lib/api-client';
+import type { AppNotificationItem } from '@academy/shared';
 import {
   Menu,
   Bell,
@@ -17,6 +20,7 @@ import {
   Sparkles,
   ChevronRight,
   ShieldAlert,
+  CheckCheck,
 } from 'lucide-react';
 
 import type { BreadcrumbItem } from './AppShell';
@@ -28,10 +32,89 @@ interface TopbarProps {
 
 export function Topbar({ onOpenMobile, breadcrumbs: customBreadcrumbs }: TopbarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const { user, activeTenant, logout } = useAuth();
   const { t, locale, isRtl } = useLocale();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const [notifications, setNotifications] = useState<AppNotificationItem[]>([]);
+  const [unreadCount, setUnreadCount] = useState<number>(0);
+  const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
+
+  // Listen for open-command-palette event from global shortcut
+  useEffect(() => {
+    const handleOpen = () => setIsCommandPaletteOpen(true);
+    window.addEventListener('open-command-palette', handleOpen);
+    return () => window.removeEventListener('open-command-palette', handleOpen);
+  }, []);
+
+  // Poll for unread count
+  useEffect(() => {
+    if (!user) return;
+    let mounted = true;
+    const fetchCount = async () => {
+      try {
+        const res = await api.notifications.getUnreadCount();
+        if (mounted) setUnreadCount(res.unreadCount);
+      } catch {
+        // ignore
+      }
+    };
+    fetchCount();
+    const interval = setInterval(fetchCount, 30000);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, [user]);
+
+  // Fetch full notifications list when opened
+  useEffect(() => {
+    if (!isNotificationsOpen || !user) return;
+    setIsLoadingNotifications(true);
+    api.notifications
+      .list({ limit: 8 })
+      .then((res) => {
+        setNotifications(res.items);
+        setUnreadCount(res.unreadCount);
+      })
+      .catch(() => {})
+      .finally(() => setIsLoadingNotifications(false));
+  }, [isNotificationsOpen, user]);
+
+  const handleMarkAllRead = async () => {
+    try {
+      await api.notifications.markAllRead();
+      setUnreadCount(0);
+      setNotifications((prev) =>
+        prev.map((n) => ({ ...n, readAt: new Date().toISOString() })),
+      );
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleNotificationClick = async (item: AppNotificationItem) => {
+    const isRead = Boolean(item.readAt);
+    if (!isRead) {
+      try {
+        await api.notifications.markRead(item.id);
+        setUnreadCount((prev) => Math.max(0, prev - 1));
+        setNotifications((prev) =>
+          prev.map((n) =>
+            n.id === item.id ? { ...n, readAt: new Date().toISOString() } : n,
+          ),
+        );
+      } catch {
+        // ignore
+      }
+    }
+    setIsNotificationsOpen(false);
+    if (item.href) {
+      router.push(item.href);
+    }
+  };
 
   // Generate breadcrumb items from pathname if no custom breadcrumbs provided
   const pathSegments = pathname.split('/').filter(Boolean);
@@ -77,7 +160,7 @@ export function Topbar({ onOpenMobile, breadcrumbs: customBreadcrumbs }: TopbarP
     VIEWER: locale === 'ar' ? 'مراقب' : 'Viewer',
   };
 
-  const isSuperAdmin = Boolean(user?.isPlatformSuperAdmin);
+  const isSuperAdmin = Boolean(user?.isPlatformSuperAdmin || user?.isPlatformOwner);
 
   const effectiveBreadcrumbs =
     customBreadcrumbs && customBreadcrumbs.length > 0
@@ -88,126 +171,170 @@ export function Topbar({ onOpenMobile, breadcrumbs: customBreadcrumbs }: TopbarP
       : autoBreadcrumbs;
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-[var(--border-app)] bg-[var(--bg-base)]/85 px-4 backdrop-blur-md sm:px-6 transition-colors">
-      {/* Left / Start: Mobile Menu Toggle & Contextual Breadcrumbs */}
-      <div className="flex items-center gap-3 min-w-0">
-        <button
-          type="button"
-          onClick={onOpenMobile}
-          className="lg:hidden flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--border-app)] text-[var(--text-main)] hover:bg-[var(--bg-surface)] transition-colors"
-          aria-label={t('common.menu', 'القائمة')}
-        >
-          <Menu className="h-5 w-5" />
-        </button>
+    <>
+      <CommandPalette
+        isOpen={isCommandPaletteOpen}
+        onClose={() => setIsCommandPaletteOpen(false)}
+      />
 
-        {/* Breadcrumb Path */}
-        <nav
-          aria-label="Breadcrumb"
-          className="hidden sm:flex items-center gap-1.5 text-xs text-[var(--text-muted)] truncate"
-        >
-          <Link
-            href="/"
-            className="hover:text-[var(--text-main)] transition-colors font-medium flex items-center gap-1"
-          >
-            {t('common.home', 'الرئيسية')}
-          </Link>
-          {effectiveBreadcrumbs.map((crumb, idx) => {
-            const isLast = idx === effectiveBreadcrumbs.length - 1;
-            return (
-              <React.Fragment key={`${crumb.label}-${idx}`}>
-                <ChevronRight
-                  className={`h-3 w-3 text-[var(--text-muted)] shrink-0 ${
-                    isRtl ? 'rotate-180' : ''
-                  }`}
-                />
-                {isLast || !crumb.url ? (
-                  <span className="font-semibold text-[var(--text-main)] truncate max-w-[150px]">
-                    {crumb.label}
-                  </span>
-                ) : (
-                  <Link
-                    href={crumb.url}
-                    className="hover:text-[var(--text-main)] transition-colors truncate max-w-[120px]"
-                  >
-                    {crumb.label}
-                  </Link>
-                )}
-              </React.Fragment>
-            );
-          })}
-        </nav>
-      </div>
-
-      {/* Right / End: Global Controls (Search, Academy, Notifications, Locale, Theme, Profile) */}
-      <div className="flex items-center gap-2 sm:gap-3">
-        {/* Quick Search Trigger */}
-        <button
-          type="button"
-          onClick={() => {
-            const searchInput = document.getElementById('global-page-search');
-            if (searchInput) {
-              searchInput.focus();
-            }
-          }}
-          className="hidden md:flex items-center gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-1.5 text-xs text-[var(--text-muted)] hover:border-emerald-500/50 hover:text-[var(--text-main)] transition-all shadow-sm"
-        >
-          <Search className="h-3.5 w-3.5" />
-          <span className="text-[11px]">{t('common.searchPlaceholder', 'بحث سريع...')}</span>
-          <kbd className="hidden lg:inline-flex items-center rounded bg-[var(--bg-surface-subtle)] px-1.5 py-0.5 text-[9px] font-mono text-[var(--text-muted)] border border-[var(--border-subtle)]">
-            Ctrl K
-          </kbd>
-        </button>
-
-        {/* Notifications Icon with Mock Badge */}
-        <div className="relative">
+      <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-[var(--border-app)] bg-[var(--bg-base)]/85 px-4 backdrop-blur-md sm:px-6 transition-colors">
+        {/* Left / Start: Mobile Menu Toggle & Contextual Breadcrumbs */}
+        <div className="flex items-center gap-3 min-w-0">
           <button
             type="button"
-            onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-            className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[var(--text-muted)] hover:border-emerald-500/50 hover:text-[var(--text-main)] transition-colors shadow-sm"
-            aria-label={t('common.notifications', 'الإشعارات')}
+            onClick={onOpenMobile}
+            className="lg:hidden flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--border-app)] text-[var(--text-main)] hover:bg-[var(--bg-surface)] transition-colors"
+            aria-label={t('common.menu', 'القائمة')}
           >
-            <Bell className="h-4 w-4" />
-            <span className="absolute top-1.5 end-1.5 flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-            </span>
+            <Menu className="h-5 w-5" />
           </button>
 
-          {isNotificationsOpen && (
-            <div className="absolute end-0 mt-2 w-80 rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-3 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150">
-              <div className="flex items-center justify-between pb-2 border-b border-[var(--border-subtle)]">
-                <span className="font-bold text-xs text-[var(--text-main)]">
-                  {t('common.notifications', 'الإشعارات')}
-                </span>
-                <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold text-emerald-400">
-                  {locale === 'ar' ? '2 جديد' : '2 New'}
-                </span>
-              </div>
-              <div className="mt-2 space-y-2">
-                <div className="rounded-xl bg-[var(--bg-surface-subtle)] p-2.5 text-xs space-y-1">
-                  <div className="font-bold text-[11px] text-[var(--text-main)]">
-                    {locale === 'ar' ? 'اكتمال الحصة التدريبية' : 'Training Session Completed'}
-                  </div>
-                  <div className="text-[10px] text-[var(--text-muted)]">
-                    {locale === 'ar'
-                      ? 'تم تسجيل حضور 22 لاعب في مجموعة النمور U14 بنجاح.'
-                      : 'Attendance recorded for 22 players in U14 Tigers.'}
-                  </div>
-                </div>
-                <div className="rounded-xl bg-[var(--bg-surface-subtle)] p-2.5 text-xs space-y-1">
-                  <div className="font-bold text-[11px] text-[var(--text-main)]">
-                    {locale === 'ar' ? 'تحديث بطاقة لاعب' : 'Player Card Rotated'}
-                  </div>
-                  <div className="text-[10px] text-[var(--text-muted)]">
-                    {locale === 'ar'
-                      ? 'تم تدوير رمز QR للعضوية للاعب عمر شريف.'
-                      : 'Membership QR card rotated for player Omar Sherif.'}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+          {/* Breadcrumb Path */}
+          <nav
+            aria-label="Breadcrumb"
+            className="hidden sm:flex items-center gap-1.5 text-xs text-[var(--text-muted)] truncate"
+          >
+            <Link
+              href="/"
+              className="hover:text-[var(--text-main)] transition-colors font-medium flex items-center gap-1"
+            >
+              {t('common.home', 'الرئيسية')}
+            </Link>
+            {effectiveBreadcrumbs.map((crumb, idx) => {
+              const isLast = idx === effectiveBreadcrumbs.length - 1;
+              return (
+                <React.Fragment key={`${crumb.label}-${idx}`}>
+                  <ChevronRight
+                    className={`h-3 w-3 text-[var(--text-muted)] shrink-0 ${
+                      isRtl ? 'rotate-180' : ''
+                    }`}
+                  />
+                  {isLast || !crumb.url ? (
+                    <span className="font-semibold text-[var(--text-main)] truncate max-w-[150px]">
+                      {crumb.label}
+                    </span>
+                  ) : (
+                    <Link
+                      href={crumb.url}
+                      className="hover:text-[var(--text-main)] transition-colors truncate max-w-[120px]"
+                    >
+                      {crumb.label}
+                    </Link>
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </nav>
         </div>
+
+        {/* Right / End: Global Controls (Search, Academy, Notifications, Locale, Theme, Profile) */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Quick Search Trigger */}
+          <button
+            type="button"
+            onClick={() => setIsCommandPaletteOpen(true)}
+            className="hidden md:flex items-center gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-1.5 text-xs text-[var(--text-muted)] hover:border-emerald-500/50 hover:text-[var(--text-main)] transition-all shadow-sm"
+          >
+            <Search className="h-3.5 w-3.5" />
+            <span className="text-[11px]">{t('common.searchPlaceholder', 'بحث سريع...')}</span>
+            <kbd className="hidden lg:inline-flex items-center rounded bg-[var(--bg-surface-subtle)] px-1.5 py-0.5 text-[9px] font-mono text-[var(--text-muted)] border border-[var(--border-subtle)]">
+              Ctrl K
+            </kbd>
+          </button>
+
+          {/* Notifications Icon with Real Badge */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+              className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[var(--text-muted)] hover:border-emerald-500/50 hover:text-[var(--text-main)] transition-colors shadow-sm"
+              aria-label={t('common.notifications', 'الإشعارات')}
+            >
+              <Bell className="h-4 w-4" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -end-1 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-emerald-500 text-[9px] font-bold text-white shadow-sm">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
+            </button>
+
+            {isNotificationsOpen && (
+              <div className="absolute end-0 mt-2 w-80 sm:w-96 rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-3 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150">
+                <div className="flex items-center justify-between pb-2 border-b border-[var(--border-subtle)]">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-xs text-[var(--text-main)]">
+                      {t('common.notifications', 'الإشعارات')}
+                    </span>
+                    {unreadCount > 0 && (
+                      <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold text-emerald-400">
+                        {unreadCount} {locale === 'ar' ? 'جديد' : 'New'}
+                      </span>
+                    )}
+                  </div>
+                  {unreadCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleMarkAllRead}
+                      className="text-[10px] text-emerald-400 hover:text-emerald-300 font-medium flex items-center gap-1"
+                    >
+                      <CheckCheck className="w-3 h-3" />
+                      {locale === 'ar' ? 'تحديد الكل كمقروء' : 'Mark all read'}
+                    </button>
+                  )}
+                </div>
+
+                <div className="mt-2 space-y-1.5 max-h-[350px] overflow-y-auto">
+                  {isLoadingNotifications ? (
+                    <div className="py-6 text-center text-xs text-[var(--text-muted)]">
+                      {locale === 'ar' ? 'جاري تحميل الإشعارات...' : 'Loading notifications...'}
+                    </div>
+                  ) : notifications.length === 0 ? (
+                    <div className="py-8 text-center text-xs text-[var(--text-muted)]">
+                      {locale === 'ar' ? 'لا توجد إشعارات حالياً' : 'No notifications yet'}
+                    </div>
+                  ) : (
+                    notifications.map((item) => {
+                      const isRead = Boolean(item.readAt);
+                      return (
+                        <div
+                          key={item.id}
+                          onClick={() => handleNotificationClick(item)}
+                          className={`rounded-xl p-2.5 text-xs space-y-1 cursor-pointer transition-colors ${
+                            !isRead
+                              ? 'bg-emerald-500/10 border border-emerald-500/20'
+                              : 'bg-[var(--bg-surface-subtle)] hover:bg-[var(--bg-surface-subtle)]/80'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="font-bold text-[11px] text-[var(--text-main)] leading-tight">
+                              {item.title}
+                            </div>
+                            {!isRead && (
+                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0 mt-1" />
+                            )}
+                          </div>
+                        <div className="text-[10px] text-[var(--text-muted)] leading-relaxed">
+                          {item.body}
+                        </div>
+                        <div className="text-[9px] text-[var(--text-muted)]/70 pt-0.5">
+                          {new Date(item.createdAt).toLocaleDateString(
+                            locale === 'ar' ? 'ar-EG' : 'en-US',
+                            {
+                              month: 'short',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            },
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+                </div>
+              </div>
+            )}
+          </div>
 
         {/* Language & Theme Controls */}
         <div className="flex items-center gap-1 border-s border-e border-[var(--border-app)] px-2">
@@ -302,6 +429,7 @@ export function Topbar({ onOpenMobile, breadcrumbs: customBreadcrumbs }: TopbarP
         )}
       </div>
     </header>
+    </>
   );
 }
 

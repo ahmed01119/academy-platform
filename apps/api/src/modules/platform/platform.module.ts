@@ -4,9 +4,10 @@ import { PlatformService } from './platform.service';
 import { DatabaseModule } from '../database/database.module';
 import { AuditModule } from '../audit/audit.module';
 import { HealthModule } from '../health/health.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
-  imports: [DatabaseModule, AuditModule, HealthModule],
+  imports: [DatabaseModule, AuditModule, HealthModule, NotificationsModule],
   controllers: [PlatformController],
   providers: [PlatformService],
   exports: [PlatformService],

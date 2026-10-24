@@ -53,4 +53,13 @@ describe('offline engine', () => {
     await offlineEngine.purgeTenant(tenantId);
     expect(await offlineEngine.getEvaluationDraft(tenantId, 'draft-2')).toBeNull();
   });
+
+  it('runs prepareForOfflineUse gracefully when network is disconnected', async () => {
+    const { prepareForOfflineUse } = await import('./offline-engine');
+    const result = await prepareForOfflineUse(tenantId);
+    expect(result).toBeDefined();
+    expect(typeof result.sessionsCached).toBe('number');
+    expect(typeof result.playersCached).toBe('number');
+    expect(result.cachedAt).toBeDefined();
+  });
 });

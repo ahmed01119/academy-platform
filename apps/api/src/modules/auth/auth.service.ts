@@ -207,6 +207,7 @@ export class AuthService {
       phone: result.user.phone,
       isEmailVerified: result.user.isEmailVerified,
       isPlatformSuperAdmin: false,
+      isPlatformOwner: false,
       hasPlayerProfile: false,
       hasGuardianProfile: false,
       createdAt: result.user.createdAt.toISOString(),
@@ -327,6 +328,7 @@ export class AuthService {
       ipAddress,
       undefined,
       user.isPlatformSuperAdmin,
+      user.isPlatformOwner,
     );
 
     await this.auditService.logEvent({
@@ -346,6 +348,7 @@ export class AuthService {
       phone: user.phone,
       isEmailVerified: user.isEmailVerified,
       isPlatformSuperAdmin: user.isPlatformSuperAdmin,
+      isPlatformOwner: user.isPlatformOwner,
       hasPlayerProfile: Boolean(user.playerProfile),
       hasGuardianProfile: (user.guardianProfiles?.length ?? 0) > 0,
       createdAt: user.createdAt.toISOString(),
@@ -421,6 +424,7 @@ export class AuthService {
       phone: user.phone,
       isEmailVerified: user.isEmailVerified,
       isPlatformSuperAdmin: user.isPlatformSuperAdmin,
+      isPlatformOwner: user.isPlatformOwner,
       hasPlayerProfile: Boolean(user.playerProfile),
       hasGuardianProfile: (user.guardianProfiles?.length ?? 0) > 0,
       createdAt: user.createdAt.toISOString(),
@@ -721,6 +725,7 @@ export class AuthService {
         phone: user.phone,
         isEmailVerified: user.isEmailVerified,
         isPlatformSuperAdmin: user.isPlatformSuperAdmin,
+        isPlatformOwner: user.isPlatformOwner,
         hasPlayerProfile: Boolean(user.playerProfile),
         hasGuardianProfile: (user.guardianProfiles?.length ?? 0) > 0,
         createdAt: user.createdAt.toISOString(),

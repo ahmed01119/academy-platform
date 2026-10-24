@@ -29,6 +29,9 @@ import {
   KeyRound,
   ShieldAlert,
   Layers,
+  Inbox,
+  Database,
+  Crown,
 } from 'lucide-react';
 import type {
   PlatformAcademyItem,
@@ -37,7 +40,12 @@ import type {
   PlatformSecurityEvent,
   PlatformUserItem,
   SaaSPlanItem,
+  AcademyApplicationItem,
 } from '@academy/shared';
+import { ApplicationsTab } from '../../components/platform/ApplicationsTab';
+import { StorageTab } from '../../components/platform/StorageTab';
+import { GovernanceTab } from '../../components/platform/GovernanceTab';
+import { PromptModal, type PromptModalConfig } from '../../components/ui/PromptModal';
 
 export default function PlatformSuperAdminPage() {
   const { user, isLoading: authLoading } = useAuth();
@@ -46,10 +54,11 @@ export default function PlatformSuperAdminPage() {
   const router = useRouter();
 
   const [activeTab, setActiveTab] = useState<
-    'academies' | 'users' | 'plans' | 'security' | 'audit'
+    'academies' | 'applications' | 'users' | 'plans' | 'storage' | 'governance' | 'security' | 'audit'
   >('academies');
   const [metrics, setMetrics] = useState<PlatformOverviewMetrics | null>(null);
   const [academies, setAcademies] = useState<PlatformAcademyItem[]>([]);
+  const [applications, setApplications] = useState<AcademyApplicationItem[]>([]);
   const [usersList, setUsersList] = useState<PlatformUserItem[]>([]);
   const [plans, setPlans] = useState<SaaSPlanItem[]>([]);
   const [auditLogs, setAuditLogs] = useState<PlatformAuditLogItem[]>([]);
@@ -65,25 +74,31 @@ export default function PlatformSuperAdminPage() {
     text: string;
   } | null>(null);
 
+  // Prompt / Confirmation accessible dialog state
+  const [promptConfig, setPromptConfig] = useState<PromptModalConfig | null>(null);
+
   // Selected academy for plan modification modal
   const [editingAcademy, setEditingAcademy] = useState<PlatformAcademyItem | null>(null);
   const [selectedPlanCode, setSelectedPlanCode] = useState<
     'STARTER' | 'PRO' | 'ENTERPRISE' | 'CUSTOM'
   >('PRO');
 
+  const isPlatformStaff = Boolean(user?.isPlatformSuperAdmin || user?.isPlatformOwner);
+
   useEffect(() => {
-    if (!authLoading && !user?.isPlatformSuperAdmin) {
+    if (!authLoading && !isPlatformStaff) {
       router.push('/dashboard');
     }
-  }, [user, authLoading, router]);
+  }, [isPlatformStaff, authLoading, router]);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
     setFeedbackMessage(null);
     try {
-      const [m, a, u, p, l, s] = await Promise.all([
+      const [m, a, apps, u, p, l, s] = await Promise.all([
         apiClient.platform.getMetrics().catch(() => null),
         apiClient.platform.listAcademies().catch(() => []),
+        apiClient.platform.listAcademyApplications().catch(() => []),
         apiClient.platform.listUsers({ limit: 50 }).catch(() => []),
         apiClient.platform.listSaaSPlans().catch(() => []),
         apiClient.platform.listAuditLogs({ limit: 50 }).catch(() => []),
@@ -91,6 +106,7 @@ export default function PlatformSuperAdminPage() {
       ]);
       setMetrics(m);
       setAcademies(a);
+      setApplications(apps);
       setUsersList(u);
       setPlans(p);
       setAuditLogs(l);
@@ -108,88 +124,99 @@ export default function PlatformSuperAdminPage() {
   }, [locale]);
 
   useEffect(() => {
-    if (user?.isPlatformSuperAdmin) {
+    if (isPlatformStaff) {
       void loadData();
     }
-  }, [user, loadData]);
+  }, [isPlatformStaff, loadData]);
 
-  // Handle Suspend / Reactivate Academy
-  const handleToggleStatus = async (academy: PlatformAcademyItem) => {
+  // Handle Suspend / Reactivate Academy with accessible Modal
+  const handleToggleStatus = (academy: PlatformAcademyItem) => {
     const newStatus = academy.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE';
     const actionName =
       newStatus === 'SUSPENDED'
         ? t('platform.suspendAction', 'إيقاف وتجميد')
         : t('platform.activateAction', 'إعادة تفعيل');
-    const reasonPrompt =
-      locale === 'ar'
-        ? `يرجى إدخال سبب ${actionName} الأكاديمية (${academy.name}):`
-        : `Enter reason for ${actionName} of ${academy.name}:`;
-    const defaultReason =
-      locale === 'ar' ? 'قرار إداري من المنصة' : 'Platform administrative decision';
-    const reason = prompt(reasonPrompt, defaultReason);
-    if (!reason) return;
 
-    setActionLoading(academy.id);
-    try {
-      await apiClient.platform.updateAcademyStatus(academy.id, {
-        status: newStatus,
-        reason,
-      });
-      setFeedbackMessage({
-        type: 'success',
-        text:
-          locale === 'ar'
-            ? `تم ${actionName} الأكاديمية بنجاح.`
-            : `Academy ${actionName} successful.`,
-      });
-      await loadData();
-    } catch (err: unknown) {
-      setFeedbackMessage({
-        type: 'error',
-        text: (err as Error)?.message || (locale === 'ar' ? 'فشلت العملية' : 'Operation failed'),
-      });
-    } finally {
-      setActionLoading(null);
-    }
+    setPromptConfig({
+      isOpen: true,
+      title: `${actionName} الأكاديمية: ${academy.name}`,
+      description:
+        newStatus === 'SUSPENDED'
+          ? locale === 'ar'
+            ? 'سيتم تجميد بيئة العمل ولن يتمكن موظفو الأكاديمية من الدخول حتى إعادة التفعيل.'
+            : 'Suspending this tenant prevents all staff from accessing the workspace.'
+          : locale === 'ar'
+            ? 'سيتم استعادة صلاحيات العمل لكافة مستخدمي الأكاديمية فوراً.'
+            : 'Reactivating this tenant restores access immediately.',
+      inputLabel: locale === 'ar' ? 'سبب الإجراء (للتوثيق الإداري)' : 'Reason (for audit trail)',
+      defaultValue: locale === 'ar' ? 'قرار إداري من المنصة' : 'Platform administrative decision',
+      requireInput: true,
+      isDestructive: newStatus === 'SUSPENDED',
+      confirmText: actionName,
+      onConfirm: async (reason) => {
+        setActionLoading(academy.id);
+        try {
+          await apiClient.platform.updateAcademyStatus(academy.id, {
+            status: newStatus,
+            reason: reason || 'Administrative decision',
+          });
+          toast.success(
+            locale === 'ar'
+              ? `تم ${actionName} الأكاديمية بنجاح.`
+              : `Academy ${actionName} successful.`,
+          );
+          await loadData();
+        } catch (err: unknown) {
+          toast.error((err as Error)?.message || 'Failed');
+        } finally {
+          setActionLoading(null);
+        }
+      },
+      onClose: () => setPromptConfig(null),
+    });
   };
 
-  // Handle Support Access
-  const handleSupportAccess = async (academy: PlatformAcademyItem) => {
-    const reasonPrompt =
-      locale === 'ar'
-        ? `سبب طلب جلسة الدعم الفني الموثقة للأكاديمية (${academy.name}):`
-        : `State the required reason for accessing ${academy.name} support session:`;
-    const defaultReason =
-      locale === 'ar'
-        ? 'معالجة تذكرة دعم فني بطلب من مالك الأكاديمية'
-        : 'Resolving support ticket requested by academy owner';
-    const reason = prompt(reasonPrompt, defaultReason);
-    if (!reason || reason.trim().length < 10) {
-      toast.warning(
+  // Handle Support Access with accessible Modal
+  const handleSupportAccess = (academy: PlatformAcademyItem) => {
+    setPromptConfig({
+      isOpen: true,
+      title: locale === 'ar' ? `طلب جلسة دعم فني: ${academy.name}` : `Support Access: ${academy.name}`,
+      description:
         locale === 'ar'
-          ? 'يجب إدخال سبب واضح لا يقل عن 10 أحرف لتوثيق الجلسة في سجل الأمان'
-          : 'Reason must be at least 10 characters for compliance logging',
-      );
-      return;
-    }
-
-    setActionLoading(academy.id);
-    try {
-      const res = await apiClient.platform.requestSupportAccess(academy.id, { reason });
-      toast.success(
+          ? 'جلسة الدعم مؤقتة ومسجلة في سجل الأمان المركزي لمساعدة إدارة الأكاديمية.'
+          : 'Temporary support session logged in the central security audit trail.',
+      inputLabel: locale === 'ar' ? 'سبب طلب جلسة الدعم (10 أحرف على الأقل)' : 'Reason for support session',
+      defaultValue:
         locale === 'ar'
-          ? `تم تفعيل جلسة الدعم الفني بنجاح حتى: ${new Date(res.expiresAt).toLocaleTimeString()}`
-          : `Support session authorized until: ${new Date(res.expiresAt).toLocaleTimeString()}`,
-      );
-      await loadData();
-    } catch (err: unknown) {
-      toast.error(
-        (err as Error)?.message ||
-          (locale === 'ar' ? 'فشل بدء جلسة الدعم الفني' : 'Failed to start support session'),
-      );
-    } finally {
-      setActionLoading(null);
-    }
+          ? 'معالجة تذكرة دعم فني بطلب من مالك الأكاديمية'
+          : 'Resolving support ticket requested by academy owner',
+      requireInput: true,
+      confirmText: locale === 'ar' ? 'بدء جلسة الدعم' : 'Initiate Session',
+      onConfirm: async (reason) => {
+        if (!reason || reason.trim().length < 10) {
+          throw new Error(
+            locale === 'ar'
+              ? 'يجب إدخال سبب واضح لا يقل عن 10 أحرف لتوثيق الجلسة'
+              : 'Reason must be at least 10 characters',
+          );
+        }
+        setActionLoading(academy.id);
+        try {
+          const res = await apiClient.platform.requestSupportAccess(academy.id, { reason });
+          toast.success(
+            locale === 'ar'
+              ? `تم تفعيل جلسة الدعم الفني بنجاح حتى: ${new Date(res.expiresAt).toLocaleTimeString()}`
+              : `Support session authorized until: ${new Date(res.expiresAt).toLocaleTimeString()}`,
+          );
+          await loadData();
+        } catch (err: unknown) {
+          toast.error((err as Error)?.message || 'Failed');
+        } finally {
+          setActionLoading(null);
+        }
+      },
+      onClose: () => setPromptConfig(null),
+    });
   };
 
   // Handle Change SaaS Plan for Academy
@@ -278,44 +305,58 @@ export default function PlatformSuperAdminPage() {
     }
   };
 
-  // Handle Toggle User Suspension
-  const handleToggleUserSuspension = async (targetUser: PlatformUserItem) => {
+  // Handle Toggle User Suspension with accessible Modal
+  const handleToggleUserSuspension = (targetUser: PlatformUserItem) => {
     const nextState = !targetUser.isSuspended;
-    const reasonPrompt = nextState
-      ? locale === 'ar'
-        ? `سبب تجميد حساب المستخدم (${targetUser.email}):`
-        : `Reason for suspending user account (${targetUser.email}):`
-      : locale === 'ar'
-        ? `سبب إعادة تفعيل الحساب (${targetUser.email}):`
-        : `Reason for reactivating account:`;
-    const reason = prompt(reasonPrompt, 'Super Admin policy update');
-    if (reason === null) return;
-
-    setActionLoading(`user-suspend-${targetUser.id}`);
-    try {
-      await apiClient.platform.updateUserSecurityPolicy(targetUser.id, {
-        isSuspended: nextState,
-        reason,
-      });
-      setFeedbackMessage({
-        type: 'success',
-        text: nextState
-          ? locale === 'ar'
-            ? 'تم تجميد حساب المستخدم وإنهاء جلساته بنجاح.'
-            : 'User account suspended and sessions revoked.'
-          : locale === 'ar'
-            ? 'تمت إعادة تفعيل حساب المستخدم بنجاح.'
-            : 'User account reactivated.',
-      });
-      await loadData();
-    } catch (err: unknown) {
-      setFeedbackMessage({
-        type: 'error',
-        text: (err as Error)?.message || 'Failed to update user status',
-      });
-    } finally {
-      setActionLoading(null);
-    }
+    setPromptConfig({
+      isOpen: true,
+      title: nextState
+        ? locale === 'ar'
+          ? `تجميد حساب المستخدم (${targetUser.email})`
+          : `Suspend User Account (${targetUser.email})`
+        : locale === 'ar'
+          ? `إعادة تفعيل الحساب (${targetUser.email})`
+          : `Reactivate Account (${targetUser.email})`,
+      description: nextState
+        ? locale === 'ar'
+          ? 'سيتم حظر المستخدم فوراً وإنهاء جميع جلساته وأجهزته النشطة.'
+          : 'User will be immediately blocked and all active sessions revoked.'
+        : undefined,
+      inputLabel: locale === 'ar' ? 'سبب الإجراء (للتوثيق)' : 'Reason (for audit)',
+      defaultValue: 'Super Admin policy update',
+      isDestructive: nextState,
+      confirmText: nextState
+        ? locale === 'ar'
+          ? 'تجميد الحساب'
+          : 'Suspend User'
+        : locale === 'ar'
+          ? 'تفعيل الحساب'
+          : 'Reactivate',
+      onConfirm: async (reason) => {
+        setActionLoading(`user-suspend-${targetUser.id}`);
+        try {
+          await apiClient.platform.updateUserSecurityPolicy(targetUser.id, {
+            isSuspended: nextState,
+            reason: reason || 'Policy update',
+          });
+          toast.success(
+            nextState
+              ? locale === 'ar'
+                ? 'تم تجميد حساب المستخدم وإنهاء جلساته بنجاح.'
+                : 'User account suspended and sessions revoked.'
+              : locale === 'ar'
+                ? 'تمت إعادة تفعيل حساب المستخدم بنجاح.'
+                : 'User account reactivated.',
+          );
+          await loadData();
+        } catch (err: unknown) {
+          toast.error((err as Error)?.message || 'Failed to update user status');
+        } finally {
+          setActionLoading(null);
+        }
+      },
+      onClose: () => setPromptConfig(null),
+    });
   };
 
   const filteredAcademies = academies.filter((a) => {
@@ -532,6 +573,23 @@ export default function PlatformSuperAdminPage() {
           </button>
 
           <button
+            onClick={() => setActiveTab('applications')}
+            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition-colors border-b-2 whitespace-nowrap ${
+              activeTab === 'applications'
+                ? 'border-[var(--brand-primary)] text-[var(--brand-primary)] bg-[var(--bg-card)]'
+                : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+            }`}
+          >
+            <Inbox className="w-4 h-4" />
+            {locale === 'ar' ? 'طلبات التأسيس' : 'Applications'}
+            {applications.filter((a) => a.status === 'PENDING_REVIEW').length > 0 && (
+              <span className="px-1.5 py-0.2 rounded-full text-xs bg-amber-500/20 text-amber-400 font-mono">
+                {applications.filter((a) => a.status === 'PENDING_REVIEW').length}
+              </span>
+            )}
+          </button>
+
+          <button
             onClick={() => setActiveTab('users')}
             className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition-colors border-b-2 whitespace-nowrap ${
               activeTab === 'users'
@@ -556,6 +614,30 @@ export default function PlatformSuperAdminPage() {
           >
             <Layers className="w-4 h-4" />
             {t('platform.tabPlans', 'باقات الـ SaaS')}
+          </button>
+
+          <button
+            onClick={() => setActiveTab('storage')}
+            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition-colors border-b-2 whitespace-nowrap ${
+              activeTab === 'storage'
+                ? 'border-[var(--brand-primary)] text-[var(--brand-primary)] bg-[var(--bg-card)]'
+                : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+            }`}
+          >
+            <Database className="w-4 h-4" />
+            {locale === 'ar' ? 'التخزين ودورة الحياة' : 'Storage & Lifecycle'}
+          </button>
+
+          <button
+            onClick={() => setActiveTab('governance')}
+            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition-colors border-b-2 whitespace-nowrap ${
+              activeTab === 'governance'
+                ? 'border-[var(--brand-primary)] text-[var(--brand-primary)] bg-[var(--bg-card)]'
+                : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+            }`}
+          >
+            <Crown className="w-4 h-4" />
+            {locale === 'ar' ? 'حوكمة المنصة' : 'Governance'}
           </button>
 
           <button
@@ -1044,6 +1126,28 @@ export default function PlatformSuperAdminPage() {
           </div>
         )}
 
+        {/* Tab: Applications */}
+        {activeTab === 'applications' && (
+          <ApplicationsTab
+            applications={applications}
+            onRefresh={loadData}
+            isLoading={isLoading}
+          />
+        )}
+
+        {/* Tab: Storage & Lifecycle */}
+        {activeTab === 'storage' && <StorageTab />}
+
+        {/* Tab: Governance & Sovereign Roles */}
+        {activeTab === 'governance' && (
+          <GovernanceTab
+            users={usersList}
+            academies={academies}
+            onRefresh={loadData}
+            isLoading={isLoading}
+          />
+        )}
+
         {/* Change Plan Modal */}
         {editingAcademy && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-150">
@@ -1097,6 +1201,9 @@ export default function PlatformSuperAdminPage() {
             </div>
           </div>
         )}
+
+        {/* Accessible Prompt / Confirmation Dialog */}
+        {promptConfig && <PromptModal {...promptConfig} />}
       </div>
     </AppShell>
   );

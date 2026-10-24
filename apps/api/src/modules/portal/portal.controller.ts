@@ -17,8 +17,10 @@ import { RequirePermissions } from '../auth/guards/require-permissions.decorator
 import { CurrentTenantContext, CurrentUser } from '../auth/decorators/auth-user.decorator';
 import {
   ClaimAccountRequestSchema,
+  CreatePlayerJoinRequestSchema,
   Permission,
   type ClaimAccountRequest,
+  type CreatePlayerJoinRequest,
   type TenantContext,
 } from '@academy/shared';
 import { z } from 'zod';
@@ -72,4 +74,20 @@ export class PortalController {
     const dto = GenerateClaimTokenDto.parse(body);
     return this.portalService.generateClaimToken(tenantContext, dto.targetType, dto.targetId);
   }
+
+  @Post('player-join-requests')
+  @HttpCode(HttpStatus.CREATED)
+  async submitPlayerJoinRequest(
+    @Body() body: unknown,
+    @CurrentUser('id') actorUserId?: string,
+  ) {
+    const dto: CreatePlayerJoinRequest = CreatePlayerJoinRequestSchema.parse(body);
+    return this.portalService.submitPlayerJoinRequest(dto, actorUserId);
+  }
+
+  @Get('academies')
+  async listPublicAcademies() {
+    return this.portalService.listPublicAcademies();
+  }
 }
+
