@@ -1,0 +1,134 @@
+# SPORTEXUS — Self-Hosted Production Docker Compose Topology
+# Runs Web (Next.js), API (NestJS), PostgreSQL, Redis, Nginx Reverse Proxy, and Cloudflare Tunnel.
+# All data persists safely in named Docker volumes: sportexus_pg_data & sportexus_redis_data.
+
+services:
+  # 1. PostgreSQL Persistent Database (isolated to private internal network)
+  postgres:
+    image: postgres:16-alpine
+    container_name: sportexus_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-academy}
+      POSTGRES_USER: ${POSTGRES_USER:-academy}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-SportexusSecureDbPass2026!}
+      POSTGRES_RUNTIME_PASSWORD: ${POSTGRES_RUNTIME_PASSWORD:-SportexusRuntimePass2026!}
+    volumes:
+      - sportexus_pg_data:/var/lib/postgresql/data
+      - ./infrastructure/postgres/01-runtime-role.sh:/docker-entrypoint-initdb.d/01-runtime-role.sh:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - sportexus_internal
+
+  # 2. Redis Cache & Job Queue
+  redis:
+    image: redis:7-alpine
+    container_name: sportexus_redis
+    restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'yes']
+    volumes:
+      - sportexus_redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - sportexus_internal
+
+  # 3. NestJS Production API
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: sportexus_api
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      API_VERSION: ${API_VERSION:-1.0.0}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-academy}:${POSTGRES_PASSWORD:-SportexusSecureDbPass2026!}@postgres:5432/${POSTGRES_DB:-academy}?schema=public
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:-sportexus_super_secure_production_jwt_secret_key_2026}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-15m}
+      REFRESH_TOKEN_EXPIRES_DAYS: ${REFRESH_TOKEN_EXPIRES_DAYS:-7}
+      CORS_ORIGIN: '*'
+      COOKIE_SECURE: 'true'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1:3001/v1/health/ready || exit 1']
+      interval: 15s
+      timeout: 5s
+      retries: 8
+    networks:
+      - sportexus_internal
+
+  # 4. Next.js Production Web Application
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_APP_NAME: SPORTEXUS
+    container_name: sportexus_web
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      INTERNAL_API_URL: http://api:3001
+      PORT: 3000
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - sportexus_internal
+
+  # 5. Nginx Reverse Proxy (Frontend at /, API at /v1/)
+  nginx:
+    image: nginx:alpine
+    container_name: sportexus_nginx
+    restart: unless-stopped
+    ports:
+      - '80:80'
+    volumes:
+      - ./infrastructure/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - web
+      - api
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1/nginx-health']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - sportexus_internal
+
+  # 6. Cloudflare Tunnel (Secure outbound tunnel exposing only Nginx)
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: sportexus_tunnel
+    restart: unless-stopped
+    command: tunnel --no-autoupdate --url http://nginx:80
+    depends_on:
+      nginx:
+        condition: service_healthy
+    networks:
+      - sportexus_internal
+
+networks:
+  sportexus_internal:
+    name: sportexus_internal
+    driver: bridge
+
+volumes:
+  sportexus_pg_data:
+    name: sportexus_pg_data
+  sportexus_redis_data:
+    name: sportexus_redis_data

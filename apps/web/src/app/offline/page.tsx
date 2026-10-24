@@ -1,11 +1,11 @@
 'use client';
+ 
+import { SportexusLogo } from '../../components/brand/SportexusLogo';
 
 export default function OfflinePage() {
   return (
-    <main className="mx-auto flex min-h-screen max-w-lg flex-col justify-center gap-4 px-6 text-center">
-      <p className="text-sm font-semibold tracking-wide text-[var(--accent-primary)] uppercase">
-        Academy Platform
-      </p>
+    <main className="mx-auto flex min-h-screen max-w-lg flex-col justify-center items-center gap-4 px-6 text-center">
+      <SportexusLogo size="lg" className="mb-2" />
       <h1 className="text-3xl font-semibold text-[var(--text-main)]">أنت غير متصل</h1>
       <p className="text-[var(--text-muted)]">
         يمكن تسجيل الحضور ومسودات التقييم محلياً بعد تسجيل الدخول مسبقاً. العمليات المالية والإدارية

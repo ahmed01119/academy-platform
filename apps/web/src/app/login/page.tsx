@@ -7,8 +7,8 @@ import { useAuth } from '../../lib/auth-context';
 import { useLocale } from '../../lib/locale-context';
 import { getRoleHomeRoute } from '../../lib/role-routing';
 import { Navbar } from '../../components/Navbar';
+import { SportexusLogo } from '../../components/brand/SportexusLogo';
 import {
-  Lock,
   Mail,
   Eye,
   EyeOff,
@@ -81,19 +81,22 @@ export default function LoginPage() {
       <main className="flex-1 flex items-center justify-center p-3 sm:p-6 lg:p-8">
         <div className="w-full max-w-md mx-auto">
           {/* Card container */}
-          <div className="rounded-2xl border border-[#234235] bg-[#162821]/80 p-5 sm:p-8 shadow-2xl backdrop-blur-xl relative overflow-hidden">
-            {/* Top decorative glow */}
-            <div className="absolute -top-12 -right-12 h-32 w-32 rounded-full bg-[#2f9e6b]/15 blur-2xl" />
-            <div className="absolute -bottom-12 -left-12 h-32 w-32 rounded-full bg-[#45c387]/10 blur-2xl" />
+          <div className="rounded-2xl border border-slate-800 bg-[#0f172a]/90 p-5 sm:p-8 shadow-2xl backdrop-blur-xl relative overflow-hidden">
+            {/* Sportexus decorative ambient glows */}
+            <div className="absolute -top-16 -right-16 h-40 w-40 rounded-full bg-[#0A3BFF]/25 blur-3xl" />
+            <div className="absolute -bottom-16 -left-16 h-40 w-40 rounded-full bg-[#00D6FF]/15 blur-3xl" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-48 w-48 rounded-full bg-[#22C55E]/10 blur-3xl pointer-events-none" />
 
-            {/* Header */}
-            <div className="text-center mb-8 relative z-10">
-              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-[#2f9e6b] to-[#45c387] shadow-lg shadow-[#2f9e6b]/25">
-                <Lock className="h-6 w-6 text-[#062016]" />
-              </div>
-              <h1 className="text-2xl font-bold tracking-tight text-white">تسجيل الدخول للمنصة</h1>
-              <p className="mt-2 text-sm text-[#9bb5a8]">
-                أدخل بريدك الإلكتروني وكلمة المرور للوصول إلى لوحة التحكم
+            {/* Header with Sportexus Logo */}
+            <div className="text-center mb-7 relative z-10 flex flex-col items-center">
+              <SportexusLogo size="lg" className="mb-4" />
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
+                {locale === 'ar' ? 'تسجيل الدخول إلى سبورتكسس' : 'Sign In to Sportexus'}
+              </h1>
+              <p className="mt-1 text-xs sm:text-sm text-slate-400">
+                {locale === 'ar'
+                  ? 'منصة واحدة. لكل أكاديمية.'
+                  : 'One Platform. Every Academy.'}
               </p>
             </div>
 
@@ -109,10 +112,10 @@ export default function LoginPage() {
             <form onSubmit={handleSubmit} className="space-y-5 relative z-10">
               <div>
                 <label
-                  className="block text-xs font-semibold text-[#9bb5a8] mb-1.5"
+                  className="block text-xs font-semibold text-slate-300 mb-1.5"
                   htmlFor="email"
                 >
-                  البريد الإلكتروني
+                  {locale === 'ar' ? 'البريد الإلكتروني' : 'Email Address'}
                 </label>
                 <div className="relative">
                   <input
@@ -121,21 +124,21 @@ export default function LoginPage() {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="coach@example.com"
+                    placeholder="admin@academy.sa"
                     dir="ltr"
-                    className="w-full rounded-xl border border-[#2b4c3e] bg-[#0f1c18]/90 py-2.5 pr-4 pl-10 text-sm text-white placeholder-[#5a7a6c] focus:border-[#2f9e6b] focus:ring-1 focus:ring-[#2f9e6b] outline-none transition-all"
+                    className="w-full rounded-xl border border-slate-700 bg-slate-900/90 py-2.5 pr-4 pl-10 text-sm text-white placeholder-slate-500 focus:border-[#00D6FF] focus:ring-1 focus:ring-[#00D6FF] outline-none transition-all"
                   />
-                  <Mail className="absolute left-3 top-3 h-4 w-4 text-[#5a7a6c]" />
+                  <Mail className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
                 </div>
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-xs font-semibold text-[#9bb5a8]" htmlFor="password">
-                    كلمة المرور
+                  <label className="block text-xs font-semibold text-slate-300" htmlFor="password">
+                    {locale === 'ar' ? 'كلمة المرور' : 'Password'}
                   </label>
-                  <Link href="/forgot-password" className="text-xs text-[#45c387] hover:underline">
-                    نسيت كلمة المرور؟
+                  <Link href="/forgot-password" className="text-xs text-[#00D6FF] hover:underline">
+                    {locale === 'ar' ? 'نسيت كلمة المرور؟' : 'Forgot password?'}
                   </Link>
                 </div>
                 <div className="relative">
@@ -147,12 +150,12 @@ export default function LoginPage() {
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••••••"
                     dir="ltr"
-                    className="w-full rounded-xl border border-[#2b4c3e] bg-[#0f1c18]/90 py-2.5 pr-4 pl-10 text-sm text-white placeholder-[#5a7a6c] focus:border-[#2f9e6b] focus:ring-1 focus:ring-[#2f9e6b] outline-none transition-all"
+                    className="w-full rounded-xl border border-slate-700 bg-slate-900/90 py-2.5 pr-4 pl-10 text-sm text-white placeholder-slate-500 focus:border-[#00D6FF] focus:ring-1 focus:ring-[#00D6FF] outline-none transition-all"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute left-3 top-3 text-[#5a7a6c] hover:text-[#9bb5a8]"
+                    className="absolute left-3 top-3 text-slate-500 hover:text-slate-300"
                     title={showPassword ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'}
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -166,26 +169,28 @@ export default function LoginPage() {
                   type="checkbox"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
-                  className="rounded border-[#2b4c3e] bg-[#0f1c18] text-[#2f9e6b] focus:ring-[#2f9e6b] cursor-pointer"
+                  className="rounded border-slate-700 bg-slate-900 text-[#0A3BFF] focus:ring-[#00D6FF] cursor-pointer"
                 />
-                <label htmlFor="rememberMe" className="text-xs text-[#9bb5a8] cursor-pointer">
-                  تذكر بيانات الجلسة على هذا الجهاز
+                <label htmlFor="rememberMe" className="text-xs text-slate-300 cursor-pointer">
+                  {locale === 'ar'
+                    ? 'تذكر بيانات الجلسة على هذا الجهاز'
+                    : 'Remember me on this device'}
                 </label>
               </div>
 
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#2f9e6b] to-[#36b379] py-3 text-sm font-semibold text-[#062016] shadow-lg shadow-[#2f9e6b]/25 hover:brightness-110 active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#0A3BFF] via-[#0077FF] to-[#00D6FF] py-3 text-sm font-bold text-white shadow-lg shadow-blue-600/30 hover:brightness-110 active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
                 {isSubmitting ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>جارٍ التحقق...</span>
+                    <span>{locale === 'ar' ? 'جارٍ التحقق...' : 'Signing in...'}</span>
                   </>
                 ) : (
                   <>
-                    <span>تسجيل الدخول</span>
+                    <span>{locale === 'ar' ? 'تسجيل الدخول' : 'Sign In'}</span>
                     <ArrowRight className="h-4 w-4 rotate-180" />
                   </>
                 )}
@@ -193,19 +198,25 @@ export default function LoginPage() {
             </form>
 
             {/* Footer link */}
-            <div className="mt-8 border-t border-[#234235] pt-6 text-center text-xs text-[#9bb5a8] relative z-10">
-              <span>ليس لديك أكاديمية مسجلة بعد؟ </span>
-              <Link href="/register" className="font-semibold text-[#45c387] hover:underline">
-                سجّل أكاديميتك الآن مجاناً
+            <div className="mt-8 border-t border-slate-800 pt-6 text-center text-xs text-slate-400 relative z-10">
+              <span>
+                {locale === 'ar'
+                  ? 'ليس لديك أكاديمية مسجلة بعد؟ '
+                  : "Don't have an academy yet? "}
+              </span>
+              <Link href="/register" className="font-semibold text-[#00D6FF] hover:underline">
+                {locale === 'ar' ? 'سجّل أكاديميتك الآن' : 'Register your academy'}
               </Link>
             </div>
           </div>
 
           {/* Security badge note */}
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-2 text-xs text-[#5a7a6c] text-center px-2">
-            <ShieldCheck className="h-4 w-4 text-[#2f9e6b] shrink-0" />
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-2 text-xs text-slate-400 text-center px-2">
+            <ShieldCheck className="h-4 w-4 text-[#22C55E] shrink-0" />
             <span className="leading-relaxed">
-              حماية مشددة: تشفير Argon2id • تدوير الجلسات • عزل كامل للبيانات
+              {locale === 'ar'
+                ? 'حماية مشددة: تشفير Argon2id • تدوير الجلسات • عزل كامل للبيانات'
+                : 'Enterprise Security: Argon2id Encryption • Session Rotation • Tenant Isolation'}
             </span>
           </div>
         </div>

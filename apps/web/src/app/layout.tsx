@@ -9,30 +9,33 @@ import { SyncStatus } from '../components/pwa/SyncStatus';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'منصة إدارة الأكاديميات الرياضية | Academy Platform',
-  description: 'نظام سحابي متكامل لإدارة الأكاديميات الرياضية، الفروع، الاشتراكات والحضور',
-  applicationName: 'Academy Platform',
+  title: 'SPORTEXUS | سبورتكسس — One Platform. Every Academy.',
+  description:
+    'Sportexus: One Platform. Every Academy. منصة سحابية متكاملة لإدارة الأكاديميات الرياضية، الفروع، الاشتراكات، الحضور الذكي وتقييمات الأداء.',
+  applicationName: 'SPORTEXUS',
   manifest: '/manifest.webmanifest',
   icons: {
     icon: [
+      { url: '/brand/sportexus-app-icon.svg', type: 'image/svg+xml' },
       { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
       { url: '/icon-512.png', sizes: '512x512', type: 'image/png' },
       { url: '/icon' },
     ],
     apple: [
+      { url: '/brand/sportexus-app-icon.svg', type: 'image/svg+xml' },
       { url: '/apple-touch-icon.png', sizes: '192x192', type: 'image/png' },
       { url: '/apple-icon' },
     ],
   },
   appleWebApp: {
     capable: true,
-    title: 'Academy Platform',
+    title: 'SPORTEXUS',
     statusBarStyle: 'black-translucent',
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: '#059669',
+  themeColor: '#0A3BFF',
   width: 'device-width',
   initialScale: 1,
 };

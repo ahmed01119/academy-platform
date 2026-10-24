@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { Navbar } from '../components/Navbar';
+import { SportexusLogo } from '../components/brand/SportexusLogo';
 import { useAuth } from '../lib/auth-context';
 import { useLocale } from '../lib/locale-context';
 import {
@@ -177,6 +178,11 @@ export default function HomePage() {
 
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
             <div className="text-center max-w-4xl mx-auto space-y-6">
+              {/* Sportexus Grand Brand Presentation */}
+              <div className="flex justify-center pb-2">
+                <SportexusLogo size="xl" showTagline />
+              </div>
+
               {/* Badge */}
               <div className="inline-flex items-center gap-2 rounded-full border border-[var(--border-app)] bg-[var(--bg-surface-subtle)] px-4 py-1.5 text-xs font-semibold text-[var(--accent-primary)] shadow-sm backdrop-blur-md">
                 <Sparkles className="h-4 w-4 shrink-0" />

@@ -5,8 +5,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '../../lib/auth-context';
 import { useLocale } from '../../lib/locale-context';
+import { SportexusLogo } from '../brand/SportexusLogo';
 import {
-  ShieldCheck,
   LayoutDashboard,
   Users,
   Layers,
@@ -21,7 +21,6 @@ import {
   User as UserIcon,
   HeartHandshake,
   LogOut,
-  Sparkles,
   Building2,
   ChevronDown,
   X,
@@ -277,26 +276,13 @@ export function Sidebar({ isMobileOpen = false, onCloseMobile }: SidebarProps) {
             isCollapsed ? 'justify-center' : 'justify-between'
           }`}
         >
-          <Link
-            href="/"
-            onClick={onCloseMobile}
-            className="flex items-center gap-3 group overflow-hidden"
-          >
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-[var(--accent-primary)] to-emerald-400 shadow-md shadow-emerald-500/20 group-hover:scale-105 transition-transform duration-200">
-              <ShieldCheck className="h-6 w-6 text-emerald-950" />
-            </div>
-            {!isCollapsed && (
-              <div className="flex flex-col min-w-0">
-                <span className="font-bold tracking-tight text-sm text-[var(--text-main)] truncate">
-                  {t('common.academyPlatform', 'منصة الأكاديمية')}
-                </span>
-                <span className="text-[10px] font-semibold text-[var(--accent-primary)] flex items-center gap-1">
-                  <Sparkles className="h-2.5 w-2.5" />
-                  {locale === 'ar' ? 'سحابي متكامل' : 'Pro SaaS'}
-                </span>
-              </div>
-            )}
-          </Link>
+          <div onClick={onCloseMobile} className="overflow-hidden">
+            <SportexusLogo
+              variant={isCollapsed ? 'symbol' : 'full'}
+              href="/"
+              size="sm"
+            />
+          </div>
 
           {/* Mobile close button */}
           {onCloseMobile && (

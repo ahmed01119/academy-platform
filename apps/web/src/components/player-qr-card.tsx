@@ -225,7 +225,7 @@ export function PlayerQrCard({ card, isAdmin = false, onCardUpdated, onClose }: 
 
         {/* Card Footer */}
         <div className="mt-5 pt-3 border-t border-[#1d352a] text-center text-[9px] text-[#6b8577] print:text-gray-500 print:border-gray-300">
-          منصة الأكاديمية الذكية لإدارة المواهب الرياضية • Academy Platform
+          سبورتكسس — منصة واحدة. لكل أكاديمية. • SPORTEXUS
         </div>
       </div>
 

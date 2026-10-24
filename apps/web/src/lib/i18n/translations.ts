@@ -1,8 +1,8 @@
 export const translations = {
   ar: {
     common: {
-      appName: 'منصة الأكاديمية الرياضية',
-      appTagline: 'سحابي متكامل',
+      appName: 'Sportexus | سبورتكسس',
+      appTagline: 'منصة واحدة. لكل أكاديمية.',
       save: 'حفظ',
       cancel: 'إلغاء',
       delete: 'حذف',
@@ -41,7 +41,7 @@ export const translations = {
       close: 'إغلاق',
       currency: 'ج.م',
       total: 'الإجمالي',
-      academyPlatform: 'منصة الأكاديمية الرياضية',
+      academyPlatform: 'Sportexus',
       login: 'تسجيل الدخول',
       logout: 'تسجيل الخروج',
       register: 'طلب الانضمام للمنصة',
@@ -88,11 +88,11 @@ export const translations = {
       platform: 'وحدة المنصة',
     },
     landing: {
-      badge: 'الجيل الجديد لإدارة وتطوير الأكاديميات الرياضية بمصر والعالم العربي',
-      heroTitlePrefix: 'منصة رياضية ذكية متكاملة',
-      heroTitleSuffix: 'من إدارة الفروع حتى تطور اللاعبين والناشئين',
+      badge: 'Sportexus — منصة واحدة. لكل أكاديمية.',
+      heroTitlePrefix: 'Sportexus',
+      heroTitleSuffix: 'منصة واحدة. لكل أكاديمية.',
       heroDesc:
-        'منظومة سحابية متقدمة متعددة المستأجرين تجمع إدارة الفروع، المجموعات التدريبية، الحضور الذكي بالـ QR، وذكاء تقييم أداء اللاعبين الرباعي مع بوابات مخصصة لكل دور.',
+        'المنظومة السحابية الرياضية الذكية لإدارة فروع الأكاديميات، المجموعات التدريبية، الحضور السريع بالـ QR، وتقييم وتطوير أداء المواهب والناشئين وفقاً لأحدث المعايير الدولية.',
       dashboardCta: 'لوحة التحكم',
       registerCta: 'طلب الانضمام للمنصة',
       requestDemoCta: 'طلب عرض تجريبي',
@@ -375,8 +375,8 @@ export const translations = {
   },
   en: {
     common: {
-      appName: 'Academy Platform',
-      appTagline: 'Cloud Enterprise SaaS',
+      appName: 'Sportexus',
+      appTagline: 'One Platform. Every Academy.',
       save: 'Save',
       cancel: 'Cancel',
       delete: 'Delete',
@@ -415,7 +415,7 @@ export const translations = {
       close: 'Close',
       currency: 'EGP',
       total: 'Total',
-      academyPlatform: 'Academy Platform',
+      academyPlatform: 'Sportexus',
       login: 'Sign In',
       logout: 'Sign Out',
       register: 'Request Academy Access',
@@ -462,11 +462,11 @@ export const translations = {
       platform: 'Platform Console',
     },
     landing: {
-      badge: 'Next-Generation Sports Academy Management Platform in Egypt & Arab World',
-      heroTitlePrefix: 'Intelligent Sports Academy Platform',
-      heroTitleSuffix: 'From Multi-Branch Operations to Player Development Intelligence',
+      badge: 'Sportexus — One Platform. Every Academy.',
+      heroTitlePrefix: 'Sportexus',
+      heroTitleSuffix: 'One Platform. Every Academy.',
       heroDesc:
-        'Advanced Multi-Tenant Cloud SaaS unifying branch operations, training groups, QR attendance check-in, and 4-pillar player performance evaluations with dedicated role-based portals.',
+        'The next-generation sports academy management platform. Unifying multi-branch operations, training groups, instant QR attendance check-in, and 4-pillar talent performance evaluations.',
       dashboardCta: 'Academy Dashboard',
       registerCta: 'Request Academy Access',
       requestDemoCta: 'Request a Live Demo',

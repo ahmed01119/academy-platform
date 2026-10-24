@@ -17,13 +17,15 @@
   --color-accent-primary-hover: var(--accent-primary-hover);
   --color-accent-primary-fg: var(--accent-primary-fg);
 
-  --color-badge-bg: var(--badge-bg);
-  --color-badge-border: var(--badge-border);
-  --color-badge-fg: var(--badge-fg);
+  --color-sportexus-blue: #0A3BFF;
+  --color-sportexus-cyan: #00D6FF;
+  --color-sportexus-green: #22C55E;
+  --color-sportexus-lime: #84F06B;
+  --color-sportexus-navy: #0F172A;
 }
 
 :root {
-  /* Light Theme — Modern Crisp Global SaaS Palette */
+  /* Light Theme — Modern Sportexus Athletic SaaS */
   --bg-base: #f8fafc;
   --bg-surface: #ffffff;
   --bg-surface-subtle: #f1f5f9;
@@ -36,50 +38,51 @@
   --border-app: #e2e8f0;
   --border-subtle: #edf2f7;
 
-  --accent-primary: #059669;
-  --accent-primary-hover: #047857;
+  --accent-primary: #0A3BFF;
+  --accent-primary-hover: #002ECC;
   --accent-primary-fg: #ffffff;
-  --brand-primary: #059669;
-  --brand-primary-hover: #047857;
+  --brand-primary: #0A3BFF;
+  --brand-primary-hover: #002ECC;
 
-  --badge-bg: #ecfdf5;
-  --badge-border: #a7f3d0;
-  --badge-fg: #065f46;
+  --badge-bg: #eff6ff;
+  --badge-border: #bfdbfe;
+  --badge-fg: #1d4ed8;
 
   --font-display: 'IBM Plex Sans Arabic', 'Segoe UI', sans-serif;
   --font-body: 'IBM Plex Sans', 'Segoe UI', sans-serif;
 
-  --ambient-glow-1: rgba(5, 150, 105, 0.05);
-  --ambient-glow-2: rgba(16, 185, 129, 0.03);
+  --ambient-glow-1: rgba(10, 59, 255, 0.08);
+  --ambient-glow-2: rgba(0, 214, 255, 0.05);
 }
 
 [data-theme='dark'],
 .dark {
-  /* Dark Theme — Deep Stadium Night Emerald */
-  --bg-base: #0b1411;
-  --bg-surface: #11201a;
-  --bg-surface-subtle: #162922;
-  --bg-surface-elevated: #1b332a;
+  /* Dark Theme — Sportexus Stadium Night Deep Navy */
+  --bg-base: #070c18;
+  --bg-surface: #0f172a;
+  --bg-surface-subtle: #141e33;
+  --bg-surface-elevated: #1e293b;
 
-  --text-main: #f1f5f9;
+  --text-main: #f8fafc;
   --text-muted: #94a3b8;
-  --text-inverse: #022c22;
+  --text-inverse: #070c18;
 
-  --border-app: #223e33;
-  --border-subtle: #1a3028;
+  --border-app: #1e293b;
+  --border-subtle: #152238;
 
-  --accent-primary: #10b981;
-  --accent-primary-hover: #34d399;
-  --accent-primary-fg: #022c22;
-  --brand-primary: #10b981;
-  --brand-primary-hover: #34d399;
+  --accent-primary: #00D6FF;
+  --accent-primary-hover: #38BDF8;
+  --accent-primary-fg: #070c18;
+  --brand-primary: #0A3BFF;
+  --brand-primary-hover: #00D6FF;
 
-  --badge-bg: rgba(16, 185, 129, 0.15);
-  --badge-border: rgba(16, 185, 129, 0.35);
-  --badge-fg: #34d399;
+  --badge-bg: rgba(0, 214, 255, 0.12);
+  --badge-border: rgba(0, 214, 255, 0.35);
+  --badge-fg: #38BDF8;
 
-  --ambient-glow-1: rgba(16, 185, 129, 0.15);
-  --ambient-glow-2: rgba(5, 150, 105, 0.25);
+  --ambient-glow-1: rgba(10, 59, 255, 0.22);
+  --ambient-glow-2: rgba(0, 214, 255, 0.16);
+  --ambient-glow-green: rgba(34, 197, 94, 0.15);
 }
 
 * {

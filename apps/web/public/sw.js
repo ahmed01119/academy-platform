@@ -1,8 +1,8 @@
-/* Academy Platform service worker.
- * Cache static shell only. Never cache /v1 API, cookies, or authenticated HTML.
+/* Sportexus PWA Service Worker.
+ * Cache static shell and brand assets only. Never cache /v1 API, cookies, or authenticated HTML.
  */
-const VERSION = 'academy-shell-v2';
-const PRECACHE = ['/offline', '/manifest.webmanifest'];
+const VERSION = 'sportexus-shell-v1';
+const PRECACHE = ['/offline', '/manifest.webmanifest', '/icon', '/apple-icon'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -31,9 +31,12 @@ function isApiRequest(url) {
 function isStaticAsset(url) {
   return (
     url.pathname.startsWith('/_next/static/') ||
+    url.pathname.startsWith('/brand/') ||
     url.pathname === '/manifest.webmanifest' ||
     url.pathname === '/icon' ||
-    url.pathname === '/apple-icon'
+    url.pathname === '/apple-icon' ||
+    url.pathname.endsWith('.png') ||
+    url.pathname.endsWith('.svg')
   );
 }
 

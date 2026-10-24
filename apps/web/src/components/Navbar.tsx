@@ -6,8 +6,8 @@ import { useAuth } from '../lib/auth-context';
 import { useLocale } from '../lib/locale-context';
 import { ThemeToggle } from './ThemeToggle';
 import { LocaleToggle } from './LocaleToggle';
+import { SportexusLogo } from './brand/SportexusLogo';
 import {
-  ShieldCheck,
   Building2,
   LogOut,
   ChevronDown,
@@ -60,24 +60,7 @@ export function Navbar() {
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-3 sm:px-6 lg:px-8">
         {/* Brand & Nav */}
         <div className="flex items-center gap-3 sm:gap-6 lg:gap-8 min-w-0">
-          <Link href="/" className="flex items-center gap-2.5 sm:gap-3 group min-w-0">
-            <div className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-[var(--accent-primary)] to-[var(--accent-hover)] shadow-lg shadow-emerald-500/20 group-hover:scale-105 transition-transform duration-200">
-              <ShieldCheck className="h-5 w-5 sm:h-6 sm:w-6 text-emerald-950" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
-                <span className="font-bold tracking-tight text-sm sm:text-base lg:text-lg text-[var(--text-main)] truncate max-w-[130px] xs:max-w-[170px] sm:max-w-none">
-                  {t('common.academyPlatform')}
-                </span>
-                <span className="hidden md:inline-flex rounded-full bg-[var(--badge-bg)] px-2 py-0.5 text-xs font-semibold text-[var(--badge-text)] border border-[var(--badge-border)] shrink-0">
-                  {locale === 'ar' ? 'سحابي متكامل' : 'Cloud SaaS'}
-                </span>
-              </div>
-              <p className="hidden md:block text-xs text-[var(--text-muted)]">
-                Academy Management Cloud
-              </p>
-            </div>
-          </Link>
+          <SportexusLogo href="/" size="md" className="min-w-0" />
 
           {user && (
             <nav className="hidden lg:flex items-center gap-1">
