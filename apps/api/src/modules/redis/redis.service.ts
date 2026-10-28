@@ -20,7 +20,7 @@ export class RedisService implements OnModuleDestroy {
   private memoryStore = new Map<string, MemoryRateLimitEntry>();
 
   private get requiresRedis(): boolean {
-    return this.config.nodeEnv === 'production';
+    return this.config.nodeEnv === 'production' && !this.config.allowInMemoryRateLimit;
   }
 
   private assertFallbackAllowed(): void {

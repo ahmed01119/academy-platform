@@ -6,6 +6,10 @@ const EnvSchema = z.object({
   API_VERSION: z.string().default('0.0.0'),
   DATABASE_URL: z.string().url().optional(),
   REDIS_URL: z.string().url().optional(),
+  ALLOW_IN_MEMORY_RATE_LIMIT: z
+    .union([z.boolean(), z.enum(['true', 'false'])])
+    .transform((value) => value === true || value === 'true')
+    .default(false),
   JWT_SECRET: z.string().min(16).default('academy-platform-jwt-super-secret-key-32-chars!'),
   JWT_EXPIRES_IN: z.string().default('15m'),
   REFRESH_TOKEN_EXPIRES_DAYS: z.coerce.number().int().positive().default(7),
@@ -30,7 +34,7 @@ export function validateEnv(config: Record<string, unknown>): AppEnv {
     if (!parsed.data.COOKIE_SECURE) {
       throw new Error('COOKIE_SECURE must be enabled in production');
     }
-    if (!parsed.data.REDIS_URL) {
+    if (!parsed.data.REDIS_URL && !parsed.data.ALLOW_IN_MEMORY_RATE_LIMIT) {
       throw new Error('REDIS_URL is required in production for shared rate limiting');
     }
     if (parsed.data.JWT_SECRET === 'academy-platform-jwt-super-secret-key-32-chars!') {

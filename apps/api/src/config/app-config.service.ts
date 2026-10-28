@@ -26,6 +26,10 @@ export class AppConfigService {
     return this.config.get('REDIS_URL', { infer: true });
   }
 
+  get allowInMemoryRateLimit(): boolean {
+    return this.config.get('ALLOW_IN_MEMORY_RATE_LIMIT', { infer: true }) ?? false;
+  }
+
   get jwtSecret(): string {
     return this.config.get('JWT_SECRET', { infer: true });
   }

@@ -15,7 +15,7 @@ services:
       - key: PORT
         value: 10000
       - key: CORS_ORIGIN
-        value: https://sportexus-staging.pages.dev,http://localhost:3000
+        value: "*.pages.dev,http://localhost:3000"
       - key: DATABASE_URL
         sync: false
       - key: DIRECT_URL
@@ -34,3 +34,5 @@ services:
         value: 604800
       - key: COOKIE_SECURE
         value: true
+      - key: ALLOW_IN_MEMORY_RATE_LIMIT
+        value: "true"
