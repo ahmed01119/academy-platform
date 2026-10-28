@@ -1,0 +1,151 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" fill="none">
+  <defs>
+    <!-- Upper Wing: Blue to Cyan Gradient -->
+    <linearGradient id="sportexusUpperGrad" x1="15%" y1="10%" x2="90%" y2="85%">
+      <stop offset="0%" stop-color="#0A3BFF" />
+      <stop offset="35%" stop-color="#0077FF" />
+      <stop offset="75%" stop-color="#00C4FF" />
+      <stop offset="100%" stop-color="#00E5FF" />
+    </linearGradient>
+
+    <!-- Lower Wing: Emerald to Lime Green Gradient -->
+    <linearGradient id="sportexusLowerGrad" x1="10%" y1="20%" x2="85%" y2="95%">
+      <stop offset="0%" stop-color="#15803D" />
+      <stop offset="30%" stop-color="#22C55E" />
+      <stop offset="70%" stop-color="#4ADE80" />
+      <stop offset="100%" stop-color="#84F06B" />
+    </linearGradient>
+
+    <!-- Football Sphere Shading -->
+    <radialGradient id="ballShade" cx="35%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="65%" stop-color="#E2E8F0" />
+      <stop offset="100%" stop-color="#94A3B8" />
+    </radialGradient>
+
+    <!-- Wing Gloss / Highlight -->
+    <linearGradient id="wingHighlight" x1="0%" y1="0%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.6" />
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0" />
+    </linearGradient>
+
+    <!-- Ambient Glow Filter -->
+    <filter id="softGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Ambient Glow Behind Symbol -->
+  <circle cx="120" cy="115" r="75" fill="#0A3BFF" opacity="0.12" filter="url(#softGlow)" />
+  <circle cx="105" cy="155" r="55" fill="#22C55E" opacity="0.10" filter="url(#softGlow)" />
+
+  <!-- Lower Wing (Green-to-Lime Dynamic Swoosh) -->
+  <path
+    d="M 125 108 
+       C 155 120, 182 142, 172 170
+       C 162 196, 125 208, 92 205
+       C 62 202, 38 185, 25 174
+       C 48 182, 85 190, 114 184
+       C 138 178, 150 162, 142 148
+       C 132 132, 102 122, 78 114
+       C 52 105, 34 94, 45 78
+       C 52 88, 72 98, 96 103
+       Z"
+    fill="url(#sportexusLowerGrad)"
+  />
+
+  <!-- Upper Wing (Blue-to-Cyan Aerodynamic Loop) -->
+  <path
+    d="M 30 75
+       C 35 52, 65 30, 108 24
+       C 152 18, 192 35, 206 68
+       C 218 95, 202 124, 172 136
+       C 145 147, 115 142, 100 134
+       C 122 136, 152 130, 170 114
+       C 186 98, 188 74, 172 56
+       C 152 36, 118 34, 88 42
+       C 60 50, 42 64, 30 75
+       Z"
+    fill="url(#sportexusUpperGrad)"
+  />
+
+  <!-- Upper Wing Sharp Lead Feather -->
+  <path
+    d="M 28 78
+       C 42 66, 68 52, 98 46
+       C 70 56, 48 74, 34 96
+       C 31 89, 29 83, 28 78
+       Z"
+    fill="#00D6FF"
+    opacity="0.9"
+  />
+
+  <!-- High-Tech Football in Upper Bowl (Center: 142, 82, Radius: 32) -->
+  <g transform="translate(142, 82)">
+    <!-- Ball Drop Shadow -->
+    <circle cx="2" cy="3" r="32" fill="#0F172A" opacity="0.35" />
+
+    <!-- Ball Base Sphere -->
+    <circle cx="0" cy="0" r="32" fill="url(#ballShade)" stroke="#CBD5E1" stroke-width="1.2" />
+
+    <!-- Central Pentagon -->
+    <polygon points="0,-10 9,-3 6,8 -6,8 -9,-3" fill="#0F172A" />
+
+    <!-- Top-Right Seam & Patch -->
+    <path d="M 0,-10 L 0,-24 L 12,-30 L 16,-20 L 9,-3 Z" fill="#1E293B" opacity="0.95" />
+    <line x1="0" y1="-10" x2="0" y2="-24" stroke="#94A3B8" stroke-width="1.5" />
+
+    <!-- Top-Left Seam & Patch -->
+    <path d="M -9,-3 L -22,-6 L -28,-18 L -16,-24 L 0,-24" fill="none" stroke="#94A3B8" stroke-width="1.5" />
+    <polygon points="-22,-6 -28,-18 -16,-24 0,-24 -9,-3" fill="#0F172A" opacity="0.85" />
+
+    <!-- Right Seam & Patch -->
+    <path d="M 9,-3 L 23,-3 L 30,8 L 22,18 L 6,8" fill="none" stroke="#94A3B8" stroke-width="1.5" />
+    <polygon points="9,-3 23,-3 30,8 22,18 6,8" fill="#1E293B" opacity="0.9" />
+
+    <!-- Bottom-Left Seam & Patch -->
+    <path d="M -6,8 L -14,20 L -26,16 L -28,4 L -9,-3" fill="none" stroke="#94A3B8" stroke-width="1.5" />
+    <polygon points="-6,8 -14,20 -26,16 -28,4 -9,-3" fill="#0F172A" opacity="0.9" />
+
+    <!-- Bottom-Center Patch -->
+    <path d="M 6,8 L 4,24 L -8,25 L -14,20" fill="none" stroke="#94A3B8" stroke-width="1.5" />
+    <polygon points="6,8 4,24 -8,25 -14,20 -6,8" fill="#1E293B" opacity="0.9" />
+
+    <!-- Cyan Specular Glint on Ball -->
+    <ellipse cx="-10" cy="-12" rx="9" ry="5" fill="#00D6FF" opacity="0.35" transform="rotate(-30, -10, -12)" />
+    <circle cx="-12" cy="-14" r="3" fill="#FFFFFF" opacity="0.8" />
+  </g>
+
+  <!-- Dynamic Curved Bridge Connecting Upper & Lower S Wings -->
+  <path
+    d="M 88 108
+       C 108 116, 126 128, 138 142
+       C 126 132, 106 124, 84 116
+       Z"
+    fill="#00D6FF"
+    opacity="0.75"
+  />
+
+  <!-- Glossy Highlights on S Edges -->
+  <path
+    d="M 38 72
+       C 52 56, 80 40, 118 32
+       C 152 26, 184 38, 198 62
+       C 186 42, 154 32, 120 36
+       C 84 42, 54 58, 38 72
+       Z"
+    fill="url(#wingHighlight)"
+  />
+
+  <path
+    d="M 112 186
+       C 134 180, 148 166, 142 152
+       C 146 164, 134 176, 112 182
+       C 86 188, 54 182, 32 174
+       C 52 180, 84 188, 112 186
+       Z"
+    fill="#84F06B"
+    opacity="0.8"
+  />
+</svg>

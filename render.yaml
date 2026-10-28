@@ -1,0 +1,38 @@
+services:
+  - type: web
+    name: sportexus-staging-api
+    runtime: node
+    plan: free
+    region: frankfurt
+    branch: staging/cloud-zero-cost
+    repo: https://github.com/ahmed01119/academy-platform
+    buildCommand: pnpm install --frozen-lockfile && pnpm turbo run build --filter=@academy/api...
+    startCommand: node apps/api/dist/main.js
+    healthCheckPath: /v1/health/ready
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: CORS_ORIGIN
+        value: "*.pages.dev,http://localhost:3000"
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: JWT_CSRF_SECRET
+        generateValue: true
+      - key: JWT_ACCESS_EXPIRES_IN
+        value: 900
+      - key: JWT_REFRESH_EXPIRES_IN
+        value: 604800
+      - key: COOKIE_SECURE
+        value: true
+      - key: ALLOW_IN_MEMORY_RATE_LIMIT
+        value: "true"

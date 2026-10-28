@@ -1,0 +1,45 @@
+name: Release images
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target GitHub environment (does not auto-provision paid cloud)
+        required: true
+        default: staging
+        type: choice
+        options:
+          - staging
+          - production
+
+concurrency:
+  group: release-${{ github.event.inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build container images
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate production compose file
+        run: docker compose -f docker-compose.prod.yml config
+        env:
+          POSTGRES_PASSWORD: ci-placeholder
+          POSTGRES_RUNTIME_PASSWORD: ci-placeholder-runtime
+          DATABASE_URL: postgresql://academy_runtime:ci@postgres:5432/academy?schema=public
+          DATABASE_ADMIN_URL: postgresql://academy:ci@postgres:5432/academy?schema=public
+          JWT_SECRET: ci-placeholder-jwt-secret-32chars
+          CORS_ORIGIN: https://app.example.test
+          NEXT_PUBLIC_API_BASE_URL: https://api.example.test/v1
+      - name: Build API image
+        run: docker build -f apps/api/Dockerfile -t academy-api:${{ github.sha }} .
+      - name: Build web image
+        run: docker build -f apps/web/Dockerfile -t academy-web:${{ github.sha }} --build-arg NEXT_PUBLIC_API_BASE_URL=https://api.example.test/v1 .
+      - name: Record image tags
+        run: |
+          echo "API_IMAGE=academy-api:${{ github.sha }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "WEB_IMAGE=academy-web:${{ github.sha }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Load these tags on the self-hosted host. This workflow does not push to a paid registry by default."

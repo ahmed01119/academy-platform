@@ -1,14 +1,115 @@
 @import 'tailwindcss';
 
+@theme {
+  --color-bg-base: var(--bg-base);
+  --color-bg-surface: var(--bg-surface);
+  --color-bg-surface-subtle: var(--bg-surface-subtle);
+  --color-bg-surface-elevated: var(--bg-surface-elevated);
+
+  --color-text-main: var(--text-main);
+  --color-text-muted: var(--text-muted);
+  --color-text-inverse: var(--text-inverse);
+
+  --color-border-app: var(--border-app);
+  --color-border-subtle: var(--border-subtle);
+
+  --color-accent-primary: var(--accent-primary);
+  --color-accent-primary-hover: var(--accent-primary-hover);
+  --color-accent-primary-fg: var(--accent-primary-fg);
+
+  --color-sportexus-blue: #0A3BFF;
+  --color-sportexus-cyan: #00D6FF;
+  --color-sportexus-green: #22C55E;
+  --color-sportexus-lime: #84F06B;
+  --color-sportexus-navy: #0F172A;
+}
+
 :root {
-  --color-bg: #0f1c18;
-  --color-surface: #162821;
-  --color-fg: #e8f0ec;
-  --color-muted: #9bb5a8;
-  --color-accent: #2f9e6b;
-  --color-accent-fg: #062016;
+  /* Light Theme — Modern Sportexus Athletic SaaS */
+  --bg-base: #f8fafc;
+  --bg-surface: #ffffff;
+  --bg-surface-subtle: #f1f5f9;
+  --bg-surface-elevated: #ffffff;
+
+  --text-main: #0f172a;
+  --text-muted: #475569;
+  --text-inverse: #ffffff;
+
+  --border-app: #e2e8f0;
+  --border-subtle: #edf2f7;
+
+  --accent-primary: #0A3BFF;
+  --accent-primary-hover: #002ECC;
+  --accent-primary-fg: #ffffff;
+  --brand-primary: #0A3BFF;
+  --brand-primary-hover: #002ECC;
+
+  --bg-card: #ffffff;
+  --bg-card-hover: #f1f5f9;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+
+  --badge-bg: #eff6ff;
+  --badge-border: #bfdbfe;
+  --badge-fg: #1d4ed8;
+
   --font-display: 'IBM Plex Sans Arabic', 'Segoe UI', sans-serif;
   --font-body: 'IBM Plex Sans', 'Segoe UI', sans-serif;
+
+  --ambient-glow-1: rgba(10, 59, 255, 0.08);
+  --ambient-glow-2: rgba(0, 214, 255, 0.05);
+}
+
+[data-theme='dark'],
+.dark {
+  /* Dark Theme — Sportexus Stadium Night Deep Navy */
+  --bg-base: #070c18;
+  --bg-surface: #0f172a;
+  --bg-surface-subtle: #141e33;
+  --bg-surface-elevated: #1e293b;
+
+  --bg-card: #0f172a;
+  --bg-card-hover: #1e293b;
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --text-inverse: #070c18;
+
+  --border-app: #1e293b;
+  --border-subtle: #152238;
+
+  --accent-primary: #00D6FF;
+  --accent-primary-hover: #38BDF8;
+  --accent-primary-fg: #070c18;
+  --brand-primary: #0A3BFF;
+  --brand-primary-hover: #00D6FF;
+
+  --badge-bg: rgba(0, 214, 255, 0.12);
+  --badge-border: rgba(0, 214, 255, 0.35);
+  --badge-fg: #38BDF8;
+
+  --ambient-glow-1: rgba(10, 59, 255, 0.22);
+  --ambient-glow-2: rgba(0, 214, 255, 0.16);
+  --ambient-glow-green: rgba(34, 197, 94, 0.15);
+}
+
+/* Universal Accessible Select & Option Contrast Rules */
+select {
+  color-scheme: light dark;
+}
+
+[data-theme='dark'] select option,
+.dark select option {
+  background-color: #0f172a !important;
+  color: #f8fafc !important;
+}
+
+:root:not([data-theme='dark']) select option,
+html:not(.dark) select option {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
 }
 
 * {
@@ -19,15 +120,39 @@ html,
 body {
   margin: 0;
   min-height: 100%;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 body {
-  background:
-    radial-gradient(1200px 600px at 10% -10%, rgba(47, 158, 107, 0.22), transparent 55%),
-    radial-gradient(900px 500px at 90% 0%, rgba(34, 92, 70, 0.35), transparent 50%),
-    var(--color-bg);
-  color: var(--color-fg);
+  background-color: var(--bg-base);
+  background-image:
+    radial-gradient(1200px 600px at 10% -10%, var(--ambient-glow-1), transparent 55%),
+    radial-gradient(900px 500px at 90% 0%, var(--ambient-glow-2), transparent 50%);
+  color: var(--text-main);
   font-family: var(--font-body);
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+/* Accessible focus outline */
+*:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+/* Respect user reduced-motion setting */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 a {

@@ -1,0 +1,377 @@
+-- Real PostgreSQL integration test under restricted runtime identity.
+BEGIN;
+
+INSERT INTO public.tenants (id, slug, name, updated_at)
+VALUES
+ ('00000000-0000-4000-8000-000000000201','ci-tenant-a','CI Tenant A',now()),
+ ('00000000-0000-4000-8000-000000000202','ci-tenant-b','CI Tenant B',now());
+
+INSERT INTO public.branches (id, tenant_id, code, name, updated_at)
+VALUES
+ ('00000000-0000-4000-8000-000000000211','00000000-0000-4000-8000-000000000201','A','Branch A',now()),
+ ('00000000-0000-4000-8000-000000000212','00000000-0000-4000-8000-000000000202','B','Branch B',now());
+
+INSERT INTO public.tenant_sports (id, tenant_id, sport, is_primary)
+VALUES
+ ('00000000-0000-4000-8000-000000000221','00000000-0000-4000-8000-000000000201','FOOTBALL',true),
+ ('00000000-0000-4000-8000-000000000222','00000000-0000-4000-8000-000000000202','FOOTBALL',true);
+
+INSERT INTO public.audit_logs (id, tenant_id, action, resource_type)
+VALUES
+ ('00000000-0000-4000-8000-000000000231','00000000-0000-4000-8000-000000000201','CREATE','rls_test'),
+ ('00000000-0000-4000-8000-000000000232','00000000-0000-4000-8000-000000000202','CREATE','rls_test');
+
+-- Users and memberships fixtures
+INSERT INTO public.users (id, email, password_hash, name, updated_at)
+VALUES
+ ('00000000-0000-4000-8000-000000000241','user-a@ci.local','hash-a','User A',now()),
+ ('00000000-0000-4000-8000-000000000242','user-b@ci.local','hash-b','User B',now());
+
+INSERT INTO public.tenant_memberships (id, tenant_id, user_id, role, status, branch_id, updated_at)
+VALUES
+ ('00000000-0000-4000-8000-000000000251','00000000-0000-4000-8000-000000000201','00000000-0000-4000-8000-000000000241','OWNER','ACTIVE','00000000-0000-4000-8000-000000000211',now()),
+ ('00000000-0000-4000-8000-000000000252','00000000-0000-4000-8000-000000000202','00000000-0000-4000-8000-000000000242','OWNER','ACTIVE','00000000-0000-4000-8000-000000000212',now());
+
+-- Invitation fixtures for both tenants, created by the migration owner.
+INSERT INTO public.invitations (id, tenant_id, email, role, token, status, expires_at)
+VALUES
+ ('00000000-0000-4000-8000-000000000254','00000000-0000-4000-8000-000000000201','invite-a@ci.local','COACH','ci-hash-a','PENDING',now() + interval '1 day'),
+ ('00000000-0000-4000-8000-000000000255','00000000-0000-4000-8000-000000000202','invite-b@ci.local','COACH','ci-hash-b','PENDING',now() + interval '1 day');
+
+-- Attendance sessions, records, corrections fixtures
+INSERT INTO public.attendance_sessions (id, tenant_id, branch_id, group_name, session_date, start_time, end_time, status, updated_at)
+VALUES
+ ('00000000-0000-4000-8000-000000000261','00000000-0000-4000-8000-000000000201','00000000-0000-4000-8000-000000000211','U12 Team A','2026-10-16','16:00','17:30','SCHEDULED',now()),
+ ('00000000-0000-4000-8000-000000000262','00000000-0000-4000-8000-000000000202','00000000-0000-4000-8000-000000000212','U12 Team B','2026-10-16','16:00','17:30','SCHEDULED',now());
+
+INSERT INTO public.attendance_records (id, tenant_id, session_id, player_id, status, version, updated_at)
+VALUES
+ ('00000000-0000-4000-8000-000000000271','00000000-0000-4000-8000-000000000201','00000000-0000-4000-8000-000000000261','00000000-0000-4000-8000-000000000281','PRESENT',1,now()),
+ ('00000000-0000-4000-8000-000000000272','00000000-0000-4000-8000-000000000202','00000000-0000-4000-8000-000000000262','00000000-0000-4000-8000-000000000282','PRESENT',1,now());
+
+INSERT INTO public.attendance_corrections (id, tenant_id, record_id, previous_status, new_status, reason, corrected_by_user_id)
+VALUES
+ ('00000000-0000-4000-8000-000000000291','00000000-0000-4000-8000-000000000201','00000000-0000-4000-8000-000000000271','UNMARKED','PRESENT','Correction valid','00000000-0000-4000-8000-000000000241'),
+ ('00000000-0000-4000-8000-000000000292','00000000-0000-4000-8000-000000000202','00000000-0000-4000-8000-000000000272','UNMARKED','PRESENT','Correction valid','00000000-0000-4000-8000-000000000242');
+
+INSERT INTO public.attendance_idempotency (id, tenant_id, key, session_id)
+VALUES
+ ('00000000-0000-4000-8000-000000000295','00000000-0000-4000-8000-000000000201','idem-key-a','00000000-0000-4000-8000-000000000261'),
+ ('00000000-0000-4000-8000-000000000296','00000000-0000-4000-8000-000000000202','idem-key-b','00000000-0000-4000-8000-000000000262');
+
+-- Sprint 2: Player, Guardian, and Enrollment fixtures for both tenants
+INSERT INTO public.players (id, tenant_id, first_name, last_name, gender, date_of_birth, national_id, emergency_contact_name, emergency_contact_phone, status, updated_at)
+VALUES
+ ('00000000-0000-4000-8000-000000000301','00000000-0000-4000-8000-000000000201','Tsubasa','Ozora','MALE','2012-05-10','12345678901234','Natsuko Ozora','+201000000010','ACTIVE',now()),
+ ('00000000-0000-4000-8000-000000000302','00000000-0000-4000-8000-000000000202','Kojiro','Hyuga','MALE','2012-08-15','12345678901235','Kozo Hyuga','+201000000020','ACTIVE',now());
+
+INSERT INTO public.guardians (id, tenant_id, player_id, first_name, last_name, relationship, phone, is_primary, updated_at)
+VALUES
+ ('00000000-0000-4000-8000-000000000311','00000000-0000-4000-8000-000000000201','00000000-0000-4000-8000-000000000301','Natsuko','Ozora','MOTHER','+201000000010',true,now()),
+ ('00000000-0000-4000-8000-000000000312','00000000-0000-4000-8000-000000000202','00000000-0000-4000-8000-000000000302','Kozo','Hyuga','FATHER','+201000000020',true,now());
+
+INSERT INTO public.player_enrollments (id, tenant_id, player_id, branch_id, sport, status, start_date, updated_at)
+VALUES
+ ('00000000-0000-4000-8000-000000000321','00000000-0000-4000-8000-000000000201','00000000-0000-4000-8000-000000000301','00000000-0000-4000-8000-000000000211','FOOTBALL','ACTIVE',CURRENT_DATE,now()),
+ ('00000000-0000-4000-8000-000000000322','00000000-0000-4000-8000-000000000202','00000000-0000-4000-8000-000000000302','00000000-0000-4000-8000-000000000212','FOOTBALL','ACTIVE',CURRENT_DATE,now());
+
+SET LOCAL ROLE academy_runtime_ci;
+
+-- 1. Missing context: must fail closed for all tenant-scoped tables
+DO $$
+BEGIN
+ IF (SELECT count(*) FROM public.tenants) <> 0 OR
+    (SELECT count(*) FROM public.branches) <> 0 OR
+    (SELECT count(*) FROM public.tenant_sports) <> 0 OR
+    (SELECT count(*) FROM public.audit_logs) <> 0 OR
+    (SELECT count(*) FROM public.tenant_memberships) <> 0 OR
+    (SELECT count(*) FROM public.attendance_sessions) <> 0 OR
+    (SELECT count(*) FROM public.attendance_records) <> 0 OR
+    (SELECT count(*) FROM public.attendance_corrections) <> 0 OR
+    (SELECT count(*) FROM public.attendance_idempotency) <> 0 OR
+    (SELECT count(*) FROM public.players) <> 0 OR
+    (SELECT count(*) FROM public.guardians) <> 0 OR
+    (SELECT count(*) FROM public.player_enrollments) <> 0 THEN
+   RAISE EXCEPTION 'SECURITY FAILURE: missing context exposes tenant records';
+ END IF;
+END $$;
+
+-- 2. Set tenant context to Tenant A
+SELECT set_config('app.tenant_id','00000000-0000-4000-8000-000000000201',true);
+
+DO $$
+BEGIN
+ IF (SELECT count(*) FROM public.branches) <> 1 THEN
+   RAISE EXCEPTION 'SECURITY FAILURE: tenant A can see wrong branches';
+ END IF;
+ IF (SELECT count(*) FROM public.tenants) <> 1 OR
+    (SELECT count(*) FROM public.tenant_sports) <> 1 OR
+    (SELECT count(*) FROM public.audit_logs) <> 1 OR
+    (SELECT count(*) FROM public.tenant_memberships) <> 1 OR
+    (SELECT count(*) FROM public.attendance_sessions) <> 1 OR
+    (SELECT count(*) FROM public.attendance_records) <> 1 OR
+    (SELECT count(*) FROM public.attendance_corrections) <> 1 OR
+    (SELECT count(*) FROM public.attendance_idempotency) <> 1 OR
+    (SELECT count(*) FROM public.players) <> 1 OR
+    (SELECT count(*) FROM public.guardians) <> 1 OR
+    (SELECT count(*) FROM public.player_enrollments) <> 1 THEN
+   RAISE EXCEPTION 'SECURITY FAILURE: tenant A can see cross-tenant rows or count mismatch';
+ END IF;
+ IF (SELECT count(*) FROM public.branches WHERE code = 'B') <> 0 THEN
+   RAISE EXCEPTION 'SECURITY FAILURE: tenant B branch visible to tenant A';
+ END IF;
+ IF (SELECT count(*) FROM public.attendance_sessions WHERE tenant_id =
+   '00000000-0000-4000-8000-000000000202') <> 0 THEN
+   RAISE EXCEPTION 'SECURITY FAILURE: tenant B sessions visible to tenant A';
+ END IF;
+ IF (SELECT count(*) FROM public.players WHERE tenant_id =
+   '00000000-0000-4000-8000-000000000202') <> 0 THEN
+   RAISE EXCEPTION 'SECURITY FAILURE: tenant B players visible to tenant A';
+ END IF;
+END $$;
+
+-- Cross-tenant branch insert rejection
+DO $$
+DECLARE rejected boolean := false;
+BEGIN
+ BEGIN
+  INSERT INTO public.branches (id,tenant_id,code,name,updated_at)
+  VALUES ('00000000-0000-4000-8000-000000000213',
+    '00000000-0000-4000-8000-000000000202','X','Cross-tenant',now());
+ EXCEPTION WHEN insufficient_privilege THEN
+  rejected := true;
+ END;
+ IF NOT rejected THEN
+  RAISE EXCEPTION 'SECURITY FAILURE: cross-tenant branch insert permitted';
+ END IF;
+END $$;
+
+-- Cross-tenant session insert rejection
+DO $$
+DECLARE rejected boolean := false;
+BEGIN
+ BEGIN
+  INSERT INTO public.attendance_sessions (id, tenant_id, branch_id, group_name, session_date, start_time, end_time, status, updated_at)
+  VALUES ('00000000-0000-4000-8000-000000000263',
+    '00000000-0000-4000-8000-000000000202','00000000-0000-4000-8000-000000000212','X','2026-10-16','10:00','11:00','SCHEDULED',now());
+ EXCEPTION WHEN insufficient_privilege THEN
+  rejected := true;
+ END;
+ IF NOT rejected THEN
+  RAISE EXCEPTION 'SECURITY FAILURE: cross-tenant session insert permitted';
+ END IF;
+END $$;
+
+-- Cross-branch composite foreign key protection:
+-- Attempting to create a session in Tenant A referencing Branch B (belonging to Tenant B) must fail!
+DO $$
+DECLARE rejected boolean := false;
+BEGIN
+ BEGIN
+  INSERT INTO public.attendance_sessions (id, tenant_id, branch_id, group_name, session_date, start_time, end_time, status, updated_at)
+  VALUES ('00000000-0000-4000-8000-000000000264',
+    '00000000-0000-4000-8000-000000000201','00000000-0000-4000-8000-000000000212','X','2026-10-16','10:00','11:00','SCHEDULED',now());
+ EXCEPTION WHEN foreign_key_violation THEN
+  rejected := true;
+ END;
+ IF NOT rejected THEN
+  RAISE EXCEPTION 'SECURITY FAILURE: cross-branch session referencing other tenant branch was permitted';
+ END IF;
+END $$;
+
+-- Cross-tenant record insert rejection
+DO $$
+DECLARE rejected boolean := false;
+BEGIN
+ BEGIN
+  INSERT INTO public.attendance_records (id, tenant_id, session_id, player_id, status, version, updated_at)
+  VALUES ('00000000-0000-4000-8000-000000000273',
+    '00000000-0000-4000-8000-000000000202','00000000-0000-4000-8000-000000000262','00000000-0000-4000-8000-000000000283','PRESENT',1,now());
+ EXCEPTION WHEN insufficient_privilege THEN
+  rejected := true;
+ END;
+ IF NOT rejected THEN
+  RAISE EXCEPTION 'SECURITY FAILURE: cross-tenant record insert permitted';
+ END IF;
+END $$;
+
+-- Cross-tenant correction insert rejection
+DO $$
+DECLARE rejected boolean := false;
+BEGIN
+ BEGIN
+  INSERT INTO public.attendance_corrections (id, tenant_id, record_id, previous_status, new_status, reason, corrected_by_user_id)
+  VALUES ('00000000-0000-4000-8000-000000000293',
+    '00000000-0000-4000-8000-000000000202','00000000-0000-4000-8000-000000000272','UNMARKED','PRESENT','Tamper','00000000-0000-4000-8000-000000000241');
+ EXCEPTION WHEN insufficient_privilege THEN
+  rejected := true;
+ END;
+ IF NOT rejected THEN
+  RAISE EXCEPTION 'SECURITY FAILURE: cross-tenant correction insert permitted';
+ END IF;
+END $$;
+
+-- Cross-tenant player insert rejection
+DO $$
+DECLARE rejected boolean := false;
+BEGIN
+ BEGIN
+  INSERT INTO public.players (id, tenant_id, first_name, last_name, date_of_birth, emergency_contact_name, emergency_contact_phone, updated_at)
+  VALUES ('00000000-0000-4000-8000-000000000303',
+    '00000000-0000-4000-8000-000000000202','Misaki','Taro','2012-05-05','Ichiro Misaki','+201000000030',now());
+ EXCEPTION WHEN insufficient_privilege THEN
+  rejected := true;
+ END;
+ IF NOT rejected THEN
+  RAISE EXCEPTION 'SECURITY FAILURE: cross-tenant player insert permitted';
+ END IF;
+END $$;
+
+-- Cross-branch enrollment composite foreign key protection:
+-- Attempting to enroll Tenant A's player into Branch B (Tenant B's branch) must fail!
+DO $$
+DECLARE rejected boolean := false;
+BEGIN
+ BEGIN
+  INSERT INTO public.player_enrollments (id, tenant_id, player_id, branch_id, sport, status, start_date, updated_at)
+  VALUES ('00000000-0000-4000-8000-000000000323',
+    '00000000-0000-4000-8000-000000000201','00000000-0000-4000-8000-000000000301','00000000-0000-4000-8000-000000000212','FOOTBALL','COMPLETED',CURRENT_DATE,now());
+ EXCEPTION WHEN foreign_key_violation THEN
+  rejected := true;
+ END;
+ IF NOT rejected THEN
+  RAISE EXCEPTION 'SECURITY FAILURE: cross-tenant enrollment referencing other tenant branch was permitted';
+ END IF;
+END $$;
+
+-- 3. Switch context to Tenant B
+SELECT set_config('app.tenant_id','00000000-0000-4000-8000-000000000202',true);
+DO $$
+BEGIN
+ IF (SELECT count(*) FROM public.branches) <> 1
+    OR (SELECT count(*) FROM public.branches WHERE code='A') <> 0
+    OR (SELECT count(*) FROM public.tenants) <> 1
+    OR (SELECT count(*) FROM public.tenant_sports) <> 1
+    OR (SELECT count(*) FROM public.audit_logs) <> 1
+    OR (SELECT count(*) FROM public.tenant_memberships) <> 1
+    OR (SELECT count(*) FROM public.attendance_sessions) <> 1
+    OR (SELECT count(*) FROM public.attendance_records) <> 1
+    OR (SELECT count(*) FROM public.attendance_corrections) <> 1
+    OR (SELECT count(*) FROM public.attendance_idempotency) <> 1
+    OR (SELECT count(*) FROM public.players) <> 1
+    OR (SELECT count(*) FROM public.guardians) <> 1
+    OR (SELECT count(*) FROM public.player_enrollments) <> 1 THEN
+   RAISE EXCEPTION 'SECURITY FAILURE: tenant context switch leaks prior tenant rows';
+ END IF;
+END $$;
+
+-- 4. Clear context: fails closed
+SELECT set_config('app.tenant_id','',true);
+DO $$
+BEGIN
+ IF (SELECT count(*) FROM public.tenants) <> 0 OR
+    (SELECT count(*) FROM public.branches) <> 0 OR
+    (SELECT count(*) FROM public.tenant_sports) <> 0 OR
+    (SELECT count(*) FROM public.audit_logs) <> 0 OR
+    (SELECT count(*) FROM public.tenant_memberships) <> 0 OR
+    (SELECT count(*) FROM public.attendance_sessions) <> 0 OR
+    (SELECT count(*) FROM public.attendance_records) <> 0 OR
+    (SELECT count(*) FROM public.attendance_corrections) <> 0 OR
+    (SELECT count(*) FROM public.attendance_idempotency) <> 0 OR
+    (SELECT count(*) FROM public.players) <> 0 OR
+    (SELECT count(*) FROM public.guardians) <> 0 OR
+    (SELECT count(*) FROM public.player_enrollments) <> 0 THEN
+   RAISE EXCEPTION 'SECURITY FAILURE: cleared tenant context exposes rows';
+ END IF;
+END $$;
+
+-- 5. Discovery path verification:
+-- When tenant_id is unset, but actor_user_id is set to User A, User A can discover their own membership
+SELECT set_config('app.actor_user_id','00000000-0000-4000-8000-000000000241',true);
+DO $$
+BEGIN
+ IF (SELECT count(*) FROM public.tenant_memberships) <> 1 THEN
+   RAISE EXCEPTION 'SECURITY FAILURE: authenticated user cannot discover their own memberships';
+ END IF;
+ IF (SELECT count(*) FROM public.tenant_memberships WHERE user_id = '00000000-0000-4000-8000-000000000242') <> 0 THEN
+   RAISE EXCEPTION 'SECURITY FAILURE: user A discovered user B membership';
+ END IF;
+END $$;
+
+-- 6. Untrusted auth context flags must not bypass tenant isolation.
+SELECT set_config('app.actor_user_id','',true);
+SELECT set_config('app.auth_context','auth_discovery',true);
+DO $$
+BEGIN
+ IF (SELECT count(*) FROM public.tenants) <> 0
+    OR (SELECT count(*) FROM public.branches) <> 0
+    OR (SELECT count(*) FROM public.tenant_memberships) <> 0 THEN
+  RAISE EXCEPTION 'SECURITY FAILURE: auth_discovery GUC bypasses RLS';
+ END IF;
+END $$;
+
+SELECT set_config('app.auth_context','invitation_lookup',true);
+DO $$
+BEGIN
+ IF (SELECT count(*) FROM public.tenants) <> 0
+    OR (SELECT count(*) FROM public.invitations) <> 0 THEN
+  RAISE EXCEPTION 'SECURITY FAILURE: invitation_lookup GUC bypasses RLS';
+ END IF;
+END $$;
+
+-- 7. Forged auth flags must not allow membership creation without a tenant context.
+SELECT set_config('app.auth_context','auth_discovery',true);
+DO $$
+DECLARE rejected boolean := false;
+BEGIN
+ BEGIN
+  INSERT INTO public.tenant_memberships (id, tenant_id, user_id, role, status, updated_at)
+  VALUES ('00000000-0000-4000-8000-000000000253',
+    '00000000-0000-4000-8000-000000000202',
+    '00000000-0000-4000-8000-000000000241', 'OWNER', 'ACTIVE', now());
+ EXCEPTION WHEN insufficient_privilege THEN
+  rejected := true;
+ END;
+ IF NOT rejected THEN
+  RAISE EXCEPTION 'SECURITY FAILURE: auth discovery flag created cross-tenant membership';
+ END IF;
+END $$;
+
+-- 8. A revoked membership must not appear in actor-scoped discovery.
+SELECT set_config('app.auth_context','',true);
+SELECT set_config('app.actor_user_id','00000000-0000-4000-8000-000000000241',true);
+DO $$
+BEGIN
+ IF (SELECT count(*) FROM public.tenant_memberships WHERE status = 'ACTIVE') <> 1 THEN
+  RAISE EXCEPTION 'SECURITY FAILURE: actor discovery cannot read own active membership';
+ END IF;
+ IF (SELECT count(*) FROM public.tenant_memberships WHERE user_id =
+   '00000000-0000-4000-8000-000000000242') <> 0 THEN
+  RAISE EXCEPTION 'SECURITY FAILURE: actor discovery leaked another user membership';
+ END IF;
+END $$;
+
+-- 9. A forged invitation lookup flag cannot read or consume any invitation.
+SELECT set_config('app.actor_user_id','',true);
+SELECT set_config('app.auth_context','invitation_lookup',true);
+DO $$
+BEGIN
+ IF (SELECT count(*) FROM public.invitations) <> 0 THEN
+  RAISE EXCEPTION 'SECURITY FAILURE: invitation lookup exposed tenant invitations';
+ END IF;
+ IF (SELECT count(*) FROM public.invitations WHERE token = 'ci-hash-b') <> 0 THEN
+  RAISE EXCEPTION 'SECURITY FAILURE: token lookup bypassed invitation RLS';
+ END IF;
+END $$;
+
+DO $$
+BEGIN
+ UPDATE public.invitations SET status = 'ACCEPTED' WHERE token = 'ci-hash-b';
+ IF FOUND THEN
+  RAISE EXCEPTION 'SECURITY FAILURE: invitation lookup consumed a foreign invitation';
+ END IF;
+END $$;
+
+RESET ROLE;
+
+ROLLBACK;

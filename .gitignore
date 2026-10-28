@@ -40,5 +40,19 @@ Thumbs.db
 packages/database/prisma/*.db
 packages/database/prisma/*.db-journal
 
-# Docker volumes (if ever mounted into repo)
+# Docker volumes / Local DB data / backups / self-hosted runtime
 .data
+packages/database/data
+.local-pg-data
+backups
+tools
+sportexus-live-url.txt
+sportexus-runtime-status.json
+
+# Local demo credentials — never commit
+sportexus-accounts.local.txt
+.env
+apps/api/.env
+apps/web/.env
+
+demo-credentials.local.txt

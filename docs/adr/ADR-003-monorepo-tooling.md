@@ -34,7 +34,7 @@ Adopt:
 
 ## Alternatives Considered
 
-| Option | Why not chosen |
-|--------|----------------|
-| Nx | Heavier default surface for current team size |
-| npm workspaces | Weaker linking/isolation than pnpm |
+| Option         | Why not chosen                                |
+| -------------- | --------------------------------------------- |
+| Nx             | Heavier default surface for current team size |
+| npm workspaces | Weaker linking/isolation than pnpm            |
