@@ -72,7 +72,7 @@ async function bootstrap() {
   // Convert Zod validation errors to 400 Bad Request (not 500)
   app.useGlobalFilters(new ZodExceptionFilter());
 
-  await app.listen(config.port);
+  await app.listen(config.port, '0.0.0.0');
 }
 
 void bootstrap();
