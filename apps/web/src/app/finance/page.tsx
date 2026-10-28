@@ -33,6 +33,7 @@ import {
   X,
   Layers,
   ShieldCheck,
+  Printer,
 } from 'lucide-react';
 
 export default function FinanceDashboardPage() {
@@ -130,10 +131,15 @@ export default function FinanceDashboardPage() {
   }, []);
 
   useEffect(() => {
-    if (user && activeTenant) {
-      void loadFinancialData();
+    if (!authLoading) {
+      if (user && activeTenant) {
+        void loadFinancialData();
+      } else if (user && !activeTenant) {
+        // Platform-level user (Super Admin) has no academy tenant context
+        setIsLoadingData(false);
+      }
     }
-  }, [user, activeTenant, loadFinancialData]);
+  }, [user, activeTenant, authLoading, loadFinancialData]);
 
   // Load players for new subscription dropdown
   useEffect(() => {
@@ -327,6 +333,10 @@ export default function FinanceDashboardPage() {
     document.body.removeChild(link);
   };
 
+  const handlePrint = () => {
+    window.print();
+  };
+
   if (authLoading || isLoadingData) {
     return (
       <AppShell>
@@ -334,7 +344,7 @@ export default function FinanceDashboardPage() {
           <div className="flex flex-col items-center gap-3">
             <RefreshCw className="h-8 w-8 animate-spin text-[var(--brand-primary)]" />
             <p className="text-sm font-medium text-[var(--text-muted)]">
-              جارٍ تحميل بيانات العمليات المالية والاشتراكات...
+              {t('finance.loading', 'جارٍ تحميل بيانات العمليات المالية والاشتراكات...')}
             </p>
           </div>
         </div>
@@ -342,9 +352,59 @@ export default function FinanceDashboardPage() {
     );
   }
 
+  // Super Admin / platform-level users have no academy tenant — show a clear message
+  if (user && !activeTenant) {
+    return (
+      <AppShell>
+        <div className="flex h-[60vh] flex-col items-center justify-center gap-4 text-center px-4">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--brand-primary)]/10 border border-[var(--brand-primary)]/20">
+            <ShieldCheck className="h-8 w-8 text-[var(--brand-primary)]" />
+          </div>
+          <div className="space-y-2 max-w-sm">
+            <h2 className="text-xl font-bold text-[var(--text-primary)]">
+              {t('finance.platform_admin_title', 'لوحة الإدارة المركزية')}
+            </h2>
+            <p className="text-sm text-[var(--text-muted)] leading-relaxed">
+              {t(
+                'finance.platform_admin_desc',
+                'صفحة العمليات المالية مخصصة للأكاديميات. كمدير المنصة، يمكنك مراجعة التقارير المالية الإجمالية من لوحة تحكم المنصة.',
+              )}
+            </p>
+          </div>
+          <a
+            href="/platform"
+            className="mt-2 flex items-center gap-2 rounded-xl bg-[var(--brand-primary)] px-5 py-2.5 text-sm font-semibold text-white hover:brightness-110 transition-all"
+          >
+            <Layers className="h-4 w-4" />
+            {t('finance.go_to_platform', 'الذهاب إلى لوحة إدارة المنصة')}
+          </a>
+        </div>
+      </AppShell>
+    );
+  }
+
+
   return (
     <AppShell>
       <div className="space-y-6">
+        {/* Official Printable Header (Visible only when printing to PDF / paper) */}
+        <div className="hidden print:block p-4 border-b-2 border-black space-y-1 mb-4">
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-xl font-extrabold text-black">
+                {activeTenant?.tenantName || 'الأكاديمية الرياضية'}
+              </h1>
+              <p className="text-xs text-gray-700">
+                التقرير المالي وكشف الحساب الرسمي — منصة سبورتكسس
+              </p>
+            </div>
+            <div className="text-left rtl:text-left text-xs text-gray-700">
+              <p>تاريخ الطباعة: {new Date().toLocaleDateString('ar-EG')}</p>
+              <p>الوقت: {new Date().toLocaleTimeString('ar-EG')}</p>
+            </div>
+          </div>
+        </div>
+
         <PageHeader
           breadcrumbs={[
             { label: t('nav.dashboard', 'الرئيسية'), href: '/dashboard' },
@@ -356,7 +416,17 @@ export default function FinanceDashboardPage() {
             'متابعة تحصيلات الاشتراكات، تسوية الصناديق، والأرصدة المستحقة للأكاديمية.',
           )}
           actions={
-            <div className="flex flex-wrap items-center gap-2.5">
+            <div className="flex flex-wrap items-center gap-2.5 print:hidden">
+              <button
+                type="button"
+                id="btn-print-finance-report"
+                onClick={handlePrint}
+                className="flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-2 text-xs font-semibold text-[var(--text-primary)] hover:border-[var(--brand-primary)] transition-all cursor-pointer"
+              >
+                <Printer className="h-4 w-4 text-[var(--brand-primary)]" />
+                <span>طباعة تقرير مالي (PDF)</span>
+              </button>
+
               <button
                 type="button"
                 onClick={handleExportCsv}

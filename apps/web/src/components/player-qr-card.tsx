@@ -43,7 +43,7 @@ export function PlayerQrCard({ card, isAdmin = false, onCardUpdated, onClose }: 
         width: 256,
         margin: 1,
         color: {
-          dark: '#062016',
+          dark: '#0f172a',
           light: '#ffffff',
         },
         errorCorrectionLevel: 'M',
@@ -133,10 +133,10 @@ export function PlayerQrCard({ card, isAdmin = false, onCardUpdated, onClose }: 
       <div
         ref={cardRef}
         id="printable-player-card"
-        className="relative mx-auto w-full max-w-sm overflow-hidden rounded-3xl border-2 border-[#2f9e6b]/50 bg-gradient-to-b from-[#13281f] via-[#0d1d16] to-[#08120e] p-6 shadow-2xl text-white print:border-black print:bg-white print:text-black print:shadow-none"
+        className="relative mx-auto w-full max-w-sm overflow-hidden rounded-3xl border-2 border-[#0A3BFF]/40 bg-gradient-to-b from-[#0d1f3c] via-[#0a1628] to-[#060d1a] p-6 shadow-2xl text-white print:border-black print:bg-white print:text-black print:shadow-none"
       >
         {/* Decorative Top Accent Glow */}
-        <div className="absolute top-0 right-0 left-0 h-1.5 bg-gradient-to-r from-emerald-500 via-[#45c387] to-teal-400 print:hidden" />
+        <div className="absolute top-0 right-0 left-0 h-1.5 bg-gradient-to-r from-[#0A3BFF] via-[#0077FF] to-[#00D6FF] print:hidden" />
 
         {/* Card Header: Academy Branding */}
         <div className="flex items-center justify-between border-b border-[#234235] pb-4 print:border-gray-300">
@@ -161,8 +161,8 @@ export function PlayerQrCard({ card, isAdmin = false, onCardUpdated, onClose }: 
                 ملغاة
               </span>
             ) : (
-              <span className="flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold text-emerald-300 border border-emerald-500/40 print:text-black">
-                <ShieldCheck className="h-3 w-3 text-[#45c387]" />
+              <span className="flex items-center gap-1 rounded-full bg-[#22C55E]/20 px-2 py-0.5 text-[10px] font-bold text-[#4ADE80] border border-[#22C55E]/40 print:text-black">
+                <ShieldCheck className="h-3 w-3 text-[#22C55E]" />
                 عضوية نشطة
               </span>
             )}
@@ -171,7 +171,7 @@ export function PlayerQrCard({ card, isAdmin = false, onCardUpdated, onClose }: 
 
         {/* Player Profile & Details */}
         <div className="mt-5 flex items-center gap-4">
-          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#1b3a2d] to-[#142920] border border-[#2f9e6b]/40 text-xl font-bold text-[#45c387] shadow-inner print:border-gray-400 print:text-black">
+          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#0d1f3c] to-[#0a1628] border border-[#0A3BFF]/40 text-xl font-bold text-[#00D6FF] shadow-inner print:border-gray-400 print:text-black">
             {card.photoUrl ? (
               <img
                 src={card.photoUrl}
@@ -189,7 +189,7 @@ export function PlayerQrCard({ card, isAdmin = false, onCardUpdated, onClose }: 
             </h2>
             <div className="mt-1 flex items-center gap-1.5">
               <span className="text-[10px] text-[#8ca89a] print:text-gray-600">رقم العضوية:</span>
-              <span className="font-mono text-xs font-bold tracking-wider text-[#45c387] bg-[#162e24] px-2 py-0.5 rounded border border-[#2b5944] print:border-gray-400 print:text-black">
+              <span className="font-mono text-xs font-bold tracking-wider text-[#00D6FF] bg-[#0d1f3c] px-2 py-0.5 rounded border border-[#1e3a5f] print:border-gray-400 print:text-black">
                 {card.membershipNumber}
               </span>
             </div>
@@ -210,8 +210,8 @@ export function PlayerQrCard({ card, isAdmin = false, onCardUpdated, onClose }: 
               />
             </div>
           ) : (
-            <div className="flex h-44 w-44 items-center justify-center text-[#8ca89a]">
-              <QrCode className="h-10 w-10 animate-pulse text-[#45c387]" />
+            <div className="flex h-44 w-44 items-center justify-center text-slate-400">
+              <QrCode className="h-10 w-10 animate-pulse text-[#00D6FF]" />
             </div>
           )}
 
@@ -234,9 +234,9 @@ export function PlayerQrCard({ card, isAdmin = false, onCardUpdated, onClose }: 
         <button
           type="button"
           onClick={handlePrint}
-          className="flex items-center gap-2 rounded-xl bg-[#162e24] border border-[#2b5944] px-4 py-2.5 text-xs font-bold text-white hover:border-[#45c387] hover:bg-[#1c392c] transition-colors"
+          className="flex items-center gap-2 rounded-xl bg-[#0d1f3c] border border-[#1e3a5f] px-4 py-2.5 text-xs font-bold text-white hover:border-[#00D6FF] hover:bg-[#142040] transition-colors"
         >
-          <Printer className="h-4 w-4 text-[#45c387]" />
+          <Printer className="h-4 w-4 text-[#00D6FF]" />
           <span>طباعة البطاقة / حفظ كـ PDF</span>
         </button>
 
@@ -244,9 +244,9 @@ export function PlayerQrCard({ card, isAdmin = false, onCardUpdated, onClose }: 
           type="button"
           onClick={handleDownloadQr}
           disabled={!qrDataUrl}
-          className="flex items-center gap-2 rounded-xl bg-[#162e24] border border-[#2b5944] px-4 py-2.5 text-xs font-bold text-white hover:border-[#45c387] hover:bg-[#1c392c] transition-colors disabled:opacity-50"
+          className="flex items-center gap-2 rounded-xl bg-[#0d1f3c] border border-[#1e3a5f] px-4 py-2.5 text-xs font-bold text-white hover:border-[#00D6FF] hover:bg-[#142040] transition-colors disabled:opacity-50"
         >
-          <Download className="h-4 w-4 text-[#45c387]" />
+          <Download className="h-4 w-4 text-[#00D6FF]" />
           <span>تحميل صورة الرمز</span>
         </button>
 
@@ -276,7 +276,7 @@ export function PlayerQrCard({ card, isAdmin = false, onCardUpdated, onClose }: 
           <button
             type="button"
             onClick={onClose}
-            className="flex items-center gap-1.5 rounded-xl border border-[#2b4c3e] bg-transparent px-4 py-2.5 text-xs font-medium text-[#8ca89a] hover:text-white transition-colors"
+            className="flex items-center gap-1.5 rounded-xl border border-slate-700 bg-transparent px-4 py-2.5 text-xs font-medium text-slate-400 hover:text-white transition-colors"
           >
             <X className="h-4 w-4" />
             <span>إغلاق</span>

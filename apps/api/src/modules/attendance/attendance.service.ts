@@ -460,6 +460,36 @@ export class AttendanceService {
   }
 
   /**
+   * Enforces coach assignment restriction, strips self-attendance, and enforces session windows.
+   */
+  private async validateCoachSessionAccess(
+    tx: any,
+    tenantContext: TenantContext,
+    session: { branchId: string; coachUserId: string | null; groupId: string | null; sessionDate: Date },
+    targetPlayerIds: string[],
+  ): Promise<void> {
+    // 1. Strict Coach Attendance Prohibition (Product requirement: Coaches must NOT be allowed to record player attendance)
+    if (tenantContext.role === 'COACH') {
+      throw new ForbiddenException({
+        code: ErrorCode.FORBIDDEN,
+        message: 'Coaches are not permitted to record player attendance through QR or manual entry.',
+      });
+    }
+
+    // 3. Enforce valid session window (prevent marking attendance more than 24h into the future)
+    const now = new Date();
+    const sessionDate = new Date(session.sessionDate);
+    const oneDayFromNow = new Date(now.getTime() + 24 * 3600 * 1000);
+    if (sessionDate > oneDayFromNow) {
+      throw new BadRequestException({
+        code: ErrorCode.VALIDATION_FAILED,
+        message:
+          'لا يمكن تسجيل الحضور لحصص تدريبية مستقبلية قبل موعدها (Cannot mark attendance for future sessions in advance)',
+      });
+    }
+  }
+
+  /**
    * Records attendance for a single player with idempotency and optimistic concurrency.
    * Writes append-only AttendanceEvent for audit stream.
    */
@@ -511,6 +541,8 @@ export class AttendanceService {
               'Cannot record attendance on a closed session. Use correction workflow instead.',
           });
         }
+
+        await this.validateCoachSessionAccess(tx, tenantContext, session, [dto.playerId]);
 
         // Verify player has active enrollment in the session branch (prevents stale access after transfers)
         const activeEnrollment = await tx.playerEnrollment.findFirst({
@@ -693,6 +725,13 @@ export class AttendanceService {
             message: 'Cannot record attendance on a closed session',
           });
         }
+
+        await this.validateCoachSessionAccess(
+          tx,
+          tenantContext,
+          session,
+          dto.records.map((r) => r.playerId),
+        );
 
         const updatedRecords = [];
 
@@ -1491,6 +1530,8 @@ export class AttendanceService {
             message: 'بطاقة غير صالحة أو غير مسجلة (Invalid or unregistered QR card)',
           });
         }
+
+        await this.validateCoachSessionAccess(tx, tenantContext, session, [player.id]);
 
         if (player.qrCardRevokedAt) {
           throw new BadRequestException({

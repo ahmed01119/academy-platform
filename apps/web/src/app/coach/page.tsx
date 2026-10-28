@@ -20,6 +20,7 @@ import {
   RefreshCw,
   MapPin,
   Calendar,
+  UserPlus,
 } from 'lucide-react';
 import type { SessionSummary, TrainingGroupSummary } from '@academy/shared';
 
@@ -97,6 +98,13 @@ export default function CoachWorkspacePage() {
               >
                 <Award className="h-4 w-4" />
                 <span>تقييمات اللاعبين</span>
+              </Link>
+              <Link
+                href="/players?tab=applications"
+                className="flex items-center gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-2.5 text-sm font-semibold text-[var(--text-main)] hover:border-[var(--brand-primary)] hover:text-[var(--brand-primary)] transition-all"
+              >
+                <UserPlus className="h-4 w-4 text-[var(--brand-primary)]" />
+                <span>طلبات الانضمام</span>
               </Link>
               <Link
                 href="/sessions"

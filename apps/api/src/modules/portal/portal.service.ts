@@ -544,7 +544,7 @@ export class PortalService {
         type: 'PLAYER_REGISTRATION',
         title: 'New Player Join Request',
         body: `"${dto.playerName}" submitted a join request for review.`,
-        href: '/players',
+        href: '/players?tab=applications',
       });
     }
 

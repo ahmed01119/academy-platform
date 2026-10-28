@@ -42,13 +42,13 @@ export default function LoginPage() {
     setIsSubmitting(true);
 
     try {
-      await login({
+      const { user: freshUser, activeTenant: freshTenant } = await login({
         email: email.trim().toLowerCase(),
         password,
         rememberMe,
       });
-      // Will trigger useEffect or we can push directly
-      router.push(getRoleHomeRoute(user, activeTenant));
+      // Use fresh data from response, not stale React state
+      router.push(getRoleHomeRoute(freshUser, freshTenant));
     } catch (err: unknown) {
       let message =
         locale === 'ar'

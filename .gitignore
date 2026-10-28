@@ -48,3 +48,11 @@ backups
 tools
 sportexus-live-url.txt
 sportexus-runtime-status.json
+
+# Local demo credentials — never commit
+sportexus-accounts.local.txt
+.env
+apps/api/.env
+apps/web/.env
+
+demo-credentials.local.txt

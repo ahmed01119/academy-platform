@@ -9,6 +9,7 @@ import { canAccessAdminRoutes, getRoleHomeRoute } from '../../lib/role-routing';
 import { AppShell } from '../../components/layout/AppShell';
 import { StatCard, StatusBadge } from '../../components/ui';
 import { api } from '../../lib/api-client';
+import { PlayerJoinRequestsTab } from '../../components/dashboard/PlayerJoinRequestsTab';
 import type { BranchSummary, PlayerSummary } from '@academy/shared';
 import {
   Users,
@@ -23,6 +24,7 @@ import {
   Layers,
   CalendarCheck,
   BarChart3,
+  Zap,
 } from 'lucide-react';
 
 export default function DashboardPage() {
@@ -135,14 +137,29 @@ export default function DashboardPage() {
                 <span>{t('common.refresh')}</span>
               </button>
 
-              <Link
-                href="/attendance/scanner"
-                id="btn-quick-scanner"
-                className="flex items-center gap-2 rounded-xl border border-[var(--border-app)] bg-[var(--bg-surface)] px-4 py-2.5 text-xs font-semibold text-[var(--accent-primary)] hover:border-[var(--accent-primary)] transition-all cursor-pointer shadow-sm"
-              >
-                <CalendarCheck className="h-4 w-4" />
-                <span>{t('nav.scanner')}</span>
-              </Link>
+              {/* Prominent Quick Attendance Button (Owner / Manager / Branch Manager / Receptionist; Coaches strictly excluded) */}
+              {activeTenant?.role !== 'COACH' && (
+                <Link
+                  href="/attendance/quick"
+                  id="btn-quick-attendance"
+                  className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-blue-500/20 hover:brightness-110 active:scale-[0.98] transition-all cursor-pointer"
+                >
+                  <Zap className="h-4 w-4 text-cyan-200 fill-cyan-200/20 animate-pulse" />
+                  <span>{locale === 'ar' ? 'تسجيل الحضور السريع' : 'Quick Attendance'}</span>
+                </Link>
+              )}
+
+              {/* QR Scanner button */}
+              {activeTenant?.role !== 'COACH' && (
+                <Link
+                  href="/attendance/scanner"
+                  id="btn-quick-scanner"
+                  className="flex items-center gap-2 rounded-xl border border-[var(--border-app)] bg-[var(--bg-surface)] px-4 py-2.5 text-xs font-semibold text-[var(--accent-primary)] hover:border-[var(--accent-primary)] transition-all cursor-pointer shadow-sm"
+                >
+                  <CalendarCheck className="h-4 w-4" />
+                  <span>{t('nav.scanner')}</span>
+                </Link>
+              )}
 
               <Link
                 href="/players/new"
@@ -402,6 +419,15 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Player Join Requests - visible to OWNER and MANAGER only */}
+      {(activeTenant?.role === 'OWNER' || activeTenant?.role === 'MANAGER') && (
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-8">
+          <div className="rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-6">
+            <PlayerJoinRequestsTab />
+          </div>
+        </div>
+      )}
     </AppShell>
   );
 }

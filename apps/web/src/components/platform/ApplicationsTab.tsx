@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useLocale } from '../../lib/locale-context';
 import apiClient from '../../lib/api-client';
 import { useToast } from '../ui/Toast';
+import { Select } from '../ui/Select';
 import {
   Inbox,
   CheckCircle2,
@@ -220,13 +221,17 @@ export function ApplicationsTab({
 
                 <div className="flex items-center gap-3">
                   {getStatusBadge(app.status)}
-                  {app.status === 'PENDING_REVIEW' && (
+                  {app.status !== 'APPROVED' && (
                     <button
                       type="button"
                       onClick={() => handleOpenReview(app)}
                       className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-sm transition-all"
                     >
-                      {locale === 'ar' ? 'مراجعة واعتماد' : 'Review & Decide'}
+                      {app.status === 'REJECTED'
+                        ? (locale === 'ar' ? 'إعادة النظر والاعتماد' : 'Reconsider Application')
+                        : app.status === 'MORE_INFO_REQUESTED'
+                        ? (locale === 'ar' ? 'مراجعة التحديث' : 'Review Update')
+                        : (locale === 'ar' ? 'مراجعة واعتماد' : 'Review & Decide')}
                     </button>
                   )}
                 </div>
@@ -350,17 +355,37 @@ export function ApplicationsTab({
                   <label className="text-xs font-semibold text-emerald-400">
                     {locale === 'ar' ? 'الباقة الابتدائية المعتمدة' : 'Assigned Initial SaaS Plan'}
                   </label>
-                  <select
+                  <Select
                     value={initialPlanCode}
-                    onChange={(e) =>
-                      setInitialPlanCode(e.target.value as 'STARTER' | 'PRO' | 'ENTERPRISE')
-                    }
-                    className="w-full px-3 py-2 rounded-xl bg-[var(--bg-card)] border border-[var(--border-subtle)] text-xs text-[var(--text-primary)] font-medium"
-                  >
-                    <option value="STARTER">STARTER (1 Branch / 50 Players)</option>
-                    <option value="PRO">PRO (5 Branches / 250 Players / Cashiering)</option>
-                    <option value="ENTERPRISE">ENTERPRISE (25 Branches / 2000 Players)</option>
-                  </select>
+                    onChange={(val) => setInitialPlanCode(val)}
+                    options={[
+                      {
+                        value: 'STARTER',
+                        label: 'STARTER',
+                        description:
+                          locale === 'ar'
+                            ? 'فرع واحد / حتى 50 لاعباً'
+                            : '1 Branch / up to 50 players',
+                      },
+                      {
+                        value: 'PRO',
+                        label: locale === 'ar' ? 'PRO (موصى بها للنمو)' : 'PRO (Recommended for Growth)',
+                        description:
+                          locale === 'ar'
+                            ? '5 فروع / 250 لاعباً / نقطة تحصيل'
+                            : '5 Branches / 250 players / Cashiering',
+                      },
+                      {
+                        value: 'ENTERPRISE',
+                        label: 'ENTERPRISE',
+                        description:
+                          locale === 'ar'
+                            ? '25 فرعاً / حتى 2000 لاعب / تقارير متقدمة'
+                            : '25 Branches / 2000 players / Advanced Analytics',
+                      },
+                    ]}
+                    aria-label={locale === 'ar' ? 'الباقة الابتدائية المعتمدة' : 'Assigned Initial SaaS Plan'}
+                  />
                   <p className="text-[11px] text-emerald-300/80 pt-1">
                     {locale === 'ar'
                       ? 'عند الاعتماد، سيتم إنشاء المستأجر وحساب المالك والفرع الرئيسي تلقائياً.'

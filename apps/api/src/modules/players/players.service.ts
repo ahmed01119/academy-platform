@@ -28,6 +28,8 @@ import {
   type PlayerJoinRequestItem,
   type ReviewPlayerJoinRequest,
   type ApplicationStatus,
+  type PlayerDeletionImpact,
+  type PlayerDeletionResponse,
 } from '@academy/shared';
 import { NotificationsService } from '../notifications/notifications.service';
 
@@ -388,6 +390,16 @@ export class PlayersService {
           }
         }
 
+        // Determine date of birth from dateOfBirth or birthYear (supports birth year only format)
+        const birthDateStr = dto.dateOfBirth
+          ? (dto.dateOfBirth.includes('-') ? dto.dateOfBirth : `${dto.dateOfBirth}-01-01`)
+          : (dto.birthYear ? `${dto.birthYear}-01-01` : '2015-01-01');
+
+        const membershipNumber =
+          dto.jerseyNumber !== undefined && dto.jerseyNumber !== null
+            ? String(dto.jerseyNumber)
+            : (dto.membershipNumber?.trim() || null);
+
         // 1. Create player
         const player = await tx.player.create({
           data: {
@@ -395,7 +407,8 @@ export class PlayersService {
             firstName: dto.firstName.trim(),
             lastName: dto.lastName.trim(),
             gender: dto.gender,
-            dateOfBirth: new Date(dto.dateOfBirth),
+            dateOfBirth: new Date(birthDateStr),
+            membershipNumber,
             nationalId: dto.nationalId?.trim() || null,
             photoUrl: dto.photoUrl?.trim() || null,
             emergencyContactName: dto.emergencyContactName.trim(),
@@ -1032,6 +1045,33 @@ export class PlayersService {
     dto: ReviewPlayerJoinRequest,
   ): Promise<PlayerJoinRequestItem> {
     return this.prisma.withTenantTransaction(tenantContext, async (tx) => {
+      // Coach authorization and scoping check
+      if (tenantContext.role === 'COACH') {
+        const coachMembership = await tx.tenantMembership.findUnique({
+          where: {
+            tenantId_userId: {
+              tenantId: tenantContext.tenantId,
+              userId: tenantContext.actorUserId,
+            },
+          },
+        });
+
+        if (!coachMembership?.canReviewApplications) {
+          throw new ForbiddenException({
+            code: ErrorCode.INSUFFICIENT_PERMISSIONS,
+            message: 'Coach has not been delegated permission to review player applications',
+          });
+        }
+
+        // Delegated coach may only act on their assigned branch or group
+        if (coachMembership.branchId && dto.branchId && dto.branchId !== coachMembership.branchId) {
+          throw new ForbiddenException({
+            code: ErrorCode.FORBIDDEN,
+            message: 'Coach can only review and assign players within their assigned branch',
+          });
+        }
+      }
+
       const request = await tx.playerRegistrationRequest.findFirst({
         where: {
           id: requestId,
@@ -1054,12 +1094,26 @@ export class PlayersService {
       }
 
       if (dto.status === 'APPROVED') {
+        // Enforce SaaS plan player capacity limit
+        const sub = await tx.tenantSubscription.findUnique({
+          where: { tenantId: tenantContext.tenantId },
+          include: { plan: true },
+        });
+        if (sub?.plan?.maxPlayers) {
+          const activePlayersCount = await tx.player.count({
+            where: { tenantId: tenantContext.tenantId, status: 'ACTIVE' },
+          });
+          if (activePlayersCount >= sub.plan.maxPlayers) {
+            throw new BadRequestException({
+              code: ErrorCode.VALIDATION_FAILED,
+              message: 'بلغت الأكاديمية الحد الأقصى لعدد اللاعبين المسموح به في خطة الاشتراك الحالية (Subscription player limit reached)',
+            });
+          }
+        }
+
         const names = request.playerName.trim().split(' ');
         const firstName = names[0] || request.playerName.trim();
         const lastName = names.slice(1).join(' ') || '-';
-
-        const membershipNumber = `MEM-${new Date().getFullYear()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
-        const qrCardCode = `QR-${tenantContext.tenantId.slice(0, 8)}-${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
 
         let effectiveBranchId = dto.branchId || tenantContext.branchId;
         if (!effectiveBranchId) {
@@ -1069,44 +1123,102 @@ export class PlayersService {
           effectiveBranchId = mainBranch?.id;
         }
 
-        const player = await tx.player.create({
-          data: {
+        // Prevent duplicate player records for applicant / name
+        let player = await tx.player.findFirst({
+          where: {
             tenantId: tenantContext.tenantId,
-            userId: request.applicantUserId,
-            firstName,
-            lastName,
-            emergencyContactName: request.guardianName || 'Guardian',
-            emergencyContactPhone: request.contactPhone || '-',
-            dateOfBirth: request.dateOfBirth || new Date(2012, 0, 1),
-            gender: 'MALE',
-            status: 'ACTIVE',
-            membershipNumber,
-            qrCardCode,
-            qrCardIssuedAt: new Date(),
+            OR: [
+              request.applicantUserId ? { userId: request.applicantUserId } : undefined,
+              { firstName, lastName },
+            ].filter(Boolean) as any,
           },
         });
 
-        if (effectiveBranchId) {
-          await tx.playerEnrollment.create({
+        if (!player) {
+          const membershipNumber = `MEM-${new Date().getFullYear()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+          const qrCardCode = `QR-${tenantContext.tenantId.slice(0, 8)}-${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
+
+          player = await tx.player.create({
             data: {
               tenantId: tenantContext.tenantId,
-              playerId: player.id,
-              branchId: effectiveBranchId,
+              userId: request.applicantUserId,
+              firstName,
+              lastName,
+              emergencyContactName: request.guardianName || 'Guardian',
+              emergencyContactPhone: request.contactPhone || '-',
+              dateOfBirth: request.dateOfBirth || new Date(2012, 0, 1),
+              gender: 'MALE',
               status: 'ACTIVE',
-              startDate: new Date(),
+              membershipNumber,
+              qrCardCode,
+              qrCardIssuedAt: new Date(),
             },
           });
         }
 
+        // Handle minor guardian linkage safely
+        if (request.guardianName && request.contactPhone) {
+          const existingGuardian = await tx.guardian.findFirst({
+            where: {
+              tenantId: tenantContext.tenantId,
+              playerId: player.id,
+            },
+          });
+          if (!existingGuardian) {
+            await tx.guardian.create({
+              data: {
+                tenantId: tenantContext.tenantId,
+                playerId: player.id,
+                firstName: request.guardianName.split(' ')[0] || request.guardianName,
+                lastName: request.guardianName.split(' ').slice(1).join(' ') || '-',
+                phone: request.contactPhone,
+                email: request.contactEmail,
+                relationship: 'GUARDIAN',
+                isPrimary: true,
+              },
+            });
+          }
+        }
+
+        if (effectiveBranchId) {
+          const existingEnrollment = await tx.playerEnrollment.findFirst({
+            where: {
+              tenantId: tenantContext.tenantId,
+              playerId: player.id,
+              branchId: effectiveBranchId,
+            },
+          });
+          if (!existingEnrollment) {
+            await tx.playerEnrollment.create({
+              data: {
+                tenantId: tenantContext.tenantId,
+                playerId: player.id,
+                branchId: effectiveBranchId,
+                status: 'ACTIVE',
+                startDate: new Date(),
+              },
+            });
+          }
+        }
+
         if (dto.groupId) {
-          await tx.groupMember.create({
-            data: {
+          const existingGroupMember = await tx.groupMember.findFirst({
+            where: {
               tenantId: tenantContext.tenantId,
               playerId: player.id,
               groupId: dto.groupId,
-              status: 'ACTIVE',
             },
           });
+          if (!existingGroupMember) {
+            await tx.groupMember.create({
+              data: {
+                tenantId: tenantContext.tenantId,
+                playerId: player.id,
+                groupId: dto.groupId,
+                status: 'ACTIVE',
+              },
+            });
+          }
         }
 
         if (request.applicantUserId) {
@@ -1127,6 +1239,15 @@ export class PlayersService {
           title: 'Registration Request Update',
           body: `Your registration request for "${request.playerName}" was rejected: ${dto.reviewNotes ?? 'Not accepted at this time.'}`,
           href: '/',
+        });
+      } else if (dto.status === 'MORE_INFO_REQUESTED' && request.applicantUserId) {
+        await this.notificationsService.createNotification({
+          userId: request.applicantUserId,
+          tenantId: tenantContext.tenantId,
+          type: 'PLAYER_REGISTRATION',
+          title: 'Additional Information Required',
+          body: `Additional details required for "${request.playerName}": ${dto.reviewNotes ?? 'Please check your application.'}`,
+          href: '/player',
         });
       }
 
@@ -1171,5 +1292,183 @@ export class PlayersService {
         createdAt: updated.createdAt.toISOString(),
       };
     });
+  }
+
+  /**
+   * Generates a pre-deletion impact assessment report for a player.
+   * Inspects active enrollments, group memberships, attendance, evaluations, subscriptions, and financial records.
+   */
+  async getPlayerDeletionImpact(
+    tenantContext: TenantContext,
+    playerId: string,
+  ): Promise<PlayerDeletionImpact> {
+    return this.prisma.withTenantTransaction(
+      { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
+      async (tx) => {
+        const player = await tx.player.findUnique({
+          where: {
+            tenantId_id: {
+              tenantId: tenantContext.tenantId,
+              id: playerId,
+            },
+          },
+          include: {
+            enrollments: true,
+            groupMemberships: true,
+            _count: {
+              select: {
+                attendanceEvents: true,
+                evaluations: true,
+                subscriptions: true,
+                financialTransactions: true,
+              },
+            },
+          },
+        });
+
+        if (!player) {
+          throw new NotFoundException({
+            code: ErrorCode.NOT_FOUND,
+            message: 'Player not found',
+          });
+        }
+
+        const activeEnrollments = player.enrollments.filter((e) => e.status === 'ACTIVE').length;
+        const activeGroupMemberships = player.groupMemberships.filter(
+          (m) => m.status === 'ACTIVE',
+        ).length;
+
+        const warnings: string[] = [];
+        if (activeEnrollments > 0) {
+          warnings.push(`Player has ${activeEnrollments} active branch enrollment(s) that will be terminated.`);
+        }
+        if (activeGroupMemberships > 0) {
+          warnings.push(`Player is assigned to ${activeGroupMemberships} active training group(s).`);
+        }
+        if (player._count.attendanceEvents > 0) {
+          warnings.push(`Player has ${player._count.attendanceEvents} attendance event(s) which will remain archived.`);
+        }
+        if (player._count.financialTransactions > 0) {
+          warnings.push(`Player has ${player._count.financialTransactions} financial transaction(s) preserved in audit history.`);
+        }
+
+        return {
+          playerId: player.id,
+          playerName: `${player.firstName} ${player.lastName}`,
+          activeEnrollments,
+          activeGroupMemberships,
+          attendanceRecordsCount: player._count.attendanceEvents,
+          evaluationsCount: player._count.evaluations,
+          activeSubscriptionsCount: player._count.subscriptions,
+          financialTransactionsCount: player._count.financialTransactions,
+          canSafelyArchive: true,
+          warnings,
+        };
+      },
+    );
+  }
+
+  /**
+   * Safely archives (soft-deletes) a player.
+   * Sets status to INACTIVE, closes active branch enrollments, closes group memberships, revokes QR cards,
+   * while preserving all attendance sessions, evaluation scores, invoices, and ledger transactions.
+   */
+  async safeDeletePlayer(
+    tenantContext: TenantContext,
+    playerId: string,
+  ): Promise<PlayerDeletionResponse> {
+    return this.prisma.withTenantTransaction(
+      { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
+      async (tx) => {
+        const player = await tx.player.findUnique({
+          where: {
+            tenantId_id: {
+              tenantId: tenantContext.tenantId,
+              id: playerId,
+            },
+          },
+          include: {
+            enrollments: { where: { status: 'ACTIVE' } },
+            groupMemberships: { where: { status: 'ACTIVE' } },
+          },
+        });
+
+        if (!player) {
+          throw new NotFoundException({
+            code: ErrorCode.NOT_FOUND,
+            message: 'Player not found',
+          });
+        }
+
+        if (tenantContext.branchId) {
+          const inBranch = player.enrollments.some((e) => e.branchId === tenantContext.branchId);
+          if (!inBranch) {
+            throw new ForbiddenException({
+              code: ErrorCode.FORBIDDEN,
+              message: 'Cannot delete player outside your assigned branch',
+            });
+          }
+        }
+
+        const now = new Date();
+
+        // 1. Soft-delete player
+        await tx.player.update({
+          where: { id: player.id },
+          data: {
+            status: 'INACTIVE',
+            qrCardRevokedAt: player.qrCardRevokedAt || now,
+          },
+        });
+
+        // 2. Terminate active branch enrollments
+        await tx.playerEnrollment.updateMany({
+          where: {
+            tenantId: tenantContext.tenantId,
+            playerId: player.id,
+            status: 'ACTIVE',
+          },
+          data: {
+            status: 'CANCELLED',
+            endDate: now,
+          },
+        });
+
+        // 3. Deactivate active group memberships
+        await tx.groupMember.updateMany({
+          where: {
+            tenantId: tenantContext.tenantId,
+            playerId: player.id,
+            status: 'ACTIVE',
+          },
+          data: {
+            status: 'INACTIVE',
+          },
+        });
+
+        await this.auditService.logEvent(
+          {
+            tenantId: tenantContext.tenantId,
+            actorUserId: tenantContext.actorUserId,
+            action: 'PLAYER_SOFT_DELETED',
+            resourceType: 'Player',
+            resourceId: player.id,
+            metadata: {
+              playerName: `${player.firstName} ${player.lastName}`,
+              closedEnrollmentsCount: player.enrollments.length,
+              closedGroupsCount: player.groupMemberships.length,
+            },
+          },
+          tx,
+        );
+
+        return {
+          success: true,
+          message:
+            'تمت أرشفة اللاعب بنجاح مع الحفاظ الكامل على السجلات المالية والحضور (Player successfully archived with complete history preserved)',
+          playerId: player.id,
+        };
+      },
+    );
   }
 }

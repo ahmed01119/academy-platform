@@ -12,11 +12,13 @@ import type { Prisma } from '@prisma/client';
 import { TokenService } from '../auth/token.service';
 import { PasswordService } from '../auth/password.service';
 import { AuditService } from '../audit/audit.service';
+import { EmailService } from '../email/email.service';
 import {
   ErrorCode,
   TenantRole,
   type AcceptInviteRequest,
   type InviteStaffRequest,
+  type DelegateCoachReviewRequest,
   type TenantContext,
   type TenantMembershipSummary,
   type UpdateAcademySettings,
@@ -24,12 +26,20 @@ import {
 
 @Injectable()
 export class TenancyService {
+  private readonly appPublicUrl: string;
+
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(TokenService) private readonly tokenService: TokenService,
     @Inject(PasswordService) private readonly passwordService: PasswordService,
     @Inject(AuditService) private readonly auditService: AuditService,
-  ) {}
+    @Inject(EmailService) private readonly emailService: EmailService,
+  ) {
+    this.appPublicUrl =
+      process.env.APP_PUBLIC_URL ||
+      process.env.NEXT_PUBLIC_APP_URL ||
+      'http://localhost:3000';
+  }
 
   /**
    * Lists all active memberships for a user under authenticated discovery path.
@@ -57,6 +67,7 @@ export class TenancyService {
         status: m.status,
         branchId: m.branchId,
         branchName: m.branch?.name,
+        canReviewApplications: Boolean((m as any).canReviewApplications),
       }));
     });
   }
@@ -106,6 +117,7 @@ export class TenancyService {
       status: membership.status,
       branchId: membership.branchId,
       branchName: membership.branch?.name,
+      canReviewApplications: Boolean((membership as any).canReviewApplications),
     };
   }
 
@@ -116,7 +128,16 @@ export class TenancyService {
   async inviteStaff(
     tenantContext: TenantContext,
     dto: InviteStaffRequest,
-  ): Promise<{ id: string; email: string; role: TenantRole; token: string; expiresAt: string }> {
+  ): Promise<{
+    id: string;
+    email: string;
+    role: TenantRole;
+    token: string;
+    expiresAt: string;
+    emailDelivered: boolean;
+    deliveryStatus: 'SENT' | 'DEV_LOGGED' | 'FAILED';
+    deliveryMessage: string;
+  }> {
     const normalizedEmail = dto.email.toLowerCase().trim();
 
     return this.prisma.withTenantTransaction(
@@ -137,6 +158,25 @@ export class TenancyService {
           });
         }
 
+        // Prevent duplicate active pending invitations for the same email in this academy
+        const existingPendingInvite = await tx.invitation.findFirst({
+          where: {
+            tenantId: tenantContext.tenantId,
+            email: normalizedEmail,
+            status: 'PENDING',
+            expiresAt: { gt: new Date() },
+          },
+        });
+
+        if (existingPendingInvite) {
+          throw new ConflictException({
+            code: ErrorCode.CONFLICT,
+            message:
+              'An active invitation is already pending for this email address. Please resend or revoke the existing invitation.',
+          });
+        }
+
+        let branchName: string | undefined;
         if (dto.branchId) {
           const branch = await tx.branch.findFirst({
             where: { id: dto.branchId, tenantId: tenantContext.tenantId },
@@ -147,6 +187,7 @@ export class TenancyService {
               message: 'Branch not found in this academy',
             });
           }
+          branchName = branch.name;
         }
 
         const rawToken = this.tokenService.generateSecureRandomString(32);
@@ -178,13 +219,225 @@ export class TenancyService {
           tx,
         );
 
+        // Fetch tenant and inviter details for the invitation email
+        const tenant = await tx.tenant.findUnique({
+          where: { id: tenantContext.tenantId },
+          select: { name: true },
+        });
+
+        const inviter = await tx.user.findUnique({
+          where: { id: tenantContext.actorUserId },
+          select: { name: true },
+        });
+
+        const activationUrl = `${this.appPublicUrl}/auth/accept-invite?token=${rawToken}`;
+
+        const emailResult = await this.emailService.sendStaffInvite({
+          to: normalizedEmail,
+          academyName: tenant?.name || 'Academy',
+          role: dto.role,
+          activationUrl,
+          invitedByName: inviter?.name,
+          branchName,
+        });
+
         return {
           id: invitation.id,
           email: invitation.email,
           role: invitation.role as TenantRole,
           token: rawToken,
           expiresAt: invitation.expiresAt.toISOString(),
+          emailDelivered: emailResult.delivered,
+          deliveryStatus: emailResult.status,
+          deliveryMessage:
+            emailResult.status === 'SENT'
+              ? 'تم إرسال دعوة الانضمام ورابط التفعيل بالبريد الإلكتروني بنجاح'
+              : emailResult.status === 'DEV_LOGGED'
+                ? 'تم تسجيل الدعوة في سجل التطوير المحلي (Dev email logger active)'
+                : `فشل إرسال البريد الإلكتروني: ${emailResult.error || 'خطأ غير معروف'}`,
         };
+      },
+    );
+  }
+
+  /**
+   * Lists all pending invitations for the tenant.
+   */
+  async listPendingInvitations(tenantContext: TenantContext) {
+    return this.prisma.withTenantTransaction(
+      { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
+      async (tx) => {
+        const invitations = await tx.invitation.findMany({
+          where: {
+            tenantId: tenantContext.tenantId,
+          },
+          include: {
+            branch: { select: { id: true, name: true } },
+            invitedByUser: { select: { id: true, name: true, email: true } },
+          },
+          orderBy: { createdAt: 'desc' },
+        });
+
+        return invitations.map((inv) => ({
+          id: inv.id,
+          email: inv.email,
+          role: inv.role as TenantRole,
+          status: inv.status,
+          branchId: inv.branchId,
+          branchName: inv.branch?.name || null,
+          invitedByName: inv.invitedByUser?.name || null,
+          expiresAt: inv.expiresAt.toISOString(),
+          createdAt: inv.createdAt.toISOString(),
+          isExpired: inv.expiresAt.getTime() < Date.now(),
+        }));
+      },
+    );
+  }
+
+  /**
+   * Resends an invitation with a fresh single-use token and email dispatch.
+   */
+  async resendInvitation(
+    tenantContext: TenantContext,
+    invitationId: string,
+  ): Promise<{
+    id: string;
+    email: string;
+    emailDelivered: boolean;
+    deliveryStatus: 'SENT' | 'DEV_LOGGED' | 'FAILED';
+    deliveryMessage: string;
+  }> {
+    return this.prisma.withTenantTransaction(
+      { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
+      async (tx) => {
+        const invitation = await tx.invitation.findFirst({
+          where: { id: invitationId, tenantId: tenantContext.tenantId },
+          include: { branch: true },
+        });
+
+        if (!invitation) {
+          throw new NotFoundException({
+            code: ErrorCode.NOT_FOUND,
+            message: 'Invitation not found',
+          });
+        }
+
+        if (invitation.status === 'ACCEPTED') {
+          throw new ConflictException({
+            code: ErrorCode.CONFLICT,
+            message: 'Invitation has already been accepted and cannot be resent',
+          });
+        }
+
+        const rawToken = this.tokenService.generateSecureRandomString(32);
+        const tokenHash = this.tokenService.hashToken(rawToken);
+        const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // fresh 7 days
+
+        const updated = await tx.invitation.update({
+          where: { id: invitation.id },
+          data: {
+            token: tokenHash,
+            status: 'PENDING',
+            expiresAt,
+            invitedByUserId: tenantContext.actorUserId,
+          },
+        });
+
+        const tenant = await tx.tenant.findUnique({
+          where: { id: tenantContext.tenantId },
+          select: { name: true },
+        });
+
+        const inviter = await tx.user.findUnique({
+          where: { id: tenantContext.actorUserId },
+          select: { name: true },
+        });
+
+        const activationUrl = `${this.appPublicUrl}/auth/accept-invite?token=${rawToken}`;
+
+        const emailResult = await this.emailService.sendStaffInvite({
+          to: updated.email,
+          academyName: tenant?.name || 'Academy',
+          role: updated.role,
+          activationUrl,
+          invitedByName: inviter?.name,
+          branchName: invitation.branch?.name,
+        });
+
+        await this.auditService.logEvent(
+          {
+            tenantId: tenantContext.tenantId,
+            actorUserId: tenantContext.actorUserId,
+            action: 'MEMBERSHIP_INVITATION_RESENT',
+            resourceType: 'Invitation',
+            resourceId: updated.id,
+            metadata: { email: updated.email, role: updated.role },
+          },
+          tx,
+        );
+
+        return {
+          id: updated.id,
+          email: updated.email,
+          emailDelivered: emailResult.delivered,
+          deliveryStatus: emailResult.status,
+          deliveryMessage:
+            emailResult.status === 'SENT'
+              ? 'تمت إعادة إرسال الدعوة بالبريد الإلكتروني بنجاح'
+              : emailResult.status === 'DEV_LOGGED'
+                ? 'تم تسجيل إعادة إرسال الدعوة محلياً في بيئة التطوير'
+                : `فشل إعادة إرسال البريد: ${emailResult.error || 'خطأ غير معروف'}`,
+        };
+      },
+    );
+  }
+
+  /**
+   * Revokes a pending invitation so it can no longer be accepted.
+   */
+  async revokeInvitation(
+    tenantContext: TenantContext,
+    invitationId: string,
+  ): Promise<{ success: boolean; message: string }> {
+    return this.prisma.withTenantTransaction(
+      { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
+      async (tx) => {
+        const invitation = await tx.invitation.findFirst({
+          where: { id: invitationId, tenantId: tenantContext.tenantId },
+        });
+
+        if (!invitation) {
+          throw new NotFoundException({
+            code: ErrorCode.NOT_FOUND,
+            message: 'Invitation not found',
+          });
+        }
+
+        if (invitation.status === 'ACCEPTED') {
+          throw new ConflictException({
+            code: ErrorCode.CONFLICT,
+            message: 'Accepted invitation cannot be revoked',
+          });
+        }
+
+        await tx.invitation.update({
+          where: { id: invitation.id },
+          data: { status: 'REVOKED' },
+        });
+
+        await this.auditService.logEvent(
+          {
+            tenantId: tenantContext.tenantId,
+            actorUserId: tenantContext.actorUserId,
+            action: 'MEMBERSHIP_INVITATION_REVOKED',
+            resourceType: 'Invitation',
+            resourceId: invitation.id,
+            metadata: { email: invitation.email, role: invitation.role },
+          },
+          tx,
+        );
+
+        return { success: true, message: 'Invitation revoked successfully' };
       },
     );
   }
@@ -340,6 +593,71 @@ export class TenancyService {
         );
 
         return { message: 'Membership revoked successfully' };
+      },
+    );
+  }
+
+  /**
+   * Delegates or revokes player application review permission for a coach.
+   */
+  async updateCoachDelegation(
+    tenantContext: TenantContext,
+    membershipId: string,
+    dto: DelegateCoachReviewRequest,
+  ) {
+    return this.prisma.withTenantTransaction(
+      { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
+      async (tx) => {
+        const membership = await tx.tenantMembership.findFirst({
+          where: {
+            id: membershipId,
+            tenantId: tenantContext.tenantId,
+          },
+          include: { user: { select: { email: true, name: true } } },
+        });
+
+        if (!membership) {
+          throw new NotFoundException({
+            code: ErrorCode.NOT_FOUND,
+            message: 'Membership not found in this academy',
+          });
+        }
+
+        if (membership.role !== 'COACH') {
+          throw new BadRequestException({
+            code: ErrorCode.VALIDATION_FAILED,
+            message: 'Can only toggle application review delegation for coaches',
+          });
+        }
+
+        const updated = await tx.tenantMembership.update({
+          where: { id: membership.id },
+          data: { canReviewApplications: dto.canReviewApplications },
+        });
+
+        await this.auditService.logEvent(
+          {
+            tenantId: tenantContext.tenantId,
+            actorUserId: tenantContext.actorUserId,
+            action: dto.canReviewApplications
+              ? 'COACH_APPLICATION_REVIEW_DELEGATED'
+              : 'COACH_APPLICATION_REVIEW_REVOKED',
+            resourceType: 'TenantMembership',
+            resourceId: membership.id,
+            metadata: {
+              targetCoachEmail: membership.user.email,
+              canReviewApplications: dto.canReviewApplications,
+            },
+          },
+          tx,
+        );
+
+        return {
+          message: dto.canReviewApplications
+            ? 'Player application review delegated to coach successfully'
+            : 'Coach player application review delegation revoked',
+          membership: updated,
+        };
       },
     );
   }

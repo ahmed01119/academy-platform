@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -72,5 +73,25 @@ export class BranchesController {
     const branchId = UuidParamSchema.parse(rawId);
     const dto: UpdateBranchRequest = UpdateBranchSchema.parse(body);
     return this.branchesService.updateBranch(tenantContext, branchId, dto);
+  }
+
+  @RequirePermissions(Permission.BRANCHES_MANAGE)
+  @Get(':id/deletion-impact')
+  async getBranchDeletionImpact(
+    @CurrentTenantContext() tenantContext: TenantContext,
+    @Param('id') rawId: string,
+  ) {
+    const branchId = UuidParamSchema.parse(rawId);
+    return this.branchesService.getBranchDeletionImpact(tenantContext, branchId);
+  }
+
+  @RequirePermissions(Permission.BRANCHES_MANAGE)
+  @Delete(':id')
+  async archiveBranch(
+    @CurrentTenantContext() tenantContext: TenantContext,
+    @Param('id') rawId: string,
+  ) {
+    const branchId = UuidParamSchema.parse(rawId);
+    return this.branchesService.archiveBranch(tenantContext, branchId);
   }
 }

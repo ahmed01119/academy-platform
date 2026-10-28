@@ -21,7 +21,6 @@ import {
   QrCode,
   DollarSign,
   CalendarCheck,
-  Send,
   HelpCircle,
   ChevronDown,
   Zap,
@@ -36,18 +35,6 @@ export default function HomePage() {
   const [activePreviewTab, setActivePreviewTab] = useState<
     'attendance' | 'evaluations' | 'portals' | 'finance'
   >('attendance');
-
-  // Academy Application Form State
-  const [demoAcademyName, setDemoAcademyName] = useState('');
-  const [demoSport, setDemoSport] = useState<'FOOTBALL'>('FOOTBALL');
-  const [demoCity, setDemoCity] = useState('');
-  const [demoContactName, setDemoContactName] = useState('');
-  const [demoEmail, setDemoEmail] = useState('');
-  const [demoPhone, setDemoPhone] = useState('');
-  const [demoPlayersCount, setDemoPlayersCount] = useState('100-300');
-  const [isSubmittingDemo, setIsSubmittingDemo] = useState(false);
-  const [demoSubmitted, setDemoSubmitted] = useState(false);
-  const [demoError, setDemoError] = useState<string | null>(null);
 
   // Player Join Request Modal State
   const [isPlayerJoinModalOpen, setIsPlayerJoinModalOpen] = useState(false);
@@ -84,35 +71,6 @@ export default function HomePage() {
     if (user.hasPlayerProfile) return t('nav.playerPortal');
     if (user.hasGuardianProfile) return t('nav.guardianPortal');
     return t('nav.dashboard');
-  };
-
-  const handleDemoSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmittingDemo(true);
-    setDemoError(null);
-    try {
-      const generatedSlug =
-        demoAcademyName
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, '-')
-          .replace(/^-+|-+$/g, '')
-          .slice(0, 40) || `academy-${Date.now().toString(36)}`;
-
-      await apiClient.platform.submitAcademyApplication({
-        academyName: demoAcademyName.trim(),
-        academySlug: generatedSlug.length < 2 ? `${generatedSlug}-hub` : generatedSlug,
-        sport: demoSport,
-        city: demoCity.trim() || undefined,
-        contactEmail: demoEmail.trim(),
-        contactPhone: demoPhone.trim() || undefined,
-        notes: `Contact: ${demoContactName.trim()} | Estimated Players: ${demoPlayersCount}`,
-      });
-      setDemoSubmitted(true);
-    } catch (err: unknown) {
-      setDemoError((err as Error)?.message || 'Failed to submit application');
-    } finally {
-      setIsSubmittingDemo(false);
-    }
   };
 
   const openPlayerJoinModal = async () => {
@@ -224,14 +182,14 @@ export default function HomePage() {
                   </div>
                 ) : (
                   <>
-                    <a
-                      href="#academy-application"
-                      className="flex items-center gap-2 rounded-xl bg-[var(--accent-primary)] px-6 py-3.5 text-sm font-bold text-white shadow-xl shadow-emerald-600/25 hover:opacity-90 active:scale-95 transition-all cursor-pointer"
+                    <Link
+                      href="/register"
+                      className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#0A3BFF] to-[#00D6FF] px-6 py-3.5 text-sm font-bold text-white shadow-xl shadow-blue-600/25 hover:brightness-110 active:scale-95 transition-all cursor-pointer"
                     >
                       <Sparkles className="h-4 w-4" />
-                      <span>{locale === 'ar' ? 'تسجيل أكاديمية جديدة' : 'Apply for Academy'}</span>
+                      <span>{locale === 'ar' ? 'تسجيل أكاديمية جديدة' : 'Register Academy'}</span>
                       <ChevronIcon className="h-4 w-4" />
-                    </a>
+                    </Link>
 
                     <button
                       type="button"
@@ -698,182 +656,51 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Academy Application Section */}
+        {/* Unified Academy Registration CTA Section */}
         <section
           id="academy-application"
-          className="py-20 bg-[var(--bg-base)] border-b border-[var(--border-subtle)] relative"
+          className="py-16 sm:py-24 bg-[var(--bg-surface)] border-b border-[var(--border-subtle)]"
         >
-          <div id="demo-request" className="absolute -top-10" />
           <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
-            <div className="rounded-3xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-6 sm:p-12 shadow-2xl space-y-8">
-              <div className="text-center space-y-3">
-                <div className="inline-flex items-center gap-2 rounded-full border border-[var(--border-app)] bg-[var(--badge-bg)] px-4 py-1 text-xs font-bold text-[var(--accent-primary)]">
-                  <Sparkles className="h-4 w-4" />
-                  <span>
-                    {locale === 'ar' ? 'طلب اعتماد وتسجيل أكاديمية' : 'Academy Application'}
-                  </span>
-                </div>
-                <h2 className="text-2xl sm:text-4xl font-extrabold text-[var(--text-main)]">
-                  {locale === 'ar'
-                    ? 'جاهز لنقل أكاديميتك إلى المستوى الاحترافي؟'
-                    : 'Ready to Elevate Your Sports Academy?'}
-                </h2>
-                <p className="text-xs sm:text-sm text-[var(--text-muted)] max-w-2xl mx-auto">
-                  {locale === 'ar'
-                    ? 'قدم بيانات أكاديميتك الرياضية ليتم مراجعتها واعتماد المستأجر والفرع وتجهيز بيئة العمل السحابية.'
-                    : 'Submit your academy details for platform review, workspace provisioning, and onboarding.'}
-                </p>
+            <div className="rounded-3xl border border-slate-800 bg-[#0f172a]/95 p-8 sm:p-12 shadow-2xl relative overflow-hidden text-center space-y-6">
+              <div className="absolute -top-20 -right-20 h-52 w-52 rounded-full bg-[#0A3BFF]/20 blur-3xl pointer-events-none" />
+              <div className="absolute -bottom-20 -left-20 h-52 w-52 rounded-full bg-[#00D6FF]/15 blur-3xl pointer-events-none" />
+
+              <div className="inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/10 px-4 py-1.5 text-xs font-bold text-[#00D6FF]">
+                <Building2 className="h-4 w-4" />
+                <span>{locale === 'ar' ? 'انضم إلى شبكة سبورتكسس' : 'Join Sportexus Network'}</span>
               </div>
 
-              {demoError && (
-                <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 p-4 text-xs sm:text-sm text-rose-500 text-center">
-                  {demoError}
-                </div>
-              )}
+              <h2 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight">
+                {locale === 'ar'
+                  ? 'جاهز لنقل أكاديميتك الرياضية إلى المستوى الاحترافي؟'
+                  : 'Ready to Elevate Your Sports Academy?'}
+              </h2>
 
-              {demoSubmitted ? (
-                <div className="rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-8 text-center space-y-3 animate-in fade-in">
-                  <CheckCircle2 className="h-12 w-12 text-emerald-500 mx-auto" />
-                  <h3 className="text-xl font-bold text-[var(--text-main)]">
-                    {locale === 'ar'
-                      ? 'تم استلام طلب اعتماد الأكاديمية بنجاح!'
-                      : 'Academy Application Submitted!'}
-                  </h3>
-                  <p className="text-sm text-[var(--text-muted)] max-w-md mx-auto">
-                    {locale === 'ar'
-                      ? 'شكراً لاهتمامكم. سيقوم المشرف العام للمنصة بمراجعة الطلب واعتماد الأكاديمية وتفعيل حساب المدير الرئيسي.'
-                      : 'Thank you for applying. A platform administrator will review your application and provision your workspace.'}
-                  </p>
-                </div>
-              ) : (
-                <form onSubmit={handleDemoSubmit} className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-[var(--text-main)]">
-                        {t('landing.demoAcademyName')} *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={demoAcademyName}
-                        onChange={(e) => setDemoAcademyName(e.target.value)}
-                        placeholder={
-                          locale === 'ar'
-                            ? 'مثال: أكاديمية النجوم الدولية'
-                            : 'e.g. Star Sports Academy'
-                        }
-                        className="w-full rounded-xl border border-[var(--border-app)] bg-[var(--bg-base)] px-4 py-2.5 text-sm text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none"
-                      />
-                    </div>
+              <p className="text-sm sm:text-base text-slate-300 max-w-2xl mx-auto leading-relaxed">
+                {locale === 'ar'
+                  ? 'سجّل أكاديميتك الآن عبر بوابة التسجيل الموحدة. يقوم فريق إدارة المنصة بمراجعة الطلبات واعتماد بيئة العمل السحابية المعزولة وتفعيل حساب المالك فوراً.'
+                  : 'Register your academy now through our unified onboarding portal. Our platform administrators review applications and activate your isolated multi-tenant workspace.'}
+              </p>
 
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-[var(--text-main)]">
-                        {t('landing.demoSport')} *
-                      </label>
-                      <select
-                        value={demoSport}
-                        onChange={(e) => setDemoSport(e.target.value as 'FOOTBALL')}
-                        className="w-full rounded-xl border border-[var(--border-app)] bg-[var(--bg-base)] px-4 py-2.5 text-sm text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none"
-                      >
-                        <option value="FOOTBALL">
-                          ⚽ {locale === 'ar' ? 'كرة قدم (Football)' : 'Football (Soccer)'}
-                        </option>
-                      </select>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-[var(--text-main)]">
-                        {t('landing.demoContactName')} *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={demoContactName}
-                        onChange={(e) => setDemoContactName(e.target.value)}
-                        placeholder={locale === 'ar' ? 'اسم مدير أو مالك الأكاديمية' : 'Full Name'}
-                        className="w-full rounded-xl border border-[var(--border-app)] bg-[var(--bg-base)] px-4 py-2.5 text-sm text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none"
-                      />
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-[var(--text-main)]">
-                        {t('landing.demoCity')} *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={demoCity}
-                        onChange={(e) => setDemoCity(e.target.value)}
-                        placeholder={locale === 'ar' ? 'مثال: القاهرة، مصر' : 'e.g. Cairo, Egypt'}
-                        className="w-full rounded-xl border border-[var(--border-app)] bg-[var(--bg-base)] px-4 py-2.5 text-sm text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none"
-                      />
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-[var(--text-main)]">
-                        {t('landing.demoEmail')} *
-                      </label>
-                      <input
-                        type="email"
-                        required
-                        value={demoEmail}
-                        onChange={(e) => setDemoEmail(e.target.value)}
-                        placeholder="admin@academy.com"
-                        className="w-full rounded-xl border border-[var(--border-app)] bg-[var(--bg-base)] px-4 py-2.5 text-sm text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none"
-                      />
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-[var(--text-main)]">
-                        {t('landing.demoPhone')} *
-                      </label>
-                      <input
-                        type="tel"
-                        required
-                        value={demoPhone}
-                        onChange={(e) => setDemoPhone(e.target.value)}
-                        placeholder="+20 100 123 4567"
-                        className="w-full rounded-xl border border-[var(--border-app)] bg-[var(--bg-base)] px-4 py-2.5 text-sm text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-[var(--text-main)]">
-                      {t('landing.demoPlayersCount')}
-                    </label>
-                    <select
-                      value={demoPlayersCount}
-                      onChange={(e) => setDemoPlayersCount(e.target.value)}
-                      className="w-full rounded-xl border border-[var(--border-app)] bg-[var(--bg-base)] px-4 py-2.5 text-sm text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none"
-                    >
-                      <option value="50-150">
-                        50 - 150 {locale === 'ar' ? 'لاعب' : 'players'}
-                      </option>
-                      <option value="150-300">
-                        150 - 300 {locale === 'ar' ? 'لاعب' : 'players'}
-                      </option>
-                      <option value="300-600">
-                        300 - 600 {locale === 'ar' ? 'لاعب' : 'players'}
-                      </option>
-                      <option value="600+">
-                        600+ {locale === 'ar' ? 'لاعب (فروع متعددة)' : 'players (multi-branch)'}
-                      </option>
-                    </select>
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={isSubmittingDemo}
-                    className="w-full flex items-center justify-center gap-2 rounded-xl bg-[var(--accent-primary)] px-6 py-3.5 text-sm font-bold text-white shadow-xl shadow-emerald-600/20 hover:opacity-95 transition-all disabled:opacity-50 cursor-pointer"
-                  >
-                    <Send className="h-4 w-4" />
-                    <span>
-                      {isSubmittingDemo ? t('landing.demoSubmitting') : t('landing.demoSubmit')}
-                    </span>
-                  </button>
-                </form>
-              )}
+              <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">
+                <Link
+                  href="/register"
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#0A3BFF] via-[#0077FF] to-[#00D6FF] px-8 py-4 text-base font-bold text-white shadow-xl shadow-blue-600/30 hover:brightness-110 active:scale-95 transition-all"
+                >
+                  <Sparkles className="h-5 w-5" />
+                  <span>{locale === 'ar' ? 'ابدأ تسجيل الأكاديمية الآن' : 'Register Academy Now'}</span>
+                  <ChevronIcon className="h-5 w-5" />
+                </Link>
+                <button
+                  type="button"
+                  onClick={openPlayerJoinModal}
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-900/80 px-6 py-4 text-sm font-semibold text-slate-200 hover:border-slate-500 hover:text-white transition-all cursor-pointer"
+                >
+                  <UserPlus className="h-4 w-4 text-[#00D6FF]" />
+                  <span>{locale === 'ar' ? 'طلب انضمام لاعب ناشئ' : 'Join as Player'}</span>
+                </button>
+              </div>
             </div>
           </div>
         </section>

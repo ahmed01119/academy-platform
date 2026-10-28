@@ -176,7 +176,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
         locale === 'ar'
           ? 'مسح فوري بالكاميرا حتى دون اتصال'
           : 'Instant camera check-in, works offline',
-      href: '/scanner',
+      href: '/attendance/scanner',
       icon: <QrCode className="w-4 h-4 text-teal-400" />,
     },
     {
@@ -265,7 +265,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       title: locale === 'ar' ? 'فتح ماسح الحضور' : 'Open Attendance Scanner',
       subtitle:
         locale === 'ar' ? 'بدء تسجيل حضور الحصة التدريبية' : 'Start scanning session attendance',
-      href: '/scanner',
+      href: '/attendance/scanner',
       icon: <QrCode className="w-4 h-4 text-teal-400" />,
     },
   ];

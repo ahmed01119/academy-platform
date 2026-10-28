@@ -601,13 +601,14 @@ async function main() {
         phone: '+966500000001',
         isEmailVerified: true,
         isPlatformSuperAdmin: true,
+        isPlatformOwner: true,
       },
     });
     console.log('[Seed] Created Super Admin User:', superAdminUser.email);
   } else {
     await prisma.user.update({
       where: { id: superAdminUser.id },
-      data: { isPlatformSuperAdmin: true },
+      data: { isPlatformSuperAdmin: true, isPlatformOwner: true },
     });
     console.log('[Seed] Updated Super Admin User:', superAdminUser.email);
   }

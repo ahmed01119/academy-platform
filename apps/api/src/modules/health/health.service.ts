@@ -26,11 +26,19 @@ export class HealthService {
     const redis = await this.checkRedis();
 
     let status: HealthStatus['status'] = 'ok';
-    if (postgres === 'down' || redis === 'down') {
-      status = this.config.nodeEnv === 'production' || postgres === 'down' ? 'down' : 'degraded';
-    } else if (redis === 'skipped') {
-      status = this.config.nodeEnv === 'production' ? 'down' : 'degraded';
+
+    // PostgreSQL is always critical
+    if (postgres === 'down') {
+      status = 'down';
     }
+    // Redis is optional in non-production — only degrade/down in production
+    else if (redis === 'down') {
+      status = this.config.nodeEnv === 'production' ? 'down' : 'degraded';
+    } else if (redis === 'skipped' && this.config.nodeEnv === 'production') {
+      // Redis required in production
+      status = 'degraded';
+    }
+    // redis === 'skipped' in development/test → status stays 'ok'
 
     return {
       status,

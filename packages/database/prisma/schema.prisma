@@ -330,8 +330,9 @@ model TenantMembership {
   userId    String           @map("user_id") @db.Uuid
   role      TenantRole
   status    MembershipStatus @default(ACTIVE)
-  branchId  String?          @map("branch_id") @db.Uuid
-  createdAt DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  branchId              String?          @map("branch_id") @db.Uuid
+  canReviewApplications Boolean          @default(false) @map("can_review_applications")
+  createdAt             DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   tenant Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)

@@ -6,6 +6,7 @@ import {
   HttpCode,
   HttpStatus,
   Inject,
+  Patch,
   Post,
   Req,
   Res,
@@ -24,11 +25,16 @@ import {
   LoginRequestSchema,
   RegisterRequestSchema,
   ResetPasswordRequestSchema,
+  ChangePasswordRequestSchema,
+  UpdateUserProfileRequestSchema,
   type AuthResponse,
   type ForgotPasswordRequest,
   type LoginRequest,
   type RegisterRequest,
+  type RegisterResponse,
   type ResetPasswordRequest,
+  type ChangePasswordRequest,
+  type UpdateUserProfileRequest,
 } from '@academy/shared';
 import { z } from 'zod';
 
@@ -92,15 +98,12 @@ export class AuthController {
   async register(
     @Body() body: unknown,
     @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
-  ): Promise<AuthResponse> {
+  ): Promise<RegisterResponse> {
     const dto: RegisterRequest = RegisterRequestSchema.parse(body);
     const ipAddress = req.ip || req.socket.remoteAddress;
     const userAgent = req.headers['user-agent'];
 
-    const { response, rawTokens } = await this.authService.register(dto, ipAddress, userAgent);
-    this.setAuthCookies(res, rawTokens);
-
+    const { response } = await this.authService.register(dto, ipAddress, userAgent);
     return response;
   }
 
@@ -186,7 +189,7 @@ export class AuthController {
   async forgotPassword(
     @Body() body: unknown,
     @Req() req: Request,
-  ): Promise<{ message: string; debugToken?: string }> {
+  ): Promise<{ message: string }> {
     const dto: ForgotPasswordRequest = ForgotPasswordRequestSchema.parse(body);
     const ipAddress = req.ip || req.socket.remoteAddress;
     const userAgent = req.headers['user-agent'];
@@ -225,7 +228,7 @@ export class AuthController {
   async resendVerification(
     @Body() body: unknown,
     @Req() req: Request,
-  ): Promise<{ message: string; debugToken?: string }> {
+  ): Promise<{ message: string }> {
     const dto = ResendVerificationSchema.parse(body);
     const ipAddress = req.ip || req.socket.remoteAddress;
     const userAgent = req.headers['user-agent'];
@@ -238,5 +241,31 @@ export class AuthController {
   async getMe(@CurrentUser('id') userId: string, @Req() req: Request) {
     const activeTenantId = (req.headers['x-tenant-id'] as string) || req.cookies?.tenant_id;
     return this.authService.getMe(userId, activeTenantId);
+  }
+
+  @UseGuards(JwtAuthGuard, CsrfGuard)
+  @Post('change-password')
+  @HttpCode(HttpStatus.OK)
+  async changePassword(
+    @CurrentUser('id') userId: string,
+    @Body() body: unknown,
+    @Req() req: Request,
+  ): Promise<{ message: string }> {
+    const dto: ChangePasswordRequest = ChangePasswordRequestSchema.parse(body);
+    const ipAddress = req.ip || req.socket.remoteAddress;
+    const userAgent = req.headers['user-agent'];
+
+    return this.authService.changePassword(userId, dto, ipAddress, userAgent);
+  }
+
+  @UseGuards(JwtAuthGuard, CsrfGuard)
+  @Patch('profile')
+  @HttpCode(HttpStatus.OK)
+  async updateProfile(
+    @CurrentUser('id') userId: string,
+    @Body() body: unknown,
+  ): Promise<{ message: string; name?: string; phone?: string | null }> {
+    const dto: UpdateUserProfileRequest = UpdateUserProfileRequestSchema.parse(body);
+    return this.authService.updateUserProfile(userId, dto);
   }
 }

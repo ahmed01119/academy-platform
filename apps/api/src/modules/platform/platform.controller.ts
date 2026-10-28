@@ -25,6 +25,7 @@ import {
   ReviewAcademyApplicationRequestSchema,
   ExecuteStorageMaintenanceRequestSchema,
   InvitePlatformSuperAdminRequestSchema,
+  UpdatePlatformAdminRoleRequestSchema,
   PlatformInviteUserRequestSchema,
   UuidParamSchema,
   type RequestSupportAccessRequest,
@@ -37,6 +38,7 @@ import {
   type ReviewAcademyApplicationRequest,
   type ExecuteStorageMaintenanceRequest,
   type InvitePlatformSuperAdminRequest,
+  type UpdatePlatformAdminRoleRequest,
   type PlatformInviteUserRequest,
   type ApplicationStatus,
 } from '@academy/shared';
@@ -202,11 +204,34 @@ export class PlatformController {
     return this.platformService.reviewAcademyApplication(actorUserId, applicationId, dto);
   }
 
+  @Post('applications/:id/review')
+  async reviewAcademyApplicationPost(
+    @CurrentUser('id') actorUserId: string,
+    @Param('id') rawId: string,
+    @Body() body: unknown,
+  ) {
+    const applicationId = UuidParamSchema.parse(rawId);
+    const dto: ReviewAcademyApplicationRequest = ReviewAcademyApplicationRequestSchema.parse(body);
+    return this.platformService.reviewAcademyApplication(actorUserId, applicationId, dto);
+  }
+
   @Post('super-admin/invite')
   @UseGuards(PlatformOwnerGuard)
   async invitePlatformSuperAdmin(@CurrentUser('id') actorUserId: string, @Body() body: unknown) {
     const dto: InvitePlatformSuperAdminRequest = InvitePlatformSuperAdminRequestSchema.parse(body);
     return this.platformService.invitePlatformSuperAdmin(actorUserId, dto);
+  }
+
+  @Patch('super-admin/:id/role')
+  @UseGuards(PlatformOwnerGuard)
+  async updatePlatformAdminRole(
+    @CurrentUser('id') actorUserId: string,
+    @Param('id') rawId: string,
+    @Body() body: unknown,
+  ) {
+    const targetUserId = UuidParamSchema.parse(rawId);
+    const dto: UpdatePlatformAdminRoleRequest = UpdatePlatformAdminRoleRequestSchema.parse(body);
+    return this.platformService.updatePlatformAdminRole(actorUserId, targetUserId, dto);
   }
 
   @Post('users/invite')
@@ -215,10 +240,16 @@ export class PlatformController {
     return this.platformService.inviteUser(actorUserId, dto);
   }
 
-  @Get('storage/stats')
+  @Get('storage/metrics')
   async getStorageMetrics(@CurrentUser('id') actorUserId: string) {
     return this.platformService.getStorageMetrics(actorUserId);
   }
+
+  @Get('storage/stats')
+  async getStorageStatsAlias(@CurrentUser('id') actorUserId: string) {
+    return this.platformService.getStorageMetrics(actorUserId);
+  }
+
 
   @Post('storage/maintenance/dry-run')
   async dryRunStorageMaintenance(@CurrentUser('id') actorUserId: string) {

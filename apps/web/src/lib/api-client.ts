@@ -28,10 +28,13 @@ import type {
   GroupStatus,
   LoginRequest,
   PlayerDetails,
+  PlayerDeletionImpact,
+  PlayerDeletionResponse,
   PlayerStatus,
   PlayerSummary,
   QrCheckInRequest,
   RegisterRequest,
+  RegisterResponse,
   ResetPasswordRequest,
   SessionDetails,
   SessionQuery,
@@ -101,7 +104,12 @@ import type {
   StorageMaintenanceDryRunResponse,
   ExecuteStorageMaintenanceRequest,
   InvitePlatformSuperAdminRequest,
+  UpdatePlatformAdminRoleRequest,
+  DelegateCoachReviewRequest,
   PlatformInviteUserRequest,
+  ChangePasswordRequest,
+  UpdateUserProfileRequest,
+  InviteStaffRequest,
 } from '@academy/shared';
 
 function resolveApiBaseUrl(): string {
@@ -173,6 +181,75 @@ export function getActiveTenantIdHeader(): string | null {
   return activeTenantIdCache;
 }
 
+export type AuthEventType = 'UNAUTHORIZED' | 'REFRESH_SUCCESS' | 'SESSION_EXPIRED';
+type AuthEventListener = (event: AuthEventType) => void;
+const authEventListeners = new Set<AuthEventListener>();
+
+export function onAuthEvent(listener: AuthEventListener): () => void {
+  authEventListeners.add(listener);
+  return () => {
+    authEventListeners.delete(listener);
+  };
+}
+
+function emitAuthEvent(event: AuthEventType) {
+  authEventListeners.forEach((fn) => {
+    try {
+      fn(event);
+    } catch (e) {
+      console.error('Error in auth event listener', e);
+    }
+  });
+}
+
+let refreshPromise: Promise<AuthResponse | null> | null = null;
+
+export async function executeSingleFlightTokenRefresh(
+  explicitRefreshToken?: string,
+): Promise<AuthResponse | null> {
+  if (!explicitRefreshToken && refreshPromise) {
+    return refreshPromise;
+  }
+
+  const task = (async (): Promise<AuthResponse | null> => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(explicitRefreshToken ? { refreshToken: explicitRefreshToken } : {}),
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        emitAuthEvent('SESSION_EXPIRED');
+        return null;
+      }
+
+      const resData = (await response.json()) as AuthResponse;
+      if (resData?.activeTenant?.tenantId) {
+        setActiveTenantIdHeader(resData.activeTenant.tenantId);
+      }
+      emitAuthEvent('REFRESH_SUCCESS');
+      return resData;
+    } catch {
+      emitAuthEvent('SESSION_EXPIRED');
+      return null;
+    } finally {
+      if (!explicitRefreshToken) {
+        refreshPromise = null;
+      }
+    }
+  })();
+
+  if (!explicitRefreshToken) {
+    refreshPromise = task;
+  }
+
+  return task;
+}
+
 const AUTH_ENDPOINTS_WITHOUT_TENANT_HEADER = [
   '/auth/login',
   '/auth/register',
@@ -182,7 +259,22 @@ const AUTH_ENDPOINTS_WITHOUT_TENANT_HEADER = [
   '/auth/resend-verification',
 ];
 
-async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+const NO_AUTO_REFRESH_PATHS = [
+  '/auth/login',
+  '/auth/register',
+  '/auth/refresh',
+  '/auth/logout',
+  '/auth/forgot-password',
+  '/auth/reset-password',
+  '/auth/verify-email',
+  '/auth/resend-verification',
+];
+
+interface RequestOptions extends RequestInit {
+  _retry?: boolean;
+}
+
+async function request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
   const headers = new Headers(options.headers || {});
   headers.set('Content-Type', 'application/json');
 
@@ -199,6 +291,21 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     headers,
     credentials: 'include',
   });
+
+  const shouldTryRefresh =
+    response.status === 401 &&
+    !options._retry &&
+    !NO_AUTO_REFRESH_PATHS.some((path) => endpoint.startsWith(path));
+
+  if (shouldTryRefresh) {
+    const refreshed = await executeSingleFlightTokenRefresh();
+    if (refreshed) {
+      return request<T>(endpoint, {
+        ...options,
+        _retry: true,
+      });
+    }
+  }
 
   const contentType = response.headers.get('content-type');
   const isJson = contentType && contentType.includes('application/json');
@@ -220,8 +327,8 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 
 export const api = {
   auth: {
-    async register(data: RegisterRequest): Promise<AuthResponse> {
-      const res = await request<AuthResponse>('/auth/register', {
+    async register(data: RegisterRequest): Promise<RegisterResponse> {
+      const res = await request<RegisterResponse>('/auth/register', {
         method: 'POST',
         body: JSON.stringify(data),
       });
@@ -251,12 +358,9 @@ export const api = {
     },
 
     async refresh(refreshToken?: string): Promise<AuthResponse> {
-      const res = await request<AuthResponse>('/auth/refresh', {
-        method: 'POST',
-        body: JSON.stringify(refreshToken ? { refreshToken } : {}),
-      });
-      if (res.activeTenant?.tenantId) {
-        setActiveTenantIdHeader(res.activeTenant.tenantId);
+      const res = await executeSingleFlightTokenRefresh(refreshToken);
+      if (!res) {
+        throw new ApiError('Failed to refresh authentication session', 401, 'UNAUTHORIZED');
       }
       return res;
     },
@@ -300,6 +404,20 @@ export const api = {
         method: 'GET',
       });
     },
+
+    async changePassword(data: ChangePasswordRequest): Promise<{ message: string }> {
+      return request('/auth/change-password', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
+
+    async updateProfile(data: UpdateUserProfileRequest): Promise<{ message: string; name?: string; phone?: string | null }> {
+      return request('/auth/profile', {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      });
+    },
   },
 
   tenancy: {
@@ -323,12 +441,23 @@ export const api = {
         id: string;
         role: string;
         status: string;
+        canReviewApplications?: boolean;
         user: { id: string; email: string; name: string; phone?: string | null };
         branch?: { id: string; name: string; code?: string | null } | null;
       }>
     > {
       return request('/tenants/staff', {
         method: 'GET',
+      });
+    },
+
+    async updateCoachDelegation(
+      membershipId: string,
+      data: DelegateCoachReviewRequest,
+    ): Promise<{ message: string; membership: unknown }> {
+      return request(`/tenants/memberships/${membershipId}/coach-delegation`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
       });
     },
 
@@ -356,6 +485,65 @@ export const api = {
       return request('/tenants/profile', {
         method: 'PATCH',
         body: JSON.stringify(data),
+      });
+    },
+
+    async inviteStaff(data: InviteStaffRequest): Promise<{
+      id: string;
+      email: string;
+      role: string;
+      token: string;
+      expiresAt: string;
+      emailDelivered: boolean;
+      deliveryStatus: 'SENT' | 'DEV_LOGGED' | 'FAILED';
+      deliveryMessage: string;
+    }> {
+      return request('/tenants/invitations', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
+
+    async listInvitations(): Promise<
+      Array<{
+        id: string;
+        email: string;
+        role: string;
+        status: string;
+        branchId: string | null;
+        branchName: string | null;
+        invitedByName: string | null;
+        expiresAt: string;
+        createdAt: string;
+        isExpired: boolean;
+      }>
+    > {
+      return request('/tenants/invitations', {
+        method: 'GET',
+      });
+    },
+
+    async resendInvitation(invitationId: string): Promise<{
+      id: string;
+      email: string;
+      emailDelivered: boolean;
+      deliveryStatus: 'SENT' | 'DEV_LOGGED' | 'FAILED';
+      deliveryMessage: string;
+    }> {
+      return request(`/tenants/invitations/${invitationId}/resend`, {
+        method: 'POST',
+      });
+    },
+
+    async revokeInvitation(invitationId: string): Promise<{ success: boolean; message: string }> {
+      return request(`/tenants/invitations/${invitationId}`, {
+        method: 'DELETE',
+      });
+    },
+
+    async revokeMembership(membershipId: string): Promise<{ message: string }> {
+      return request(`/tenants/memberships/${membershipId}/revoke`, {
+        method: 'POST',
       });
     },
   },
@@ -388,6 +576,32 @@ export const api = {
       return request(`/branches/${id}`, {
         method: 'PATCH',
         body: JSON.stringify(data),
+      });
+    },
+
+    async getDeletionImpact(id: string): Promise<{
+      branchId: string;
+      branchName: string;
+      activeEnrollmentsCount: number;
+      groupsCount: number;
+      activeSessionsCount: number;
+      activeStaffCount: number;
+      financialTransactionsCount: number;
+      hasBlockingDependencies: boolean;
+      recommendation: 'ARCHIVE' | 'SAFE_DELETE';
+    }> {
+      return request(`/branches/${id}/deletion-impact`, {
+        method: 'GET',
+      });
+    },
+
+    async archive(id: string): Promise<{
+      success: boolean;
+      message: string;
+      branch: { id: string; name: string; status: string };
+    }> {
+      return request(`/branches/${id}`, {
+        method: 'DELETE',
       });
     },
   },
@@ -463,16 +677,28 @@ export const api = {
 
     async listJoinRequests(status?: string): Promise<PlayerJoinRequestItem[]> {
       const qs = status ? `?status=${encodeURIComponent(status)}` : '';
-      return request(`/players/join-requests${qs}`, { method: 'GET' });
+      return request(`/players/registration-requests${qs}`, { method: 'GET' });
     },
 
     async reviewJoinRequest(
       id: string,
       data: ReviewPlayerJoinRequest,
     ): Promise<PlayerJoinRequestItem> {
-      return request(`/players/join-requests/${id}/review`, {
+      return request(`/players/registration-requests/${id}/review`, {
         method: 'POST',
         body: JSON.stringify(data),
+      });
+    },
+
+    async getDeletionImpact(id: string): Promise<PlayerDeletionImpact> {
+      return request(`/players/${id}/deletion-impact`, {
+        method: 'GET',
+      });
+    },
+
+    async safeDelete(id: string): Promise<PlayerDeletionResponse> {
+      return request(`/players/${id}`, {
+        method: 'DELETE',
       });
     },
   },
@@ -831,7 +1057,7 @@ export const api = {
     async submitAcademyApplication(
       data: CreateAcademyApplicationRequest,
     ): Promise<AcademyApplicationItem> {
-      return request('/platform/applications', {
+      return request('/platform/applications/public', {
         method: 'POST',
         body: JSON.stringify(data),
       });
@@ -877,7 +1103,7 @@ export const api = {
       message: string;
       userId: string;
     }> {
-      return request('/platform/super-admins/invite', {
+      return request('/platform/super-admin/invite', {
         method: 'POST',
         body: JSON.stringify(data),
       });
@@ -893,7 +1119,18 @@ export const api = {
         body: JSON.stringify(data),
       });
     },
+
+    async updatePlatformAdminRole(
+      userId: string,
+      data: UpdatePlatformAdminRoleRequest,
+    ): Promise<{ success: boolean; message: string }> {
+      return request(`/platform/super-admin/${userId}/role`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      });
+    },
   },
+
 
   finance: {
     async getTenantSubscription(): Promise<TenantSubscriptionItem> {
@@ -1144,7 +1381,7 @@ export const api = {
     },
 
     async markAllRead(): Promise<{ success: boolean; markedCount: number }> {
-      return request('/notifications/read-all', { method: 'PATCH' });
+      return request('/notifications/mark-all-read', { method: 'POST' });
     },
   },
 };

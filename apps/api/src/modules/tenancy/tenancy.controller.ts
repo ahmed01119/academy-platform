@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -23,11 +24,13 @@ import { CurrentUser, CurrentTenantContext } from '../auth/decorators/auth-user.
 import {
   AcceptInviteRequestSchema,
   InviteStaffRequestSchema,
+  DelegateCoachReviewRequestSchema,
   Permission,
   SwitchTenantRequestSchema,
   UpdateAcademySettingsSchema,
   type AcceptInviteRequest,
   type InviteStaffRequest,
+  type DelegateCoachReviewRequest,
   type SwitchTenantRequest,
   type TenantContext,
   type UpdateAcademySettings,
@@ -75,6 +78,35 @@ export class TenancyController {
     return this.tenancyService.inviteStaff(tenantContext, dto);
   }
 
+  @UseGuards(JwtAuthGuard, TenantGuard, PermissionsGuard)
+  @RequirePermissions(Permission.STAFF_READ)
+  @Get('invitations')
+  async listInvitations(@CurrentTenantContext() tenantContext: TenantContext) {
+    return this.tenancyService.listPendingInvitations(tenantContext);
+  }
+
+  @UseGuards(JwtAuthGuard, TenantGuard, PermissionsGuard)
+  @RequirePermissions(Permission.STAFF_MANAGE)
+  @Post('invitations/:id/resend')
+  @HttpCode(HttpStatus.OK)
+  async resendInvitation(
+    @CurrentTenantContext() tenantContext: TenantContext,
+    @Param('id') invitationId: string,
+  ) {
+    return this.tenancyService.resendInvitation(tenantContext, invitationId);
+  }
+
+  @UseGuards(JwtAuthGuard, TenantGuard, PermissionsGuard)
+  @RequirePermissions(Permission.STAFF_MANAGE)
+  @Delete('invitations/:id')
+  @HttpCode(HttpStatus.OK)
+  async revokeInvitation(
+    @CurrentTenantContext() tenantContext: TenantContext,
+    @Param('id') invitationId: string,
+  ) {
+    return this.tenancyService.revokeInvitation(tenantContext, invitationId);
+  }
+
   @UseGuards(JwtAuthGuard)
   @Post('invitations/accept')
   @HttpCode(HttpStatus.OK)
@@ -93,6 +125,19 @@ export class TenancyController {
     @Param('id') membershipId: string,
   ) {
     return this.tenancyService.revokeMembership(tenantContext, membershipId);
+  }
+
+  @UseGuards(JwtAuthGuard, TenantGuard, PermissionsGuard)
+  @RequirePermissions(Permission.STAFF_MANAGE)
+  @Patch('memberships/:id/coach-delegation')
+  @HttpCode(HttpStatus.OK)
+  async updateCoachDelegation(
+    @CurrentTenantContext() tenantContext: TenantContext,
+    @Param('id') membershipId: string,
+    @Body() body: unknown,
+  ) {
+    const dto: DelegateCoachReviewRequest = DelegateCoachReviewRequestSchema.parse(body);
+    return this.tenancyService.updateCoachDelegation(tenantContext, membershipId, dto);
   }
 
   @UseGuards(JwtAuthGuard, TenantGuard, PermissionsGuard)

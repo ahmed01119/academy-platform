@@ -123,12 +123,8 @@ if ($publicUrl) {
     Write-Host ''
     Write-Host "  PUBLIC HTTPS URL:  $publicUrl" -ForegroundColor Yellow
     Write-Host ''
-    Write-Host '  AUTHORIZED DEMO ACCOUNTS:' -ForegroundColor Cyan
-    Write-Host '  1. Academy Owner:  admin@academy.sa        / AdminPass123!' -ForegroundColor White
-    Write-Host '  2. Coach:          coach.ahmed@academy.sa  / CoachPass123!' -ForegroundColor White
-    Write-Host '  3. Player:         player.omar@academy.sa  / PlayerPass123!' -ForegroundColor White
-    Write-Host '  4. Guardian:       parent.fahad@academy.sa / ParentPass123!' -ForegroundColor White
-    Write-Host '  5. Super Admin:    superadmin@platform.sa  / SuperAdmin123!' -ForegroundColor White
+    Write-Host '  Demo accounts are managed locally.' -ForegroundColor Cyan
+    Write-Host '  See: sportexus-accounts.local.txt (not committed to git)' -ForegroundColor Cyan
     Write-Host ''
     Write-Host '  * Share this URL with anyone on mobile, tablet, or desktop.' -ForegroundColor Cyan
     Write-Host '  * Laptop must remain powered on to serve traffic.' -ForegroundColor Yellow

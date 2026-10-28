@@ -10,9 +10,10 @@ describe('roles and permissions', () => {
     expect(hasPermission(TenantRole.OWNER, Permission.PAYMENTS_REFUND)).toBe(true);
   });
 
-  it('coach only has attendance and player read access', () => {
+  it('coach only has attendance and player read access, and strictly prohibited from marking attendance', () => {
     expect(hasPermission(TenantRole.COACH, Permission.ATTENDANCE_READ)).toBe(true);
-    expect(hasPermission(TenantRole.COACH, Permission.ATTENDANCE_MARK)).toBe(true);
+    expect(hasPermission(TenantRole.COACH, Permission.ATTENDANCE_MARK)).toBe(false);
+    expect(hasPermission(TenantRole.COACH, Permission.ATTENDANCE_CLOSE)).toBe(false);
     expect(hasPermission(TenantRole.COACH, Permission.PLAYERS_READ)).toBe(true);
     expect(hasPermission(TenantRole.COACH, Permission.PAYMENTS_CREATE)).toBe(false);
     expect(hasPermission(TenantRole.COACH, Permission.STAFF_MANAGE)).toBe(false);

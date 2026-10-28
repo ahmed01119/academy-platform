@@ -39,6 +39,9 @@ interface MockPrisma {
     create: MockFn;
     update: MockFn;
   };
+  tenant: {
+    findUnique: MockFn;
+  };
   $queryRaw: MockFn;
   $transaction: MockFn;
   withTenantTransaction: MockFn;
@@ -59,12 +62,17 @@ interface MockAudit {
   logEvent: MockFn;
 }
 
+interface MockEmail {
+  sendStaffInvite: MockFn;
+}
+
 describe('TenancyService', () => {
   let service: TenancyService;
   let mockPrisma: MockPrisma;
   let mockToken: MockToken;
   let mockPassword: MockPassword;
   let mockAudit: MockAudit;
+  let mockEmail: MockEmail;
 
   beforeEach(() => {
     mockPrisma = {
@@ -91,6 +99,9 @@ describe('TenancyService', () => {
         findUnique: vi.fn(),
         create: vi.fn(),
         update: vi.fn().mockResolvedValue({}),
+      },
+      tenant: {
+        findUnique: vi.fn(),
       },
       $queryRaw: vi.fn().mockResolvedValue([
         {
@@ -122,11 +133,16 @@ describe('TenancyService', () => {
       logEvent: vi.fn().mockResolvedValue(undefined),
     };
 
+    mockEmail = {
+      sendStaffInvite: vi.fn().mockResolvedValue({ delivered: true, status: 'SENT' }),
+    };
+
     service = new TenancyService(
       mockPrisma as unknown as PrismaService,
       mockToken as unknown as TokenService,
       mockPassword as unknown as PasswordService,
       mockAudit as unknown as AuditService,
+      mockEmail as unknown as any,
     );
   });
 
@@ -176,14 +192,33 @@ describe('TenancyService', () => {
       ).rejects.toThrow(ConflictException);
     });
 
-    it('creates an invitation with secure hashed token', async () => {
+    it('throws ConflictException if an active invitation is already pending', async () => {
       mockPrisma.tenantMembership.findFirst.mockResolvedValue(null);
+      mockPrisma.invitation.findFirst.mockResolvedValue({
+        id: 'inv-active-pending',
+        status: 'PENDING',
+        expiresAt: new Date(Date.now() + 100000),
+      });
+
+      await expect(
+        service.inviteStaff(
+          { tenantId: 'tenant-1', actorUserId: 'owner-1' },
+          { email: 'pending@example.com', role: TenantRole.COACH },
+        ),
+      ).rejects.toThrow('An active invitation is already pending for this email address');
+    });
+
+    it('creates an invitation with secure hashed token and dispatches activation email', async () => {
+      mockPrisma.tenantMembership.findFirst.mockResolvedValue(null);
+      mockPrisma.invitation.findFirst.mockResolvedValue(null);
       mockPrisma.invitation.create.mockResolvedValue({
         id: 'inv-1',
         email: 'newcoach@example.com',
         role: TenantRole.COACH,
         expiresAt: new Date(),
       });
+      mockPrisma.tenant.findUnique.mockResolvedValue({ name: 'Stars Academy' });
+      mockPrisma.user.findUnique.mockResolvedValue({ name: 'Captain Ahmed' });
 
       const result = await service.inviteStaff(
         { tenantId: 'tenant-1', actorUserId: 'owner-1' },
@@ -192,6 +227,16 @@ describe('TenancyService', () => {
 
       expect(result.email).toBe('newcoach@example.com');
       expect(result.token).toBe('invitation-token-32-chars-long');
+      expect(result.emailDelivered).toBe(true);
+      expect(result.deliveryStatus).toBe('SENT');
+      expect(mockEmail.sendStaffInvite).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: 'newcoach@example.com',
+          academyName: 'Stars Academy',
+          role: TenantRole.COACH,
+          invitedByName: 'Captain Ahmed',
+        }),
+      );
       expect(mockPrisma.invitation.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({

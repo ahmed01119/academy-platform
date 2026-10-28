@@ -2,13 +2,14 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '../../lib/auth-context';
 import { useLocale } from '../../lib/locale-context';
 import { canAccessAdminRoutes, getRoleHomeRoute } from '../../lib/role-routing';
 import { AppShell } from '../../components/layout/AppShell';
 import { PageHeader, StatusBadge } from '../../components/ui';
 import { api } from '../../lib/api-client';
+import { PlayerJoinRequestsTab } from '../../components/dashboard/PlayerJoinRequestsTab';
 import type { BranchSummary, PlayerStatus, PlayerSummary } from '@academy/shared';
 import {
   Users,
@@ -21,13 +22,17 @@ import {
   ChevronRight,
   User,
   X,
+  Inbox,
 } from 'lucide-react';
 
-export default function PlayersPage() {
+function PlayersPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const requestedTab = searchParams.get('tab') === 'applications' ? 'applications' : 'roster';
   const { user, activeTenant, isLoading } = useAuth();
   const { t, locale, isRtl } = useLocale();
 
+  const [activeTab, setActiveTab] = useState<'roster' | 'applications'>(requestedTab);
   const [players, setPlayers] = useState<PlayerSummary[]>([]);
   const [branches, setBranches] = useState<BranchSummary[]>([]);
   const [total, setTotal] = useState(0);
@@ -128,8 +133,48 @@ export default function PlayersPage() {
           }
         />
 
-        {/* Filter and Search Bar */}
-        <div className="rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-4 shadow-sm">
+        {/* Navigation Tabs */}
+        <div className="flex items-center gap-2 border-b border-[var(--border-subtle)] overflow-x-auto pb-1">
+          <button
+            type="button"
+            onClick={() => setActiveTab('roster')}
+            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition-colors border-b-2 whitespace-nowrap ${
+              activeTab === 'roster'
+                ? 'border-[var(--accent-primary)] text-[var(--accent-primary)] bg-[var(--bg-surface)]'
+                : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-main)]'
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            <span>{locale === 'ar' ? 'سجل اللاعبين المعتمدين' : 'Active Player Roster'}</span>
+            <span className="px-1.5 py-0.2 rounded-full text-xs bg-[var(--badge-bg)] font-mono">
+              {total}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('applications')}
+            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition-colors border-b-2 whitespace-nowrap ${
+              activeTab === 'applications'
+                ? 'border-[var(--accent-primary)] text-[var(--accent-primary)] bg-[var(--bg-surface)]'
+                : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-main)]'
+            }`}
+          >
+            <Inbox className="w-4 h-4" />
+            <span>{locale === 'ar' ? 'طلبات الانضمام والتسجيل' : 'Join Applications'}</span>
+          </button>
+        </div>
+
+        {activeTab === 'applications' && (
+          <div className="rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-6 shadow-sm">
+            <PlayerJoinRequestsTab />
+          </div>
+        )}
+
+        {activeTab === 'roster' && (
+          <>
+            {/* Filter and Search Bar */}
+            <div className="rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-4 shadow-sm">
           <form
             onSubmit={handleSearchSubmit}
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"
@@ -401,7 +446,23 @@ export default function PlayersPage() {
             </div>
           )}
         </div>
+        </>
+        )}
       </div>
     </AppShell>
+  );
+}
+
+export default function PlayersPage() {
+  return (
+    <React.Suspense
+      fallback={
+        <div className="min-h-screen bg-[var(--bg-base)] flex items-center justify-center text-[var(--text-muted)]">
+          <RefreshCw className="h-8 w-8 animate-spin text-[var(--accent-primary)]" />
+        </div>
+      }
+    >
+      <PlayersPageContent />
+    </React.Suspense>
   );
 }

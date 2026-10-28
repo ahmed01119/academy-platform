@@ -54,6 +54,7 @@ export function GovernanceTab({
       await apiClient.platform.inviteSuperAdmin({
         name: saName.trim(),
         email: saEmail.trim(),
+        role: 'SUPER_ADMIN',
       });
 
       toast.success(

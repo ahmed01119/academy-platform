@@ -218,4 +218,70 @@ describe('BranchesService', () => {
       ).rejects.toThrow(ForbiddenException);
     });
   });
+
+  describe('getBranchDeletionImpact', () => {
+    it('returns impact metrics and recommends ARCHIVE when active dependencies exist', async () => {
+      mockPrisma.branch.findUnique.mockResolvedValue({
+        id: 'branch-1',
+        name: 'فرع المعادي',
+        _count: {
+          playerEnrollments: 30,
+          trainingGroups: 3,
+          attendanceSessions: 5,
+          memberships: 4,
+          financialTransactions: 120,
+        },
+      });
+
+      const impact = await service.getBranchDeletionImpact(mockTenantContext, 'branch-1');
+      expect(impact.branchName).toBe('فرع المعادي');
+      expect(impact.activeEnrollmentsCount).toBe(30);
+      expect(impact.hasBlockingDependencies).toBe(true);
+      expect(impact.recommendation).toBe('ARCHIVE');
+    });
+
+    it('recommends SAFE_DELETE when no active dependencies exist', async () => {
+      mockPrisma.branch.findUnique.mockResolvedValue({
+        id: 'branch-empty',
+        name: 'فرع تجريبي فارغ',
+        _count: {
+          playerEnrollments: 0,
+          trainingGroups: 0,
+          attendanceSessions: 0,
+          memberships: 0,
+          financialTransactions: 0,
+        },
+      });
+
+      const impact = await service.getBranchDeletionImpact(mockTenantContext, 'branch-empty');
+      expect(impact.hasBlockingDependencies).toBe(false);
+      expect(impact.recommendation).toBe('SAFE_DELETE');
+    });
+  });
+
+  describe('archiveBranch', () => {
+    it('soft-archives branch and audits BRANCH_ARCHIVED event', async () => {
+      mockPrisma.branch.findUnique.mockResolvedValue({
+        id: 'branch-1',
+        name: 'فرع المعادي',
+        code: 'MAADI',
+      });
+      mockPrisma.branch.update.mockResolvedValue({
+        id: 'branch-1',
+        name: 'فرع المعادي',
+        status: 'INACTIVE',
+      });
+
+      const result = await service.archiveBranch(mockTenantContext, 'branch-1');
+      expect(result.success).toBe(true);
+      expect(result.branch.status).toBe('INACTIVE');
+      expect(mockAudit.logEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'BRANCH_ARCHIVED',
+          resourceId: 'branch-1',
+        }),
+        expect.anything(),
+      );
+    });
+  });
 });

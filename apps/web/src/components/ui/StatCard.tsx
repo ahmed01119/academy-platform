@@ -52,7 +52,10 @@ export function StatCard({
   return (
     <div className="group rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-5 shadow-sm hover:border-emerald-500/40 hover:shadow-md transition-all duration-200">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-xs font-semibold text-[var(--text-muted)] truncate">
+        <span
+          className="text-xs font-semibold text-[var(--text-muted)] leading-tight line-clamp-2"
+          title={displayTitle}
+        >
           {displayTitle}
         </span>
         {Icon && (
@@ -62,10 +65,11 @@ export function StatCard({
         )}
       </div>
 
-      <div className="mt-3 flex items-baseline gap-2">
-        <span className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[var(--text-main)]">
+      <div className="mt-3 flex items-baseline gap-2 flex-wrap">
+        <span className="text-xl sm:text-2xl font-extrabold tracking-tight text-[var(--text-main)] break-words">
           {value}
         </span>
+
         {changeText && (
           <div
             className={`inline-flex items-center gap-0.5 text-xs font-bold ${

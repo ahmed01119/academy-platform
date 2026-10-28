@@ -14,15 +14,20 @@ import { TokenService, type GeneratedTokens } from './token.service';
 import { RedisService } from '../redis/redis.service';
 import { AuditService } from '../audit/audit.service';
 import { AppConfigService } from '../../config/app-config.service';
+import { EmailService } from '../email/email.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import {
   ErrorCode,
   TenantRole,
   type AuthResponse,
+  type ChangePasswordRequest,
   type ForgotPasswordRequest,
   type LoginRequest,
   type RegisterRequest,
+  type RegisterResponse,
   type ResetPasswordRequest,
   type TenantMembershipSummary,
+  type UpdateUserProfileRequest,
   type UserSummary,
 } from '@academy/shared';
 
@@ -37,6 +42,8 @@ export class AuthService {
     @Inject(RedisService) private readonly redisService: RedisService,
     @Inject(AuditService) private readonly auditService: AuditService,
     @Inject(AppConfigService) private readonly config: AppConfigService,
+    @Inject(EmailService) private readonly emailService: EmailService,
+    @Inject(NotificationsService) private readonly notificationsService: NotificationsService,
   ) {}
 
   private slugify(text: string): string {
@@ -48,15 +55,16 @@ export class AuthService {
   }
 
   /**
-   * Registers a new User, and provisions their initial Academy Tenant + Branch + OWNER Membership.
+   * Registers a new User, and submits an AcademyApplication for platform review and approval.
    */
   async register(
     dto: RegisterRequest,
     ipAddress?: string,
     userAgent?: string,
-  ): Promise<{ response: AuthResponse; rawTokens: GeneratedTokens }> {
+  ): Promise<{ response: RegisterResponse }> {
+    const email = dto.email.toLowerCase().trim();
     const existingUser = await this.prisma.user.findUnique({
-      where: { email: dto.email.toLowerCase().trim() },
+      where: { email },
     });
 
     if (existingUser) {
@@ -71,156 +79,94 @@ export class AuthService {
     let finalSlug = slugBase;
     let counter = 1;
 
-    while (await this.prisma.tenant.findUnique({ where: { slug: finalSlug } })) {
+    while (
+      (await this.prisma.tenant.findUnique({ where: { slug: finalSlug } })) ||
+      (await this.prisma.academyApplication.findFirst({
+        where: { academySlug: finalSlug, status: { in: ['PENDING_REVIEW', 'APPROVED'] } },
+      }))
+    ) {
       finalSlug = `${slugBase}-${counter++}`;
     }
 
-    // Atomically create User, Tenant, Branch, Sport, and Membership
-    // Uses the scoped database onboarding boundary when running against PostgreSQL with restricted runtime role
     const result = await this.prisma.$transaction(async (tx) => {
-      const onboardingToken = this.tokenService.generateSecureRandomString(32);
-      const onboardingTokenHash = this.tokenService.hashToken(onboardingToken);
-
       const user = await tx.user.create({
         data: {
-          email: dto.email.toLowerCase().trim(),
+          email,
           passwordHash,
           name: dto.name.trim(),
-          phone: dto.phone?.trim(),
+          phone: dto.phone?.trim() ?? null,
+          isEmailVerified: false,
         },
       });
 
-      await tx.$executeRaw`
-        SELECT public.issue_user_onboarding_token(
-          ${user.id}::uuid,
-          ${onboardingTokenHash}
-        )
-      `;
+      const application = await tx.academyApplication.create({
+        data: {
+          applicantUserId: user.id,
+          academyName: dto.academyName.trim(),
+          academySlug: finalSlug,
+          sport: (dto.sport as any) || 'FOOTBALL',
+          city: dto.city?.trim() ?? null,
+          contactEmail: email,
+          contactPhone: dto.phone?.trim() ?? null,
+          status: 'PENDING_REVIEW',
+        },
+      });
 
-      try {
-        const provisionedRows = await tx.$queryRaw<
-          Array<{
-            tenant_id: string;
-            tenant_name: string;
-            tenant_slug: string;
-            branch_id: string;
-            branch_name: string;
-            membership_id: string;
-          }>
-        >`SELECT * FROM public.provision_tenant_onboarding(
-          ${user.id}::uuid,
-          ${dto.academyName.trim()},
-          ${finalSlug},
-          ${'الفرع الرئيسي'},
-          ${'MAIN'},
-          ${dto.sport || 'FOOTBALL'},
-          ${onboardingToken}
-        )`;
-
-        const provisioned = provisionedRows[0];
-        if (!provisioned) {
-          throw new InternalServerErrorException({
-            code: ErrorCode.INTERNAL_ERROR,
-            message: 'Tenant onboarding failed to return provisioned entity identifiers',
-          });
-        }
-
-        return {
-          user,
-          tenant: {
-            id: provisioned.tenant_id,
-            name: provisioned.tenant_name,
-            slug: provisioned.tenant_slug,
-          },
-          branch: {
-            id: provisioned.branch_id,
-            name: provisioned.branch_name,
-          },
-          membership: {
-            id: provisioned.membership_id,
-            role: TenantRole.OWNER,
-            status: 'ACTIVE' as const,
-          },
-        };
-      } catch (err: unknown) {
-        const pgErr = err as { code?: string; message?: string };
-        if (pgErr.code === '23505' || pgErr.message?.includes('tenants_slug_key')) {
-          throw new ConflictException({
-            code: ErrorCode.CONFLICT,
-            message: 'An academy with this slug already exists',
-          });
-        }
-        if (pgErr.code === '23505' || pgErr.message?.includes('users_email_key')) {
-          throw new ConflictException({
-            code: ErrorCode.EMAIL_ALREADY_EXISTS,
-            message: 'An account with this email address already exists',
-          });
-        }
-        if (pgErr.code === '42501' || pgErr.message?.includes('ONBOARDING_NOT_AUTHORIZED')) {
-          throw new ForbiddenException({
-            code: ErrorCode.FORBIDDEN,
-            message: 'Unauthorized tenant onboarding attempt',
-          });
-        }
-        throw err;
-      }
+      return { user, application };
     });
 
-    const activeTenant: TenantMembershipSummary = {
-      id: result.membership.id,
-      tenantId: result.tenant.id,
-      tenantName: result.tenant.name,
-      tenantSlug: result.tenant.slug,
-      role: result.membership.role as TenantRole,
-      status: result.membership.status,
-      branchId: result.branch.id,
-      branchName: result.branch.name,
-    };
+    // Notify Super Admins & Platform Owners
+    try {
+      const platformStaff = await this.prisma.user.findMany({
+        where: {
+          OR: [{ isPlatformSuperAdmin: true }, { isPlatformOwner: true }],
+          isSuspended: false,
+        },
+        select: { id: true },
+      });
 
-    const tokens = await this.tokenService.generateTokens(
-      result.user.id,
-      result.user.email,
-      {
-        tenantId: result.tenant.id,
-        role: result.membership.role as TenantRole,
-        branchId: result.branch.id,
-      },
-      userAgent,
-      ipAddress,
-    );
+      for (const admin of platformStaff) {
+        await this.notificationsService.createNotification({
+          userId: admin.id,
+          type: 'ACADEMY_APPLICATION',
+          title: 'New Academy Application',
+          body: `"${dto.academyName}" submitted a registration application for review.`,
+          href: '/platform?tab=applications',
+        });
+      }
+    } catch (e) {
+      this.logger.warn(`Failed to notify platform admins of new application: ${(e as Error)?.message}`);
+    }
+
+    // Send confirmation email to applicant
+    try {
+      await this.emailService.sendAcademyApplicationReceived(
+        email,
+        dto.name.trim(),
+        dto.academyName.trim(),
+        'ar',
+      );
+    } catch (e) {
+      this.logger.warn(`Failed to send application confirmation email: ${(e as Error)?.message}`);
+    }
 
     await this.auditService.logEvent({
-      tenantId: result.tenant.id,
       actorUserId: result.user.id,
-      action: 'AUTH_REGISTER',
-      resourceType: 'User',
-      resourceId: result.user.id,
-      metadata: { academyName: result.tenant.name, slug: result.tenant.slug },
+      action: 'ACADEMY_APPLICATION_SUBMITTED',
+      resourceType: 'AcademyApplication',
+      resourceId: result.application.id,
+      metadata: { academyName: dto.academyName.trim(), slug: finalSlug },
       ipAddress,
       userAgent,
     });
-
-    const userSummary: UserSummary = {
-      id: result.user.id,
-      email: result.user.email,
-      name: result.user.name,
-      phone: result.user.phone,
-      isEmailVerified: result.user.isEmailVerified,
-      isPlatformSuperAdmin: false,
-      isPlatformOwner: false,
-      hasPlayerProfile: false,
-      hasGuardianProfile: false,
-      createdAt: result.user.createdAt.toISOString(),
-    };
 
     return {
       response: {
-        accessToken: tokens.accessToken,
-        user: userSummary,
-        activeTenant,
-        memberships: [activeTenant],
+        status: 'PENDING_REVIEW',
+        message: 'تم استلام طلب تسجيل الأكاديمية بنجاح وهو قيد المراجعة حالياً من إدارة المنصة.',
+        applicationId: result.application.id,
+        academyName: result.application.academyName,
       },
-      rawTokens: tokens,
     };
   }
 
@@ -307,6 +253,7 @@ export class AuthService {
         status: m.status,
         branchId: m.branchId,
         branchName: m.branch?.name,
+        canReviewApplications: Boolean((m as any).canReviewApplications),
       }));
 
     // Choose active tenant: prefer requested activeTenantId if valid, otherwise default to first active membership
@@ -410,6 +357,7 @@ export class AuthService {
         status: m.status,
         branchId: m.branchId,
         branchName: m.branch?.name,
+        canReviewApplications: Boolean((m as any).canReviewApplications),
       }));
 
     // Choose active tenant: prefer requested activeTenantId if valid, otherwise default to first active membership
@@ -466,7 +414,7 @@ export class AuthService {
     dto: ForgotPasswordRequest,
     ipAddress?: string,
     userAgent?: string,
-  ): Promise<{ message: string; debugToken?: string }> {
+  ): Promise<{ message: string }> {
     const normalizedEmail = dto.email.toLowerCase().trim();
     const rateLimitKey = `ratelimit:forgot-password:${ipAddress || 'unknown'}:${normalizedEmail}`;
     const { count, remainingTime } = await this.redisService.incrementRateLimit(
@@ -486,8 +434,6 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({
       where: { email: normalizedEmail },
     });
-
-    let debugToken: string | undefined;
 
     if (user) {
       const rawToken = this.tokenService.generateSecureRandomString(32);
@@ -511,16 +457,18 @@ export class AuthService {
         userAgent,
       });
 
-      // Expose debugToken ONLY in non-production environments
-      if (this.config.nodeEnv !== 'production' && process.env.NODE_ENV !== 'production') {
-        debugToken = rawToken;
+      try {
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+        const resetUrl = `${appUrl}/reset-password?token=${rawToken}`;
+        await this.emailService.sendPasswordReset(user.email, user.name, resetUrl, 'ar');
+      } catch (e) {
+        this.logger.warn(`Failed to dispatch password reset email: ${(e as Error)?.message}`);
       }
     }
 
     return {
       message:
         'If that email address is registered, instructions have been sent to reset your password.',
-      debugToken,
     };
   }
 
@@ -621,7 +569,7 @@ export class AuthService {
     email: string,
     ipAddress?: string,
     userAgent?: string,
-  ): Promise<{ message: string; debugToken?: string }> {
+  ): Promise<{ message: string }> {
     const normalizedEmail = email.toLowerCase().trim();
     const rateLimitKey = `ratelimit:email-verify:${ipAddress || 'unknown'}:${normalizedEmail}`;
     const { count, remainingTime } = await this.redisService.incrementRateLimit(
@@ -638,8 +586,6 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({
       where: { email: normalizedEmail },
     });
-
-    let debugToken: string | undefined;
 
     if (user && !user.isEmailVerified) {
       const rawToken = this.tokenService.generateSecureRandomString(32);
@@ -663,15 +609,18 @@ export class AuthService {
         userAgent,
       });
 
-      if (this.config.nodeEnv !== 'production' && process.env.NODE_ENV !== 'production') {
-        debugToken = rawToken;
+      try {
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+        const verifyUrl = `${appUrl}/verify-email?token=${rawToken}`;
+        await this.emailService.sendEmailVerification(user.email, user.name, verifyUrl, 'ar');
+      } catch (e) {
+        this.logger.warn(`Failed to dispatch verification email: ${(e as Error)?.message}`);
       }
     }
 
     return {
       message:
         'If that email address is registered and unverified, verification instructions have been sent.',
-      debugToken,
     };
   }
 
@@ -712,6 +661,7 @@ export class AuthService {
           status: m.status,
           branchId: m.branchId,
           branchName: m.branch?.name,
+          canReviewApplications: Boolean((m as any).canReviewApplications),
         }));
 
       const activeTenant = activeTenantId
@@ -737,5 +687,82 @@ export class AuthService {
         memberships,
       };
     });
+  }
+
+  /**
+   * Changes the password for an authenticated user after verifying their current password.
+   */
+  async changePassword(
+    userId: string,
+    dto: ChangePasswordRequest,
+    ipAddress?: string,
+    userAgent?: string,
+  ): Promise<{ message: string }> {
+    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
+
+    const isCurrentPasswordValid = await this.passwordService.verify(
+      user.passwordHash,
+      dto.currentPassword,
+    );
+    if (!isCurrentPasswordValid) {
+      throw new BadRequestException({
+        code: ErrorCode.VALIDATION_FAILED,
+        message: 'Current password is incorrect',
+      });
+    }
+
+    if (dto.currentPassword === dto.newPassword) {
+      throw new BadRequestException({
+        code: ErrorCode.VALIDATION_FAILED,
+        message: 'New password must be different from current password',
+      });
+    }
+
+    const newHash = await this.passwordService.hash(dto.newPassword);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash: newHash },
+    });
+
+    await this.auditService.logEvent({
+      action: 'PASSWORD_CHANGED',
+      resourceType: 'USER',
+      resourceId: userId,
+      actorUserId: userId,
+      ipAddress,
+      userAgent,
+      metadata: { method: 'authenticated_change' },
+    });
+
+    this.logger.log(`Password changed for user ${userId}`);
+    return { message: 'Password changed successfully' };
+  }
+
+  /**
+   * Updates the authenticated user's profile information (name, phone).
+   */
+  async updateUserProfile(
+    userId: string,
+    dto: UpdateUserProfileRequest,
+  ): Promise<{ message: string; name?: string; phone?: string | null }> {
+    const data: Record<string, unknown> = {};
+    if (dto.name !== undefined) data.name = dto.name;
+    if (dto.phone !== undefined) data.phone = dto.phone;
+
+    if (Object.keys(data).length === 0) {
+      return { message: 'No changes to apply' };
+    }
+
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data,
+    });
+
+    this.logger.log(`Profile updated for user ${userId}: ${Object.keys(data).join(', ')}`);
+    return {
+      message: 'Profile updated successfully',
+      name: updated.name,
+      phone: updated.phone,
+    };
   }
 }

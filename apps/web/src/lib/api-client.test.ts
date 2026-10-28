@@ -193,4 +193,105 @@ describe('api-client', () => {
     const profile = await api.tenancy.getProfile();
     expect(profile.name).toBe('أكاديمية النجوم');
   });
+
+  it('performs single-flight refresh on concurrent 401 responses and retries both requests', async () => {
+    let refreshCallCount = 0;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.includes('/auth/refresh')) {
+        refreshCallCount++;
+        // Small delay to simulate async network roundtrip
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        return {
+          ok: true,
+          headers: new Headers({ 'content-type': 'application/json' }),
+          json: async () => ({
+            user: { id: 'u1', email: 'test@example.com' },
+            activeTenant: { tenantId: 'refreshed-tenant-123', status: 'ACTIVE' },
+            memberships: [],
+          }),
+        } as Response;
+      }
+
+      if (url.includes('/branches')) {
+        // If not retried yet, simulate expired access token (401)
+        if (refreshCallCount === 0) {
+          return {
+            ok: false,
+            status: 401,
+            headers: new Headers({ 'content-type': 'application/json' }),
+            json: async () => ({ message: 'Token expired' }),
+          } as Response;
+        }
+        return {
+          ok: true,
+          headers: new Headers({ 'content-type': 'application/json' }),
+          json: async () => [{ id: 'b1', name: 'Branch 1' }],
+        } as Response;
+      }
+
+      if (url.includes('/players')) {
+        if (refreshCallCount === 0) {
+          return {
+            ok: false,
+            status: 401,
+            headers: new Headers({ 'content-type': 'application/json' }),
+            json: async () => ({ message: 'Token expired' }),
+          } as Response;
+        }
+        return {
+          ok: true,
+          headers: new Headers({ 'content-type': 'application/json' }),
+          json: async () => ({ items: [{ id: 'p1', firstName: 'Sami' }], total: 1 }),
+        } as Response;
+      }
+
+      return {
+        ok: true,
+        headers: new Headers({ 'content-type': 'application/json' }),
+        json: async () => ({}),
+      } as Response;
+    });
+
+    // Fire two concurrent requests while access token is expired
+    const [branchesRes, playersRes] = await Promise.all([
+      api.branches.list(),
+      api.players.list(),
+    ]);
+
+    expect(branchesRes).toHaveLength(1);
+    expect(playersRes.items).toHaveLength(1);
+    // EXACTLY one refresh call must have occurred despite 2 concurrent 401s
+    expect(refreshCallCount).toBe(1);
+  });
+
+  it('fetches storage metrics successfully via platform.getStorageMetrics', async () => {
+    const mockStorageMetrics = {
+      databaseSizeBytes: 13596351,
+      formattedDatabaseSize: '13 MB',
+      totalTables: 34,
+      tables: [],
+      auditLogsCount: 376,
+      auditLogsSizeBytes: 237568,
+      mediaStorageBytes: 0,
+      cacheStatus: 'IN_MEMORY',
+      redisAvailable: false,
+      estimatedMonthlyGrowthBytes: 664000,
+    };
+
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: true,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      json: async () => mockStorageMetrics,
+    } as Response);
+
+    const result = await api.platform.getStorageMetrics();
+    expect(result).toEqual(mockStorageMetrics);
+    expect(fetchSpy).toHaveBeenCalledWith(
+      expect.stringContaining('/platform/storage/metrics'),
+      expect.objectContaining({ method: 'GET' }),
+    );
+  });
 });
+
+

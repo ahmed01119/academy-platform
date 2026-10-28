@@ -58,6 +58,9 @@ interface MockPrisma {
   user: {
     findMany: MockFn;
   };
+  groupCoach: {
+    findFirst: MockFn;
+  };
 }
 
 describe('AttendanceService', () => {
@@ -126,6 +129,9 @@ describe('AttendanceService', () => {
       },
       user: {
         findMany: vi.fn().mockResolvedValue([]),
+      },
+      groupCoach: {
+        findFirst: vi.fn().mockResolvedValue(null),
       },
     };
 
@@ -784,4 +790,57 @@ describe('AttendanceService', () => {
       expect(res.results[0]?.success).toBe(false);
     });
   });
+
+  describe('Coach attendance restrictions & session window enforcement', () => {
+    const coachContext: TenantContext = {
+      tenantId: tenantContext.tenantId,
+      branchId: tenantContext.branchId,
+      actorUserId: 'coach-user-123',
+      role: 'COACH',
+    };
+
+    it('strictly prohibits coaches from recording player attendance', async () => {
+      mockPrisma.attendanceSession.findUnique.mockResolvedValue({
+        id: 'session-assigned',
+        tenantId: tenantContext.tenantId,
+        branchId: tenantContext.branchId,
+        coachUserId: coachContext.actorUserId,
+        groupId: null,
+        sessionDate: new Date(),
+        status: 'SCHEDULED',
+      });
+
+      await expect(
+        service.recordAttendance(coachContext, {
+          sessionId: 'session-assigned',
+          playerId: 'player-1',
+          status: 'PRESENT',
+          idempotencyKey: 'idem-coach-1',
+        }),
+      ).rejects.toThrow('Coaches are not permitted to record player attendance through QR or manual entry');
+    });
+
+    it('rejects recording attendance on future sessions beyond valid window for managers', async () => {
+      const farFutureDate = new Date(Date.now() + 7 * 24 * 3600 * 1000); // 7 days in future
+      mockPrisma.attendanceSession.findUnique.mockResolvedValue({
+        id: 'session-future',
+        tenantId: tenantContext.tenantId,
+        branchId: tenantContext.branchId,
+        coachUserId: 'coach-1',
+        groupId: null,
+        sessionDate: farFutureDate,
+        status: 'SCHEDULED',
+      });
+
+      await expect(
+        service.recordAttendance(tenantContext, {
+          sessionId: 'session-future',
+          playerId: 'player-1',
+          status: 'PRESENT',
+          idempotencyKey: 'idem-future',
+        }),
+      ).rejects.toThrow('Cannot mark attendance for future sessions in advance');
+    });
+  });
 });
+

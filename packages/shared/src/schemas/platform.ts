@@ -305,6 +305,7 @@ export const TableStorageStatSchema = z.object({
   tableName: z.string(),
   rowCount: z.number(),
   totalBytes: z.number(),
+  tableBytes: z.number().optional(),
   indexBytes: z.number(),
   formattedSize: z.string(),
 });
@@ -320,11 +321,15 @@ export const StorageMetricsSchema = z.object({
   auditLogsSizeBytes: z.number(),
   mediaStorageBytes: z.number(),
   availableDiskBytes: z.number().optional(),
-  cacheKeysCount: z.number(),
+  cacheKeysCount: z.number().nullable().optional(),
+  cacheStatus: z.enum(['CONNECTED', 'IN_MEMORY', 'UNAVAILABLE']).optional(),
+  redisAvailable: z.boolean().optional(),
   estimatedMonthlyGrowthBytes: z.number(),
+  measuredAt: z.string().optional(),
 });
 
 export type StorageMetrics = z.infer<typeof StorageMetricsSchema>;
+
 
 export const StorageMaintenanceDryRunResponseSchema = z.object({
   expiredSessionsCount: z.number(),
@@ -361,10 +366,23 @@ export type ExecuteStorageMaintenanceRequest = z.infer<
 export const InvitePlatformSuperAdminRequestSchema = z.object({
   email: z.string().email(),
   name: z.string().min(2).max(100),
+  role: z.enum(['SUPER_ADMIN', 'PLATFORM_CO_OWNER']).default('SUPER_ADMIN'),
   permissions: z.array(z.string()).optional(),
 });
 
 export type InvitePlatformSuperAdminRequest = z.infer<typeof InvitePlatformSuperAdminRequestSchema>;
+
+export const UpdatePlatformAdminRoleRequestSchema = z.object({
+  role: z.enum(['SUPER_ADMIN', 'PLATFORM_OWNER', 'REVOKE']),
+});
+
+export type UpdatePlatformAdminRoleRequest = z.infer<typeof UpdatePlatformAdminRoleRequestSchema>;
+
+export const DelegateCoachReviewRequestSchema = z.object({
+  canReviewApplications: z.boolean(),
+});
+
+export type DelegateCoachReviewRequest = z.infer<typeof DelegateCoachReviewRequestSchema>;
 
 export const PlatformInviteUserRequestSchema = z.object({
   email: z.string().email(),

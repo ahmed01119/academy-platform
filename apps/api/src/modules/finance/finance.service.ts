@@ -1,12 +1,14 @@
 import {
   Inject,
   Injectable,
+  Optional,
   NotFoundException,
   BadRequestException,
   ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import {
   ErrorCode,
   type TenantContext,
@@ -31,6 +33,7 @@ export class FinanceService {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(AuditService) private readonly auditService: AuditService,
+    @Optional() @Inject(NotificationsService) private readonly notificationsService?: NotificationsService,
   ) {}
 
   /**
@@ -655,7 +658,7 @@ export class FinanceService {
     sessionId: string,
     dto: RecordSessionExpenseRequest,
   ): Promise<FinancialTransactionItem> {
-    return this.prisma.withTenantTransaction(
+    const result = await this.prisma.withTenantTransaction(
       { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
       async (tx) => {
         // 1. Validate positive amount and sanitize decimal precision
@@ -811,6 +814,36 @@ export class FinanceService {
         return this.mapFinancialTransaction(transaction);
       },
     );
+
+    // Dispatch expense approval notification to Academy managers if submitted by coach
+    if (result.status === 'PENDING' && this.notificationsService) {
+      try {
+        const notifService = this.notificationsService;
+        const managers = await this.prisma.tenantMembership.findMany({
+          where: {
+            tenantId: tenantContext.tenantId,
+            role: { in: ['OWNER', 'MANAGER', 'ACCOUNTANT'] },
+            status: 'ACTIVE',
+          },
+          select: { userId: true },
+        });
+
+        for (const m of managers) {
+          await notifService.createNotification({
+            userId: m.userId,
+            tenantId: tenantContext.tenantId,
+            type: 'EXPENSE_APPROVAL',
+            title: 'طلب اعتماد مصروف تدريبي جديد',
+            body: `تم تقديم طلب مصروف تدريبي بقيمة ${result.amount} ${result.currency} بانتظار المراجعة والاعتماد.`,
+            href: '/finance',
+          });
+        }
+      } catch (notifyErr: any) {
+        // Notification dispatch failures should not fail transaction
+      }
+    }
+
+    return result;
   }
 
   /**
@@ -821,7 +854,7 @@ export class FinanceService {
     transactionId: string,
     dto?: ApproveExpenseRequest,
   ): Promise<FinancialTransactionItem> {
-    return this.prisma.withTenantTransaction(
+    const result = await this.prisma.withTenantTransaction(
       { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
       async (tx) => {
         const transaction = await tx.academyFinancialTransaction.findUnique({
@@ -899,6 +932,25 @@ export class FinanceService {
         return this.mapFinancialTransaction(updated);
       },
     );
+
+    // Notify coach submitter upon expense approval
+    if (this.notificationsService && result.recordedByUserId) {
+      try {
+        const notifService = this.notificationsService;
+        await notifService.createNotification({
+          userId: result.recordedByUserId,
+          tenantId: tenantContext.tenantId,
+          type: 'EXPENSE_APPROVAL',
+          title: 'تم اعتماد المصروف التدريبي',
+          body: `تمت الموافقة على طلب المصروف التدريبي بقيمة ${result.amount} ${result.currency}.`,
+          href: '/coach',
+        });
+      } catch (err) {
+        // Notification failure should not fail response
+      }
+    }
+
+    return result;
   }
 
   /**
@@ -909,7 +961,7 @@ export class FinanceService {
     transactionId: string,
     dto: RejectExpenseRequest,
   ): Promise<FinancialTransactionItem> {
-    return this.prisma.withTenantTransaction(
+    const result = await this.prisma.withTenantTransaction(
       { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
       async (tx) => {
         const transaction = await tx.academyFinancialTransaction.findUnique({
@@ -971,6 +1023,25 @@ export class FinanceService {
         return this.mapFinancialTransaction(updated);
       },
     );
+
+    // Notify coach submitter upon expense rejection
+    if (this.notificationsService && result.recordedByUserId) {
+      try {
+        const notifService = this.notificationsService;
+        await notifService.createNotification({
+          userId: result.recordedByUserId,
+          tenantId: tenantContext.tenantId,
+          type: 'EXPENSE_APPROVAL',
+          title: 'تم رفض طلب المصروف التدريبي',
+          body: `تم رفض طلب المصروف التدريبي بقيمة ${result.amount}. السبب: ${dto.reason}`,
+          href: '/coach',
+        });
+      } catch (err) {
+        // Notification failure should not fail response
+      }
+    }
+
+    return result;
   }
 
   /**

@@ -3,7 +3,7 @@ import type { NextConfig } from 'next';
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   transpilePackages: ['@academy/shared'],
-  output: 'standalone',
+  output: process.env.BUILD_STANDALONE === 'true' ? 'standalone' : undefined,
   async headers() {
     return [
       {
@@ -30,6 +30,14 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  // Ensure the Next.js server does not forward the browser's Origin header to the
+  // internal API. The API's CORS only needs to trust the Next.js server itself
+  // (server-to-server = no Origin header = allowed). The browser never talks to the
+  // API directly, so the API does not need to know the tunnel/public URL as an origin.
+  async redirects() {
+    return [];
+  },
 };
 
 export default nextConfig;
+

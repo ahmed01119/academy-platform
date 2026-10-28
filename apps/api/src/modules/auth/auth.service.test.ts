@@ -77,9 +77,19 @@ describe('AuthService', () => {
         findFirst: vi.fn(),
         create: vi.fn(),
         update: vi.fn(),
+        findMany: vi.fn().mockResolvedValue([]),
       },
       tenant: {
         findUnique: vi.fn().mockResolvedValue(null),
+      },
+      academyApplication: {
+        findFirst: vi.fn().mockResolvedValue(null),
+        create: vi.fn().mockResolvedValue({
+          id: 'app-1',
+          academyName: 'Nankatsu SC',
+          academySlug: 'nankatsu-sc',
+          status: 'PENDING_REVIEW',
+        }),
       },
       tenantMembership: {
         findMany: vi.fn(),
@@ -132,6 +142,18 @@ describe('AuthService', () => {
       nodeEnv: 'test',
     };
 
+    const mockEmail = {
+      sendAcademyApplicationReceived: vi.fn().mockResolvedValue(true),
+      sendAcademyApproved: vi.fn().mockResolvedValue(true),
+      sendPasswordReset: vi.fn().mockResolvedValue(true),
+      sendEmailVerification: vi.fn().mockResolvedValue(true),
+      sendEmail: vi.fn().mockResolvedValue(true),
+    };
+
+    const mockNotifications = {
+      createNotification: vi.fn().mockResolvedValue({}),
+    };
+
     authService = new AuthService(
       mockPrisma as unknown as PrismaService,
       mockPassword as unknown as PasswordService,
@@ -139,6 +161,8 @@ describe('AuthService', () => {
       mockRedis as unknown as RedisService,
       mockAudit as unknown as AuditService,
       mockConfig as unknown as AppConfigService,
+      mockEmail as any,
+      mockNotifications as any,
     );
   });
 
@@ -157,7 +181,7 @@ describe('AuthService', () => {
       ).rejects.toThrow(ConflictException);
     });
 
-    it('registers new user, binds onboarding token challenge, and provisions tenant atomically', async () => {
+    it('registers new user, creates academy application in PENDING_REVIEW, and dispatches confirmation email', async () => {
       mockPrisma.user.findUnique.mockResolvedValue(null);
       mockPrisma.user.create.mockResolvedValue({
         id: 'user-1',
@@ -166,6 +190,14 @@ describe('AuthService', () => {
         phone: '+201000000001',
         isEmailVerified: false,
         createdAt: new Date(),
+      });
+      mockPrisma.academyApplication.create.mockResolvedValue({
+        id: 'app-1',
+        applicantUserId: 'user-1',
+        academyName: 'Nankatsu SC',
+        academySlug: 'nankatsu-sc',
+        sport: 'FOOTBALL',
+        status: 'PENDING_REVIEW',
       });
 
       const result = await authService.register({
@@ -176,11 +208,10 @@ describe('AuthService', () => {
         sport: 'FOOTBALL',
       });
 
-      expect(result.response.user.email).toBe('captain@example.com');
-      expect(result.response.activeTenant?.tenantId).toBe('tenant-1');
-      expect(result.rawTokens.accessToken).toBe('mock.access.token');
+      expect(result.response.status).toBe('PENDING_REVIEW');
+      expect(result.response.applicationId).toBe('app-1');
+      expect(result.response.academyName).toBe('Nankatsu SC');
 
-      // Assert user was created without direct token assignment (handled by security definer)
       expect(mockPrisma.user.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
@@ -190,23 +221,26 @@ describe('AuthService', () => {
         }),
       );
 
-      // Assert security definer onboarding token issuance and boundary function were executed
-      expect(mockPrisma.$executeRaw).toHaveBeenCalled();
-      expect(mockPrisma.$queryRaw).toHaveBeenCalled();
+      expect(mockPrisma.academyApplication.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            applicantUserId: 'user-1',
+            academyName: 'Nankatsu SC',
+            status: 'PENDING_REVIEW',
+          }),
+        }),
+      );
 
-      // Assert audit log event
       expect(mockAudit.logEvent).toHaveBeenCalledWith(
         expect.objectContaining({
-          action: 'AUTH_REGISTER',
-          resourceType: 'User',
-          resourceId: 'user-1',
+          action: 'ACADEMY_APPLICATION_SUBMITTED',
+          resourceType: 'AcademyApplication',
         }),
       );
     });
 
     it('resolves slug collision by appending numeric suffix', async () => {
       mockPrisma.user.findUnique.mockResolvedValue(null);
-      // First slug check finds existing tenant, second finds none
       mockPrisma.tenant.findUnique
         .mockResolvedValueOnce({ id: 'existing-tenant', slug: 'nankatsu-sc' })
         .mockResolvedValueOnce(null);
@@ -220,16 +254,13 @@ describe('AuthService', () => {
         createdAt: new Date(),
       });
 
-      mockPrisma.$queryRaw.mockResolvedValue([
-        {
-          tenant_id: 'tenant-2',
-          tenant_name: 'Nankatsu SC',
-          tenant_slug: 'nankatsu-sc-1',
-          branch_id: 'branch-1',
-          branch_name: 'الفرع الرئيسي',
-          membership_id: 'membership-1',
-        },
-      ]);
+      mockPrisma.academyApplication.create.mockResolvedValue({
+        id: 'app-2',
+        applicantUserId: 'user-1',
+        academyName: 'Nankatsu SC',
+        academySlug: 'nankatsu-sc-1',
+        status: 'PENDING_REVIEW',
+      });
 
       const result = await authService.register({
         name: 'Captain Tsubasa',
@@ -239,54 +270,8 @@ describe('AuthService', () => {
         sport: 'FOOTBALL',
       });
 
-      expect(result.response.activeTenant?.tenantSlug).toBe('nankatsu-sc-1');
+      expect(result.response.status).toBe('PENDING_REVIEW');
       expect(mockPrisma.tenant.findUnique).toHaveBeenCalledTimes(2);
-    });
-
-    it('fails closed if onboarding database function fails', async () => {
-      mockPrisma.user.findUnique.mockResolvedValue(null);
-      mockPrisma.user.create.mockResolvedValue({
-        id: 'user-1',
-        email: 'captain@example.com',
-        name: 'Captain Tsubasa',
-        isEmailVerified: false,
-        createdAt: new Date(),
-      });
-      mockPrisma.$queryRaw.mockRejectedValue(new Error('DATABASE_OUTAGE_ONBOARDING_FAILURE'));
-
-      await expect(
-        authService.register({
-          name: 'Captain Tsubasa',
-          email: 'captain@example.com',
-          password: 'Password123!',
-          academyName: 'Nankatsu SC',
-          sport: 'FOOTBALL',
-        }),
-      ).rejects.toThrow('DATABASE_OUTAGE_ONBOARDING_FAILURE');
-    });
-
-    it('maps unauthorized onboarding error code (42501) to ForbiddenException', async () => {
-      mockPrisma.user.findUnique.mockResolvedValue(null);
-      mockPrisma.user.create.mockResolvedValue({
-        id: 'user-1',
-        email: 'captain@example.com',
-        name: 'Captain Tsubasa',
-        isEmailVerified: false,
-        createdAt: new Date(),
-      });
-      const pgErr = new Error('ONBOARDING_NOT_AUTHORIZED_OR_EXPIRED');
-      (pgErr as unknown as { code: string }).code = '42501';
-      mockPrisma.$queryRaw.mockRejectedValue(pgErr);
-
-      await expect(
-        authService.register({
-          name: 'Captain Tsubasa',
-          email: 'captain@example.com',
-          password: 'Password123!',
-          academyName: 'Nankatsu SC',
-          sport: 'FOOTBALL',
-        }),
-      ).rejects.toThrow(ForbiddenException);
     });
   });
 
@@ -413,35 +398,19 @@ describe('AuthService', () => {
   });
 
   describe('forgotPassword', () => {
-    it('omits debugToken in production', async () => {
-      mockConfig.nodeEnv = 'production';
-      process.env.NODE_ENV = 'production';
+    it('omits debugToken in all environments and dispatches password reset email', async () => {
       mockPrisma.user.findUnique.mockResolvedValue({
         id: 'u-1',
-        email: 'prod-user@example.com',
+        name: 'Test User',
+        email: 'user@example.com',
       });
 
       const result = await authService.forgotPassword({
-        email: 'prod-user@example.com',
+        email: 'user@example.com',
       });
 
-      expect(result.debugToken).toBeUndefined();
+      expect((result as any).debugToken).toBeUndefined();
       expect(result.message).toContain('instructions have been sent');
-    });
-
-    it('returns debugToken in development and test environments', async () => {
-      mockConfig.nodeEnv = 'development';
-      process.env.NODE_ENV = 'development';
-      mockPrisma.user.findUnique.mockResolvedValue({
-        id: 'u-dev',
-        email: 'dev-user@example.com',
-      });
-
-      const result = await authService.forgotPassword({
-        email: 'dev-user@example.com',
-      });
-
-      expect(result.debugToken).toBe('mock-secure-random-token-12345');
       expect(mockPrisma.$executeRaw).toHaveBeenCalled();
     });
 
@@ -515,18 +484,16 @@ describe('AuthService', () => {
   });
 
   describe('resendVerificationEmail', () => {
-    it('generates new verification token for unverified user and logs audit event', async () => {
-      mockConfig.nodeEnv = 'development';
-      process.env.NODE_ENV = 'development';
-
+    it('generates new verification token for unverified user and dispatches email without debugToken', async () => {
       mockPrisma.user.findUnique.mockResolvedValue({
         id: 'u-resend',
+        name: 'Unverified User',
         email: 'unverified@example.com',
         isEmailVerified: false,
       });
 
       const result = await authService.resendVerificationEmail('unverified@example.com');
-      expect(result.debugToken).toBe('mock-secure-random-token-12345');
+      expect((result as any).debugToken).toBeUndefined();
       expect(mockPrisma.$executeRaw).toHaveBeenCalled();
       expect(mockAudit.logEvent).toHaveBeenCalledWith(
         expect.objectContaining({

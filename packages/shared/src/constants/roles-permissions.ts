@@ -66,6 +66,7 @@ export const Permission = {
   SESSION_EXPENSES_CREATE: 'session_expenses.create',
   SESSION_EXPENSES_APPROVE: 'session_expenses.approve',
   PLATFORM_MANAGE: 'platform.manage',
+  PLAYER_APPLICATION_REVIEW: 'player.application.review',
 } as const;
 
 export type Permission = (typeof Permission)[keyof typeof Permission];
@@ -84,6 +85,7 @@ export const ROLE_PERMISSIONS: Record<TenantRole, readonly Permission[]> = {
     Permission.PLAYERS_UPDATE,
     Permission.PLAYERS_DELETE,
     Permission.PLAYERS_SENSITIVE_READ,
+    Permission.PLAYER_APPLICATION_REVIEW,
     Permission.ATTENDANCE_READ,
     Permission.ATTENDANCE_MARK,
     Permission.ATTENDANCE_CORRECT,
@@ -111,8 +113,8 @@ export const ROLE_PERMISSIONS: Record<TenantRole, readonly Permission[]> = {
     Permission.PLAYERS_READ,
     Permission.PLAYERS_CREATE,
     Permission.PLAYERS_UPDATE,
-    Permission.PLAYERS_DELETE,
     Permission.PLAYERS_SENSITIVE_READ,
+    Permission.PLAYER_APPLICATION_REVIEW,
     Permission.ATTENDANCE_READ,
     Permission.ATTENDANCE_MARK,
     Permission.ATTENDANCE_CORRECT,
@@ -139,6 +141,7 @@ export const ROLE_PERMISSIONS: Record<TenantRole, readonly Permission[]> = {
     Permission.PLAYERS_CREATE,
     Permission.PLAYERS_UPDATE,
     Permission.PLAYERS_SENSITIVE_READ,
+    Permission.PLAYER_APPLICATION_REVIEW,
     Permission.ATTENDANCE_READ,
     Permission.ATTENDANCE_MARK,
     Permission.ATTENDANCE_CORRECT,
@@ -173,8 +176,7 @@ export const ROLE_PERMISSIONS: Record<TenantRole, readonly Permission[]> = {
   [TenantRole.COACH]: [
     Permission.BRANCHES_READ,
     Permission.PLAYERS_READ,
-    Permission.ATTENDANCE_READ,
-    Permission.ATTENDANCE_MARK,
+    Permission.ATTENDANCE_READ, // Coaches can view attendance, but are strictly prohibited from marking/recording attendance
     Permission.SESSION_EXPENSES_READ,
     Permission.SESSION_EXPENSES_CREATE,
     Permission.GROUPS_READ,

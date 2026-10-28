@@ -13,6 +13,7 @@ import type {
   PlayerStatus,
   UpdatePlayerRequest,
   PlayerQrCardResponse,
+  PlayerDeletionImpact,
 } from '@academy/shared';
 import {
   GitBranch,
@@ -28,6 +29,9 @@ import {
   X,
   Save,
   QrCode,
+  Trash2,
+  Archive,
+  ShieldAlert,
 } from 'lucide-react';
 import { PlayerQrCard } from '../../../components/player-qr-card';
 
@@ -83,6 +87,43 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
       setErrorMessage((err as Error)?.message || 'فشل تحميل بطاقة العضوية');
     } finally {
       setIsLoadingQrCard(false);
+    }
+  };
+
+  // Safe Deletion / Archive Modal State
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isFetchingImpact, setIsFetchingImpact] = useState(false);
+  const [deletionImpact, setDeletionImpact] = useState<PlayerDeletionImpact | null>(null);
+  const [isDeletingPlayer, setIsDeletingPlayer] = useState(false);
+
+  const canDeletePlayer = activeTenant?.role === 'OWNER';
+
+  const handleOpenDeleteModal = async () => {
+    setIsFetchingImpact(true);
+    setErrorMessage(null);
+    try {
+      const impact = await api.players.getDeletionImpact(playerId);
+      setDeletionImpact(impact);
+      setIsDeleteModalOpen(true);
+    } catch (err: unknown) {
+      setErrorMessage((err as Error)?.message || 'فشل في احتساب تقرير أرشفة اللاعب');
+    } finally {
+      setIsFetchingImpact(false);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    setIsDeletingPlayer(true);
+    setErrorMessage(null);
+    try {
+      const res = await api.players.safeDelete(playerId);
+      setSuccessMessage(res.message);
+      setIsDeleteModalOpen(false);
+      await loadPlayerData();
+    } catch (err: unknown) {
+      setErrorMessage((err as Error)?.message || 'فشل في أرشفة اللاعب');
+    } finally {
+      setIsDeletingPlayer(false);
     }
   };
 
@@ -338,6 +379,23 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
                 <ArrowRightLeft className="h-4 w-4" />
                 <span>نقل لفرع آخر</span>
               </button>
+
+              {canDeletePlayer && player.status !== 'INACTIVE' && (
+                <button
+                  type="button"
+                  id="btn-archive-player"
+                  onClick={handleOpenDeleteModal}
+                  disabled={isFetchingImpact}
+                  className="inline-flex items-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-xs font-semibold text-rose-500 hover:bg-rose-500/20 transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  {isFetchingImpact ? (
+                    <RefreshCw className="h-4 w-4 animate-spin text-rose-500" />
+                  ) : (
+                    <Archive className="h-4 w-4 text-rose-500" />
+                  )}
+                  <span>أرشفة اللاعب</span>
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -754,6 +812,92 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
                 onCardUpdated={(newCard) => setQrCard(newCard)}
                 onClose={() => setIsQrModalOpen(false)}
               />
+            </div>
+          </div>
+        )}
+
+        {/* Safe Deletion / Archive Confirmation Modal */}
+        {isDeleteModalOpen && deletionImpact && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm overflow-y-auto">
+            <div className="relative w-full max-w-lg rounded-2xl border border-rose-500/30 bg-[var(--bg-surface)] p-6 shadow-2xl space-y-5 my-8">
+              <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-4">
+                <div className="flex items-center gap-2.5 text-rose-500 font-bold text-base">
+                  <ShieldAlert className="h-5 w-5" />
+                  <span>تأكيد أرشفة اللاعب (Safe Player Archive)</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsDeleteModalOpen(false)}
+                  className="rounded-lg p-1.5 text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)]"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4 text-xs">
+                <p className="text-[var(--text-secondary)] leading-relaxed">
+                  أنت على وشك أرشفة اللاعب <strong className="text-[var(--text-primary)]">{deletionImpact.playerName}</strong>. تحافظ هذه العملية على سلامة الحضور، السجلات المالية، والتقييمات دون حذفها من قاعدة البيانات.
+                </p>
+
+                {/* Impact Summary Badges */}
+                <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-4 space-y-3">
+                  <h4 className="font-bold text-[var(--text-primary)]">تقرير الأثر والبيانات المرتبطة:</h4>
+                  <div className="grid grid-cols-2 gap-2 text-[11px]">
+                    <div className="rounded-lg bg-[var(--bg-surface)] p-2.5 border border-[var(--border-subtle)]">
+                      <span className="text-[var(--text-secondary)] block">تسجيلات الفروع النشطة:</span>
+                      <strong className="text-amber-500 text-sm">{deletionImpact.activeEnrollments} (سيتم إلغاؤها)</strong>
+                    </div>
+                    <div className="rounded-lg bg-[var(--bg-surface)] p-2.5 border border-[var(--border-subtle)]">
+                      <span className="text-[var(--text-secondary)] block">المجموعات التدريبية:</span>
+                      <strong className="text-amber-500 text-sm">{deletionImpact.activeGroupMemberships} (سيتم إيقافها)</strong>
+                    </div>
+                    <div className="rounded-lg bg-[var(--bg-surface)] p-2.5 border border-[var(--border-subtle)]">
+                      <span className="text-[var(--text-secondary)] block">سجلات الحضور المحفوظة:</span>
+                      <strong className="text-emerald-500 text-sm">{deletionImpact.attendanceRecordsCount} حصة</strong>
+                    </div>
+                    <div className="rounded-lg bg-[var(--bg-surface)] p-2.5 border border-[var(--border-subtle)]">
+                      <span className="text-[var(--text-secondary)] block">المعاملات المالية المحفوظة:</span>
+                      <strong className="text-emerald-500 text-sm">{deletionImpact.financialTransactionsCount} معاملة</strong>
+                    </div>
+                  </div>
+                </div>
+
+                {deletionImpact.warnings.length > 0 && (
+                  <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 space-y-1">
+                    <span className="font-bold text-amber-500 block">ملاحظات الأمان:</span>
+                    <ul className="list-disc list-inside space-y-0.5 text-amber-600 dark:text-amber-400 text-[11px]">
+                      {deletionImpact.warnings.map((w, idx) => (
+                        <li key={idx}>{w}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-[var(--border-subtle)]">
+                <button
+                  type="button"
+                  onClick={() => setIsDeleteModalOpen(false)}
+                  disabled={isDeletingPlayer}
+                  className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-4 py-2 text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="button"
+                  id="btn-confirm-safe-delete"
+                  onClick={handleConfirmDelete}
+                  disabled={isDeletingPlayer}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white px-5 py-2 text-xs font-semibold shadow disabled:opacity-50 cursor-pointer"
+                >
+                  {isDeletingPlayer ? (
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4" />
+                  )}
+                  <span>{isDeletingPlayer ? 'جارٍ الأرشفة...' : 'تأكيد الأرشفة الآمنة'}</span>
+                </button>
+              </div>
             </div>
           </div>
         )}

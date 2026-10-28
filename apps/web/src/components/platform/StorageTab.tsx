@@ -6,6 +6,7 @@ import apiClient from '../../lib/api-client';
 import { useToast } from '../ui/Toast';
 import { Database, HardDrive, ShieldCheck, RefreshCw, Play, Eye, Layers } from 'lucide-react';
 import type { StorageMetrics, StorageMaintenanceDryRunResponse } from '@academy/shared';
+import { ErrorState } from '../ui/ErrorState';
 
 export function StorageTab() {
   const { locale } = useLocale();
@@ -13,6 +14,7 @@ export function StorageTab() {
 
   const [metrics, setMetrics] = useState<StorageMetrics | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [dryRunData, setDryRunData] = useState<StorageMaintenanceDryRunResponse | null>(null);
   const [isDryRunLoading, setIsDryRunLoading] = useState(false);
   const [isDryRunModalOpen, setIsDryRunModalOpen] = useState(false);
@@ -26,14 +28,16 @@ export function StorageTab() {
 
   const fetchMetrics = useCallback(async () => {
     setIsLoading(true);
+    setFetchError(null);
     try {
       const data = await apiClient.platform.getStorageMetrics();
       setMetrics(data);
     } catch (err: unknown) {
-      toast.error(
+      const msg =
         (err as Error)?.message ||
-          (locale === 'ar' ? 'فشل تحميل بيانات التخزين' : 'Failed to fetch storage metrics'),
-      );
+        (locale === 'ar' ? 'فشل تحميل بيانات التخزين' : 'Failed to fetch storage metrics');
+      setFetchError(msg);
+      toast.error(msg);
     } finally {
       setIsLoading(false);
     }
@@ -83,6 +87,18 @@ export function StorageTab() {
     }
   };
 
+  if (!isLoading && fetchError && !metrics) {
+    return (
+      <div className="py-8">
+        <ErrorState
+          title={locale === 'ar' ? 'تعذر جلب إحصائيات التخزين' : 'Failed to load storage metrics'}
+          message={fetchError}
+          onRetry={fetchMetrics}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Metric Cards Header */}
@@ -95,10 +111,12 @@ export function StorageTab() {
             <Database className="w-4 h-4 text-emerald-400" />
           </div>
           <div className="text-2xl font-bold text-[var(--text-main)] font-mono">
-            {metrics?.formattedDatabaseSize || '0 B'}
+            {metrics?.formattedDatabaseSize || (isLoading ? '—' : (locale === 'ar' ? 'غير متوفر' : 'Unavailable'))}
           </div>
           <div className="text-[11px] text-[var(--text-muted)]">
-            {metrics?.totalTables || 0} {locale === 'ar' ? 'جدول بيانات مسجل' : 'tables registered'}
+            {metrics?.totalTables !== undefined
+              ? `${metrics.totalTables} ${locale === 'ar' ? 'جدول مسجل في المخطط العام' : 'registered public tables'}`
+              : '—'}
           </div>
         </div>
 
@@ -110,11 +128,14 @@ export function StorageTab() {
             <ShieldCheck className="w-4 h-4 text-blue-400" />
           </div>
           <div className="text-2xl font-bold text-[var(--text-main)] font-mono">
-            {metrics?.auditLogsCount.toLocaleString() || '0'}
+            {metrics?.auditLogsCount !== undefined
+              ? metrics.auditLogsCount.toLocaleString()
+              : (isLoading ? '—' : (locale === 'ar' ? 'غير متوفر' : 'Unavailable'))}
           </div>
           <div className="text-[11px] text-[var(--text-muted)]">
-            ~{Math.round((metrics?.auditLogsSizeBytes || 0) / 1024)} KB{' '}
-            {locale === 'ar' ? 'سجلات تشغيلية ومالية' : 'operational records'}
+            {metrics?.auditLogsSizeBytes !== undefined
+              ? `~${Math.round(metrics.auditLogsSizeBytes / 1024)} KB ${locale === 'ar' ? 'سجلات تشغيلية وأمنية' : 'operational logs'}`
+              : '—'}
           </div>
         </div>
 
@@ -126,7 +147,9 @@ export function StorageTab() {
             <HardDrive className="w-4 h-4 text-amber-400" />
           </div>
           <div className="text-2xl font-bold text-[var(--text-main)] font-mono">
-            ~{Math.round((metrics?.estimatedMonthlyGrowthBytes || 0) / 1024)} KB/mo
+            {metrics?.estimatedMonthlyGrowthBytes !== undefined
+              ? `~${Math.round(metrics.estimatedMonthlyGrowthBytes / 1024)} KB/mo`
+              : (isLoading ? '—' : (locale === 'ar' ? 'غير متوفر' : 'Unavailable'))}
           </div>
           <div className="text-[11px] text-[var(--text-muted)]">
             {locale === 'ar' ? 'بناءً على وتيرة النشاط الحالية' : 'Based on recent throughput'}
@@ -140,14 +163,23 @@ export function StorageTab() {
             </span>
             <Layers className="w-4 h-4 text-purple-400" />
           </div>
-          <div className="text-2xl font-bold text-[var(--text-main)] font-mono">
-            {metrics?.cacheKeysCount || 0}
+          <div className="text-xl font-bold text-[var(--text-main)] font-mono">
+            {metrics?.cacheStatus === 'CONNECTED'
+              ? `${metrics.cacheKeysCount ?? 0}`
+              : metrics?.cacheStatus === 'IN_MEMORY'
+                ? locale === 'ar' ? 'ذاكرة داخلية' : 'In-Memory'
+                : locale === 'ar' ? 'غير متوفر' : 'Unavailable'}
           </div>
           <div className="text-[11px] text-[var(--text-muted)]">
-            {locale === 'ar' ? 'جلسات ومفاتيح تحديد المعدل' : 'Active rate-limits & tokens'}
+            {metrics?.cacheStatus === 'CONNECTED'
+              ? (locale === 'ar' ? 'جلسات ومفاتيح تحديد المعدل عبر Redis' : 'Active Redis rate-limits & tokens')
+              : metrics?.cacheStatus === 'IN_MEMORY'
+                ? (locale === 'ar' ? 'نظام تحديد المعدل الداخلي نشط' : 'Local memory rate-limiter active')
+                : (locale === 'ar' ? 'خدمة الكاش غير مهيأة' : 'Redis not configured')}
           </div>
         </div>
       </div>
+
 
       {/* Action Bar */}
       <div className="p-4 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -221,10 +253,13 @@ export function StorageTab() {
                   {locale === 'ar' ? 'عدد الصفوف التقديري' : 'Estimated Rows'}
                 </th>
                 <th className="px-4 py-3 text-start">
-                  {locale === 'ar' ? 'الحجم الإجمالي' : 'Total Size'}
+                  {locale === 'ar' ? 'حجم البيانات' : 'Data Size'}
                 </th>
                 <th className="px-4 py-3 text-start">
-                  {locale === 'ar' ? 'حجم الفهارس (Indexes)' : 'Index Size'}
+                  {locale === 'ar' ? 'حجم الفهارس' : 'Index Size'}
+                </th>
+                <th className="px-4 py-3 text-start">
+                  {locale === 'ar' ? 'الحجم الإجمالي' : 'Total Size'}
                 </th>
               </tr>
             </thead>
@@ -240,15 +275,19 @@ export function StorageTab() {
                   <td className="px-4 py-3 font-mono text-[var(--text-muted)]">
                     {t.rowCount.toLocaleString()}
                   </td>
-                  <td className="px-4 py-3 font-mono text-emerald-400 font-semibold">
-                    {t.formattedSize}
+                  <td className="px-4 py-3 font-mono text-[var(--text-muted)]">
+                    {t.tableBytes !== undefined ? `${Math.round(t.tableBytes / 1024)} KB` : '—'}
                   </td>
                   <td className="px-4 py-3 font-mono text-[var(--text-muted)]">
                     {Math.round(t.indexBytes / 1024)} KB
                   </td>
+                  <td className="px-4 py-3 font-mono text-emerald-400 font-semibold">
+                    {t.formattedSize}
+                  </td>
                 </tr>
               ))}
             </tbody>
+
           </table>
         </div>
       </div>

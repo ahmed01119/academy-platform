@@ -290,10 +290,17 @@ export default function MobileAttendanceScannerPage() {
 
   // Auth Guard
   useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/login');
+    if (!authLoading) {
+      if (!user) {
+        router.push('/login');
+        return;
+      }
+      if (activeTenant?.role === 'COACH') {
+        toast.error('غير مصرح للمدربين بمسح أو تسجيل الحضور وفقاً للسياسات الإدارية المعتمدة');
+        router.push('/attendance');
+      }
     }
-  }, [authLoading, user, router]);
+  }, [authLoading, user, activeTenant, router, toast]);
 
   // Load Sessions
   useEffect(() => {

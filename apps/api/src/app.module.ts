@@ -16,6 +16,7 @@ import { EvaluationsModule } from './modules/evaluations/evaluations.module';
 import { PortalModule } from './modules/portal/portal.module';
 import { FinanceModule } from './modules/finance/finance.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { EmailModule } from './modules/email/email.module';
 
 /**
  * Root module for the modular monolith.
@@ -28,6 +29,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
     DatabaseModule,
     RedisModule,
     AuditModule,
+    EmailModule,
     AuthModule,
     TenancyModule,
     AttendanceModule,

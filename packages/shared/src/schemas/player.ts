@@ -40,7 +40,10 @@ export const CreatePlayerSchema = z.object({
   firstName: z.string().trim().min(2, 'First name must be at least 2 characters').max(50),
   lastName: z.string().trim().min(2, 'Last name must be at least 2 characters').max(50),
   gender: PlayerGenderSchema.default(PlayerGender.MALE),
-  dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date of birth must be YYYY-MM-DD'),
+  dateOfBirth: z.string().regex(/^\d{4}(-\d{2}-\d{2})?$/, 'Date of birth must be YYYY-MM-DD or YYYY').optional(),
+  birthYear: z.number().int().min(1950).max(2035).optional().nullable(),
+  jerseyNumber: z.number().int().min(1).max(99).optional().nullable(),
+  membershipNumber: z.string().trim().max(50).optional().nullable(),
   nationalId: z.string().trim().max(30).optional().nullable(),
   photoUrl: z.string().trim().url().optional().nullable(),
   emergencyContactName: z.string().trim().min(2, 'Emergency contact name is required').max(100),
@@ -58,8 +61,11 @@ export const UpdatePlayerSchema = z.object({
   gender: PlayerGenderSchema.optional(),
   dateOfBirth: z
     .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .regex(/^\d{4}(-\d{2}-\d{2})?$/)
     .optional(),
+  birthYear: z.number().int().min(1950).max(2035).optional().nullable(),
+  jerseyNumber: z.number().int().min(1).max(99).optional().nullable(),
+  membershipNumber: z.string().trim().max(50).optional().nullable(),
   nationalId: z.string().trim().max(30).optional().nullable(),
   photoUrl: z.string().trim().url().optional().nullable(),
   emergencyContactName: z.string().trim().min(2).max(100).optional(),
@@ -157,3 +163,23 @@ export const RevokePlayerQrCardRequestSchema = z.object({
 });
 
 export type RevokePlayerQrCardRequest = z.infer<typeof RevokePlayerQrCardRequestSchema>;
+
+export interface PlayerDeletionImpact {
+  playerId: string;
+  playerName: string;
+  activeEnrollments: number;
+  activeGroupMemberships: number;
+  attendanceRecordsCount: number;
+  evaluationsCount: number;
+  activeSubscriptionsCount: number;
+  financialTransactionsCount: number;
+  canSafelyArchive: boolean;
+  warnings: string[];
+}
+
+export interface PlayerDeletionResponse {
+  success: boolean;
+  message: string;
+  playerId: string;
+}
+

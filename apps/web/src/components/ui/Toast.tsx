@@ -45,11 +45,21 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const addToast = useCallback(
     (message: string, type: ToastType = 'info', title?: string, duration = 4000) => {
       const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-      const newToast: ToastItem = { id, type, title, message, duration };
+      let isDuplicate = false;
 
-      setToasts((prev) => [...prev, newToast]);
+      setToasts((prev) => {
+        // Prevent duplicate toast spam if an identical toast message & type is already active
+        if (prev.some((t) => t.message === message && t.type === type)) {
+          isDuplicate = true;
+          return prev;
+        }
+        const newToast: ToastItem = { id, type, title, message, duration };
+        const updated = [...prev, newToast];
+        // Keep at most 3 visible toasts to avoid clutter on mobile screens
+        return updated.length > 3 ? updated.slice(updated.length - 3) : updated;
+      });
 
-      if (duration > 0) {
+      if (duration > 0 && !isDuplicate) {
         setTimeout(() => {
           removeToast(id);
         }, duration);
@@ -83,10 +93,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={value}>
       {children}
-      {/* Toast Viewport */}
+      {/* Toast Viewport - Optimized for mobile & desktop */}
       <div
         aria-live="polite"
-        className="fixed top-4 end-4 z-[9999] flex max-h-screen w-full max-w-sm flex-col gap-2.5 p-4 pointer-events-none"
+        className="fixed top-4 start-1/2 -translate-x-1/2 sm:start-auto sm:translate-x-0 sm:end-4 z-[9999] flex w-[calc(100vw-2rem)] sm:w-full sm:max-w-sm flex-col gap-2 pointer-events-none"
       >
         {toasts.map((item) => (
           <ToastCard key={item.id} item={item} onDismiss={() => removeToast(item.id)} />

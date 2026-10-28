@@ -21,6 +21,7 @@ import {
   ChevronRight,
   ShieldAlert,
   CheckCheck,
+  User,
 } from 'lucide-react';
 
 import type { BreadcrumbItem } from './AppShell';
@@ -49,7 +50,7 @@ export function Topbar({ onOpenMobile, breadcrumbs: customBreadcrumbs }: TopbarP
     return () => window.removeEventListener('open-command-palette', handleOpen);
   }, []);
 
-  // Poll for unread count
+  // Poll for unread count & listen for real-time refresh events
   useEffect(() => {
     if (!user) return;
     let mounted = true;
@@ -63,9 +64,12 @@ export function Topbar({ onOpenMobile, breadcrumbs: customBreadcrumbs }: TopbarP
     };
     fetchCount();
     const interval = setInterval(fetchCount, 30000);
+    const handleRefresh = () => fetchCount();
+    window.addEventListener('refresh-notifications', handleRefresh);
     return () => {
       mounted = false;
       clearInterval(interval);
+      window.removeEventListener('refresh-notifications', handleRefresh);
     };
   }, [user]);
 
@@ -384,6 +388,15 @@ export function Topbar({ onOpenMobile, breadcrumbs: customBreadcrumbs }: TopbarP
                   </div>
 
                   <div className="mt-1 space-y-1">
+                    <Link
+                      href="/account"
+                      onClick={() => setIsProfileOpen(false)}
+                      className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-xs text-[var(--text-main)] hover:bg-[var(--bg-surface-subtle)] transition-colors"
+                    >
+                      <User className="h-3.5 w-3.5 text-[var(--text-muted)]" />
+                      <span>{locale === 'ar' ? 'حسابي الشخصي' : 'My Account'}</span>
+                    </Link>
+
                     <Link
                       href="/settings"
                       onClick={() => setIsProfileOpen(false)}

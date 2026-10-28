@@ -80,6 +80,43 @@ export class RedisService implements OnModuleDestroy {
     }
   }
 
+  async getCacheMetrics(): Promise<{
+    isAvailable: boolean;
+    status: 'CONNECTED' | 'IN_MEMORY' | 'UNAVAILABLE';
+    keyCount: number | null;
+  }> {
+    if (!this.client) {
+      return {
+        isAvailable: false,
+        status: this.isConfigured ? 'UNAVAILABLE' : 'IN_MEMORY',
+        keyCount: this.memoryStore.size,
+      };
+    }
+    try {
+      const isAlive = await this.ping();
+      if (!isAlive) {
+        return {
+          isAvailable: false,
+          status: 'UNAVAILABLE',
+          keyCount: null,
+        };
+      }
+      const count = await this.client.dbsize();
+      return {
+        isAvailable: true,
+        status: 'CONNECTED',
+        keyCount: count,
+      };
+    } catch {
+      return {
+        isAvailable: false,
+        status: 'UNAVAILABLE',
+        keyCount: null,
+      };
+    }
+  }
+
+
   async onModuleDestroy(): Promise<void> {
     if (this.client) {
       await this.client.quit().catch(() => {});

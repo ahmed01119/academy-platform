@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -60,9 +61,57 @@ export class PlayersController {
     );
   }
 
-  @RequirePermissions(Permission.PLAYERS_CREATE)
+  @RequirePermissions(Permission.PLAYERS_READ)
+  @Get('join-requests')
+  async listPlayerJoinRequestsAlias(
+    @CurrentTenantContext() tenantContext: TenantContext,
+    @Query('status') status?: string,
+  ) {
+    return this.playersService.listPlayerJoinRequests(
+      tenantContext,
+      status as ApplicationStatus | undefined,
+    );
+  }
+
+  @RequirePermissions(Permission.PLAYER_APPLICATION_REVIEW)
   @Post('registration-requests/:id/review')
   async reviewPlayerJoinRequest(
+    @CurrentTenantContext() tenantContext: TenantContext,
+    @Param('id') rawId: string,
+    @Body() body: unknown,
+  ) {
+    const requestId = UuidParamSchema.parse(rawId);
+    const dto: ReviewPlayerJoinRequest = ReviewPlayerJoinRequestSchema.parse(body);
+    return this.playersService.reviewPlayerJoinRequest(tenantContext, requestId, dto);
+  }
+
+  @RequirePermissions(Permission.PLAYER_APPLICATION_REVIEW)
+  @Patch('registration-requests/:id/review')
+  async reviewPlayerRegistrationRequestPatch(
+    @CurrentTenantContext() tenantContext: TenantContext,
+    @Param('id') rawId: string,
+    @Body() body: unknown,
+  ) {
+    const requestId = UuidParamSchema.parse(rawId);
+    const dto: ReviewPlayerJoinRequest = ReviewPlayerJoinRequestSchema.parse(body);
+    return this.playersService.reviewPlayerJoinRequest(tenantContext, requestId, dto);
+  }
+
+  @RequirePermissions(Permission.PLAYER_APPLICATION_REVIEW)
+  @Post('join-requests/:id/review')
+  async reviewPlayerJoinRequestPostAlias(
+    @CurrentTenantContext() tenantContext: TenantContext,
+    @Param('id') rawId: string,
+    @Body() body: unknown,
+  ) {
+    const requestId = UuidParamSchema.parse(rawId);
+    const dto: ReviewPlayerJoinRequest = ReviewPlayerJoinRequestSchema.parse(body);
+    return this.playersService.reviewPlayerJoinRequest(tenantContext, requestId, dto);
+  }
+
+  @RequirePermissions(Permission.PLAYER_APPLICATION_REVIEW)
+  @Patch('join-requests/:id/review')
+  async reviewPlayerJoinRequestPatchAlias(
     @CurrentTenantContext() tenantContext: TenantContext,
     @Param('id') rawId: string,
     @Body() body: unknown,
@@ -136,5 +185,25 @@ export class PlayersController {
     const playerId = UuidParamSchema.parse(rawId);
     const dto: UpdatePlayerRequest = UpdatePlayerSchema.parse(body);
     return this.playersService.updatePlayer(tenantContext, playerId, dto);
+  }
+
+  @RequirePermissions(Permission.PLAYERS_READ)
+  @Get(':id/deletion-impact')
+  async getPlayerDeletionImpact(
+    @CurrentTenantContext() tenantContext: TenantContext,
+    @Param('id') rawId: string,
+  ) {
+    const playerId = UuidParamSchema.parse(rawId);
+    return this.playersService.getPlayerDeletionImpact(tenantContext, playerId);
+  }
+
+  @RequirePermissions(Permission.PLAYERS_DELETE)
+  @Delete(':id')
+  async safeDeletePlayer(
+    @CurrentTenantContext() tenantContext: TenantContext,
+    @Param('id') rawId: string,
+  ) {
+    const playerId = UuidParamSchema.parse(rawId);
+    return this.playersService.safeDeletePlayer(tenantContext, playerId);
   }
 }

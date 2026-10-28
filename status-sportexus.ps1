@@ -39,7 +39,7 @@ Write-Host "  Backend API (NestJS):    $apiStatus" -ForegroundColor $apiColor
 $webStatus = 'DOWN'
 $webColor = 'Red'
 try {
-    $res = Invoke-WebRequest -Uri 'http://127.0.0.1:3000' -UseBasicParsing -TimeoutSec 3 -ErrorAction SilentlyContinue
+    $res = Invoke-WebRequest -Uri 'http://127.0.0.1:3000' -UseBasicParsing -TimeoutSec 10 -ErrorAction SilentlyContinue
     if ($res.StatusCode -eq 200) {
         $webStatus = 'ONLINE (Port 3000)'
         $webColor = 'Green'
@@ -68,7 +68,7 @@ if ($publicUrl) {
     Write-Host "  Public HTTPS URL:        $publicUrl" -ForegroundColor Cyan
     # Test Public Connectivity
     try {
-        $pubRes = Invoke-RestMethod -Uri "$publicUrl/v1/health/ready" -TimeoutSec 5 -ErrorAction SilentlyContinue
+        $pubRes = Invoke-RestMethod -Uri "$publicUrl/v1/health/ready" -TimeoutSec 12 -ErrorAction SilentlyContinue
         if ($pubRes) {
             Write-Host "  Public Access Check:     VERIFIED ONLINE (HTTP 200)" -ForegroundColor Green
         } else {

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '../../lib/auth-context';
 import { useLocale } from '../../lib/locale-context';
 import { apiClient } from '../../lib/api-client';
@@ -32,7 +32,9 @@ import {
   Inbox,
   Database,
   Crown,
+  Loader2,
 } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import type {
   PlatformAcademyItem,
   PlatformAuditLogItem,
@@ -42,16 +44,41 @@ import type {
   SaaSPlanItem,
   AcademyApplicationItem,
 } from '@academy/shared';
-import { ApplicationsTab } from '../../components/platform/ApplicationsTab';
-import { StorageTab } from '../../components/platform/StorageTab';
-import { GovernanceTab } from '../../components/platform/GovernanceTab';
+
+const TabLoadingFallback = () => (
+  <div className="py-12 flex justify-center items-center">
+    <Loader2 className="h-8 w-8 animate-spin text-[#00D6FF]" />
+  </div>
+);
+
+const ApplicationsTab = dynamic(
+  () => import('../../components/platform/ApplicationsTab').then((m) => m.ApplicationsTab),
+  { loading: TabLoadingFallback },
+);
+
+const StorageTab = dynamic(
+  () => import('../../components/platform/StorageTab').then((m) => m.StorageTab),
+  { loading: TabLoadingFallback },
+);
+
+const GovernanceTab = dynamic(
+  () => import('../../components/platform/GovernanceTab').then((m) => m.GovernanceTab),
+  { loading: TabLoadingFallback },
+);
+
+const CoOwnerTab = dynamic(
+  () => import('../../components/platform/CoOwnerTab').then((m) => m.CoOwnerTab),
+  { loading: TabLoadingFallback },
+);
+
 import { PromptModal, type PromptModalConfig } from '../../components/ui/PromptModal';
 
-export default function PlatformSuperAdminPage() {
+function PlatformSuperAdminContent() {
   const { user, isLoading: authLoading } = useAuth();
   const { t, locale } = useLocale();
   const { toast } = useToast();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [activeTab, setActiveTab] = useState<
     | 'academies'
@@ -60,9 +87,28 @@ export default function PlatformSuperAdminPage() {
     | 'plans'
     | 'storage'
     | 'governance'
+    | 'coowner'
     | 'security'
     | 'audit'
   >('academies');
+
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    const validTabs = [
+      'academies',
+      'applications',
+      'users',
+      'plans',
+      'storage',
+      'governance',
+      'coowner',
+      'security',
+      'audit',
+    ];
+    if (tabParam && validTabs.includes(tabParam)) {
+      setActiveTab(tabParam as typeof activeTab);
+    }
+  }, [searchParams]);
   const [metrics, setMetrics] = useState<PlatformOverviewMetrics | null>(null);
   const [academies, setAcademies] = useState<PlatformAcademyItem[]>([]);
   const [applications, setApplications] = useState<AcademyApplicationItem[]>([]);
@@ -424,10 +470,59 @@ export default function PlatformSuperAdminPage() {
     {
       header: t('platform.branchesCount', 'الفروع'),
       accessorKey: 'branchesCount',
+      cell: (item) => {
+        const plan = plans.find((p) => p.code === item.planCode);
+        const max = plan?.maxBranches ?? 1;
+        const count = item.branchesCount || 0;
+        return (
+          <span className="font-semibold text-xs text-[var(--text-primary)]">
+            {count} / {max}
+          </span>
+        );
+      },
     },
     {
-      header: t('platform.playersCount', 'اللاعبين'),
+      header: t('platform.playersCount', 'اللاعبين والقدرة الاستيعابية'),
       accessorKey: 'playersCount',
+      cell: (item) => {
+        const plan = plans.find((p) => p.code === item.planCode);
+        const max = plan?.maxPlayers ?? 100;
+        const count = item.playersCount || 0;
+        const pct = Math.round((count / max) * 100);
+        const isNearLimit = pct >= 80 && pct < 100;
+        const isExceeded = pct >= 100;
+
+        return (
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-xs text-[var(--text-primary)]">
+                {count} / {max}
+              </span>
+              {isExceeded ? (
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-500/15 text-rose-600 border border-rose-500/30">
+                  مكتمل (100%)
+                </span>
+              ) : isNearLimit ? (
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-600 border border-amber-500/30">
+                  {pct}% تنبيه
+                </span>
+              ) : (
+                <span className="text-[10px] text-[var(--text-muted)] font-mono">
+                  ({pct}%)
+                </span>
+              )}
+            </div>
+            <div className="h-1.5 w-24 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all ${
+                  isExceeded ? 'bg-rose-500' : isNearLimit ? 'bg-amber-500' : 'bg-emerald-500'
+                }`}
+                style={{ width: `${Math.min(pct, 100)}%` }}
+              />
+            </div>
+          </div>
+        );
+      },
     },
     {
       header: t('common.actions', 'الإجراءات'),
@@ -514,35 +609,41 @@ export default function PlatformSuperAdminPage() {
         )}
 
         {/* Global Platform Real Metrics */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
           <StatCard
+            loading={isLoading}
             label={t('platform.kpiTotalAcademies', 'إجمالي الأكاديميات')}
-            value={metrics?.totalAcademies ?? 0}
+            value={metrics ? metrics.totalAcademies : (locale === 'ar' ? 'غير متوفر' : 'Unavailable')}
             icon={Building2}
-            trend={{ value: `${metrics?.activeAcademies ?? 0} نشطة`, isPositive: true }}
+            trend={metrics ? { value: `${metrics.activeAcademies} نشطة`, isPositive: true } : undefined}
           />
           <StatCard
+            loading={isLoading}
             label={t('platform.kpiMrr', 'الإيراد الشهري (MRR)')}
-            value={`${(metrics?.mrr ?? 0).toLocaleString()} ${locale === 'ar' ? 'ر.س' : 'SAR'}`}
+            value={metrics ? `${metrics.mrr.toLocaleString()} ${locale === 'ar' ? 'ر.س' : 'SAR'}` : (locale === 'ar' ? 'غير متوفر' : 'Unavailable')}
             icon={DollarSign}
-            trend={{ value: `${metrics?.activeSubscriptions ?? 0} باقة`, isPositive: true }}
+            trend={metrics ? { value: `${metrics.activeSubscriptions} باقة`, isPositive: true } : undefined}
           />
           <StatCard
+            loading={isLoading}
             label={t('platform.kpiRevenue', 'المتحصلات الكلية')}
-            value={`${(metrics?.collectedRevenue ?? 0).toLocaleString()} ${locale === 'ar' ? 'ر.س' : 'SAR'}`}
+            value={metrics ? `${metrics.collectedRevenue.toLocaleString()} ${locale === 'ar' ? 'ر.س' : 'SAR'}` : (locale === 'ar' ? 'غير متوفر' : 'Unavailable')}
             icon={TrendingUp}
           />
           <StatCard
+            loading={isLoading}
             label={t('platform.kpiTotalPlayers', 'إجمالي اللاعبين')}
-            value={metrics?.totalPlayers ?? 0}
+            value={metrics ? metrics.totalPlayers : (locale === 'ar' ? 'غير متوفر' : 'Unavailable')}
             icon={Users}
           />
           <StatCard
+            loading={isLoading}
             label={t('platform.kpiTotalCoaches', 'المدربين')}
-            value={metrics?.totalCoaches ?? 0}
+            value={metrics ? metrics.totalCoaches : (locale === 'ar' ? 'غير متوفر' : 'Unavailable')}
             icon={ShieldCheck}
           />
           <StatCard
+            loading={isLoading}
             label={t('platform.kpiSystemHealth', 'حالة النظام')}
             value={metrics?.systemHealth ?? '—'}
             icon={Activity}
@@ -557,16 +658,19 @@ export default function PlatformSuperAdminPage() {
                       ? 'تدهور جزئي'
                       : 'Partial degradation'
                     : locale === 'ar'
-                      ? 'تحقق من /v1/health/ready'
-                      : 'See /v1/health/ready',
+                      ? 'غير متوفر'
+                      : 'Unavailable',
               isPositive: metrics?.systemHealth === 'HEALTHY',
             }}
           />
         </div>
 
-        {/* Navigation Tabs */}
-        <div className="flex items-center gap-2 border-b border-[var(--border-subtle)] overflow-x-auto pb-1">
-          <button
+
+        {/* Navigation Tabs - Responsive Scroll Strip without Page Overflow */}
+        <div className="w-full max-w-full min-w-0 border-b border-[var(--border-subtle)] overflow-x-auto scrollbar-none py-1">
+          <div className="flex items-center gap-1.5 sm:gap-2 min-w-max pb-0.5">
+            <button
+
             onClick={() => setActiveTab('academies')}
             className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition-colors border-b-2 whitespace-nowrap ${
               activeTab === 'academies'
@@ -638,6 +742,19 @@ export default function PlatformSuperAdminPage() {
           </button>
 
           <button
+            id="tab-platform-coowners"
+            onClick={() => setActiveTab('coowner')}
+            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition-colors border-b-2 whitespace-nowrap ${
+              activeTab === 'coowner'
+                ? 'border-amber-400 text-amber-400 bg-[var(--bg-card)]'
+                : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+            }`}
+          >
+            <Crown className="w-4 h-4 text-amber-400" />
+            {locale === 'ar' ? 'ملكية المنصة والشركاء' : 'Platform Ownership & Co-Owners'}
+          </button>
+
+          <button
             onClick={() => setActiveTab('governance')}
             className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition-colors border-b-2 whitespace-nowrap ${
               activeTab === 'governance'
@@ -645,7 +762,7 @@ export default function PlatformSuperAdminPage() {
                 : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
             }`}
           >
-            <Crown className="w-4 h-4" />
+            <ShieldCheck className="w-4 h-4" />
             {locale === 'ar' ? 'حوكمة المنصة' : 'Governance'}
           </button>
 
@@ -678,6 +795,10 @@ export default function PlatformSuperAdminPage() {
             {t('platform.tabAudit', 'سجل التدقيق المركزي')}
           </button>
         </div>
+      </div>
+
+
+
 
         {/* Tab 1: Academies */}
         {activeTab === 'academies' && (
@@ -1140,6 +1261,9 @@ export default function PlatformSuperAdminPage() {
           <ApplicationsTab applications={applications} onRefresh={loadData} isLoading={isLoading} />
         )}
 
+        {/* Tab: Platform Ownership & Co-Owner Management */}
+        {activeTab === 'coowner' && <CoOwnerTab />}
+
         {/* Tab: Storage & Lifecycle */}
         {activeTab === 'storage' && <StorageTab />}
 
@@ -1211,5 +1335,13 @@ export default function PlatformSuperAdminPage() {
         {promptConfig && <PromptModal {...promptConfig} />}
       </div>
     </AppShell>
+  );
+}
+
+export default function PlatformSuperAdminPage() {
+  return (
+    <React.Suspense fallback={<TabLoadingFallback />}>
+      <PlatformSuperAdminContent />
+    </React.Suspense>
   );
 }

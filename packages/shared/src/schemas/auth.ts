@@ -16,6 +16,7 @@ export const RegisterRequestSchema = z.object({
   email: EmailSchema,
   password: PasswordSchema,
   phone: z.string().trim().min(8).max(20).optional(),
+  city: z.string().trim().max(100).optional(),
   academyName: z.string().trim().min(2, 'Academy name must be at least 2 characters').max(100),
   academySlug: z
     .string()
@@ -24,10 +25,25 @@ export const RegisterRequestSchema = z.object({
     .max(50)
     .regex(/^[a-z0-9-]+$/, 'Slug must be lowercase alphanumeric with hyphens')
     .optional(),
-  sport: z.enum(['FOOTBALL']).default('FOOTBALL'),
+  sport: z
+    .enum(['FOOTBALL', 'PADEL', 'SWIMMING', 'BASKETBALL', 'TENNIS', 'MARTIAL_ARTS', 'OTHER'])
+    .default('FOOTBALL'),
 });
 
 export type RegisterRequest = z.infer<typeof RegisterRequestSchema>;
+
+export const RegisterResponseSchema = z.object({
+  status: z.enum(['PENDING_REVIEW', 'APPROVED']),
+  message: z.string(),
+  applicationId: z.string().uuid().optional(),
+  academyName: z.string().optional(),
+  accessToken: z.string().optional(),
+  user: z.lazy(() => UserSummarySchema).optional(),
+  activeTenant: z.lazy(() => TenantMembershipSummarySchema).nullable().optional(),
+  memberships: z.lazy(() => z.array(TenantMembershipSummarySchema)).optional(),
+});
+
+export type RegisterResponse = z.infer<typeof RegisterResponseSchema>;
 
 export const LoginRequestSchema = z.object({
   email: EmailSchema,
@@ -96,6 +112,7 @@ export const TenantMembershipSummarySchema = z.object({
   status: z.enum(['INVITED', 'ACTIVE', 'SUSPENDED', 'REVOKED']),
   branchId: z.string().uuid().nullable().optional(),
   branchName: z.string().nullable().optional(),
+  canReviewApplications: z.boolean().default(false).optional(),
 });
 
 export type TenantMembershipSummary = z.infer<typeof TenantMembershipSummarySchema>;
@@ -108,3 +125,17 @@ export const AuthResponseSchema = z.object({
 });
 
 export type AuthResponse = z.infer<typeof AuthResponseSchema>;
+
+export const ChangePasswordRequestSchema = z.object({
+  currentPassword: z.string().min(1, 'Current password is required'),
+  newPassword: PasswordSchema,
+});
+
+export type ChangePasswordRequest = z.infer<typeof ChangePasswordRequestSchema>;
+
+export const UpdateUserProfileRequestSchema = z.object({
+  name: z.string().trim().min(2, 'Name must be at least 2 characters').max(100).optional(),
+  phone: z.string().trim().min(8).max(20).nullable().optional(),
+});
+
+export type UpdateUserProfileRequest = z.infer<typeof UpdateUserProfileRequestSchema>;

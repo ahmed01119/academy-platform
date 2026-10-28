@@ -23,21 +23,39 @@ async function runRestore() {
 
   // Insert in dependency order
   const order = [
+    'saaSPlan',
     'user',
     'tenant',
-    'membership',
     'branch',
+    'tenantSport',
+    'tenantSubscription',
+    'tenantMembership',
     'trainingGroup',
+    'trainingSchedule',
     'player',
-    'coach',
-    'subscriptionPlan',
+    'guardian',
+    'groupCoach',
+    'groupMember',
+    'playerEnrollment',
+    'playerSubscriptionPlan',
     'playerSubscription',
+    'evaluationTemplate',
+    'attendanceSession',
     'attendanceRecord',
-    'evaluation',
-    'paymentRecord',
-    'notification',
+    'attendanceCorrection',
+    'attendanceEvent',
+    'attendanceIdempotency',
+    'sessionCashierClosing',
+    'academyFinancialTransaction',
+    'playerEvaluation',
+    'appNotification',
     'auditLog',
-    'academyApplication'
+    'academyApplication',
+    'playerRegistrationRequest',
+    'saaSInvoice',
+    'platformAnnouncement',
+    'invitation',
+    'refreshToken'
   ];
 
   let restoredTotal = 0;

@@ -420,4 +420,112 @@ export class BranchesService {
       },
     );
   }
+
+  /**
+   * Generates a pre-deletion impact assessment report for a branch.
+   */
+  async getBranchDeletionImpact(
+    tenantContext: TenantContext,
+    branchId: string,
+  ) {
+    return this.prisma.withTenantTransaction(
+      { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
+      async (tx) => {
+        const branch = await tx.branch.findUnique({
+          where: { tenantId_id: { tenantId: tenantContext.tenantId, id: branchId } },
+          include: {
+            _count: {
+              select: {
+                playerEnrollments: { where: { status: 'ACTIVE' } },
+                trainingGroups: true,
+                attendanceSessions: { where: { status: { in: ['SCHEDULED', 'IN_PROGRESS'] } } },
+                memberships: { where: { status: 'ACTIVE' } },
+                financialTransactions: true,
+              },
+            },
+          },
+        });
+
+        if (!branch) {
+          throw new NotFoundException({
+            code: ErrorCode.NOT_FOUND,
+            message: 'Branch not found',
+          });
+        }
+
+        const counts = branch._count;
+        const hasBlockingDependencies =
+          counts.playerEnrollments > 0 ||
+          counts.trainingGroups > 0 ||
+          counts.attendanceSessions > 0 ||
+          counts.financialTransactions > 0;
+
+        return {
+          branchId: branch.id,
+          branchName: branch.name,
+          activeEnrollmentsCount: counts.playerEnrollments,
+          groupsCount: counts.trainingGroups,
+          activeSessionsCount: counts.attendanceSessions,
+          activeStaffCount: counts.memberships,
+          financialTransactionsCount: counts.financialTransactions,
+          hasBlockingDependencies,
+          recommendation: hasBlockingDependencies ? ('ARCHIVE' as const) : ('SAFE_DELETE' as const),
+        };
+      },
+    );
+  }
+
+  /**
+   * Safely archives a branch, marking it INACTIVE while preserving historical data.
+   */
+  async archiveBranch(
+    tenantContext: TenantContext,
+    branchId: string,
+  ) {
+    return this.prisma.withTenantTransaction(
+      { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
+      async (tx) => {
+        const branch = await tx.branch.findUnique({
+          where: { tenantId_id: { tenantId: tenantContext.tenantId, id: branchId } },
+        });
+
+        if (!branch) {
+          throw new NotFoundException({
+            code: ErrorCode.NOT_FOUND,
+            message: 'Branch not found',
+          });
+        }
+
+        const updated = await tx.branch.update({
+          where: { tenantId_id: { tenantId: tenantContext.tenantId, id: branchId } },
+          data: { status: 'INACTIVE' },
+        });
+
+        await this.auditService.logEvent(
+          {
+            tenantId: tenantContext.tenantId,
+            actorUserId: tenantContext.actorUserId,
+            action: 'BRANCH_ARCHIVED',
+            resourceType: 'Branch',
+            resourceId: branch.id,
+            metadata: {
+              name: branch.name,
+              code: branch.code,
+            },
+          },
+          tx,
+        );
+
+        return {
+          success: true,
+          message: `Branch "${branch.name}" archived safely. Historical records preserved.`,
+          branch: {
+            id: updated.id,
+            name: updated.name,
+            status: updated.status,
+          },
+        };
+      },
+    );
+  }
 }

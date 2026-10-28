@@ -41,25 +41,34 @@ export class CsrfGuard implements CanActivate {
 
     // Wildcard CORS is not a valid CSRF trust boundary, even in development.
     // Only explicitly configured, well-formed HTTP(S) origins are trusted.
-    const allowedOrigins = this.config.corsOrigin
+    // Supports exact origins and wildcard patterns like *.trycloudflare.com
+    const rawOrigins = this.config.corsOrigin
       .split(',')
-      .map((value) => value.trim())
-      .filter((value) => {
-        try {
-          const url = new URL(value);
-          return (
-            (url.protocol === 'https:' || url.protocol === 'http:') &&
-            url.origin === value &&
-            !url.username &&
-            !url.password
-          );
-        } catch {
-          return false;
-        }
-      });
+      .map((value) => value.trim());
+
+    const exactAllowed = rawOrigins.filter((value) => {
+      if (value.startsWith('*.')) return false;
+      try {
+        const url = new URL(value);
+        return (
+          (url.protocol === 'https:' || url.protocol === 'http:') &&
+          url.origin === value &&
+          !url.username &&
+          !url.password
+        );
+      } catch {
+        return false;
+      }
+    });
+
+    const wildcardSuffixes = rawOrigins
+      .filter((value) => value.startsWith('*.'))
+      .map((value) => value.slice(1)); // e.g. ".trycloudflare.com"
 
     if (origin) {
-      const isAllowed = allowedOrigins.includes(origin);
+      const isAllowed =
+        exactAllowed.includes(origin) ||
+        wildcardSuffixes.some((suffix) => origin.endsWith(suffix));
       if (!isAllowed) {
         throw new ForbiddenException({
           code: ErrorCode.FORBIDDEN,
@@ -72,7 +81,9 @@ export class CsrfGuard implements CanActivate {
     if (referer) {
       try {
         const refererOrigin = new URL(referer).origin;
-        const isAllowed = allowedOrigins.includes(refererOrigin);
+        const isAllowed =
+          exactAllowed.includes(refererOrigin) ||
+          wildcardSuffixes.some((suffix) => refererOrigin.endsWith(suffix));
         if (!isAllowed) {
           throw new ForbiddenException({
             code: ErrorCode.FORBIDDEN,

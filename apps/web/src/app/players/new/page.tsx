@@ -30,6 +30,9 @@ export default function NewPlayerPage() {
   const [lastName, setLastName] = useState('');
   const [gender, setGender] = useState<PlayerGender>('MALE');
   const [dateOfBirth, setDateOfBirth] = useState('');
+  const [useBirthYearOnly, setUseBirthYearOnly] = useState(false);
+  const [birthYear, setBirthYear] = useState('');
+  const [jerseyNumber, setJerseyNumber] = useState('');
   const [nationalId, setNationalId] = useState('');
 
   // Emergency & Medical
@@ -71,9 +74,26 @@ export default function NewPlayerPage() {
     e.preventDefault();
     setErrorMessage(null);
 
-    if (!firstName.trim() || !lastName.trim() || !dateOfBirth) {
-      setErrorMessage('يرجى ملء بيانات الاسم الأول واسم العائلة وتاريخ الميلاد');
+    const effectiveDob = useBirthYearOnly
+      ? (birthYear.trim() ? `${birthYear.trim()}-01-01` : '')
+      : dateOfBirth;
+
+    if (!firstName.trim() || !lastName.trim() || !effectiveDob) {
+      setErrorMessage(
+        useBirthYearOnly
+          ? 'يرجى ملء بيانات الاسم الأول واسم العائلة وسنة الميلاد'
+          : 'يرجى ملء بيانات الاسم الأول واسم العائلة وتاريخ الميلاد',
+      );
       return;
+    }
+
+    if (useBirthYearOnly) {
+      const parsedYear = parseInt(birthYear.trim(), 10);
+      const currentYear = new Date().getFullYear();
+      if (isNaN(parsedYear) || parsedYear < 1950 || parsedYear > currentYear) {
+        setErrorMessage(`يرجى إدخال سنة ميلاد صحيحة بين 1950 و ${currentYear}`);
+        return;
+      }
     }
 
     if (!emergencyContactName.trim() || !emergencyContactPhone.trim()) {
@@ -101,7 +121,9 @@ export default function NewPlayerPage() {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         gender,
-        dateOfBirth,
+        dateOfBirth: effectiveDob,
+        birthYear: useBirthYearOnly ? parseInt(birthYear.trim(), 10) : undefined,
+        jerseyNumber: jerseyNumber.trim() ? parseInt(jerseyNumber.trim(), 10) : undefined,
         nationalId: nationalId.trim() || undefined,
         emergencyContactName: emergencyContactName.trim(),
         emergencyContactPhone: emergencyContactPhone.trim(),
@@ -209,20 +231,59 @@ export default function NewPlayerPage() {
               </div>
 
               <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-semibold text-[var(--text-secondary)]">
+                    {useBirthYearOnly ? 'سنة الميلاد *' : 'تاريخ الميلاد *'}
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setUseBirthYearOnly(!useBirthYearOnly)}
+                    className="text-[11px] text-[var(--brand-primary)] hover:underline font-medium"
+                  >
+                    {useBirthYearOnly ? 'استخدام تاريخ كامل' : 'سنة الميلاد فقط'}
+                  </button>
+                </div>
+                {useBirthYearOnly ? (
+                  <input
+                    type="number"
+                    required
+                    id="input-birth-year"
+                    min="1950"
+                    max={new Date().getFullYear()}
+                    value={birthYear}
+                    onChange={(e) => setBirthYear(e.target.value)}
+                    placeholder="مثال: 2015"
+                    className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2.5 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none transition-colors"
+                  />
+                ) : (
+                  <input
+                    type="date"
+                    required
+                    id="input-dob"
+                    value={dateOfBirth}
+                    onChange={(e) => setDateOfBirth(e.target.value)}
+                    className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2.5 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none transition-colors"
+                  />
+                )}
+              </div>
+
+              <div>
                 <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">
-                  تاريخ الميلاد *
+                  رقم القميص (اختياري)
                 </label>
                 <input
-                  type="date"
-                  required
-                  id="input-dob"
-                  value={dateOfBirth}
-                  onChange={(e) => setDateOfBirth(e.target.value)}
+                  type="number"
+                  id="input-jersey-number"
+                  min="1"
+                  max="99"
+                  value={jerseyNumber}
+                  onChange={(e) => setJerseyNumber(e.target.value)}
+                  placeholder="مثال: 10"
                   className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2.5 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none transition-colors"
                 />
               </div>
 
-              <div className="sm:col-span-2">
+              <div>
                 <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">
                   الرقم القومي / جواز السفر (اختياري)
                 </label>

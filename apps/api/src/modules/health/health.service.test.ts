@@ -55,8 +55,15 @@ describe('HealthService', () => {
     await expect(service.getPlatformHealth()).resolves.toBe('CRITICAL');
   });
 
-  it('skips redis in development when unconfigured and reports degraded', async () => {
-    const service = makeService({ redisConfigured: false });
+  it('skips redis in development when unconfigured and reports ok', async () => {
+    const service = makeService({ redisConfigured: false, nodeEnv: 'development' });
+    const result = await service.getReadiness();
+    expect(result.checks?.redis).toBe('skipped');
+    expect(result.status).toBe('ok');
+  });
+
+  it('skips redis in production when unconfigured and reports degraded', async () => {
+    const service = makeService({ redisConfigured: false, nodeEnv: 'production' });
     const result = await service.getReadiness();
     expect(result.checks?.redis).toBe('skipped');
     expect(result.status).toBe('degraded');

@@ -66,6 +66,12 @@ describe('PlayersService', () => {
       playerEnrollment: {
         create: vi.fn(),
         count: vi.fn().mockResolvedValue(0),
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+      },
+      groupMember: {
+        create: vi.fn(),
+        findFirst: vi.fn(),
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
       },
       branch: {
         findUnique: vi.fn(),
@@ -573,4 +579,79 @@ describe('PlayersService', () => {
       );
     });
   });
+
+  describe('getPlayerDeletionImpact and safeDeletePlayer', () => {
+    it('generates pre-deletion impact assessment report', async () => {
+      mockPrisma.player.findUnique.mockResolvedValue({
+        id: 'player-1',
+        firstName: 'Tsubasa',
+        lastName: 'Ozora',
+        enrollments: [{ id: 'enr-1', status: 'ACTIVE' }],
+        groupMemberships: [{ id: 'gm-1', status: 'ACTIVE' }],
+        _count: {
+          attendanceEvents: 14,
+          evaluations: 3,
+          subscriptions: 2,
+          financialTransactions: 2,
+        },
+      });
+
+      const impact = await service.getPlayerDeletionImpact(mockTenantContext, 'player-1');
+
+      expect(impact.playerId).toBe('player-1');
+      expect(impact.playerName).toBe('Tsubasa Ozora');
+      expect(impact.activeEnrollments).toBe(1);
+      expect(impact.activeGroupMemberships).toBe(1);
+      expect(impact.attendanceRecordsCount).toBe(14);
+      expect(impact.financialTransactionsCount).toBe(2);
+      expect(impact.canSafelyArchive).toBe(true);
+      expect(impact.warnings.length).toBeGreaterThan(0);
+    });
+
+    it('safely soft-deletes player, cancels active enrollments, and logs audit', async () => {
+      mockPrisma.player.findUnique.mockResolvedValue({
+        id: 'player-1',
+        firstName: 'Tsubasa',
+        lastName: 'Ozora',
+        enrollments: [{ id: 'enr-1', branchId: 'branch-1', status: 'ACTIVE' }],
+        groupMemberships: [{ id: 'gm-1', status: 'ACTIVE' }],
+        qrCardRevokedAt: null,
+      });
+
+      mockPrisma.player.update.mockResolvedValue({ id: 'player-1', status: 'INACTIVE' });
+
+      const res = await service.safeDeletePlayer(mockTenantContext, 'player-1');
+
+      expect(res.success).toBe(true);
+      expect(res.playerId).toBe('player-1');
+      expect(mockPrisma.player.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'player-1' },
+          data: expect.objectContaining({
+            status: 'INACTIVE',
+          }),
+        }),
+      );
+      expect(mockPrisma.playerEnrollment.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            tenantId: mockTenantContext.tenantId,
+            playerId: 'player-1',
+            status: 'ACTIVE',
+          },
+          data: expect.objectContaining({
+            status: 'CANCELLED',
+          }),
+        }),
+      );
+      expect(mockAudit.logEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'PLAYER_SOFT_DELETED',
+          resourceId: 'player-1',
+        }),
+        expect.anything(),
+      );
+    });
+  });
 });
+

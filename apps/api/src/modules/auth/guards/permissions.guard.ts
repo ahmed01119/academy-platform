@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { PERMISSIONS_KEY } from './require-permissions.decorator';
-import { ErrorCode, hasPermission, type Permission, type TenantRole } from '@academy/shared';
+import { ErrorCode, hasPermission, Permission, type TenantRole } from '@academy/shared';
 
 @Injectable()
 export class PermissionsGuard implements CanActivate {
@@ -34,7 +34,16 @@ export class PermissionsGuard implements CanActivate {
     }
 
     const userRole = membership.role as TenantRole;
-    const hasAll = requiredPermissions.every((perm) => hasPermission(userRole, perm));
+    const hasAll = requiredPermissions.every((perm) => {
+      if (
+        perm === Permission.PLAYER_APPLICATION_REVIEW &&
+        userRole === 'COACH' &&
+        Boolean(membership.canReviewApplications)
+      ) {
+        return true;
+      }
+      return hasPermission(userRole, perm);
+    });
 
     if (!hasAll) {
       throw new ForbiddenException({
