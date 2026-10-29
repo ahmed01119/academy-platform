@@ -22,7 +22,7 @@ const EnvSchema = z.object({
 
 export type AppEnv = z.infer<typeof EnvSchema>;
 
-export function validateEnv(config: Record<string, unknown>): AppEnv {
+export function validateEnv(config: Record<string, unknown>): AppEnv & Record<string, unknown> {
   const parsed = EnvSchema.safeParse(config);
   if (!parsed.success) {
     const details = parsed.error.issues
@@ -58,5 +58,8 @@ export function validateEnv(config: Record<string, unknown>): AppEnv {
     }
   }
 
-  return parsed.data;
+  // Merge the validated (and default-filled) known keys back into the full raw config
+  // so that ALL environment variables — including email delivery vars like MAIL_PROVIDER,
+  // RESEND_API_KEY, MAIL_FROM_EMAIL, etc. — remain accessible via ConfigService.get().
+  return { ...config, ...parsed.data };
 }
