@@ -1,3 +1,4 @@
+import { EmailService } from '../email/email.service';
 import {
   Inject,
   Injectable,
@@ -34,6 +35,7 @@ export class FinanceService {
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(AuditService) private readonly auditService: AuditService,
     @Optional() @Inject(NotificationsService) private readonly notificationsService?: NotificationsService,
+    @Optional() @Inject(EmailService) private readonly emailService?: EmailService,
   ) {}
 
   /**
@@ -471,6 +473,38 @@ export class FinanceService {
             receiptNumber,
           },
         });
+
+        // Dispatch official payment receipt email to guardian if email exists
+        if (this.emailService) {
+          try {
+            const guardian = await tx.guardian.findFirst({
+              where: { playerId: dto.playerId, email: { not: null } },
+              orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
+            });
+
+            if (guardian?.email) {
+              const academy = await tx.tenant.findUnique({
+                where: { id: tenantContext.tenantId },
+                select: { name: true },
+              });
+
+              await this.emailService.sendPaymentReceipt({
+                to: guardian.email,
+                recipientName: `${guardian.firstName} ${guardian.lastName}`.trim(),
+                academyName: academy?.name || 'Sportexus Academy',
+                receiptNumber,
+                amount: dto.amount,
+                currency: 'SAR',
+                paymentMethod: dto.paymentMethod,
+                description: dto.notes || 'سداد رسوم اشتراك تدريبي',
+                date: now,
+                locale: 'ar',
+              });
+            }
+          } catch (mailErr: unknown) {
+            // Non-blocking email dispatch failure
+          }
+        }
 
         return {
           id: transaction.id,

@@ -510,6 +510,24 @@ export class AuthService {
         userAgent,
       });
 
+      // Security alert: dispatch password changed confirmation email
+      try {
+        const userRecord = await this.prisma.user.findUnique({
+          where: { id: userId },
+          select: { email: true, name: true },
+        });
+        if (userRecord) {
+          await this.emailService.sendPasswordChangedNotification(
+            userRecord.email,
+            userRecord.name,
+            { ipAddress, userAgent, changedAt: new Date() },
+            'ar',
+          );
+        }
+      } catch (e) {
+        this.logger.warn(`Failed to dispatch password changed security email: ${(e as Error)?.message}`);
+      }
+
       return {
         message: 'Password has been successfully reset. You may now log in with your new password.',
       };
@@ -733,6 +751,18 @@ export class AuthService {
       userAgent,
       metadata: { method: 'authenticated_change' },
     });
+
+    // Security alert: dispatch password changed confirmation email
+    try {
+      await this.emailService.sendPasswordChangedNotification(
+        user.email,
+        user.name,
+        { ipAddress, userAgent, changedAt: new Date() },
+        'ar',
+      );
+    } catch (e) {
+      this.logger.warn(`Failed to dispatch password changed security email: ${(e as Error)?.message}`);
+    }
 
     this.logger.log(`Password changed for user ${userId}`);
     return { message: 'Password changed successfully' };

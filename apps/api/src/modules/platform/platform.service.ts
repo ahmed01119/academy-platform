@@ -1773,14 +1773,15 @@ export class PlatformService {
           href: '/',
         });
 
-        // Dispatch rejection email
+        // Dispatch branded rejection email with constructive feedback
         try {
-          await this.emailService.sendEmail({
-            to: result.item.contactEmail,
-            subject: `تحديث بخصوص طلب تسجيل أكاديمية "${result.academyName}" — سبورتكسس`,
-            html: `<p>مرحباً ${result.item.applicantName || ''}،</p><p>نأسف لإبلاغك بأنه لم يتم قبول طلب تسجيل الأكاديمية "${result.academyName}".</p><p>السبب / الملاحظات: ${dto.reviewNotes || 'لم يستوفِ الشروط المطلوبة'}.</p>`,
-            text: `مرحباً ${result.item.applicantName || ''}، نأسف لإبلاغك بأنه لم يتم قبول طلب تسجيل الأكاديمية "${result.academyName}". السبب: ${dto.reviewNotes || 'لم يستوفِ الشروط'}.`,
-          });
+          await this.emailService.sendAcademyRejected(
+            result.item.contactEmail,
+            result.item.applicantName || '',
+            result.academyName,
+            dto.reviewNotes,
+            'ar',
+          );
         } catch (mailErr: any) {
           this.logger.warn(`Failed to dispatch academy rejection email: ${mailErr?.message ?? mailErr}`);
         }
@@ -1792,6 +1793,19 @@ export class PlatformService {
           body: `Additional details required for "${result.academyName}": ${dto.reviewNotes ?? ''}`,
           href: '/',
         });
+
+        // Dispatch branded more info requested email
+        try {
+          await this.emailService.sendAcademyMoreInfoRequested(
+            result.item.contactEmail,
+            result.item.applicantName || '',
+            result.academyName,
+            dto.reviewNotes,
+            'ar',
+          );
+        } catch (mailErr: any) {
+          this.logger.warn(`Failed to dispatch more info requested email: ${mailErr?.message ?? mailErr}`);
+        }
       }
     } catch (notifErr: any) {
       this.logger.warn(

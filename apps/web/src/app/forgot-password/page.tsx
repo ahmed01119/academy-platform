@@ -22,6 +22,15 @@ export default function ForgotPasswordPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [debugToken, setDebugToken] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+
+  React.useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setInterval(() => {
+      setCooldown((prev) => (prev <= 1 ? 0 : prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [cooldown]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,6 +50,7 @@ export default function ForgotPasswordPage() {
       if (res.debugToken && isLocalDevAccess) {
         setDebugToken(res.debugToken);
       }
+      setCooldown(60);
     } catch (err: unknown) {
       setError(
         err instanceof Error
@@ -163,7 +173,7 @@ export default function ForgotPasswordPage() {
 
               <button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={isSubmitting || cooldown > 0}
                 className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#0A3BFF] via-[#0077FF] to-[#00D6FF] py-3 text-sm font-bold text-white shadow-lg shadow-blue-600/30 hover:brightness-110 active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
                 {isSubmitting ? (
@@ -171,6 +181,12 @@ export default function ForgotPasswordPage() {
                     <Loader2 className="h-4 w-4 animate-spin" />
                     <span>{locale === 'ar' ? 'جارٍ الإرسال...' : 'Sending...'}</span>
                   </>
+                ) : cooldown > 0 ? (
+                  <span>
+                    {locale === 'ar'
+                      ? `إعادة الإرسال بعد ${cooldown} ثانية`
+                      : `Resend available in ${cooldown}s`}
+                  </span>
                 ) : (
                   <>
                     <span>{locale === 'ar' ? 'طلب رمز الاستعادة' : 'Send Recovery Code'}</span>

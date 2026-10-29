@@ -1,3 +1,4 @@
+import { EmailService } from '../email/email.service';
 import crypto from 'node:crypto';
 import {
   BadRequestException,
@@ -5,6 +6,7 @@ import {
   ForbiddenException,
   Inject,
   Injectable,
+  Optional,
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
@@ -39,6 +41,7 @@ export class PlayersService {
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(AuditService) private readonly auditService: AuditService,
     @Inject(NotificationsService) private readonly notificationsService: NotificationsService,
+    @Optional() @Inject(EmailService) private readonly emailService?: EmailService,
   ) {}
 
   /**
@@ -469,6 +472,28 @@ export class PlayersService {
           },
           tx,
         );
+
+        // Dispatch welcome & enrollment confirmation email to primary guardian if provided
+        if (this.emailService && dto.primaryGuardian?.email) {
+          try {
+            const tenant = await tx.tenant.findUnique({
+              where: { id: tenantContext.tenantId },
+              select: { name: true },
+            });
+
+            await this.emailService.sendPlayerEnrollmentWelcome({
+              to: dto.primaryGuardian.email.trim(),
+              guardianName: `${guardian.firstName} ${guardian.lastName}`.trim(),
+              playerName: `${player.firstName} ${player.lastName}`.trim(),
+              academyName: tenant?.name || 'Sportexus Academy',
+              branchName: branch.name,
+              sport: dto.sport,
+              locale: 'ar',
+            });
+          } catch (mailErr: unknown) {
+            // Non-blocking email dispatch failure
+          }
+        }
 
         return {
           id: player.id,
