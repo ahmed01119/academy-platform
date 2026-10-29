@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { Navbar } from '../../components/Navbar';
 import { useLocale } from '../../lib/locale-context';
 import { useAuth } from '../../lib/auth-context';
@@ -19,7 +19,6 @@ import {
 } from 'lucide-react';
 
 function AcceptInviteContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const { locale } = useLocale();
   const { user, isLoading: isAuthLoading, refreshUser } = useAuth();

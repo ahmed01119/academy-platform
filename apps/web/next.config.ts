@@ -3,7 +3,7 @@ import type { NextConfig } from 'next';
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   transpilePackages: ['@academy/shared'],
-  output: process.env.BUILD_STANDALONE === 'true' ? 'standalone' : undefined,
+  output: process.env.BUILD_STANDALONE === 'true' || process.env.NODE_ENV === 'production' ? 'standalone' : undefined,
   async headers() {
     return [
       {
