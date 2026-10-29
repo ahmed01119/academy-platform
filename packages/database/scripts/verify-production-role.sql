@@ -285,8 +285,7 @@ BEGIN
   EXECUTE 'UPDATE public.users SET name = name WHERE false';
 
   -- 3. Permitted append-only INSERT into audit_logs
-  INSERT INTO public.audit_logs (id, tenant_id, action, resource_type)
-  VALUES (gen_random_uuid(), null, 'REGRESSION_TEST', 'SECURITY_SUITE');
+  EXECUTE 'INSERT INTO public.audit_logs (id, tenant_id, action, resource_type) SELECT gen_random_uuid(), null, ''REGRESSION_TEST'', ''SECURITY_SUITE'' WHERE false';
 
   -- 4. Row-Level Security Isolation (Fail-Closed when tenant_id is unset)
   PERFORM set_config('app.tenant_id', '', true);

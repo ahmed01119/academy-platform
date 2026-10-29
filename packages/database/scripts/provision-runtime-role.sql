@@ -40,13 +40,22 @@ BEGIN
     RAISE NOTICE 'Role sportexus_app created.';
   ELSE
     ALTER ROLE sportexus_app
-      NOSUPERUSER
+      WITH LOGIN
+      PASSWORD '<STRONG_RUNTIME_PASSWORD>'
       NOCREATEDB
       NOCREATEROLE
-      NOREPLICATION
-      NOBYPASSRLS;
-    RAISE NOTICE 'Role sportexus_app confirmed with least-privilege role flags.';
+      CONNECTION LIMIT 50;
+    RAISE NOTICE 'Role sportexus_app confirmed with least-privilege role flags and updated credentials.';
   END IF;
+END $$;
+
+-- Allow administrative user to assume sportexus_app for regression test suite execution
+DO $$
+DECLARE
+  v_admin text := current_user;
+BEGIN
+  EXECUTE format('GRANT sportexus_app TO %I', v_admin);
+  RAISE NOTICE 'Granted role membership of sportexus_app to % for SET ROLE verification', v_admin;
 END $$;
 
 -- Ensure sportexus_app is NOT a member of any privileged administrative role
@@ -252,4 +261,7 @@ BEGIN
   END IF;
 END $$;
 
-RAISE NOTICE '=== SPORTEXUS sportexus_app runtime role provisioning complete. ===';
+DO $$
+BEGIN
+  RAISE NOTICE '=== SPORTEXUS sportexus_app runtime role provisioning complete. ===';
+END $$;

@@ -20,6 +20,7 @@ const STAGING_ENV_PATH = path.resolve(__dirname, '../.env.staging');
 const PROVISION_SQL_PATH = path.resolve(__dirname, '../packages/database/scripts/provision-runtime-role.sql');
 const VERIFY_SQL_PATH = path.resolve(__dirname, '../packages/database/scripts/verify-production-role.sql');
 const SCHEMA_PATH = path.resolve(__dirname, '../packages/database/prisma/schema.prisma');
+const PRISMA_CLI = path.resolve(__dirname, '../packages/database/node_modules/prisma/build/index.js');
 
 async function main() {
   console.log('=============================================================================');
@@ -42,6 +43,7 @@ async function main() {
   }
 
   const adminUrl = match[1].trim().replace(/^["']|["']$/g, '');
+  process.env.DATABASE_URL = adminUrl;
 
   // 2. Local database safety invariant
   const parsedUrl = new URL(adminUrl);
@@ -63,9 +65,22 @@ async function main() {
   try {
     // 4. Verify Phase 2 Target Database & Identity
     console.log('[Phase 2] Verifying database connection and catalog identity...');
-    const identityResult = await prisma.$queryRawUnsafe(
-      'SELECT current_database() AS dbname, current_user AS username, version() AS pg_version;'
-    );
+    let identityResult;
+    for (let attempt = 1; attempt <= 4; attempt++) {
+      try {
+        identityResult = await prisma.$queryRawUnsafe(
+          'SELECT current_database() AS dbname, current_user AS username, version() AS pg_version;'
+        );
+        break;
+      } catch (err) {
+        if (attempt < 4) {
+          console.warn(`[Warning] Phase 2 connection attempt ${attempt}/4 failed. Retrying in 3 seconds...`);
+          Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 3000);
+        } else {
+          throw err;
+        }
+      }
+    }
     const { dbname, username, pg_version } = identityResult[0];
 
     console.log(`  - Target Database: ${dbname}`);
@@ -78,26 +93,69 @@ async function main() {
 
     // 5. Phase 3: Run Prisma Migrations
     console.log('\n[Phase 3] Deploying Prisma migrations using administrative connection...');
-    execSync(`npx prisma migrate deploy --schema="${SCHEMA_PATH}"`, {
-      env: { ...process.env, DATABASE_URL: adminUrl },
-      stdio: 'inherit',
-    });
+    let migrationAttempts = 0;
+    while (migrationAttempts < 3) {
+      migrationAttempts++;
+      try {
+        execSync(`node "${PRISMA_CLI}" migrate deploy --schema="${SCHEMA_PATH}"`, {
+          env: { ...process.env, DATABASE_URL: adminUrl },
+          stdio: 'inherit',
+        });
+        break;
+      } catch (err) {
+        if (migrationAttempts < 3) {
+          console.warn(`[Warning] Migration deploy attempt ${migrationAttempts}/3 failed. Retrying in 3 seconds...`);
+          Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 3000);
+        } else {
+          throw err;
+        }
+      }
+    }
     console.log('✓ All Prisma migrations verified and applied.');
+
+    // Helper to execute multi-statement SQL files safely via Prisma CLI simple query protocol
+    const executeSqlScript = (sqlContent, maxRetries = 3) => {
+      const tmpFile = path.join(__dirname, `.tmp-provision-${Date.now()}.sql`);
+      try {
+        fs.writeFileSync(tmpFile, sqlContent, 'utf8');
+        let attempts = 0;
+        while (attempts < maxRetries) {
+          attempts++;
+          try {
+            execSync(`node "${PRISMA_CLI}" db execute --file="${tmpFile}" --url="${adminUrl}"`, {
+              stdio: 'inherit',
+            });
+            return;
+          } catch (err) {
+            if (attempts < maxRetries) {
+              console.warn(`[Warning] Database command failed (attempt ${attempts}/${maxRetries}). Retrying in 3 seconds...`);
+              Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 3000);
+            } else {
+              throw err;
+            }
+          }
+        }
+      } finally {
+        if (fs.existsSync(tmpFile)) {
+          fs.unlinkSync(tmpFile);
+        }
+      }
+    };
 
     // 6. Phase 4: Generate Secure Runtime Password & Provision Role
     console.log('\n[Phase 4] Provisioning unprivileged sportexus_app runtime role...');
     const runtimePassword = crypto.randomBytes(24).toString('hex'); // 48 chars hex
 
     let provisionSql = fs.readFileSync(PROVISION_SQL_PATH, 'utf8');
-    provisionSql = provisionSql.replace('<STRONG_RUNTIME_PASSWORD>', runtimePassword);
+    provisionSql = provisionSql.replaceAll('<STRONG_RUNTIME_PASSWORD>', runtimePassword);
 
-    await prisma.$executeRawUnsafe(provisionSql);
+    executeSqlScript(provisionSql);
     console.log('✓ Role sportexus_app provisioned with least-privilege table, column, sequence & procedure grants.');
 
     // 7. Phase 5: Execute Regression & Security Verification Suite
     console.log('\n[Phase 5] Executing security and RLS regression suite (verify-production-role.sql)...');
     const verifySql = fs.readFileSync(VERIFY_SQL_PATH, 'utf8');
-    await prisma.$executeRawUnsafe(verifySql);
+    executeSqlScript(verifySql);
     console.log('✓ All 14 security invariants, RLS checks, and negative DML assertions PASSED.');
 
     // 8. Construct Runtime DATABASE_URL
@@ -105,6 +163,22 @@ async function main() {
     runtimeUrl.username = 'sportexus_app';
     runtimeUrl.password = runtimePassword;
     const finalRuntimeUrl = runtimeUrl.toString();
+
+    // 8.1 Verify Runtime Connection
+    console.log('\n[Phase 6] Verifying runtime connection as sportexus_app...');
+    process.env.DATABASE_URL = finalRuntimeUrl;
+    const runtimePrisma = new PrismaClient({
+      datasources: { db: { url: finalRuntimeUrl } },
+      log: ['error'],
+    });
+    try {
+      const runtimeIdentity = await runtimePrisma.$queryRawUnsafe(
+        'SELECT current_database() AS dbname, current_user AS username;'
+      );
+      console.log(`✓ Successfully connected as runtime user: ${runtimeIdentity[0].username} on database: ${runtimeIdentity[0].dbname}`);
+    } finally {
+      await runtimePrisma.$disconnect();
+    }
 
     // 9. Write runtime URL to .env.staging (append or update)
     let updatedEnv = envContent;
@@ -139,3 +213,4 @@ main().catch((err) => {
   console.error('\nFATAL PROVISIONING ERROR:', err.message);
   process.exit(1);
 });
+
