@@ -87,8 +87,8 @@ async function main() {
     console.log(`  - Connected User:  ${username}`);
     console.log(`  - Engine:          ${pg_version.split(' ')[0]} ${pg_version.split(' ')[1]}`);
 
-    if (dbname !== 'sportexus-api-staging') {
-      throw new Error(`DATABASE MISMATCH: Connected to "${dbname}", but required target is "sportexus-api-staging". Aborting for safety.`);
+    if (dbname !== 'neondb') {
+      throw new Error(`DATABASE MISMATCH: Connected to "${dbname}", but required target is "neondb". Aborting for safety.`);
     }
 
     // 5. Phase 3: Run Prisma Migrations
@@ -192,7 +192,7 @@ async function main() {
     console.log('\n=============================================================================');
     console.log(' SUCCESS — Hostless Database Ready for Production');
     console.log('=============================================================================');
-    console.log(`Database:     sportexus-api-staging`);
+    console.log(`Database:     neondb (Neon PostgreSQL)`);
     console.log(`Runtime User: sportexus_app`);
     console.log(`Status:       Migrations applied, RLS verified, security invariants passed.`);
     console.log(`\nThe verified DATABASE_URL has been saved to:`);

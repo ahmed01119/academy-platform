@@ -1,7 +1,7 @@
 -- =============================================================================
 -- SPORTEXUS — Staging Runtime Role Provisioning Script
 -- =============================================================================
--- Target Database: Hostless PostgreSQL (`sportexus-api-staging`)
+-- Target Database: Neon PostgreSQL (`neondb`)
 -- Run as: Administrative database user (e.g. `academy` or `postgres`)
 -- Execution Safety:
 --   1. Database-locked: Aborts immediately if not connected to `sportexus-api-staging`.
@@ -15,8 +15,8 @@
 -- =============================================================================
 DO $$
 BEGIN
-  IF current_database() NOT IN ('sportexus-api-staging') THEN
-    RAISE EXCEPTION 'DATABASE GUARD: Script is strictly intended for database "sportexus-api-staging", but current database is "%". Aborting.', current_database();
+  IF current_database() NOT IN ('neondb') THEN
+    RAISE EXCEPTION 'DATABASE GUARD: Script is strictly intended for database "neondb", but current database is "%". Aborting.', current_database();
   END IF;
   RAISE NOTICE 'Target database verified: %', current_database();
 END $$;
@@ -28,14 +28,13 @@ DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'sportexus_app') THEN
     -- Replace <STRONG_RUNTIME_PASSWORD> with a cryptographically secure password
+    -- Omit NOSUPERUSER/NOREPLICATION/NOBYPASSRLS to avoid errors when admin
+    -- is not a true superuser (Neon neondb_owner). These are all false by default.
     CREATE ROLE sportexus_app
       LOGIN
       PASSWORD '<STRONG_RUNTIME_PASSWORD>'
-      NOSUPERUSER
       NOCREATEDB
       NOCREATEROLE
-      NOREPLICATION
-      NOBYPASSRLS
       CONNECTION LIMIT 50;
     RAISE NOTICE 'Role sportexus_app created.';
   ELSE
@@ -63,7 +62,8 @@ DO $$
 DECLARE
   r text;
   privileged_roles text[] := ARRAY[
-    'academy', 'postgres', 'root', 'pg_read_all_data', 'pg_write_all_data',
+    'academy', 'postgres', 'root', 'neondb_owner', 'neon_superuser',
+    'pg_read_all_data', 'pg_write_all_data',
     'pg_database_owner', 'pg_execute_server_program', 'pg_read_server_files', 'pg_write_server_files'
   ];
 BEGIN
@@ -80,7 +80,7 @@ END $$;
 -- =============================================================================
 -- STEP 2 — Database Connection & Schema USAGE
 -- =============================================================================
-GRANT CONNECT ON DATABASE "sportexus-api-staging" TO sportexus_app;
+GRANT CONNECT ON DATABASE "neondb" TO sportexus_app;
 
 -- Grant schema USAGE but strictly REVOKE CREATE
 GRANT USAGE ON SCHEMA public TO sportexus_app;

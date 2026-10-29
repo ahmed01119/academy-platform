@@ -1,7 +1,7 @@
 -- =============================================================================
 -- SPORTEXUS — Staging Runtime Role Security & Regression Test Suite
 -- =============================================================================
--- Target Database: Hostless PostgreSQL (`sportexus-api-staging`)
+-- Target Database: Neon PostgreSQL (`neondb`)
 -- Run as: Administrative database user (e.g. `academy` or `postgres`)
 -- Execution Safety: Runs inside a transaction and ALWAYS issues ROLLBACK.
 -- Zero permanent data mutation. Raises EXCEPTION if any invariant fails.
@@ -10,8 +10,8 @@
 -- Guard: Enforce execution against sportexus-api-staging only
 DO $$
 BEGIN
-  IF current_database() NOT IN ('sportexus-api-staging') THEN
-    RAISE EXCEPTION 'DATABASE GUARD: Regression suite is locked to "sportexus-api-staging". Current database is "%". Aborting.', current_database();
+  IF current_database() NOT IN ('neondb') THEN
+    RAISE EXCEPTION 'DATABASE GUARD: Regression suite is locked to "neondb". Current database is "%". Aborting.', current_database();
   END IF;
 END $$;
 
@@ -25,7 +25,8 @@ DECLARE
   r RECORD;
   r_role text;
   privileged_roles text[] := ARRAY[
-    'academy', 'postgres', 'root', 'pg_read_all_data', 'pg_write_all_data',
+    'academy', 'postgres', 'root', 'neondb_owner', 'neon_superuser',
+    'pg_read_all_data', 'pg_write_all_data',
     'pg_database_owner', 'pg_execute_server_program', 'pg_read_server_files', 'pg_write_server_files'
   ];
 BEGIN
@@ -316,6 +317,6 @@ DO $$
 BEGIN
   RAISE NOTICE '=============================================================================';
   RAISE NOTICE 'SUCCESS: All 14 security invariants, RLS checks, and regression tests PASSED!';
-  RAISE NOTICE 'Database: sportexus-api-staging | Role: sportexus_app';
+  RAISE NOTICE 'Database: neondb | Role: sportexus_app';
   RAISE NOTICE '=============================================================================';
 END $$;
