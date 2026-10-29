@@ -14,7 +14,9 @@ const EnvSchema = z.object({
   JWT_SECRET: z.string().min(16).default('academy-platform-jwt-super-secret-key-32-chars!'),
   JWT_EXPIRES_IN: z.string().default('15m'),
   REFRESH_TOKEN_EXPIRES_DAYS: z.coerce.number().int().positive().default(7),
-  CORS_ORIGIN: z.string().default('http://localhost:3000'),
+  CORS_ORIGIN: z
+    .string()
+    .default('http://localhost:3000,https://sportexus-web-staging.hostless.app'),
   COOKIE_SECURE: z
     .union([z.boolean(), z.enum(['true', 'false'])])
     .transform((value) => value === true || value === 'true')
