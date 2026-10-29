@@ -6,6 +6,7 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { AuditService } from '../audit/audit.service';
@@ -31,6 +32,7 @@ import {
 
 @Injectable()
 export class FinanceService {
+  private readonly logger = new Logger(FinanceService.name);
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(AuditService) private readonly auditService: AuditService,
@@ -502,7 +504,7 @@ export class FinanceService {
               });
             }
           } catch (mailErr: unknown) {
-            // Non-blocking email dispatch failure
+            this.logger.warn(`Failed to dispatch payment receipt email: ${(mailErr as Error)?.message}`);
           }
         }
 

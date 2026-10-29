@@ -549,6 +549,17 @@ export const api = {
         method: 'POST',
       });
     },
+
+    async acceptInvitation(data: { token: string }): Promise<{ message: string; tenantId: string }> {
+      const res = await request<{ message: string; tenantId: string }>('/tenants/invitations/accept', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+      if (res?.tenantId) {
+        setActiveTenantIdHeader(res.tenantId);
+      }
+      return res;
+    },
   },
 
   branches: {

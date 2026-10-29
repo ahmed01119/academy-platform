@@ -292,6 +292,65 @@ describe('api-client', () => {
       expect.objectContaining({ method: 'GET' }),
     );
   });
+  it('accepts an academy invitation and updates active tenant header', async () => {
+    const mockAcceptResponse = {
+      message: 'Successfully joined Stars Academy',
+      tenantId: 'tenant-accepted-999',
+    };
+
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: true,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      json: async () => mockAcceptResponse,
+    } as Response);
+
+    const result = await api.tenancy.acceptInvitation({ token: 'invitation-token-123' });
+    expect(result).toEqual(mockAcceptResponse);
+    expect(getActiveTenantIdHeader()).toBe('tenant-accepted-999');
+    expect(fetchSpy).toHaveBeenCalledWith(
+      expect.stringContaining('/tenants/invitations/accept'),
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ token: 'invitation-token-123' }),
+      }),
+    );
+  });
+
+  it('submits email verification request via api.auth.verifyEmail', async () => {
+    const mockResponse = { message: 'Email address verified successfully' };
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: true,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      json: async () => mockResponse,
+    } as Response);
+
+    const result = await api.auth.verifyEmail('token-xyz-456');
+    expect(result).toEqual(mockResponse);
+    expect(fetchSpy).toHaveBeenCalledWith(
+      expect.stringContaining('/auth/verify-email'),
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ token: 'token-xyz-456' }),
+      }),
+    );
+  });
+
+  it('resends email verification request via api.auth.resendVerification', async () => {
+    const mockResponse = { message: 'Verification email sent' };
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: true,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      json: async () => mockResponse,
+    } as Response);
+
+    const result = await api.auth.resendVerification('user@sportexus.com');
+    expect(result).toEqual(mockResponse);
+    expect(fetchSpy).toHaveBeenCalledWith(
+      expect.stringContaining('/auth/resend-verification'),
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ email: 'user@sportexus.com' }),
+      }),
+    );
+  });
 });
-
-
