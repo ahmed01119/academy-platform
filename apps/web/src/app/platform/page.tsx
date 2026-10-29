@@ -33,10 +33,13 @@ import {
   Database,
   Crown,
   Loader2,
+  Trash2,
+  Archive,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import type {
   PlatformAcademyItem,
+  AcademyDeletionImpact,
   PlatformAuditLogItem,
   PlatformOverviewMetrics,
   PlatformSecurityEvent,
@@ -132,6 +135,58 @@ function PlatformSuperAdminContent() {
 
   // Selected academy for plan modification modal
   const [editingAcademy, setEditingAcademy] = useState<PlatformAcademyItem | null>(null);
+
+  // Safe Academy Deletion / Impact State
+  const [selectedImpactAcademy, setSelectedImpactAcademy] = useState<PlatformAcademyItem | null>(null);
+  const [academyImpactData, setAcademyImpactData] = useState<AcademyDeletionImpact | null>(null);
+  const [isLoadingImpact, setIsLoadingImpact] = useState(false);
+  const [archiveSlugInput, setArchiveSlugInput] = useState('');
+  const [archiveReasonInput, setArchiveReasonInput] = useState('');
+  const [isSubmittingArchive, setIsSubmittingArchive] = useState(false);
+
+  const handleOpenAcademyArchiveModal = async (academy: PlatformAcademyItem) => {
+    setSelectedImpactAcademy(academy);
+    setAcademyImpactData(null);
+    setArchiveSlugInput('');
+    setArchiveReasonInput('');
+    setIsLoadingImpact(true);
+    try {
+      const impact = await apiClient.platform.getAcademyDeletionImpact(academy.id);
+      setAcademyImpactData(impact);
+    } catch (err: unknown) {
+      toast.error((err as Error)?.message || 'Failed to fetch academy impact report');
+      setSelectedImpactAcademy(null);
+    } finally {
+      setIsLoadingImpact(false);
+    }
+  };
+
+  const handleConfirmAcademyArchive = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedImpactAcademy || !academyImpactData) return;
+    if (archiveSlugInput.trim() !== selectedImpactAcademy.slug) {
+      toast.error(locale === 'ar' ? 'يرجى كتابة معرف الأكاديمية بدقة لتأكيد الإجراء' : 'Confirmation slug does not match');
+      return;
+    }
+
+    setIsSubmittingArchive(true);
+    try {
+      const res = await apiClient.platform.archiveAcademy(selectedImpactAcademy.id, {
+        confirmationSlug: archiveSlugInput.trim(),
+        reason: archiveReasonInput.trim() || 'Platform Owner Administrative Deletion/Archive',
+        permanent: academyImpactData.isEligibleForPermanentDeletion,
+      });
+
+      toast.success(res.message);
+      setSelectedImpactAcademy(null);
+      await loadData();
+    } catch (err: unknown) {
+      toast.error((err as Error)?.message || 'Failed to archive academy');
+    } finally {
+      setIsSubmittingArchive(false);
+    }
+  };
+
   const [selectedPlanCode, setSelectedPlanCode] = useState<
     'STARTER' | 'PRO' | 'ENTERPRISE' | 'CUSTOM'
   >('PRO');

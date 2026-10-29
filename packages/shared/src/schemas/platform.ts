@@ -404,3 +404,35 @@ export const PlatformInviteUserRequestSchema = z.object({
 });
 
 export type PlatformInviteUserRequest = z.infer<typeof PlatformInviteUserRequestSchema>;
+
+export interface AcademyDeletionImpact {
+  academyId: string;
+  academyName: string;
+  slug: string;
+  status: string;
+  branchesCount: number;
+  playersCount: number;
+  coachesCount: number;
+  guardiansCount: number;
+  financialTransactionsCount: number;
+  attendanceEventsCount: number;
+  membershipsCount: number;
+  isEligibleForPermanentDeletion: boolean;
+  dataRetentionNotice: string;
+  warnings: string[];
+}
+
+export const DeleteAcademyRequestSchema = z.object({
+  confirmationSlug: z.string().trim(),
+  reason: z.string().trim().min(3).max(500),
+  permanent: z.boolean().default(false),
+});
+
+export type DeleteAcademyRequest = z.infer<typeof DeleteAcademyRequestSchema>;
+
+export interface DeleteAcademyResponse {
+  success: boolean;
+  message: string;
+  action: 'SUSPENDED_ARCHIVED' | 'PERMANENTLY_DELETED';
+  academyId: string;
+}

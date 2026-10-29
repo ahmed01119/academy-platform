@@ -38,3 +38,4 @@ HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
   CMD wget -qO- http://127.0.0.1:${PORT:-3001}/v1/health || exit 1
 
 CMD ["node", "--max-old-space-size=384", "apps/api/dist/main.js"]
+

@@ -19,6 +19,9 @@ import {
   type PlatformOverviewMetrics,
   type PlatformSecurityEvent,
   type UpdateAcademyStatusRequest,
+  type AcademyDeletionImpact,
+  type DeleteAcademyRequest,
+  type DeleteAcademyResponse,
   type RequestSupportAccessRequest,
   type SupportAccessResponse,
   type PlatformUserItem,
@@ -307,6 +310,198 @@ export class PlatformService {
   /**
    * Lists all users across the platform with roles, academies, and active sessions count.
    */
+    /**
+   * Pre-deletion impact assessment for an academy.
+   * Reports affected branches, players, staff, financials, and attendance history.
+   */
+  async getAcademyDeletionImpact(
+    actorUserId: string,
+    academyId: string,
+  ): Promise<AcademyDeletionImpact> {
+    return this.prisma.withPlatformAdminTransaction({ actorUserId }, async (tx) => {
+      const tenant = await tx.tenant.findUnique({
+        where: { id: academyId },
+        include: {
+          _count: {
+            select: {
+              branches: true,
+              players: true,
+              memberships: true,
+              guardians: true,
+              financialTransactions: true,
+              attendanceEvents: true,
+            },
+          },
+        },
+      });
+
+      if (!tenant) {
+        throw new NotFoundException({
+          code: ErrorCode.NOT_FOUND,
+          message: 'Academy not found',
+        });
+      }
+
+      const coachesCount = await tx.tenantMembership.count({
+        where: { tenantId: academyId, role: 'COACH' },
+      });
+
+      const finCount = tenant._count.financialTransactions;
+      const attCount = tenant._count.attendanceEvents;
+      const hasHistory = finCount > 0 || attCount > 0;
+
+      const warnings: string[] = [];
+      if (tenant._count.players > 0) {
+        warnings.push(`يوجد ${tenant._count.players} لاعب مسجل في هذه الأكاديمية.`);
+      }
+      if (finCount > 0) {
+        warnings.push(
+          `يوجد ${finCount} معاملة مالية وسندات قبض مسجلة تخضع لمتطلبات الحفظ القانوني.`,
+        );
+      }
+      if (attCount > 0) {
+        warnings.push(`يوجد ${attCount} سجل حضور وتدريب محفوظ.`);
+      }
+
+      return {
+        academyId: tenant.id,
+        academyName: tenant.name,
+        slug: tenant.slug,
+        status: tenant.status,
+        branchesCount: tenant._count.branches,
+        playersCount: tenant._count.players,
+        coachesCount,
+        guardiansCount: tenant._count.guardians,
+        financialTransactionsCount: finCount,
+        attendanceEventsCount: attCount,
+        membershipsCount: tenant._count.memberships,
+        isEligibleForPermanentDeletion: !hasHistory && tenant._count.players === 0,
+        dataRetentionNotice: hasHistory
+          ? 'تخضع السجلات المالية وسجلات الحضور للحفظ القانوني والتدقيق المالي، لذا يتم اعتماد الأرشفة الآمنة (التجميد الكامل وإلغاء الجلسات) لمنع فقدان البيانات.'
+          : 'الأكاديمية لا تحتوي على سجلات مالية أو حضور تاريخي، وهي مؤهلة للحذف الكامل.',
+        warnings,
+      };
+    });
+  }
+
+  /**
+   * Safe two-stage deletion/archiving of an academy.
+   * Requires confirmation slug matching tenant slug.
+   */
+  async deleteOrArchiveAcademy(
+    actorUserId: string,
+    academyId: string,
+    dto: DeleteAcademyRequest,
+  ): Promise<DeleteAcademyResponse> {
+    return this.prisma.withPlatformAdminTransaction({ actorUserId }, async (tx) => {
+      const actor = await tx.user.findUnique({
+        where: { id: actorUserId },
+        select: { id: true, isPlatformOwner: true, email: true },
+      });
+
+      if (!actor?.isPlatformOwner) {
+        throw new ForbiddenException({
+          code: ErrorCode.FORBIDDEN,
+          message: 'Only sovereign Platform Owners can archive or delete academies',
+        });
+      }
+
+      const tenant = await tx.tenant.findUnique({
+        where: { id: academyId },
+        include: {
+          _count: {
+            select: {
+              financialTransactions: true,
+              attendanceEvents: true,
+              players: true,
+            },
+          },
+        },
+      });
+
+      if (!tenant) {
+        throw new NotFoundException({
+          code: ErrorCode.NOT_FOUND,
+          message: 'Academy not found',
+        });
+      }
+
+      if (dto.confirmationSlug !== tenant.slug) {
+        throw new BadRequestException({
+          code: ErrorCode.VALIDATION_FAILED,
+          message: `Confirmation slug must match "${tenant.slug}"`,
+        });
+      }
+
+      const hasHistory =
+        tenant._count.financialTransactions > 0 ||
+        tenant._count.attendanceEvents > 0 ||
+        tenant._count.players > 0;
+
+      if (dto.permanent && !hasHistory) {
+        await tx.tenant.delete({ where: { id: academyId } });
+
+        await this.auditService.logEvent({
+          actorUserId,
+          action: 'ACADEMY_PERMANENTLY_DELETED',
+          resourceType: 'TENANT',
+          resourceId: academyId,
+          metadata: {
+            academyName: tenant.name,
+            slug: tenant.slug,
+            reason: dto.reason,
+          },
+        });
+
+        return {
+          success: true,
+          message: `Academy "${tenant.name}" has been permanently deleted.`,
+          action: 'PERMANENTLY_DELETED',
+          academyId,
+        };
+      }
+
+      await tx.tenant.update({
+        where: { id: academyId },
+        data: { status: 'SUSPENDED' },
+      });
+
+      const memberships = await tx.tenantMembership.findMany({
+        where: { tenantId: academyId },
+        select: { userId: true },
+      });
+      const memberUserIds = memberships.map((m) => m.userId);
+
+      if (memberUserIds.length > 0) {
+        await tx.refreshToken.updateMany({
+          where: { userId: { in: memberUserIds }, isRevoked: false },
+          data: { isRevoked: true },
+        });
+      }
+
+      await this.auditService.logEvent({
+        actorUserId,
+        action: 'ACADEMY_SAFE_ARCHIVED',
+        resourceType: 'TENANT',
+        resourceId: academyId,
+        metadata: {
+          academyName: tenant.name,
+          slug: tenant.slug,
+          reason: dto.reason,
+          membersCount: memberUserIds.length,
+          dataRetentionNotice: 'Preserved legal financial transactions and attendance records.',
+        },
+      });
+
+      return {
+        success: true,
+        message: `Academy "${tenant.name}" has been safely archived and suspended. Historical data preserved.`,
+        action: 'SUSPENDED_ARCHIVED',
+        academyId,
+      };
+    });
+  }
+
   async listUsers(
     actorUserId: string,
     query?: { search?: string; limit?: number; offset?: number },

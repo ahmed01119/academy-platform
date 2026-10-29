@@ -63,6 +63,9 @@ import type {
   PlayerPortalProfile,
   PlayerPortalEvaluation,
   UpdateAcademyStatusRequest,
+  AcademyDeletionImpact,
+  DeleteAcademyRequest,
+  DeleteAcademyResponse,
   PlayerQrCardResponse,
   RotatePlayerQrCardRequest,
   RevokePlayerQrCardRequest,
@@ -956,6 +959,20 @@ export const api = {
       if (params?.search) query.set('search', params.search);
       const qs = query.toString() ? `?${query.toString()}` : '';
       return request(`/platform/academies${qs}`, { method: 'GET' });
+    },
+
+    async getAcademyDeletionImpact(id: string): Promise<AcademyDeletionImpact> {
+      return request(`/platform/academies/${id}/deletion-impact`, { method: 'GET' });
+    },
+
+    async archiveAcademy(
+      id: string,
+      data: DeleteAcademyRequest,
+    ): Promise<DeleteAcademyResponse> {
+      return request(`/platform/academies/${id}/archive`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
     },
 
     async updateAcademyStatus(

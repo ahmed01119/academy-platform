@@ -17,6 +17,7 @@ import { CurrentUser } from '../auth/decorators/auth-user.decorator';
 import {
   RequestSupportAccessSchema,
   UpdateAcademyStatusRequestSchema,
+  DeleteAcademyRequestSchema,
   UpdateUserSecurityPolicyRequestSchema,
   UpdateSaaSPlanRequestSchema,
   UpdateTenantSubscriptionRequestSchema,
@@ -62,6 +63,28 @@ export class PlatformController {
     @Query('search') search?: string,
   ) {
     return this.platformService.listAcademies(actorUserId, { status, search });
+  }
+
+    @Get('academies/:id/deletion-impact')
+  @UseGuards(PlatformOwnerGuard)
+  async getAcademyDeletionImpact(
+    @CurrentUser('id') actorUserId: string,
+    @Param('id') rawId: string,
+  ) {
+    const academyId = UuidParamSchema.parse(rawId);
+    return this.platformService.getAcademyDeletionImpact(actorUserId, academyId);
+  }
+
+  @Post('academies/:id/archive')
+  @UseGuards(PlatformOwnerGuard)
+  async deleteOrArchiveAcademy(
+    @CurrentUser('id') actorUserId: string,
+    @Param('id') rawId: string,
+    @Body() body: unknown,
+  ) {
+    const academyId = UuidParamSchema.parse(rawId);
+    const dto = DeleteAcademyRequestSchema.parse(body);
+    return this.platformService.deleteOrArchiveAcademy(actorUserId, academyId, dto);
   }
 
   @Patch('academies/:id/status')
