@@ -5,6 +5,7 @@ const EnvSchema = z.object({
   PORT: z.coerce.number().int().positive().default(3001),
   API_VERSION: z.string().default('0.0.0'),
   DATABASE_URL: z.string().url().optional(),
+  DATABASE_ADMIN_URL: z.string().url().optional(),
   REDIS_URL: z.string().url().optional(),
   ALLOW_IN_MEMORY_RATE_LIMIT: z
     .union([z.boolean(), z.enum(['true', 'false'])])
@@ -54,7 +55,9 @@ export function validateEnv(config: Record<string, unknown>): AppEnv & Record<st
 
     const username = decodeURIComponent(databaseUrl.username).toLowerCase();
     if (!username || ['postgres', 'academy', 'root'].includes(username)) {
-      throw new Error('Production DATABASE_URL must use a dedicated unprivileged runtime role');
+      throw new Error(
+        `Production DATABASE_URL must use a dedicated unprivileged runtime role (e.g. 'sportexus_app'). Administrative role '${username}' is not permitted.`,
+      );
     }
   }
 

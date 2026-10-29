@@ -1,4 +1,7 @@
-# Sportexus SaaS — Production Multi-Stage Dockerfile for DockHosting & Container Platforms
+# Sportexus SaaS — Production Multi-Stage Dockerfile
+# Two-role model:
+#   DATABASE_ADMIN_URL → used only during prisma migrate deploy at startup
+#   DATABASE_URL       → runtime role (sportexus_app) for all application queries
 FROM node:22-alpine AS builder
 WORKDIR /app
 
@@ -32,10 +35,13 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/packages ./packages
 COPY --from=builder /app/apps/api ./apps/api
 
+# Copy entrypoint script
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
 EXPOSE 3001
 
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
   CMD wget -qO- http://127.0.0.1:${PORT:-3001}/v1/health || exit 1
 
-CMD ["node", "--max-old-space-size=384", "apps/api/dist/main.js"]
-
+ENTRYPOINT ["/docker-entrypoint.sh"]
