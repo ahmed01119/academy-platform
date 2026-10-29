@@ -15,7 +15,7 @@ COPY apps/web/package.json ./apps/web/package.json
 RUN pnpm install --frozen-lockfile
 
 # Generate Prisma Client and compile packages
-RUN pnpm --filter @academy/database prisma generate && \
+RUN pnpm --filter @academy/database run generate && \
     pnpm turbo run build --filter=@academy/api...
 
 # --- Runtime Stage ---
