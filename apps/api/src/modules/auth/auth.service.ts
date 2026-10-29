@@ -458,7 +458,7 @@ export class AuthService {
       });
 
       try {
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+        const appUrl = process.env.APP_PUBLIC_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
         const resetUrl = `${appUrl}/reset-password?token=${rawToken}`;
         await this.emailService.sendPasswordReset(user.email, user.name, resetUrl, 'ar');
       } catch (e) {
@@ -628,7 +628,7 @@ export class AuthService {
       });
 
       try {
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+        const appUrl = process.env.APP_PUBLIC_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
         const verifyUrl = `${appUrl}/verify-email?token=${rawToken}`;
         await this.emailService.sendEmailVerification(user.email, user.name, verifyUrl, 'ar');
       } catch (e) {

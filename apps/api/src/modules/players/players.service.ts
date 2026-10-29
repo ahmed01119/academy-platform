@@ -8,6 +8,7 @@ import {
   Injectable,
   Optional,
   NotFoundException,
+  Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import type { Prisma } from '@prisma/client';
@@ -37,6 +38,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class PlayersService {
+  private readonly logger = new Logger(PlayersService.name);
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(AuditService) private readonly auditService: AuditService,
@@ -491,7 +493,7 @@ export class PlayersService {
               locale: 'ar',
             });
           } catch (mailErr: unknown) {
-            // Non-blocking email dispatch failure
+            this.logger.warn(`Failed to dispatch welcome enrollment email: ${(mailErr as Error)?.message}`);
           }
         }
 

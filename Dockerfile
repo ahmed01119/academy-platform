@@ -1,41 +1,61 @@
-# Sportexus SaaS — Production Multi-Stage Dockerfile for DockHosting & Container Platforms
-FROM node:22-alpine AS builder
+# =============================================================================
+# SPORTEXUS — Next.js Standalone Frontend Production Dockerfile (Root Alias)
+# =============================================================================
+FROM node:22-alpine AS deps
 WORKDIR /app
-
-# Enable Corepack and activate pnpm
+RUN apk add --no-cache libc6-compat
 RUN corepack enable && corepack prepare pnpm@11.13.0 --activate
 
-# Copy root manifest and workspace definition
+# Copy workspace manifests
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
 COPY packages ./packages
-COPY apps/api ./apps/api
 COPY apps/web/package.json ./apps/web/package.json
+COPY apps/api/package.json ./apps/api/package.json
 
-# Install dependencies using frozen lockfile
 RUN pnpm install --frozen-lockfile
 
-# Generate Prisma Client and compile packages
-RUN pnpm --filter @academy/database run generate && \
-    pnpm turbo run build --filter=@academy/api...
+# =============================================================================
+# Build Stage
+# =============================================================================
+FROM deps AS builder
+WORKDIR /app
+COPY . .
 
-# --- Runtime Stage ---
+# Set build-time environment flags
+ENV BUILD_STANDALONE=true
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_ENV=production
+
+# Compile shared library and build standalone Next.js app
+RUN pnpm --filter @academy/shared build && \
+    pnpm --filter @academy/web build
+
+# =============================================================================
+# Production Runner (Ultra-minimal Node.js runtime, ~150MB image)
+# =============================================================================
 FROM node:22-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
-ENV PORT=3001
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV HOSTNAME="0.0.0.0"
+ENV PORT=8000
 
-# Copy compiled artifacts and modules
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/pnpm-workspace.yaml ./pnpm-workspace.yaml
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/packages ./packages
-COPY --from=builder /app/apps/api ./apps/api
+# Run as non-root user for container security
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
 
-EXPOSE 3001
+# Copy standalone build output and static assets
+COPY --from=builder /app/apps/web/public ./apps/web/public
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/.next/static
 
-HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
-  CMD wget -qO- http://127.0.0.1:${PORT:-3001}/v1/health || exit 1
+USER nextjs
 
-CMD ["node", "--max-old-space-size=384", "apps/api/dist/main.js"]
+EXPOSE 8000
 
+# Healthcheck targeting dynamic PORT
+HEALTHCHECK --interval=20s --timeout=5s --retries=5 \
+  CMD wget -qO- http://127.0.0.1:${PORT:-8000}/ || exit 1
+
+CMD ["node", "apps/web/server.js"]
