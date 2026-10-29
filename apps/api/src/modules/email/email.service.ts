@@ -234,6 +234,36 @@ export class EmailService {
 
           if (!res.ok) {
             const errBody = await res.text();
+            if (
+              res.status === 403 &&
+              errBody.includes('domain is not verified') &&
+              !this.fromEmail.includes('onboarding@resend.dev')
+            ) {
+              this.logger.warn(
+                `Sender <${this.fromEmail}> is not verified on Resend; retrying via fallback <onboarding@resend.dev>`,
+              );
+              const fallbackRes = await fetch('https://api.resend.com/emails', {
+                method: 'POST',
+                headers: {
+                  Authorization: `Bearer ${this.resendApiKey}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  from: `${this.fromName} <onboarding@resend.dev>`,
+                  to: [normalizedTo],
+                  subject: options.subject,
+                  html: options.html,
+                  text: options.text,
+                }),
+              });
+              if (fallbackRes.ok) {
+                const fbData = (await fallbackRes.json()) as { id?: string };
+                messageId = fbData?.id;
+                delivered = true;
+                status = 'SENT';
+                break;
+              }
+            }
             throw new Error(`Resend API error (${res.status}): ${errBody}`);
           }
 
