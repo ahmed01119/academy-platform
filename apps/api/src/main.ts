@@ -51,7 +51,7 @@ async function bootstrap() {
       if (matchesWildcard) {
         return callback(null, true);
       }
-      return callback(new Error('CORS origin not allowed by policy'));
+      return callback(null, false);
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
