@@ -256,7 +256,7 @@ export default function SettingsPage() {
     return (
       <AppShell>
         <div className="flex min-h-[50vh] items-center justify-center">
-          <RefreshCw className="h-8 w-8 animate-spin text-[var(--brand-primary)]" />
+          <RefreshCw className="h-8 w-8 animate-spin text-[var(--accent-primary)]" />
         </div>
       </AppShell>
     );
@@ -297,7 +297,7 @@ export default function SettingsPage() {
             onClick={() => setActiveTab('profile')}
             className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition-colors border-b-2 whitespace-nowrap ${
               activeTab === 'profile'
-                ? 'border-[var(--brand-primary)] text-[var(--brand-primary)] bg-[var(--bg-surface)]'
+                ? 'border-[var(--accent-primary)] text-[var(--accent-primary)] bg-[var(--bg-surface)]'
                 : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-main)]'
             }`}
           >
@@ -310,7 +310,7 @@ export default function SettingsPage() {
             onClick={() => setActiveTab('staff')}
             className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition-colors border-b-2 whitespace-nowrap ${
               activeTab === 'staff'
-                ? 'border-[var(--brand-primary)] text-[var(--brand-primary)] bg-[var(--bg-surface)]'
+                ? 'border-[var(--accent-primary)] text-[var(--accent-primary)] bg-[var(--bg-surface)]'
                 : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-main)]'
             }`}
           >
@@ -337,7 +337,7 @@ export default function SettingsPage() {
                   <span className="text-[10px] text-[var(--text-muted)] block">
                     العملة المعتمدة
                   </span>
-                  <span className="text-xs font-bold text-[var(--brand-primary)]">
+                  <span className="text-xs font-bold text-[var(--accent-primary)]">
                     {profile.currency}
                   </span>
                 </div>
@@ -359,7 +359,7 @@ export default function SettingsPage() {
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-5 shadow-sm space-y-4">
                 <h3 className="text-sm font-bold text-[var(--text-main)] flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-[var(--brand-primary)]" />
+                  <Building2 className="h-4 w-4 text-[var(--accent-primary)]" />
                   <span>المعلومات الأساسية والهوية</span>
                 </h3>
 
@@ -373,7 +373,7 @@ export default function SettingsPage() {
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       placeholder="أكاديمية النجوم الرياضية"
-                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-main)] focus:outline-none focus:border-[var(--brand-primary)]"
+                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-main)] focus:outline-none focus:border-[var(--accent-primary)]"
                     />
                   </div>
 
@@ -386,7 +386,7 @@ export default function SettingsPage() {
                       value={logoUrl}
                       onChange={(e) => setLogoUrl(e.target.value)}
                       placeholder="https://example.com/logo.png"
-                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-main)] focus:outline-none focus:border-[var(--brand-primary)]"
+                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-main)] focus:outline-none focus:border-[var(--accent-primary)]"
                     />
                   </div>
 
@@ -399,7 +399,7 @@ export default function SettingsPage() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="info@academy.sa"
-                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-main)] focus:outline-none focus:border-[var(--brand-primary)]"
+                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-main)] focus:outline-none focus:border-[var(--accent-primary)]"
                     />
                   </div>
 
@@ -412,7 +412,7 @@ export default function SettingsPage() {
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                       placeholder="+966500000000"
-                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-main)] focus:outline-none focus:border-[var(--brand-primary)] font-mono"
+                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-main)] focus:outline-none focus:border-[var(--accent-primary)] font-mono"
                     />
                   </div>
 
@@ -425,7 +425,7 @@ export default function SettingsPage() {
                       value={address}
                       onChange={(e) => setAddress(e.target.value)}
                       placeholder="الرياض، المملكة العربية السعودية"
-                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-main)] focus:outline-none focus:border-[var(--brand-primary)]"
+                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-main)] focus:outline-none focus:border-[var(--accent-primary)]"
                     />
                   </div>
                 </div>
@@ -433,7 +433,7 @@ export default function SettingsPage() {
 
               <div className="rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-5 shadow-sm space-y-4">
                 <h3 className="text-sm font-bold text-[var(--text-main)] flex items-center gap-2">
-                  <Globe className="h-4 w-4 text-[var(--brand-primary)]" />
+                  <Globe className="h-4 w-4 text-[var(--accent-primary)]" />
                   <span>المعايير الإقليمية والعملة</span>
                 </h3>
 
@@ -445,7 +445,7 @@ export default function SettingsPage() {
                     <select
                       value={currency}
                       onChange={(e) => setCurrency(e.target.value)}
-                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-main)] focus:outline-none focus:border-[var(--brand-primary)]"
+                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-main)] focus:outline-none focus:border-[var(--accent-primary)]"
                     >
                       <option value="SAR">ريال سعودي (SAR)</option>
                       <option value="EGP">جنيه مصري (EGP)</option>
@@ -461,7 +461,7 @@ export default function SettingsPage() {
                     <select
                       value={timezone}
                       onChange={(e) => setTimezone(e.target.value)}
-                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-main)] focus:outline-none focus:border-[var(--brand-primary)]"
+                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-main)] focus:outline-none focus:border-[var(--accent-primary)]"
                     >
                       <option value="Asia/Riyadh">توقيت مكة والرياض (Asia/Riyadh - GMT+3)</option>
                       <option value="Africa/Cairo">توقيت القاهرة (Africa/Cairo - GMT+2)</option>
@@ -475,7 +475,7 @@ export default function SettingsPage() {
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="inline-flex items-center gap-2 rounded-xl bg-[var(--brand-primary)] px-6 py-2.5 text-xs font-semibold text-white shadow hover:brightness-110 transition-all disabled:opacity-50"
+                  className="inline-flex items-center gap-2 rounded-xl bg-[var(--accent-primary)] px-6 py-2.5 text-xs font-semibold text-white shadow hover:brightness-110 transition-all disabled:opacity-50"
                 >
                   <Save className="h-4 w-4" />
                   <span>{isSaving ? 'جارٍ الحفظ...' : 'حفظ التعديلات'}</span>
@@ -601,7 +601,7 @@ export default function SettingsPage() {
                               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm ${
                                 canReview
                                   ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/25'
-                                  : 'bg-[var(--bg-base)] border border-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-main)] hover:border-[var(--brand-primary)]'
+                                  : 'bg-[var(--bg-base)] border border-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-main)] hover:border-[var(--accent-primary)]'
                               }`}
                             >
                               <ShieldCheck
@@ -781,7 +781,7 @@ export default function SettingsPage() {
                     onChange={(e) => setInviteEmail(e.target.value)}
                     placeholder="email@example.com"
                     required
-                    className="w-full rounded-xl border border-[var(--border-app)] bg-[var(--bg-base)] ps-9 pe-3 py-2.5 text-xs text-[var(--text-main)] placeholder:text-[var(--text-muted)] focus:border-[var(--brand-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--brand-primary)]/20 transition-all"
+                    className="w-full rounded-xl border border-[var(--border-app)] bg-[var(--bg-base)] ps-9 pe-3 py-2.5 text-xs text-[var(--text-main)] placeholder:text-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-primary)]/20 transition-all"
                   />
                 </div>
               </div>
@@ -793,7 +793,7 @@ export default function SettingsPage() {
                 <select
                   value={inviteRole}
                   onChange={(e) => setInviteRole(e.target.value)}
-                  className="w-full rounded-xl border border-[var(--border-app)] bg-[var(--bg-base)] px-3 py-2.5 text-xs text-[var(--text-main)] focus:border-[var(--brand-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--brand-primary)]/20 transition-all"
+                  className="w-full rounded-xl border border-[var(--border-app)] bg-[var(--bg-base)] px-3 py-2.5 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-primary)]/20 transition-all"
                 >
                   <option value="COACH">مدرب (COACH)</option>
                   <option value="MANAGER">مدير عام (MANAGER)</option>

@@ -187,7 +187,7 @@ export default function BranchesPage() {
     return (
       <AppShell>
         <div className="flex min-h-[50vh] items-center justify-center">
-          <RefreshCw className="h-8 w-8 animate-spin text-[var(--brand-primary)]" />
+          <RefreshCw className="h-8 w-8 animate-spin text-[var(--accent-primary)]" />
         </div>
       </AppShell>
     );
@@ -203,7 +203,7 @@ export default function BranchesPage() {
           title="إدارة الفروع التشغيلية"
           description="إدارة مقرات الأكاديمية والملاعب المتاحة وسعة كل فرع وقيد اللاعبين."
           badge={
-            <span className="rounded-full bg-[var(--brand-primary)]/15 px-2.5 py-0.5 text-xs font-semibold text-[var(--brand-primary)] border border-[var(--brand-primary)]/30">
+            <span className="rounded-full bg-[var(--accent-primary)]/15 px-2.5 py-0.5 text-xs font-semibold text-[var(--accent-primary)] border border-[var(--accent-primary)]/30">
               إجمالي {branches.length} فرع
             </span>
           }
@@ -212,7 +212,7 @@ export default function BranchesPage() {
               type="button"
               id="btn-create-branch-modal"
               onClick={openCreateModal}
-              className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[var(--brand-primary)] px-4 py-2 text-xs font-semibold text-white shadow-sm hover:brightness-110 transition-all cursor-pointer"
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[var(--accent-primary)] px-4 py-2 text-xs font-semibold text-white shadow-sm hover:brightness-110 transition-all cursor-pointer"
             >
               <Plus className="h-4 w-4" />
               <span>إضافة فرع جديد</span>
@@ -244,7 +244,7 @@ export default function BranchesPage() {
         ) : branches.length === 0 ? (
           <div className="py-20 text-center text-[var(--text-muted)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-2xl">
             <Building className="h-12 w-12 mx-auto text-[var(--border-subtle)] mb-3" />
-            <h3 className="text-base font-bold text-[var(--text-primary)] mb-1">
+            <h3 className="text-base font-bold text-[var(--text-main)] mb-1">
               لا توجد فروع مسجلة بعد
             </h3>
             <p className="text-xs text-[var(--text-muted)] max-w-sm mx-auto mb-5">
@@ -253,7 +253,7 @@ export default function BranchesPage() {
             <button
               type="button"
               onClick={openCreateModal}
-              className="inline-flex items-center gap-2 rounded-xl bg-[var(--brand-primary)] px-4 py-2 text-xs font-semibold text-white shadow hover:brightness-110"
+              className="inline-flex items-center gap-2 rounded-xl bg-[var(--accent-primary)] px-4 py-2 text-xs font-semibold text-white shadow hover:brightness-110"
             >
               <Plus className="h-4 w-4" />
               <span>إضافة فرع</span>
@@ -270,24 +270,22 @@ export default function BranchesPage() {
               return (
                 <div
                   key={b.id}
-                  className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 space-y-4 hover:border-[var(--brand-primary)]/50 transition-all shadow-sm flex flex-col justify-between"
+                  className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 space-y-4 hover:border-[var(--accent-primary)]/50 transition-all shadow-sm flex flex-col justify-between"
                 >
                   <div className="space-y-3">
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <div className="flex items-center gap-2">
-                          <h3 className="font-bold text-[var(--text-primary)] text-base">
-                            {b.name}
-                          </h3>
+                          <h3 className="font-bold text-[var(--text-main)] text-base">{b.name}</h3>
                           {b.code && (
-                            <span className="rounded bg-[var(--bg-elevated)] px-2 py-0.5 text-[10px] font-mono text-[var(--brand-primary)] border border-[var(--border-subtle)]">
+                            <span className="rounded bg-[var(--bg-surface-subtle)] px-2 py-0.5 text-[10px] font-mono text-[var(--accent-primary)] border border-[var(--border-subtle)]">
                               {b.code}
                             </span>
                           )}
                         </div>
                         {b.city && (
                           <div className="text-xs text-[var(--text-muted)] flex items-center gap-1 mt-1">
-                            <MapPin className="h-3 w-3 text-[var(--brand-primary)]" />
+                            <MapPin className="h-3 w-3 text-[var(--accent-primary)]" />
                             <span>{b.city}</span>
                             {b.address && <span>• {b.address}</span>}
                           </div>
@@ -299,19 +297,19 @@ export default function BranchesPage() {
 
                     {b.phone && (
                       <div className="text-xs text-[var(--text-muted)] flex items-center gap-1.5 font-mono">
-                        <Phone className="h-3.5 w-3.5 text-[var(--brand-primary)]" />
+                        <Phone className="h-3.5 w-3.5 text-[var(--accent-primary)]" />
                         <span>{b.phone}</span>
                       </div>
                     )}
 
                     {/* Capacity Indicator */}
-                    <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 space-y-2">
+                    <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] p-3 space-y-2">
                       <div className="flex items-center justify-between text-xs">
                         <span className="text-[var(--text-muted)] flex items-center gap-1">
                           <Users className="h-3.5 w-3.5 text-blue-500" />
                           اللاعبين المشتركين:
                         </span>
-                        <span className="font-bold text-[var(--text-primary)]">
+                        <span className="font-bold text-[var(--text-main)]">
                           {activeCount}{' '}
                           {capacityVal > 0 ? (
                             <span className="text-[var(--text-muted)] font-normal">
@@ -334,7 +332,7 @@ export default function BranchesPage() {
                                   ? 'bg-rose-500'
                                   : utilization >= 70
                                     ? 'bg-amber-500'
-                                    : 'bg-[var(--brand-primary)]'
+                                    : 'bg-[var(--accent-primary)]'
                               }`}
                               style={{ width: `${utilization}%` }}
                             />
@@ -351,7 +349,7 @@ export default function BranchesPage() {
                   <div className="pt-3 border-t border-[var(--border-subtle)] flex items-center justify-between">
                     <Link
                       href={`/players?branchId=${b.id}`}
-                      className="text-xs font-semibold text-[var(--brand-primary)] hover:underline"
+                      className="text-xs font-semibold text-[var(--accent-primary)] hover:underline"
                     >
                       عرض لاعبي الفرع
                     </Link>
@@ -360,7 +358,7 @@ export default function BranchesPage() {
                       type="button"
                       id={`btn-edit-branch-${b.id}`}
                       onClick={() => openEditModal(b)}
-                      className="inline-flex items-center gap-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-1.5 text-xs font-medium text-[var(--text-primary)] hover:border-[var(--brand-primary)] hover:text-[var(--brand-primary)] transition-all cursor-pointer"
+                      className="inline-flex items-center gap-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3 py-1.5 text-xs font-medium text-[var(--text-main)] hover:border-[var(--accent-primary)] hover:text-[var(--accent-primary)] transition-all cursor-pointer"
                     >
                       <Edit2 className="h-3.5 w-3.5" />
                       <span>تعديل</span>
@@ -377,14 +375,14 @@ export default function BranchesPage() {
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
             <div className="w-full max-w-lg rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
               <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3 mb-4">
-                <h3 className="font-bold text-[var(--text-primary)] text-base flex items-center gap-2">
-                  <Plus className="h-5 w-5 text-[var(--brand-primary)]" />
+                <h3 className="font-bold text-[var(--text-main)] text-base flex items-center gap-2">
+                  <Plus className="h-5 w-5 text-[var(--accent-primary)]" />
                   إضافة فرع جديد للأكاديمية
                 </h3>
                 <button
                   type="button"
                   onClick={() => setIsCreateModalOpen(false)}
-                  className="rounded-lg p-1 text-[var(--text-muted)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)]"
+                  className="rounded-lg p-1 text-[var(--text-muted)] hover:bg-[var(--bg-surface-subtle)] hover:text-[var(--text-main)]"
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -393,7 +391,7 @@ export default function BranchesPage() {
               <form onSubmit={handleCreateSubmit} className="space-y-4">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
+                    <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1">
                       اسم الفرع *
                     </label>
                     <input
@@ -403,12 +401,12 @@ export default function BranchesPage() {
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       placeholder="مثال: فرع التجمع الخامس"
-                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3.5 py-2 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none"
+                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3.5 py-2 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
+                    <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1">
                       كود الفرع (Code)
                     </label>
                     <input
@@ -417,14 +415,14 @@ export default function BranchesPage() {
                       value={code}
                       onChange={(e) => setCode(e.target.value.toUpperCase())}
                       placeholder="TAGAMO"
-                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3.5 py-2 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none font-mono uppercase"
+                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3.5 py-2 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none font-mono uppercase"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
+                    <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1">
                       المدينة
                     </label>
                     <input
@@ -433,12 +431,12 @@ export default function BranchesPage() {
                       value={city}
                       onChange={(e) => setCity(e.target.value)}
                       placeholder="القاهرة"
-                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3.5 py-2 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none"
+                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3.5 py-2 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
+                    <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1">
                       السعة الاستيعابية (لاعب)
                     </label>
                     <input
@@ -449,13 +447,13 @@ export default function BranchesPage() {
                         setCapacity(e.target.value === '' ? '' : parseInt(e.target.value, 10))
                       }
                       placeholder="مثال: 150"
-                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3.5 py-2 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none font-mono"
+                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3.5 py-2 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none font-mono"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
+                  <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1">
                     العنوان التفصيلي
                   </label>
                   <input
@@ -464,12 +462,12 @@ export default function BranchesPage() {
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
                     placeholder="شارع التسعين، مجمع الملاعب الأولمبية"
-                    className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3.5 py-2 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none"
+                    className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3.5 py-2 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
+                  <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1">
                     هاتف الفرع
                   </label>
                   <input
@@ -478,7 +476,7 @@ export default function BranchesPage() {
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="+201012345678"
-                    className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3.5 py-2 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none font-mono"
+                    className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3.5 py-2 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none font-mono"
                   />
                 </div>
 
@@ -486,7 +484,7 @@ export default function BranchesPage() {
                   <button
                     type="button"
                     onClick={() => setIsCreateModalOpen(false)}
-                    className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-4 py-2 text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                    className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-4 py-2 text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text-main)]"
                   >
                     إلغاء
                   </button>
@@ -494,7 +492,7 @@ export default function BranchesPage() {
                     type="submit"
                     id="btn-confirm-create-branch"
                     disabled={isSubmitting}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--brand-primary)] px-5 py-2 text-xs font-semibold text-white shadow hover:brightness-110 disabled:opacity-50 cursor-pointer"
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--accent-primary)] px-5 py-2 text-xs font-semibold text-white shadow hover:brightness-110 disabled:opacity-50 cursor-pointer"
                   >
                     <Save className="h-4 w-4" />
                     <span>{isSubmitting ? 'جارٍ الحفظ...' : 'إنشاء الفرع'}</span>
@@ -510,14 +508,14 @@ export default function BranchesPage() {
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
             <div className="w-full max-w-lg rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
               <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3 mb-4">
-                <h3 className="font-bold text-[var(--text-primary)] text-base flex items-center gap-2">
-                  <Edit2 className="h-5 w-5 text-[var(--brand-primary)]" />
+                <h3 className="font-bold text-[var(--text-main)] text-base flex items-center gap-2">
+                  <Edit2 className="h-5 w-5 text-[var(--accent-primary)]" />
                   تعديل بيانات الفرع
                 </h3>
                 <button
                   type="button"
                   onClick={() => setIsEditModalOpen(false)}
-                  className="rounded-lg p-1 text-[var(--text-muted)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)]"
+                  className="rounded-lg p-1 text-[var(--text-muted)] hover:bg-[var(--bg-surface-subtle)] hover:text-[var(--text-main)]"
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -526,7 +524,7 @@ export default function BranchesPage() {
               <form onSubmit={handleEditSubmit} className="space-y-4">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
+                    <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1">
                       اسم الفرع *
                     </label>
                     <input
@@ -534,38 +532,38 @@ export default function BranchesPage() {
                       required
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3.5 py-2 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none"
+                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3.5 py-2 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
+                    <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1">
                       كود الفرع (Code)
                     </label>
                     <input
                       type="text"
                       value={code}
                       onChange={(e) => setCode(e.target.value.toUpperCase())}
-                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3.5 py-2 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none font-mono uppercase"
+                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3.5 py-2 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none font-mono uppercase"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
+                    <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1">
                       المدينة
                     </label>
                     <input
                       type="text"
                       value={city}
                       onChange={(e) => setCity(e.target.value)}
-                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3.5 py-2 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none"
+                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3.5 py-2 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
+                    <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1">
                       السعة الاستيعابية
                     </label>
                     <input
@@ -574,44 +572,44 @@ export default function BranchesPage() {
                       onChange={(e) =>
                         setCapacity(e.target.value === '' ? '' : parseInt(e.target.value, 10))
                       }
-                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3.5 py-2 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none font-mono"
+                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3.5 py-2 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none font-mono"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
+                  <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1">
                     العنوان
                   </label>
                   <input
                     type="text"
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
-                    className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3.5 py-2 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none"
+                    className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3.5 py-2 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
+                    <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1">
                       الهاتف
                     </label>
                     <input
                       type="tel"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
-                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3.5 py-2 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none font-mono"
+                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3.5 py-2 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none font-mono"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
+                    <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1">
                       حالة الفرع
                     </label>
                     <select
                       value={status}
                       onChange={(e) => setStatus(e.target.value as BranchStatus)}
-                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3.5 py-2 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none"
+                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3.5 py-2 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none"
                     >
                       <option value="ACTIVE">نشط (Active)</option>
                       <option value="INACTIVE">غير نشط (Inactive)</option>
@@ -623,7 +621,7 @@ export default function BranchesPage() {
                   <button
                     type="button"
                     onClick={() => setIsEditModalOpen(false)}
-                    className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-4 py-2 text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                    className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-4 py-2 text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text-main)]"
                   >
                     إلغاء
                   </button>
@@ -631,7 +629,7 @@ export default function BranchesPage() {
                     type="submit"
                     id="btn-confirm-update-branch"
                     disabled={isSubmitting}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--brand-primary)] px-5 py-2 text-xs font-semibold text-white shadow hover:brightness-110 disabled:opacity-50 cursor-pointer"
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--accent-primary)] px-5 py-2 text-xs font-semibold text-white shadow hover:brightness-110 disabled:opacity-50 cursor-pointer"
                   >
                     <Save className="h-4 w-4" />
                     <span>{isSubmitting ? 'جارٍ الحفظ...' : 'حفظ التعديلات'}</span>

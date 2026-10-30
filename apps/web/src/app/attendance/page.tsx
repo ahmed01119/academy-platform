@@ -82,7 +82,7 @@ export default function AttendanceHubPage() {
                 فوري وبنقرة واحدة
               </span>
             </div>
-            <h3 className="text-lg font-bold text-[var(--text-primary)] mb-2 group-hover:text-emerald-600 transition-colors">
+            <h3 className="text-lg font-bold text-[var(--text-main)] mb-2 group-hover:text-emerald-600 transition-colors">
               التحضير السريع (Quick Attendance)
             </h3>
             <p className="text-xs text-[var(--text-muted)] leading-relaxed mb-4">
@@ -109,7 +109,7 @@ export default function AttendanceHubPage() {
                 كاميرا الهاتف
               </span>
             </div>
-            <h3 className="text-lg font-bold text-[var(--text-primary)] mb-2 group-hover:text-blue-600 transition-colors">
+            <h3 className="text-lg font-bold text-[var(--text-main)] mb-2 group-hover:text-blue-600 transition-colors">
               ماسح باركود QR الذكي
             </h3>
             <p className="text-xs text-[var(--text-muted)] leading-relaxed mb-4">
@@ -136,7 +136,7 @@ export default function AttendanceHubPage() {
                 تقارير وإحصائيات
               </span>
             </div>
-            <h3 className="text-lg font-bold text-[var(--text-primary)] mb-2 group-hover:text-purple-600 transition-colors">
+            <h3 className="text-lg font-bold text-[var(--text-main)] mb-2 group-hover:text-purple-600 transition-colors">
               تقارير الحضور والالتزام
             </h3>
             <p className="text-xs text-[var(--text-muted)] leading-relaxed mb-4">
@@ -154,14 +154,12 @@ export default function AttendanceHubPage() {
         <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-sm space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <Calendar className="h-5 w-5 text-[var(--brand-primary)]" />
-              <h3 className="text-base font-bold text-[var(--text-primary)]">
-                حصص اليوم التدريبية
-              </h3>
+              <Calendar className="h-5 w-5 text-[var(--accent-primary)]" />
+              <h3 className="text-base font-bold text-[var(--text-main)]">حصص اليوم التدريبية</h3>
             </div>
             <Link
               href="/sessions"
-              className="text-xs font-bold text-[var(--brand-primary)] hover:underline"
+              className="text-xs font-bold text-[var(--accent-primary)] hover:underline"
             >
               عرض جدول الحصص الكامل
             </Link>
@@ -176,7 +174,7 @@ export default function AttendanceHubPage() {
               <p>لا توجد حصص مجدولة لهذا اليوم.</p>
               <Link
                 href="/sessions"
-                className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--brand-primary)] px-4 py-2 text-xs font-bold text-white shadow-sm"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--accent-primary)] px-4 py-2 text-xs font-bold text-white shadow-sm"
               >
                 <span>جدولة حصة جديدة</span>
               </Link>
@@ -186,12 +184,10 @@ export default function AttendanceHubPage() {
               {todaySessions.map((s) => (
                 <div
                   key={s.id}
-                  className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-4 space-y-3 hover:border-[var(--brand-primary)] transition-all"
+                  className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] p-4 space-y-3 hover:border-[var(--accent-primary)] transition-all"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-bold text-[var(--text-primary)]">
-                      {s.groupName}
-                    </span>
+                    <span className="text-sm font-bold text-[var(--text-main)]">{s.groupName}</span>
                     <span
                       className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold border ${
                         s.status === 'IN_PROGRESS'
@@ -211,18 +207,18 @@ export default function AttendanceHubPage() {
 
                   <div className="space-y-1 text-xs text-[var(--text-muted)]">
                     <div className="flex items-center gap-1.5">
-                      <Building2 className="h-3.5 w-3.5 text-[var(--brand-primary)]" />
+                      <Building2 className="h-3.5 w-3.5 text-[var(--accent-primary)]" />
                       <span>{s.branchName}</span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <Clock className="h-3.5 w-3.5 text-[var(--brand-primary)]" />
+                      <Clock className="h-3.5 w-3.5 text-[var(--accent-primary)]" />
                       <span>
                         {s.startTime} - {s.endTime}
                       </span>
                     </div>
                     {s.coachName && (
                       <div className="flex items-center gap-1.5">
-                        <Users className="h-3.5 w-3.5 text-[var(--brand-primary)]" />
+                        <Users className="h-3.5 w-3.5 text-[var(--accent-primary)]" />
                         <span>المدرب: {s.coachName}</span>
                       </div>
                     )}
@@ -234,7 +230,7 @@ export default function AttendanceHubPage() {
                     </span>
                     <Link
                       href={`/attendance/sessions/${s.id}`}
-                      className="inline-flex items-center gap-1 rounded-lg bg-[var(--brand-primary)]/10 px-3 py-1.5 text-xs font-bold text-[var(--brand-primary)] hover:bg-[var(--brand-primary)] hover:text-white transition-all"
+                      className="inline-flex items-center gap-1 rounded-lg bg-[var(--accent-primary)]/10 px-3 py-1.5 text-xs font-bold text-[var(--accent-primary)] hover:bg-[var(--accent-primary)] hover:text-white transition-all"
                     >
                       <span>فتح الكشف</span>
                       <ArrowIcon className="h-3.5 w-3.5" />

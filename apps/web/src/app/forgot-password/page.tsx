@@ -73,24 +73,24 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[var(--bg-base)] text-[var(--text-main)] flex flex-col transition-colors overflow-x-hidden">
+    <div className="min-h-screen bg-[var(--bg-base)] text-[var(--text-main)] flex flex-col transition-colors overflow-x-hidden animate-fade-in">
       <Navbar />
 
       <main className="flex-1 flex items-center justify-center p-3 sm:p-6 lg:p-8">
         <div className="w-full max-w-md mx-auto">
-          <div className="rounded-2xl border border-slate-800 bg-[#0f172a]/90 p-5 sm:p-8 shadow-2xl backdrop-blur-xl relative overflow-hidden">
+          <div className="rounded-3xl border border-[var(--border-app)] bg-[var(--bg-surface)]/95 p-5 sm:p-8 shadow-float backdrop-blur-xl relative overflow-hidden animate-scale-up">
             {/* Sportexus ambient glows */}
-            <div className="absolute -top-16 -right-16 h-40 w-40 rounded-full bg-[#0A3BFF]/25 blur-3xl" />
-            <div className="absolute -bottom-16 -left-16 h-40 w-40 rounded-full bg-[#00D6FF]/15 blur-3xl" />
+            <div className="absolute -top-16 -right-16 h-40 w-40 rounded-full bg-[var(--accent-blue)]/20 blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-16 -left-16 h-40 w-40 rounded-full bg-[var(--accent-primary)]/10 blur-3xl pointer-events-none" />
 
             <div className="text-center mb-8 relative z-10 flex flex-col items-center">
               <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-[#0A3BFF] to-[#00D6FF] shadow-lg shadow-blue-600/25">
                 <KeyRound className="h-6 w-6 text-white" />
               </div>
-              <h1 className="text-2xl font-bold tracking-tight text-white">
+              <h1 className="text-2xl font-bold tracking-tight text-[var(--text-main)]">
                 {locale === 'ar' ? 'استعادة كلمة المرور' : 'Reset Password'}
               </h1>
-              <p className="mt-2 text-sm text-slate-400">
+              <p className="mt-2 text-sm text-[var(--text-muted)]">
                 {locale === 'ar'
                   ? 'أدخل بريدك الإلكتروني وسنرسل لك رمز أمان صالح للاستخدام مرة واحدة'
                   : 'Enter your email and we will send you a one-time security code'}
@@ -121,7 +121,7 @@ export default function ForgotPasswordPage() {
                       <button
                         type="button"
                         onClick={handleCopy}
-                        className="flex items-center gap-1 text-[#00D6FF] hover:underline"
+                        className="flex items-center gap-1 text-[var(--accent-primary)] hover:underline"
                       >
                         <Copy className="h-3 w-3" />
                         <span>
@@ -140,12 +140,12 @@ export default function ForgotPasswordPage() {
                         ? 'هذا الرمز لا يظهر على الروابط العامة. في الإنتاج يُرسَل عبر البريد الإلكتروني فقط.'
                         : 'This token is hidden on public URLs. In production it is delivered via email only.'}
                     </p>
-                    <code className="block bg-slate-800 p-2 rounded text-white break-all font-mono text-[11px]">
+                    <code className="block bg-[var(--bg-surface-subtle)] p-2 rounded-lg text-[var(--text-main)] break-all font-mono text-[11px]">
                       {debugToken}
                     </code>
                     <Link
                       href={`/reset-password?token=${encodeURIComponent(debugToken)}`}
-                      className="inline-block mt-2 font-semibold text-[#00D6FF] hover:underline"
+                      className="inline-block mt-2 font-semibold text-[var(--accent-primary)] hover:underline"
                     >
                       {locale === 'ar'
                         ? 'الانتقال مباشرة لإعادة تعيين كلمة المرور ←'
@@ -159,7 +159,7 @@ export default function ForgotPasswordPage() {
             <form onSubmit={handleSubmit} className="space-y-5 relative z-10">
               <div>
                 <label
-                  className="block text-xs font-semibold text-slate-300 mb-1.5"
+                  className="block text-xs font-semibold text-[var(--text-sub)] mb-1.5"
                   htmlFor="email"
                 >
                   {locale === 'ar' ? 'البريد الإلكتروني' : 'Email Address'}
@@ -173,7 +173,7 @@ export default function ForgotPasswordPage() {
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="user@example.com"
                     dir="ltr"
-                    className="w-full rounded-xl border border-slate-700 bg-slate-900/90 py-2.5 pr-4 pl-10 text-sm text-white placeholder-slate-500 focus:border-[#00D6FF] focus:ring-1 focus:ring-[#00D6FF] outline-none transition-all"
+                    className="w-full rounded-xl border border-[var(--border-app)] bg-[var(--bg-surface-subtle)] py-2.5 pr-4 pl-10 text-sm text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:ring-1 focus:ring-[var(--accent-primary)] outline-none transition-all"
                   />
                   <Mail className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
                 </div>
@@ -204,8 +204,11 @@ export default function ForgotPasswordPage() {
               </button>
             </form>
 
-            <div className="mt-8 border-t border-slate-800 pt-6 text-center text-xs text-slate-400 relative z-10">
-              <Link href="/login" className="font-semibold text-[#00D6FF] hover:underline">
+            <div className="mt-8 border-t border-[var(--border-subtle)] pt-6 text-center text-xs text-[var(--text-muted)] relative z-10">
+              <Link
+                href="/login"
+                className="font-semibold text-[var(--accent-primary)] hover:underline transition-colors"
+              >
                 {locale === 'ar' ? 'العودة إلى صفحة تسجيل الدخول' : 'Back to sign in'}
               </Link>
             </div>

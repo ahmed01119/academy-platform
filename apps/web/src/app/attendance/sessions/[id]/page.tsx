@@ -491,7 +491,7 @@ export default function SessionAttendancePage() {
       <AppShell>
         <div className="flex h-[60vh] items-center justify-center">
           <div className="flex flex-col items-center gap-3">
-            <RefreshCw className="h-8 w-8 animate-spin text-[var(--brand-primary)]" />
+            <RefreshCw className="h-8 w-8 animate-spin text-[var(--accent-primary)]" />
             <p className="text-sm font-medium text-[var(--text-muted)]">
               جارٍ تحميل كشف الحضور للحصة التدريبية...
             </p>
@@ -541,7 +541,7 @@ export default function SessionAttendancePage() {
                 <Link
                   href={`/attendance/scanner?sessionId=${sessionId}`}
                   id="btn-open-scanner"
-                  className="flex items-center gap-2 rounded-xl bg-[var(--brand-primary)] px-4 py-2 text-xs font-bold text-white shadow-sm hover:brightness-110 transition-all cursor-pointer"
+                  className="flex items-center gap-2 rounded-xl bg-[var(--accent-primary)] px-4 py-2 text-xs font-bold text-white shadow-sm hover:brightness-110 transition-all cursor-pointer"
                 >
                   <QrCode className="h-4 w-4" />
                   <span>ماسح الحضور بالكاميرا</span>
@@ -553,7 +553,7 @@ export default function SessionAttendancePage() {
                   type="button"
                   id="btn-open-qr-modal"
                   onClick={handleOpenQrModal}
-                  className="flex items-center gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-2 text-xs font-semibold text-[var(--brand-primary)] hover:border-[var(--brand-primary)] transition-all cursor-pointer"
+                  className="flex items-center gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-2 text-xs font-semibold text-[var(--accent-primary)] hover:border-[var(--accent-primary)] transition-all cursor-pointer"
                 >
                   <QrCode className="h-4 w-4" />
                   <span>رمز QR للحصة</span>
@@ -564,7 +564,7 @@ export default function SessionAttendancePage() {
                 type="button"
                 id="btn-open-events-modal"
                 onClick={handleOpenEventsModal}
-                className="flex items-center gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-2 text-xs font-semibold text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--brand-primary)] transition-all cursor-pointer"
+                className="flex items-center gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-2 text-xs font-semibold text-[var(--text-muted)] hover:text-[var(--text-main)] hover:border-[var(--accent-primary)] transition-all cursor-pointer"
               >
                 <History className="h-4 w-4" />
                 <span>سجل العمليات (Audit)</span>
@@ -605,17 +605,17 @@ export default function SessionAttendancePage() {
             </span>
 
             <span className="flex items-center gap-1.5 text-xs text-[var(--text-muted)]">
-              <Building2 className="h-3.5 w-3.5 text-[var(--brand-primary)]" />
+              <Building2 className="h-3.5 w-3.5 text-[var(--accent-primary)]" />
               <span>{session.branchName}</span>
             </span>
 
             <span className="flex items-center gap-1.5 text-xs text-[var(--text-muted)]">
-              <Calendar className="h-3.5 w-3.5 text-[var(--brand-primary)]" />
+              <Calendar className="h-3.5 w-3.5 text-[var(--accent-primary)]" />
               <span>{session.sessionDate}</span>
             </span>
 
             <span className="flex items-center gap-1.5 text-xs text-[var(--text-muted)]">
-              <Clock className="h-3.5 w-3.5 text-[var(--brand-primary)]" />
+              <Clock className="h-3.5 w-3.5 text-[var(--accent-primary)]" />
               <span>
                 {session.startTime} - {session.endTime}
               </span>
@@ -624,11 +624,9 @@ export default function SessionAttendancePage() {
 
           {/* Live KPI Counters */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 pt-4 border-t border-[var(--border-subtle)]">
-            <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 text-center">
+            <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] p-3 text-center">
               <span className="text-[11px] text-[var(--text-muted)] block mb-1">إجمالي الكشف</span>
-              <span className="text-xl font-extrabold text-[var(--text-primary)]">
-                {totalRoster}
-              </span>
+              <span className="text-xl font-extrabold text-[var(--text-main)]">{totalRoster}</span>
             </div>
 
             <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3 text-center">
@@ -686,7 +684,7 @@ export default function SessionAttendancePage() {
                 <Wallet className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-[var(--text-primary)]">
+                <h3 className="text-sm font-bold text-[var(--text-main)]">
                   صندوق الحصة التدريبية والإغلاق المالي (Session Cashier & Reconciliation)
                 </h3>
                 <p className="text-xs text-[var(--text-muted)]">
@@ -716,7 +714,7 @@ export default function SessionAttendancePage() {
               <button
                 type="button"
                 onClick={() => setIsCashierExpanded(!isCashierExpanded)}
-                className="p-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+                className="p-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer"
               >
                 {isCashierExpanded ? (
                   <ChevronUp className="h-4 w-4" />
@@ -735,7 +733,7 @@ export default function SessionAttendancePage() {
                   <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold block mb-0.5">
                     التحصيل النقدي (كاش)
                   </span>
-                  <span className="text-lg font-extrabold text-[var(--text-primary)]">
+                  <span className="text-lg font-extrabold text-[var(--text-main)]">
                     {cashierSummary?.totalCashCollected ?? 0}{' '}
                     <span className="text-xs font-normal">ر.س</span>
                   </span>
@@ -745,7 +743,7 @@ export default function SessionAttendancePage() {
                   <span className="text-[11px] text-blue-600 dark:text-blue-400 font-semibold block mb-0.5">
                     التحصيل الإلكتروني (مدى/بطاقة)
                   </span>
-                  <span className="text-lg font-extrabold text-[var(--text-primary)]">
+                  <span className="text-lg font-extrabold text-[var(--text-main)]">
                     {cashierSummary?.totalElectronicCollected ?? 0}{' '}
                     <span className="text-xs font-normal">ر.س</span>
                   </span>
@@ -755,7 +753,7 @@ export default function SessionAttendancePage() {
                   <span className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold block mb-0.5">
                     مصروفات الحصة (ماء/تجهيز)
                   </span>
-                  <span className="text-lg font-extrabold text-[var(--text-primary)]">
+                  <span className="text-lg font-extrabold text-[var(--text-main)]">
                     {cashierSummary?.totalExpenses ?? 0}{' '}
                     <span className="text-xs font-normal">ر.س</span>
                   </span>
@@ -765,7 +763,7 @@ export default function SessionAttendancePage() {
                   <span className="text-[11px] text-violet-600 dark:text-violet-400 font-semibold block mb-0.5">
                     صافي الحركة النقدية
                   </span>
-                  <span className="text-lg font-extrabold text-[var(--text-primary)]">
+                  <span className="text-lg font-extrabold text-[var(--text-main)]">
                     {cashierSummary?.netCashMovement ?? 0}{' '}
                     <span className="text-xs font-normal">ر.س</span>
                   </span>
@@ -779,7 +777,7 @@ export default function SessionAttendancePage() {
                     type="button"
                     onClick={() => setIsExpenseModalOpen(true)}
                     disabled={cashierSummary?.isReconciled}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 text-xs font-bold text-[var(--text-primary)] hover:border-[var(--brand-primary)] disabled:opacity-50 transition-all cursor-pointer"
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2 text-xs font-bold text-[var(--text-main)] hover:border-[var(--accent-primary)] disabled:opacity-50 transition-all cursor-pointer"
                   >
                     <PlusCircle className="h-4 w-4 text-rose-500" />
                     <span>تسجيل مصروف للحصة</span>
@@ -800,8 +798,8 @@ export default function SessionAttendancePage() {
 
               {/* Session Transactions History */}
               {cashierSummary?.transactions && cashierSummary.transactions.length > 0 && (
-                <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] overflow-hidden text-xs">
-                  <div className="px-3.5 py-2 font-bold text-[var(--text-primary)] border-b border-[var(--border-subtle)] flex items-center justify-between">
+                <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] overflow-hidden text-xs">
+                  <div className="px-3.5 py-2 font-bold text-[var(--text-main)] border-b border-[var(--border-subtle)] flex items-center justify-between">
                     <span>
                       حركات الصندوق المسجلة في هذه الحصة ({cashierSummary.transactions.length})
                     </span>
@@ -817,7 +815,7 @@ export default function SessionAttendancePage() {
                       >
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-bold text-[var(--text-primary)]">
+                            <span className="font-bold text-[var(--text-main)]">
                               {tx.type === 'SESSION_EXPENSE'
                                 ? 'مصروف حصة'
                                 : tx.playerName || 'سداد اشتراك'}
@@ -930,8 +928,8 @@ export default function SessionAttendancePage() {
               onClick={() => setStatusFilter('ALL')}
               className={`rounded-xl px-3.5 py-2 text-xs font-semibold transition-all cursor-pointer ${
                 statusFilter === 'ALL'
-                  ? 'bg-[var(--brand-primary)] text-white shadow-sm'
-                  : 'bg-[var(--bg-surface)] text-[var(--text-muted)] border border-[var(--border-subtle)] hover:text-[var(--text-primary)]'
+                  ? 'bg-[var(--accent-primary)] text-white shadow-sm'
+                  : 'bg-[var(--bg-surface)] text-[var(--text-muted)] border border-[var(--border-subtle)] hover:text-[var(--text-main)]'
               }`}
             >
               الكل ({session.roster.length})
@@ -942,7 +940,7 @@ export default function SessionAttendancePage() {
               className={`rounded-xl px-3 py-2 text-xs font-semibold transition-all cursor-pointer ${
                 statusFilter === 'UNMARKED'
                   ? 'bg-slate-600 text-white shadow-sm'
-                  : 'bg-[var(--bg-surface)] text-[var(--text-muted)] border border-[var(--border-subtle)] hover:text-[var(--text-primary)]'
+                  : 'bg-[var(--bg-surface)] text-[var(--text-muted)] border border-[var(--border-subtle)] hover:text-[var(--text-main)]'
               }`}
             >
               غير محدد ({session.totalUnmarked})
@@ -1003,7 +1001,7 @@ export default function SessionAttendancePage() {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="البحث باسم اللاعب..."
-                className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] pr-10 pl-3 py-2 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:border-[var(--brand-primary)] focus:outline-none"
+                className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] pr-10 pl-3 py-2 text-xs text-[var(--text-main)] placeholder:text-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:outline-none"
               />
             </div>
 
@@ -1014,7 +1012,7 @@ export default function SessionAttendancePage() {
                 id="btn-bulk-mark-present"
                 disabled={isBulkMarking}
                 onClick={handleBulkMarkPresent}
-                className="flex items-center gap-1.5 rounded-xl bg-[var(--brand-primary)] px-4 py-2 text-xs font-bold text-white shadow hover:brightness-110 disabled:opacity-50 transition-all cursor-pointer whitespace-nowrap"
+                className="flex items-center gap-1.5 rounded-xl bg-[var(--accent-primary)] px-4 py-2 text-xs font-bold text-white shadow hover:brightness-110 disabled:opacity-50 transition-all cursor-pointer whitespace-nowrap"
               >
                 <CheckCircle2 className="h-4 w-4" />
                 <span>تحضير الكل كحاضر ({session.totalUnmarked})</span>
@@ -1037,8 +1035,8 @@ export default function SessionAttendancePage() {
         {/* ROSTER LIST: ONE-TAP ATTENDANCE MARKING */}
         {filteredRoster.length === 0 ? (
           <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-12 text-center text-[var(--text-muted)] space-y-2">
-            <Users className="h-8 w-8 mx-auto text-[var(--brand-primary)]" />
-            <p className="text-sm font-semibold text-[var(--text-primary)]">
+            <Users className="h-8 w-8 mx-auto text-[var(--accent-primary)]" />
+            <p className="text-sm font-semibold text-[var(--text-main)]">
               لا يوجد لاعبين مطابقين للبحث أو الفلتر
             </p>
           </div>
@@ -1060,7 +1058,7 @@ export default function SessionAttendancePage() {
                           ? 'border-rose-500/40 ring-1 ring-rose-500/20'
                           : item.status === 'EXCUSED'
                             ? 'border-sky-500/40 ring-1 ring-sky-500/20'
-                            : 'border-[var(--border-subtle)] hover:border-[var(--brand-primary)]/40'
+                            : 'border-[var(--border-subtle)] hover:border-[var(--accent-primary)]/40'
                   }`}
                 >
                   {/* Player Info */}
@@ -1075,7 +1073,7 @@ export default function SessionAttendancePage() {
                               ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400'
                               : item.status === 'EXCUSED'
                                 ? 'bg-sky-500/15 text-sky-600 dark:text-sky-400'
-                                : 'bg-[var(--bg-elevated)] text-[var(--text-muted)]'
+                                : 'bg-[var(--bg-surface-subtle)] text-[var(--text-muted)]'
                       }`}
                     >
                       {item.playerName.slice(0, 2)}
@@ -1083,11 +1081,11 @@ export default function SessionAttendancePage() {
 
                     <div>
                       <div className="flex items-center gap-2">
-                        <h3 className="text-base font-bold text-[var(--text-primary)]">
+                        <h3 className="text-base font-bold text-[var(--text-main)]">
                           {item.playerName}
                         </h3>
                         {item.jerseyNumber && (
-                          <span className="rounded-full bg-[var(--bg-elevated)] px-2 py-0.5 text-[10px] font-bold text-[var(--brand-primary)] border border-[var(--border-subtle)]">
+                          <span className="rounded-full bg-[var(--bg-surface-subtle)] px-2 py-0.5 text-[10px] font-bold text-[var(--accent-primary)] border border-[var(--border-subtle)]">
                             #{item.jerseyNumber}
                           </span>
                         )}
@@ -1167,7 +1165,7 @@ export default function SessionAttendancePage() {
                           type="button"
                           id={`btn-collect-payment-${item.playerId}`}
                           onClick={() => handleOpenPaymentModal(item)}
-                          className="inline-flex items-center gap-1 rounded-lg bg-[var(--bg-elevated)] hover:bg-[var(--brand-surface)] px-2 py-0.5 text-[10px] font-semibold text-[var(--brand-primary)] border border-[var(--border-subtle)] hover:border-[var(--brand-primary)]/40 transition-colors cursor-pointer"
+                          className="inline-flex items-center gap-1 rounded-lg bg-[var(--bg-surface-subtle)] hover:bg-[var(--brand-surface)] px-2 py-0.5 text-[10px] font-semibold text-[var(--accent-primary)] border border-[var(--border-subtle)] hover:border-[var(--accent-primary)]/40 transition-colors cursor-pointer"
                           title="تسجيل دفعة نقدية أو إلكترونية للاعب"
                         >
                           <CreditCard className="h-3 w-3" />
@@ -1188,7 +1186,7 @@ export default function SessionAttendancePage() {
                       className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                         item.status === 'PRESENT'
                           ? 'bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-400'
-                          : 'bg-[var(--bg-elevated)] text-[var(--text-muted)] hover:text-emerald-600 hover:bg-emerald-500/10 border border-[var(--border-subtle)]'
+                          : 'bg-[var(--bg-surface-subtle)] text-[var(--text-muted)] hover:text-emerald-600 hover:bg-emerald-500/10 border border-[var(--border-subtle)]'
                       }`}
                     >
                       <Check className="h-4 w-4" />
@@ -1204,7 +1202,7 @@ export default function SessionAttendancePage() {
                       className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                         item.status === 'LATE'
                           ? 'bg-amber-500 text-slate-900 shadow-sm ring-2 ring-amber-300'
-                          : 'bg-[var(--bg-elevated)] text-[var(--text-muted)] hover:text-amber-500 hover:bg-amber-500/10 border border-[var(--border-subtle)]'
+                          : 'bg-[var(--bg-surface-subtle)] text-[var(--text-muted)] hover:text-amber-500 hover:bg-amber-500/10 border border-[var(--border-subtle)]'
                       }`}
                     >
                       <Clock4 className="h-3.5 w-3.5" />
@@ -1220,7 +1218,7 @@ export default function SessionAttendancePage() {
                       className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                         item.status === 'ABSENT'
                           ? 'bg-rose-600 text-white shadow-sm ring-2 ring-rose-400'
-                          : 'bg-[var(--bg-elevated)] text-[var(--text-muted)] hover:text-rose-500 hover:bg-rose-500/10 border border-[var(--border-subtle)]'
+                          : 'bg-[var(--bg-surface-subtle)] text-[var(--text-muted)] hover:text-rose-500 hover:bg-rose-500/10 border border-[var(--border-subtle)]'
                       }`}
                     >
                       <XCircle className="h-3.5 w-3.5" />
@@ -1236,7 +1234,7 @@ export default function SessionAttendancePage() {
                       className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                         item.status === 'EXCUSED'
                           ? 'bg-sky-600 text-white shadow-sm ring-2 ring-sky-300'
-                          : 'bg-[var(--bg-elevated)] text-[var(--text-muted)] hover:text-sky-500 hover:bg-sky-500/10 border border-[var(--border-subtle)]'
+                          : 'bg-[var(--bg-surface-subtle)] text-[var(--text-muted)] hover:text-sky-500 hover:bg-sky-500/10 border border-[var(--border-subtle)]'
                       }`}
                     >
                       <HelpCircle className="h-3.5 w-3.5" />
@@ -1256,30 +1254,30 @@ export default function SessionAttendancePage() {
           <div className="w-full max-w-md rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-2xl relative space-y-5 animate-in fade-in zoom-in-95">
             <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-4">
               <div className="flex items-center gap-2">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--brand-surface)] text-[var(--brand-primary)]">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--brand-surface)] text-[var(--accent-primary)]">
                   <QrCode className="h-5 w-5" />
                 </div>
-                <h3 className="text-base font-bold text-[var(--text-primary)]">
+                <h3 className="text-base font-bold text-[var(--text-main)]">
                   رمز QR المؤقت للتحضير
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setIsQrModalOpen(false)}
-                className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                className="p-1 text-[var(--text-muted)] hover:text-[var(--text-main)]"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
             {/* Timer countdown */}
-            <div className="flex items-center justify-between rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-subtle)] px-4 py-2.5 text-xs">
+            <div className="flex items-center justify-between rounded-xl bg-[var(--bg-surface-subtle)] border border-[var(--border-subtle)] px-4 py-2.5 text-xs">
               <span className="text-[var(--text-muted)] flex items-center gap-1.5">
                 <Timer className="h-4 w-4 text-amber-500" />
                 صلاحية الرمز تنتهي خلال:
               </span>
               <span
-                className={`font-mono font-bold text-sm ${qrSecondsLeft < 15 ? 'text-rose-500 animate-pulse' : 'text-[var(--brand-primary)]'}`}
+                className={`font-mono font-bold text-sm ${qrSecondsLeft < 15 ? 'text-rose-500 animate-pulse' : 'text-[var(--accent-primary)]'}`}
               >
                 {qrSecondsLeft} ثانية
               </span>
@@ -1323,7 +1321,7 @@ export default function SessionAttendancePage() {
                 type="button"
                 id="btn-refresh-qr"
                 onClick={handleOpenQrModal}
-                className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] py-2 text-xs font-semibold text-[var(--brand-primary)] hover:border-[var(--brand-primary)] transition-colors"
+                className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] py-2 text-xs font-semibold text-[var(--accent-primary)] hover:border-[var(--accent-primary)] transition-colors"
               >
                 <RefreshCw className="h-3.5 w-3.5" />
                 <span>تجديد الرمز فوراً</span>
@@ -1331,9 +1329,9 @@ export default function SessionAttendancePage() {
             </div>
 
             {/* Quick QR Check-in Simulator */}
-            <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-4 space-y-3">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-[var(--text-primary)]">
-                <UserCheck className="h-4 w-4 text-[var(--brand-primary)]" />
+            <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] p-4 space-y-3">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-[var(--text-main)]">
+                <UserCheck className="h-4 w-4 text-[var(--accent-primary)]" />
                 <span>محاكي المسح للاعب (Quick QR Scanner)</span>
               </div>
               <p className="text-[11px] text-[var(--text-muted)]">
@@ -1351,7 +1349,7 @@ export default function SessionAttendancePage() {
                 <select
                   value={qrCheckInPlayerId}
                   onChange={(e) => setQrCheckInPlayerId(e.target.value)}
-                  className="flex-1 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-2 text-xs text-[var(--text-primary)] focus:outline-none"
+                  className="flex-1 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-2 text-xs text-[var(--text-main)] focus:outline-none"
                 >
                   {session.roster.map((r) => (
                     <option key={r.playerId} value={r.playerId}>
@@ -1365,7 +1363,7 @@ export default function SessionAttendancePage() {
                   id="btn-simulate-qr-checkin"
                   disabled={!qrData || qrSecondsLeft <= 0}
                   onClick={handleSimulateQrCheckIn}
-                  className="rounded-xl bg-[var(--brand-primary)] px-3.5 py-2 text-xs font-bold text-white hover:brightness-110 disabled:opacity-50"
+                  className="rounded-xl bg-[var(--accent-primary)] px-3.5 py-2 text-xs font-bold text-white hover:brightness-110 disabled:opacity-50"
                 >
                   تسجيل بالرمز
                 </button>
@@ -1381,11 +1379,11 @@ export default function SessionAttendancePage() {
           <div className="w-full max-w-2xl rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-2xl relative space-y-5 animate-in fade-in zoom-in-95">
             <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-4">
               <div className="flex items-center gap-2">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--brand-surface)] text-[var(--brand-primary)]">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--brand-surface)] text-[var(--accent-primary)]">
                   <History className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-[var(--text-primary)]">
+                  <h3 className="text-base font-bold text-[var(--text-main)]">
                     سجل العمليات والتدقيق التراكمي
                   </h3>
                   <p className="text-xs text-[var(--text-muted)]">
@@ -1396,7 +1394,7 @@ export default function SessionAttendancePage() {
               <button
                 type="button"
                 onClick={() => setIsEventsModalOpen(false)}
-                className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                className="p-1 text-[var(--text-muted)] hover:text-[var(--text-main)]"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -1404,7 +1402,7 @@ export default function SessionAttendancePage() {
 
             {isLoadingEvents ? (
               <div className="p-8 text-center text-[var(--text-muted)]">
-                <RefreshCw className="h-8 w-8 animate-spin mx-auto text-[var(--brand-primary)] mb-2" />
+                <RefreshCw className="h-8 w-8 animate-spin mx-auto text-[var(--accent-primary)] mb-2" />
                 <p className="text-xs">جارٍ جلب سجل الأحداث...</p>
               </div>
             ) : events.length === 0 ? (
@@ -1416,13 +1414,11 @@ export default function SessionAttendancePage() {
                 {events.map((ev) => (
                   <div
                     key={ev.id}
-                    className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 text-xs flex items-center justify-between gap-3"
+                    className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] p-3 text-xs flex items-center justify-between gap-3"
                   >
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-[var(--text-primary)]">
-                          {ev.playerName}
-                        </span>
+                        <span className="font-bold text-[var(--text-main)]">{ev.playerName}</span>
                         <span className="text-[var(--text-muted)]">←</span>
                         <span
                           className={`font-bold px-2 py-0.5 rounded text-[10px] ${
@@ -1448,7 +1444,7 @@ export default function SessionAttendancePage() {
 
                     <div className="text-left text-[10px] text-[var(--text-muted)]">
                       <div>{ev.eventAt.slice(0, 10)}</div>
-                      <div className="font-mono text-[var(--text-secondary)]">
+                      <div className="font-mono text-[var(--text-muted)]">
                         {ev.eventAt.slice(11, 19)}
                       </div>
                     </div>
@@ -1470,7 +1466,7 @@ export default function SessionAttendancePage() {
                   <CreditCard className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-[var(--text-primary)]">
+                  <h3 className="text-base font-bold text-[var(--text-main)]">
                     تحصيل دفعة مالية للاعب
                   </h3>
                   <p className="text-xs text-[var(--text-muted)]">
@@ -1481,16 +1477,16 @@ export default function SessionAttendancePage() {
               <button
                 type="button"
                 onClick={() => setIsPaymentModalOpen(false)}
-                className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                className="p-1 text-[var(--text-muted)] hover:text-[var(--text-main)]"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
             <form onSubmit={handleSubmitPayment} className="space-y-4">
-              <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 text-xs flex justify-between items-center">
+              <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] p-3 text-xs flex justify-between items-center">
                 <span className="text-[var(--text-muted)]">المتبقي على الاشتراك:</span>
-                <span className="font-extrabold text-[var(--brand-primary)]">
+                <span className="font-extrabold text-[var(--accent-primary)]">
                   {selectedPlayerForPayment.outstandingBalance ??
                     selectedPlayerForPayment.amountDue ??
                     0}{' '}
@@ -1499,7 +1495,7 @@ export default function SessionAttendancePage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1.5">
+                <label className="block text-xs font-semibold text-[var(--text-main)] mb-1.5">
                   المبلغ المحصل (ر.س) *
                 </label>
                 <input
@@ -1509,12 +1505,12 @@ export default function SessionAttendancePage() {
                   required
                   value={paymentAmount}
                   onChange={(e) => setPaymentAmount(parseFloat(e.target.value) || 0)}
-                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2.5 text-sm font-bold text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none"
+                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-sm font-bold text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1.5">
+                <label className="block text-xs font-semibold text-[var(--text-main)] mb-1.5">
                   طريقة التحصيل *
                 </label>
                 <select
@@ -1522,7 +1518,7 @@ export default function SessionAttendancePage() {
                   onChange={(e) =>
                     setPaymentMethod(e.target.value as 'CASH' | 'CARD' | 'POS' | 'BANK_TRANSFER')
                   }
-                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2.5 text-xs font-semibold text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none cursor-pointer"
+                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs font-semibold text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none cursor-pointer"
                 >
                   <option value="CASH">نقدي (كاش بالملعب)</option>
                   <option value="POS">جهاز نقاط البيع (شبكة / POS)</option>
@@ -1532,7 +1528,7 @@ export default function SessionAttendancePage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1.5">
+                <label className="block text-xs font-semibold text-[var(--text-main)] mb-1.5">
                   رقم الإيصال أو المرجع (اختياري)
                 </label>
                 <input
@@ -1540,12 +1536,12 @@ export default function SessionAttendancePage() {
                   placeholder="مثال: POS-99881 أو رقم الحوالة"
                   value={paymentRefNumber}
                   onChange={(e) => setPaymentRefNumber(e.target.value)}
-                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:border-[var(--brand-primary)] focus:outline-none"
+                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1.5">
+                <label className="block text-xs font-semibold text-[var(--text-main)] mb-1.5">
                   ملاحظات الدفعة (اختياري)
                 </label>
                 <input
@@ -1553,7 +1549,7 @@ export default function SessionAttendancePage() {
                   placeholder="ملاحظات توثيقية إضافية..."
                   value={paymentNotes}
                   onChange={(e) => setPaymentNotes(e.target.value)}
-                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:border-[var(--brand-primary)] focus:outline-none"
+                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:outline-none"
                 />
               </div>
 
@@ -1561,7 +1557,7 @@ export default function SessionAttendancePage() {
                 <button
                   type="button"
                   onClick={() => setIsPaymentModalOpen(false)}
-                  className="rounded-xl border border-[var(--border-subtle)] px-4 py-2 text-xs font-semibold text-[var(--text-muted)] hover:bg-[var(--bg-elevated)] transition-colors cursor-pointer"
+                  className="rounded-xl border border-[var(--border-subtle)] px-4 py-2 text-xs font-semibold text-[var(--text-muted)] hover:bg-[var(--bg-surface-subtle)] transition-colors cursor-pointer"
                 >
                   إلغاء
                 </button>
@@ -1589,7 +1585,7 @@ export default function SessionAttendancePage() {
                   <PlusCircle className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-[var(--text-primary)]">
+                  <h3 className="text-base font-bold text-[var(--text-main)]">
                     تسجيل مصروف للحصة التدريبية
                   </h3>
                   <p className="text-xs text-[var(--text-muted)]">
@@ -1600,7 +1596,7 @@ export default function SessionAttendancePage() {
               <button
                 type="button"
                 onClick={() => setIsExpenseModalOpen(false)}
-                className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                className="p-1 text-[var(--text-muted)] hover:text-[var(--text-main)]"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -1608,7 +1604,7 @@ export default function SessionAttendancePage() {
 
             <form onSubmit={handleSubmitExpense} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1.5">
+                <label className="block text-xs font-semibold text-[var(--text-main)] mb-1.5">
                   قيمة المصروف (ر.س) *
                 </label>
                 <input
@@ -1619,12 +1615,12 @@ export default function SessionAttendancePage() {
                   value={expenseAmount || ''}
                   onChange={(e) => setExpenseAmount(parseFloat(e.target.value) || 0)}
                   placeholder="مثال: 50"
-                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2.5 text-sm font-bold text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none"
+                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-sm font-bold text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1.5">
+                <label className="block text-xs font-semibold text-[var(--text-main)] mb-1.5">
                   بيان وسبب المصروف *
                 </label>
                 <textarea
@@ -1633,7 +1629,7 @@ export default function SessionAttendancePage() {
                   value={expenseNotes}
                   onChange={(e) => setExpenseNotes(e.target.value)}
                   placeholder="مثال: شراء مياه معدنية وعصيرات للاعبين، أو أدوات تدريب طارئة..."
-                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:border-[var(--brand-primary)] focus:outline-none resize-none"
+                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] p-3 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:outline-none resize-none"
                 />
               </div>
 
@@ -1641,7 +1637,7 @@ export default function SessionAttendancePage() {
                 <button
                   type="button"
                   onClick={() => setIsExpenseModalOpen(false)}
-                  className="rounded-xl border border-[var(--border-subtle)] px-4 py-2 text-xs font-semibold text-[var(--text-muted)] hover:bg-[var(--bg-elevated)] transition-colors cursor-pointer"
+                  className="rounded-xl border border-[var(--border-subtle)] px-4 py-2 text-xs font-semibold text-[var(--text-muted)] hover:bg-[var(--bg-surface-subtle)] transition-colors cursor-pointer"
                 >
                   إلغاء
                 </button>
@@ -1669,7 +1665,7 @@ export default function SessionAttendancePage() {
                   <Receipt className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-[var(--text-primary)]">
+                  <h3 className="text-base font-bold text-[var(--text-main)]">
                     مطابقة وإغلاق الصندوق المالي
                   </h3>
                   <p className="text-xs text-[var(--text-muted)]">
@@ -1680,14 +1676,14 @@ export default function SessionAttendancePage() {
               <button
                 type="button"
                 onClick={() => setIsCloseCashierModalOpen(false)}
-                className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                className="p-1 text-[var(--text-muted)] hover:text-[var(--text-main)]"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
             <div className="space-y-3">
-              <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-4 space-y-2 text-xs">
+              <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] p-4 space-y-2 text-xs">
                 <div className="flex justify-between">
                   <span className="text-[var(--text-muted)]">الكاش المحصل:</span>
                   <span className="font-bold text-emerald-600 dark:text-emerald-400">
@@ -1700,14 +1696,14 @@ export default function SessionAttendancePage() {
                     -{cashierSummary?.totalExpenses ?? 0} ر.س
                   </span>
                 </div>
-                <div className="flex justify-between border-t border-[var(--border-subtle)] pt-2 font-bold text-[var(--text-primary)]">
+                <div className="flex justify-between border-t border-[var(--border-subtle)] pt-2 font-bold text-[var(--text-main)]">
                   <span>صافي النقد المطلوب تسليمه:</span>
                   <span>{cashierSummary?.netCashMovement ?? 0} ر.س</span>
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1.5">
+                <label className="block text-xs font-semibold text-[var(--text-main)] mb-1.5">
                   ملاحظات التسوية الختامية (اختياري)
                 </label>
                 <textarea
@@ -1715,7 +1711,7 @@ export default function SessionAttendancePage() {
                   value={closeCashierNotes}
                   onChange={(e) => setCloseCashierNotes(e.target.value)}
                   placeholder="ملاحظات حول عهدة الكاش أو التسليم للمحاسب..."
-                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:border-[var(--brand-primary)] focus:outline-none resize-none"
+                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] p-3 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:outline-none resize-none"
                 />
               </div>
 
@@ -1728,7 +1724,7 @@ export default function SessionAttendancePage() {
               <button
                 type="button"
                 onClick={() => setIsCloseCashierModalOpen(false)}
-                className="rounded-xl border border-[var(--border-subtle)] px-4 py-2 text-xs font-semibold text-[var(--text-muted)] hover:bg-[var(--bg-elevated)] transition-colors cursor-pointer"
+                className="rounded-xl border border-[var(--border-subtle)] px-4 py-2 text-xs font-semibold text-[var(--text-muted)] hover:bg-[var(--bg-surface-subtle)] transition-colors cursor-pointer"
               >
                 تراجع
               </button>
@@ -1756,7 +1752,7 @@ export default function SessionAttendancePage() {
                   <XCircle className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-[var(--text-primary)]">
+                  <h3 className="text-base font-bold text-[var(--text-main)]">
                     رفض المصروف الميداني
                   </h3>
                   <p className="text-xs text-[var(--text-muted)]">
@@ -1767,20 +1763,20 @@ export default function SessionAttendancePage() {
               <button
                 type="button"
                 onClick={() => setRejectingExpenseId(null)}
-                className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                className="p-1 text-[var(--text-muted)] hover:text-[var(--text-main)]"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
             <div className="space-y-3">
-              <p className="text-xs text-[var(--text-secondary)]">
+              <p className="text-xs text-[var(--text-muted)]">
                 سيتم وضع المصروف في حالة <strong className="text-rose-600">مرفوض</strong> ولن يتم
                 خصمه نهائياً من الصندوق المالي أو كشف الحساب.
               </p>
 
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1.5">
+                <label className="block text-xs font-semibold text-[var(--text-main)] mb-1.5">
                   سبب الرفض <span className="text-rose-500">*</span>
                 </label>
                 <textarea
@@ -1788,7 +1784,7 @@ export default function SessionAttendancePage() {
                   value={rejectionReason}
                   onChange={(e) => setRejectionReason(e.target.value)}
                   placeholder="مثال: المصروف غير مشمول بسياسة الأكاديمية، أو لم يتم إرفاق فاتورة رسمية..."
-                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:border-rose-500 focus:outline-none resize-none"
+                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] p-3 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-rose-500 focus:outline-none resize-none"
                 />
               </div>
             </div>
@@ -1797,7 +1793,7 @@ export default function SessionAttendancePage() {
               <button
                 type="button"
                 onClick={() => setRejectingExpenseId(null)}
-                className="rounded-xl border border-[var(--border-subtle)] px-4 py-2 text-xs font-semibold text-[var(--text-muted)] hover:bg-[var(--bg-elevated)] transition-colors cursor-pointer"
+                className="rounded-xl border border-[var(--border-subtle)] px-4 py-2 text-xs font-semibold text-[var(--text-muted)] hover:bg-[var(--bg-surface-subtle)] transition-colors cursor-pointer"
               >
                 إلغاء
               </button>

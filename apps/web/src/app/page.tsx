@@ -127,7 +127,7 @@ export default function HomePage() {
     <div className="min-h-screen bg-[var(--bg-base)] text-[var(--text-main)] flex flex-col transition-colors">
       <Navbar />
 
-      <main className="flex-1">
+      <main className="flex-1 animate-fade-in">
         {/* Hero Section */}
         <section className="relative overflow-hidden pt-12 pb-20 sm:pt-20 sm:pb-28 border-b border-[var(--border-subtle)]">
           {/* Ambient Glowing Spheres */}
@@ -166,7 +166,7 @@ export default function HomePage() {
                   <div className="flex flex-wrap items-center gap-3">
                     <Link
                       href={getDashboardHref()}
-                      className="flex items-center gap-2 rounded-xl bg-[var(--accent-primary)] px-6 py-3.5 text-sm font-bold text-white shadow-xl shadow-emerald-600/25 hover:opacity-90 active:scale-95 transition-all"
+                      className="flex items-center gap-2 rounded-xl bg-[var(--accent-primary)] px-6 py-3.5 text-sm font-bold text-[var(--accent-primary-fg)] shadow-float hover:opacity-90 active:scale-95 transition-all"
                     >
                       <span>{getDashboardLabel()}</span>
                       <ChevronIcon className="h-4 w-4" />
@@ -232,7 +232,7 @@ export default function HomePage() {
                 onClick={() => setActivePreviewTab('attendance')}
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
                   activePreviewTab === 'attendance'
-                    ? 'bg-[var(--accent-primary)] text-white shadow-md'
+                    ? 'bg-[var(--accent-primary)] text-[var(--accent-primary-fg)] font-bold shadow-sm'
                     : 'bg-[var(--bg-surface)] text-[var(--text-main)] border border-[var(--border-app)] hover:border-[var(--accent-primary)]'
                 }`}
               >
@@ -245,7 +245,7 @@ export default function HomePage() {
                 onClick={() => setActivePreviewTab('evaluations')}
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
                   activePreviewTab === 'evaluations'
-                    ? 'bg-[var(--accent-primary)] text-white shadow-md'
+                    ? 'bg-[var(--accent-primary)] text-[var(--accent-primary-fg)] font-bold shadow-sm'
                     : 'bg-[var(--bg-surface)] text-[var(--text-main)] border border-[var(--border-app)] hover:border-[var(--accent-primary)]'
                 }`}
               >
@@ -258,7 +258,7 @@ export default function HomePage() {
                 onClick={() => setActivePreviewTab('finance')}
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
                   activePreviewTab === 'finance'
-                    ? 'bg-[var(--accent-primary)] text-white shadow-md'
+                    ? 'bg-[var(--accent-primary)] text-[var(--accent-primary-fg)] font-bold shadow-sm'
                     : 'bg-[var(--bg-surface)] text-[var(--text-main)] border border-[var(--border-app)] hover:border-[var(--accent-primary)]'
                 }`}
               >
@@ -271,7 +271,7 @@ export default function HomePage() {
                 onClick={() => setActivePreviewTab('portals')}
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
                   activePreviewTab === 'portals'
-                    ? 'bg-[var(--accent-primary)] text-white shadow-md'
+                    ? 'bg-[var(--accent-primary)] text-[var(--accent-primary-fg)] font-bold shadow-sm'
                     : 'bg-[var(--bg-surface)] text-[var(--text-main)] border border-[var(--border-app)] hover:border-[var(--accent-primary)]'
                 }`}
               >

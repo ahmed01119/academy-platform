@@ -252,7 +252,7 @@ export function Topbar({ onOpenMobile, breadcrumbs: customBreadcrumbs }: TopbarP
             >
               <Bell className="h-4 w-4" />
               {unreadCount > 0 && (
-                <span className="absolute -top-1 -end-1 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-emerald-500 text-[9px] font-bold text-white shadow-sm">
+                <span className="absolute -top-1 -end-1 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-[var(--accent-primary)] text-[9px] font-bold text-[var(--accent-primary-fg)] shadow-xs">
                   {unreadCount > 99 ? '99+' : unreadCount}
                 </span>
               )}
@@ -266,7 +266,7 @@ export function Topbar({ onOpenMobile, breadcrumbs: customBreadcrumbs }: TopbarP
                       {t('common.notifications', 'الإشعارات')}
                     </span>
                     {unreadCount > 0 && (
-                      <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold text-emerald-400">
+                      <span className="rounded-full bg-[var(--badge-bg)] px-2 py-0.5 text-[10px] font-bold text-[var(--badge-fg)] border border-[var(--badge-border)]">
                         {unreadCount} {locale === 'ar' ? 'جديد' : 'New'}
                       </span>
                     )}
@@ -275,7 +275,7 @@ export function Topbar({ onOpenMobile, breadcrumbs: customBreadcrumbs }: TopbarP
                     <button
                       type="button"
                       onClick={handleMarkAllRead}
-                      className="text-[10px] text-emerald-400 hover:text-emerald-300 font-medium flex items-center gap-1"
+                      className="text-[10px] text-[var(--accent-primary)] hover:opacity-80 font-medium flex items-center gap-1"
                     >
                       <CheckCheck className="w-3 h-3" />
                       {locale === 'ar' ? 'تحديد الكل كمقروء' : 'Mark all read'}
@@ -301,7 +301,7 @@ export function Topbar({ onOpenMobile, breadcrumbs: customBreadcrumbs }: TopbarP
                           onClick={() => handleNotificationClick(item)}
                           className={`rounded-xl p-2.5 text-xs space-y-1 cursor-pointer transition-colors ${
                             !isRead
-                              ? 'bg-emerald-500/10 border border-emerald-500/20'
+                              ? 'bg-[var(--accent-primary)]/10 border border-[var(--accent-primary)]/20'
                               : 'bg-[var(--bg-surface-subtle)] hover:bg-[var(--bg-surface-subtle)]/80'
                           }`}
                         >
@@ -310,7 +310,7 @@ export function Topbar({ onOpenMobile, breadcrumbs: customBreadcrumbs }: TopbarP
                               {item.title}
                             </div>
                             {!isRead && (
-                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0 mt-1" />
+                              <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent-primary)] shrink-0 mt-1" />
                             )}
                           </div>
                           <div className="text-[10px] text-[var(--text-muted)] leading-relaxed">

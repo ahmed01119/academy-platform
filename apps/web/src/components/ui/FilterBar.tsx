@@ -50,7 +50,7 @@ export function FilterBar({
           value={currentSearch}
           onChange={(e) => onSearchChange(e.target.value)}
           placeholder={searchPlaceholder || t('common.search', 'بحث...')}
-          className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] py-2 ps-9 pe-9 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:bg-[var(--bg-surface)] transition-all outline-none"
+          className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] py-2 ps-9 pe-9 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:ring-1 focus:ring-[var(--accent-primary)] focus:bg-[var(--bg-surface)] transition-all outline-none"
         />
         {currentSearch && (
           <button
