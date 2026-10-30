@@ -126,12 +126,15 @@ describe('TenantGuard & PermissionsGuard', () => {
 
       const result = await guard.canActivate(ctx);
       expect(result).toBe(true);
-      expect(req.tenantContext).toEqual({
-        tenantId: TENANT_A,
-        branchId: BRANCH_1,
-        actorUserId: 'u1',
-        locale: 'ar',
-      });
+      expect(req.tenantContext).toEqual(
+        expect.objectContaining({
+          tenantId: TENANT_A,
+          branchId: BRANCH_1,
+          actorUserId: 'u1',
+          locale: 'ar',
+          role: TenantRole.COACH,
+        }),
+      );
     });
 
     it('denies a revoked database membership even when JWT membership is stale', async () => {

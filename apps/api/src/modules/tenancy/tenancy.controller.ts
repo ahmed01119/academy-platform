@@ -6,6 +6,7 @@ import {
   HttpStatus,
   Inject,
   Param,
+  Patch,
   Post,
   Req,
   Res,
@@ -24,10 +25,12 @@ import {
   InviteStaffRequestSchema,
   Permission,
   SwitchTenantRequestSchema,
+  UpdateAcademySettingsSchema,
   type AcceptInviteRequest,
   type InviteStaffRequest,
   type SwitchTenantRequest,
   type TenantContext,
+  type UpdateAcademySettings,
 } from '@academy/shared';
 
 @Controller('tenants')
@@ -103,5 +106,19 @@ export class TenancyController {
   @Get('branches')
   async listBranches(@CurrentTenantContext() tenantContext: TenantContext) {
     return this.tenancyService.listBranches(tenantContext);
+  }
+
+  @UseGuards(JwtAuthGuard, TenantGuard)
+  @Get('profile')
+  async getProfile(@CurrentTenantContext() tenantContext: TenantContext) {
+    return this.tenancyService.getProfile(tenantContext);
+  }
+
+  @UseGuards(JwtAuthGuard, TenantGuard, PermissionsGuard)
+  @RequirePermissions(Permission.TENANT_UPDATE)
+  @Patch('profile')
+  async updateProfile(@CurrentTenantContext() tenantContext: TenantContext, @Body() body: unknown) {
+    const dto: UpdateAcademySettings = UpdateAcademySettingsSchema.parse(body);
+    return this.tenancyService.updateProfile(tenantContext, dto);
   }
 }

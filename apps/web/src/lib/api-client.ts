@@ -1,10 +1,25 @@
 import type {
+  AcademyProfile,
   AuthResponse,
+  BranchStatus,
+  BranchSummary,
+  CreateBranchRequest,
+  CreateEnrollmentRequest,
+  CreatePlayerRequest,
+  EnrollmentStatus,
+  EnrollmentSummary,
   ForgotPasswordRequest,
   LoginRequest,
+  PlayerDetails,
+  PlayerStatus,
+  PlayerSummary,
   RegisterRequest,
   ResetPasswordRequest,
   TenantMembershipSummary,
+  TransferBranchRequest,
+  UpdateAcademySettings,
+  UpdateBranchRequest,
+  UpdatePlayerRequest,
   UserSummary,
 } from '@academy/shared';
 
@@ -65,11 +80,24 @@ export function getActiveTenantIdHeader(): string | null {
   return activeTenantIdCache;
 }
 
+const AUTH_ENDPOINTS_WITHOUT_TENANT_HEADER = [
+  '/auth/login',
+  '/auth/register',
+  '/auth/forgot-password',
+  '/auth/reset-password',
+  '/auth/verify-email',
+  '/auth/resend-verification',
+];
+
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const headers = new Headers(options.headers || {});
   headers.set('Content-Type', 'application/json');
 
-  if (activeTenantIdCache && !headers.has('x-tenant-id')) {
+  const isAuthEndpoint = AUTH_ENDPOINTS_WITHOUT_TENANT_HEADER.some((path) =>
+    endpoint.startsWith(path),
+  );
+
+  if (activeTenantIdCache && !headers.has('x-tenant-id') && !isAuthEndpoint) {
     headers.set('x-tenant-id', activeTenantIdCache);
   }
 
@@ -222,6 +250,129 @@ export const api = {
     > {
       return request('/tenants/branches', {
         method: 'GET',
+      });
+    },
+
+    async getProfile(): Promise<AcademyProfile> {
+      return request('/tenants/profile', {
+        method: 'GET',
+      });
+    },
+
+    async updateProfile(data: UpdateAcademySettings): Promise<AcademyProfile> {
+      return request('/tenants/profile', {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      });
+    },
+  },
+
+  branches: {
+    async list(filter?: { search?: string; status?: BranchStatus }): Promise<BranchSummary[]> {
+      const params = new URLSearchParams();
+      if (filter?.search) params.set('search', filter.search);
+      if (filter?.status) params.set('status', filter.status);
+      const qs = params.toString() ? `?${params.toString()}` : '';
+      return request(`/branches${qs}`, {
+        method: 'GET',
+      });
+    },
+
+    async get(id: string): Promise<BranchSummary> {
+      return request(`/branches/${id}`, {
+        method: 'GET',
+      });
+    },
+
+    async create(data: CreateBranchRequest): Promise<BranchSummary> {
+      return request('/branches', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
+
+    async update(id: string, data: UpdateBranchRequest): Promise<BranchSummary> {
+      return request(`/branches/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      });
+    },
+  },
+
+  players: {
+    async list(params?: {
+      search?: string;
+      branchId?: string;
+      status?: PlayerStatus;
+      page?: number;
+      limit?: number;
+    }): Promise<{
+      items: PlayerSummary[];
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    }> {
+      const query = new URLSearchParams();
+      if (params?.search) query.set('search', params.search);
+      if (params?.branchId) query.set('branchId', params.branchId);
+      if (params?.status) query.set('status', params.status);
+      if (params?.page) query.set('page', String(params.page));
+      if (params?.limit) query.set('limit', String(params.limit));
+      const qs = query.toString() ? `?${query.toString()}` : '';
+      return request(`/players${qs}`, {
+        method: 'GET',
+      });
+    },
+
+    async get(id: string): Promise<PlayerDetails> {
+      return request(`/players/${id}`, {
+        method: 'GET',
+      });
+    },
+
+    async create(data: CreatePlayerRequest): Promise<PlayerSummary> {
+      return request('/players', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
+
+    async update(id: string, data: UpdatePlayerRequest): Promise<PlayerSummary> {
+      return request(`/players/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      });
+    },
+  },
+
+  enrollments: {
+    async list(params?: {
+      playerId?: string;
+      branchId?: string;
+      status?: EnrollmentStatus;
+    }): Promise<EnrollmentSummary[]> {
+      const query = new URLSearchParams();
+      if (params?.playerId) query.set('playerId', params.playerId);
+      if (params?.branchId) query.set('branchId', params.branchId);
+      if (params?.status) query.set('status', params.status);
+      const qs = query.toString() ? `?${query.toString()}` : '';
+      return request(`/enrollments${qs}`, {
+        method: 'GET',
+      });
+    },
+
+    async create(data: CreateEnrollmentRequest): Promise<EnrollmentSummary> {
+      return request('/enrollments', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
+
+    async transfer(id: string, data: TransferBranchRequest): Promise<EnrollmentSummary> {
+      return request(`/enrollments/${id}/transfer`, {
+        method: 'POST',
+        body: JSON.stringify(data),
       });
     },
   },

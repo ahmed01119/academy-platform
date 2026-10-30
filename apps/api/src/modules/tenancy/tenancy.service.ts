@@ -8,6 +8,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
+import type { Prisma } from '@prisma/client';
 import { TokenService } from '../auth/token.service';
 import { PasswordService } from '../auth/password.service';
 import { AuditService } from '../audit/audit.service';
@@ -18,6 +19,7 @@ import {
   type InviteStaffRequest,
   type TenantContext,
   type TenantMembershipSummary,
+  type UpdateAcademySettings,
 } from '@academy/shared';
 
 @Injectable()
@@ -212,6 +214,7 @@ export class TenancyService {
           await tx.$executeRaw`
             SELECT public.issue_user_redemption_challenge(
               ${currentUserId}::uuid,
+              ${tokenHash},
               ${challengeHash}
             )
           `;
@@ -384,6 +387,115 @@ export class TenancyService {
           where: { tenantId: tenantContext.tenantId },
           orderBy: { name: 'asc' },
         });
+      },
+    );
+  }
+
+  /**
+   * Retrieves full profile and operational statistics for the active academy.
+   */
+  async getProfile(tenantContext: TenantContext) {
+    return this.prisma.withTenantTransaction(
+      { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
+      async (tx) => {
+        const tenant = await tx.tenant.findUnique({
+          where: { id: tenantContext.tenantId },
+          include: {
+            _count: {
+              select: {
+                branches: true,
+                memberships: { where: { status: 'ACTIVE' } },
+                players: { where: { status: 'ACTIVE' } },
+              },
+            },
+          },
+        });
+
+        if (!tenant) {
+          throw new NotFoundException({
+            code: ErrorCode.NOT_FOUND,
+            message: 'Academy not found',
+          });
+        }
+
+        return {
+          id: tenant.id,
+          name: tenant.name,
+          slug: tenant.slug,
+          status: tenant.status,
+          currency: tenant.currency,
+          timezone: tenant.timezone,
+          phone: tenant.phone,
+          email: tenant.email,
+          address: tenant.address,
+          logoUrl: tenant.logoUrl,
+          createdAt: tenant.createdAt.toISOString(),
+          updatedAt: tenant.updatedAt.toISOString(),
+          _count: tenant._count,
+        };
+      },
+    );
+  }
+
+  /**
+   * Updates academy settings and contact profile.
+   */
+  async updateProfile(tenantContext: TenantContext, dto: UpdateAcademySettings) {
+    return this.prisma.withTenantTransaction(
+      { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
+      async (tx) => {
+        const updateData: Prisma.TenantUpdateInput = {};
+        if (dto.name !== undefined) updateData.name = dto.name.trim();
+        if (dto.phone !== undefined) updateData.phone = dto.phone?.trim() || null;
+        if (dto.email !== undefined) updateData.email = dto.email?.trim() || null;
+        if (dto.address !== undefined) updateData.address = dto.address?.trim() || null;
+        if (dto.logoUrl !== undefined) updateData.logoUrl = dto.logoUrl?.trim() || null;
+        if (dto.currency !== undefined) updateData.currency = dto.currency;
+        if (dto.timezone !== undefined) updateData.timezone = dto.timezone;
+
+        const tenant = await tx.tenant.update({
+          where: { id: tenantContext.tenantId },
+          data: updateData,
+          include: {
+            _count: {
+              select: {
+                branches: true,
+                memberships: { where: { status: 'ACTIVE' } },
+                players: { where: { status: 'ACTIVE' } },
+              },
+            },
+          },
+        });
+
+        await this.auditService.logEvent(
+          {
+            tenantId: tenantContext.tenantId,
+            actorUserId: tenantContext.actorUserId,
+            action: 'TENANT_UPDATE',
+            resourceType: 'Tenant',
+            resourceId: tenant.id,
+            metadata: {
+              changedFields: Object.keys(updateData),
+            },
+          },
+          tx,
+        );
+
+        return {
+          id: tenant.id,
+          name: tenant.name,
+          slug: tenant.slug,
+          status: tenant.status,
+          currency: tenant.currency,
+          timezone: tenant.timezone,
+          phone: tenant.phone,
+          email: tenant.email,
+          address: tenant.address,
+          logoUrl: tenant.logoUrl,
+          createdAt: tenant.createdAt.toISOString(),
+          updatedAt: tenant.updatedAt.toISOString(),
+          _count: tenant._count,
+        };
       },
     );
   }

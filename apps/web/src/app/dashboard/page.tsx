@@ -6,44 +6,28 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '../../lib/auth-context';
 import { Navbar } from '../../components/Navbar';
 import { api } from '../../lib/api-client';
+import type { BranchSummary, PlayerSummary } from '@academy/shared';
 import {
-  Building2,
   Users,
   GitBranch,
   ShieldCheck,
   RefreshCw,
-  Sparkles,
   Trophy,
-  CheckCircle2,
-  Lock,
+  UserPlus,
+  ArrowUpRight,
+  ChevronLeft,
+  Phone,
+  UserCheck,
 } from 'lucide-react';
-
-const ROLE_LABELS_AR: Record<string, string> = {
-  OWNER: 'مالك الأكاديمية (Owner)',
-  MANAGER: 'مدير عام (Manager)',
-  BRANCH_MANAGER: 'مدير فرع (Branch Manager)',
-  COACH: 'مدرب معتمد (Coach)',
-  RECEPTIONIST: 'استقبال (Receptionist)',
-  ACCOUNTANT: 'محاسب مالي (Accountant)',
-  VIEWER: 'مراقب (Viewer)',
-};
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { user, activeTenant, memberships, isLoading, switchTenant, refreshUser } = useAuth();
+  const { user, activeTenant, isLoading, refreshUser } = useAuth();
 
-  const [staff, setStaff] = useState<
-    Array<{
-      id: string;
-      role: string;
-      status: string;
-      user: { id: string; email: string; name: string; phone?: string | null };
-      branch?: { id: string; name: string; code?: string | null } | null;
-    }>
-  >([]);
-  const [branches, setBranches] = useState<
-    Array<{ id: string; name: string; code?: string | null; city?: string | null }>
-  >([]);
+  const [players, setPlayers] = useState<PlayerSummary[]>([]);
+  const [totalPlayers, setTotalPlayers] = useState<number>(0);
+  const [branches, setBranches] = useState<BranchSummary[]>([]);
+  const [staffCount, setStaffCount] = useState<number>(0);
   const [isFetchingData, setIsFetchingData] = useState(false);
 
   useEffect(() => {
@@ -54,20 +38,23 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (user && activeTenant) {
-      const loadData = async () => {
+      const loadDashboardData = async () => {
         setIsFetchingData(true);
         try {
-          const [staffData, branchData] = await Promise.all([
+          const [playersRes, branchList, staffList] = await Promise.all([
+            api.players.list({ limit: 5 }).catch(() => ({ items: [], total: 0 })),
+            api.branches.list().catch(() => []),
             api.tenancy.listStaff().catch(() => []),
-            api.tenancy.listBranches().catch(() => []),
           ]);
-          setStaff(staffData);
-          setBranches(branchData);
+          setPlayers(playersRes.items);
+          setTotalPlayers(playersRes.total);
+          setBranches(branchList);
+          setStaffCount(staffList.length);
         } finally {
           setIsFetchingData(false);
         }
       };
-      void loadData();
+      void loadDashboardData();
     }
   }, [user, activeTenant]);
 
@@ -86,8 +73,10 @@ export default function DashboardPage() {
     return null;
   }
 
+  const activeEnrollmentsCount = branches.reduce((acc, b) => acc + (b.activePlayersCount || 0), 0);
+
   return (
-    <div className="min-h-screen bg-[#0f1c18] text-[#e8f0ec] flex flex-col">
+    <div className="min-h-screen bg-[#0f1c18] text-[#e8f0ec] flex flex-col font-sans">
       <Navbar />
 
       <main className="flex-1 mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-8">
@@ -100,231 +89,292 @@ export default function DashboardPage() {
               <div className="flex items-center gap-2 mb-2">
                 <span className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-[#45c387] bg-[#2f9e6b]/15 px-2.5 py-1 rounded-full border border-[#2f9e6b]/30">
                   <ShieldCheck className="h-3.5 w-3.5" />
-                  جلسة آمنة ومحققة
+                  Sprint 2 — الأكاديمية واللاعبين
                 </span>
-                <span className="text-xs text-[#9bb5a8]">Sprint 1 Identity Foundation</span>
+                <span className="text-xs text-[#9bb5a8]">
+                  {activeTenant?.tenantName || 'الأكاديمية النشطة'}
+                </span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
                 أهلاً بك، {user.name} 👋
               </h1>
               <p className="mt-1 text-sm text-[#9bb5a8]">
-                البريد: <span className="font-mono text-white/90">{user.email}</span> • الحساب:{' '}
-                <span className="text-[#45c387] font-medium">مُفعل ونشط</span>
+                لوحة الإدارة المركزية للأكاديمية وفروعها وقيد اللاعبين والاشتراكات.
               </p>
             </div>
 
-            {/* Quick Actions */}
+            {/* Quick Action Buttons */}
             <div className="flex flex-wrap items-center gap-3">
               <button
                 type="button"
+                id="btn-refresh-dashboard"
                 onClick={() => void refreshUser()}
                 className="flex items-center gap-2 rounded-xl border border-[#2b4c3e] bg-[#0f1c18] px-4 py-2.5 text-xs font-medium text-[#e8f0ec] hover:border-[#2f9e6b] transition-colors cursor-pointer"
               >
                 <RefreshCw className={`h-4 w-4 ${isFetchingData ? 'animate-spin' : ''}`} />
-                <span>تحديث البيانات</span>
+                <span>تحديث</span>
               </button>
 
               <Link
-                href="/register"
+                href="/players/new"
+                id="btn-new-player"
                 className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#2f9e6b] to-[#36b379] px-4 py-2.5 text-xs font-semibold text-[#062016] shadow-md shadow-[#2f9e6b]/20 hover:brightness-110 transition-all"
               >
-                <Sparkles className="h-4 w-4" />
-                <span>تسجيل أكاديمية ثانية</span>
+                <UserPlus className="h-4 w-4" />
+                <span>تسجيل لاعب جديد</span>
               </Link>
             </div>
           </div>
         </div>
 
-        {/* Multi-Tenancy & Active Academy Bar */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Active Academy Card */}
-          <div className="md:col-span-2 rounded-2xl border border-[#234235] bg-[#162821]/80 p-6 backdrop-blur-md">
-            <div className="flex items-center justify-between pb-4 border-b border-[#234235]">
-              <div className="flex items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#2f9e6b]/20 border border-[#2f9e6b]/40 text-[#45c387]">
-                  <Trophy className="h-6 w-6" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-bold text-white">
-                    {activeTenant?.tenantName || 'الأكاديمية النشطة'}
-                  </h2>
-                  <p className="text-xs text-[#9bb5a8]">
-                    معرف المستأجر: <span className="font-mono">{activeTenant?.tenantId}</span>
-                  </p>
-                </div>
+        {/* KPI Metrics Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          {/* Card 1: Players */}
+          <Link
+            href="/players"
+            id="kpi-players"
+            className="group rounded-2xl border border-[#234235] bg-[#162821]/80 p-5 hover:border-[#2f9e6b]/60 transition-all shadow-lg hover:shadow-[#2f9e6b]/10"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-medium text-[#9bb5a8]">إجمالي اللاعبين المسجلين</span>
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#2f9e6b]/15 text-[#45c387] group-hover:scale-110 transition-transform">
+                <Users className="h-5 w-5" />
               </div>
-
-              <span className="rounded-lg bg-[#234235] px-3 py-1 text-xs font-semibold text-[#45c387] border border-[#2b4c3e]">
-                {activeTenant?.role
-                  ? ROLE_LABELS_AR[activeTenant.role] || activeTenant.role
-                  : 'عضو'}
+            </div>
+            <div className="flex items-baseline justify-between">
+              <span className="text-2xl sm:text-3xl font-extrabold text-white">{totalPlayers}</span>
+              <span className="text-xs text-[#45c387] flex items-center gap-0.5">
+                عرض القائمة <ArrowUpRight className="h-3.5 w-3.5" />
               </span>
             </div>
+          </Link>
 
-            {/* Academy Details */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-6">
-              <div className="rounded-xl border border-[#234235] bg-[#0f1c18]/60 p-3.5">
-                <span className="text-[11px] text-[#9bb5a8] block mb-1">الرياضة الأساسية</span>
-                <span className="text-sm font-semibold text-white">كرة قدم (Football)</span>
-              </div>
-              <div className="rounded-xl border border-[#234235] bg-[#0f1c18]/60 p-3.5">
-                <span className="text-[11px] text-[#9bb5a8] block mb-1">الفرع الحالي</span>
-                <span className="text-sm font-semibold text-white">الفرع الرئيسي (HQ)</span>
-              </div>
-              <div className="rounded-xl border border-[#234235] bg-[#0f1c18]/60 p-3.5">
-                <span className="text-[11px] text-[#9bb5a8] block mb-1">عزل البيانات (RLS)</span>
-                <span className="text-sm font-semibold text-[#45c387] flex items-center gap-1">
-                  <ShieldCheck className="h-4 w-4" /> فعّال ومحمي
-                </span>
+          {/* Card 2: Branches */}
+          <Link
+            href="/branches"
+            id="kpi-branches"
+            className="group rounded-2xl border border-[#234235] bg-[#162821]/80 p-5 hover:border-[#2f9e6b]/60 transition-all shadow-lg hover:shadow-[#2f9e6b]/10"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-medium text-[#9bb5a8]">الفروع التشغيلية</span>
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#3b82f6]/15 text-[#60a5fa] group-hover:scale-110 transition-transform">
+                <GitBranch className="h-5 w-5" />
               </div>
             </div>
+            <div className="flex items-baseline justify-between">
+              <span className="text-2xl sm:text-3xl font-extrabold text-white">
+                {branches.length}
+              </span>
+              <span className="text-xs text-[#60a5fa] flex items-center gap-0.5">
+                إدارة الفروع <ArrowUpRight className="h-3.5 w-3.5" />
+              </span>
+            </div>
+          </Link>
 
-            {/* Tenant switcher selector if user has more than 1 membership */}
-            {memberships.length > 1 && (
-              <div className="mt-6 pt-4 border-t border-[#234235]">
-                <label className="block text-xs font-semibold text-[#9bb5a8] mb-2">
-                  التبديل بين أكاديمياتك المتاحة ({memberships.length}):
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {memberships.map((m) => (
-                    <button
-                      key={m.tenantId}
-                      type="button"
-                      onClick={() => void switchTenant(m.tenantId)}
-                      className={`flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-medium transition-all ${
-                        m.tenantId === activeTenant?.tenantId
-                          ? 'border border-[#2f9e6b] bg-[#2f9e6b]/20 text-[#45c387] shadow-sm'
-                          : 'border border-[#234235] bg-[#0f1c18] text-[#9bb5a8] hover:border-[#2b4c3e] hover:text-white'
-                      }`}
-                    >
-                      <Building2 className="h-3.5 w-3.5" />
-                      <span>{m.tenantName}</span>
-                    </button>
-                  ))}
-                </div>
+          {/* Card 3: Enrollments */}
+          <div className="rounded-2xl border border-[#234235] bg-[#162821]/80 p-5 shadow-lg">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-medium text-[#9bb5a8]">الاشتراكات بالفروع</span>
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#eab308]/15 text-[#facc15]">
+                <UserCheck className="h-5 w-5" />
               </div>
-            )}
+            </div>
+            <div className="flex items-baseline justify-between">
+              <span className="text-2xl sm:text-3xl font-extrabold text-white">
+                {activeEnrollmentsCount}
+              </span>
+              <span className="text-xs text-[#9bb5a8]">اشتراك نشط</span>
+            </div>
           </div>
 
-          {/* Security & Invariants Card */}
-          <div className="rounded-2xl border border-[#234235] bg-[#162821]/80 p-6 backdrop-blur-md space-y-4">
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <Lock className="h-4 w-4 text-[#2f9e6b]" />
-              ضمانات الأمان المطبقة (Security Invariants)
-            </h3>
-
-            <div className="space-y-3 text-xs">
-              <div className="flex items-start gap-2.5">
-                <CheckCircle2 className="h-4 w-4 text-[#45c387] shrink-0 mt-0.5" />
-                <p className="text-[#9bb5a8]">
-                  <strong className="text-white">Argon2id Hashing:</strong> حماية كلمات المرور بأعلى
-                  معايير التشفير ضد هجمات القوة الغاشمة.
-                </p>
+          {/* Card 4: Staff */}
+          <div className="rounded-2xl border border-[#234235] bg-[#162821]/80 p-5 shadow-lg">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-medium text-[#9bb5a8]">الكادر الفني والإداري</span>
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#8b5cf6]/15 text-[#a78bfa]">
+                <Trophy className="h-5 w-5" />
               </div>
-
-              <div className="flex items-start gap-2.5">
-                <CheckCircle2 className="h-4 w-4 text-[#45c387] shrink-0 mt-0.5" />
-                <p className="text-[#9bb5a8]">
-                  <strong className="text-white">PostgreSQL Tenant RLS:</strong> عزل تام لقواعد
-                  البيانات لكل أكاديمية بدون إمكانية تداخل السجلات.
-                </p>
-              </div>
-
-              <div className="flex items-start gap-2.5">
-                <CheckCircle2 className="h-4 w-4 text-[#45c387] shrink-0 mt-0.5" />
-                <p className="text-[#9bb5a8]">
-                  <strong className="text-white">Token Family Rotation:</strong> كشف فوري لإعادة
-                  استخدام رموز التحديث وإلغاء العائلة المخترقة تلقائياً.
-                </p>
-              </div>
-
-              <div className="flex items-start gap-2.5">
-                <CheckCircle2 className="h-4 w-4 text-[#45c387] shrink-0 mt-0.5" />
-                <p className="text-[#9bb5a8]">
-                  <strong className="text-white">HttpOnly Cookies:</strong> الرموز محصنة ضد ثغرات
-                  XSS وعمليات الاستيلاء على الجلسة.
-                </p>
-              </div>
+            </div>
+            <div className="flex items-baseline justify-between">
+              <span className="text-2xl sm:text-3xl font-extrabold text-white">{staffCount}</span>
+              <span className="text-xs text-[#9bb5a8]">عضو معتمد</span>
             </div>
           </div>
         </div>
 
-        {/* Staff & Branches Overview (Sprint 1 Operational Verification) */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Staff Members */}
-          <div className="rounded-2xl border border-[#234235] bg-[#162821]/80 p-6 backdrop-blur-md">
-            <div className="flex items-center justify-between mb-4">
+        {/* Main Content Grid: Recent Players & Branches List */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Left / Center 2 Cols: Recent Players */}
+          <div className="lg:col-span-2 rounded-2xl border border-[#234235] bg-[#162821]/80 p-6 backdrop-blur-md space-y-5">
+            <div className="flex items-center justify-between border-b border-[#234235] pb-4">
               <div className="flex items-center gap-2">
                 <Users className="h-5 w-5 text-[#2f9e6b]" />
-                <h3 className="font-bold text-white text-base">طاقم الأكاديمية (Staff)</h3>
+                <h2 className="text-lg font-bold text-white">أحدث اللاعبين المسجلين</h2>
               </div>
-              <span className="rounded-md bg-[#234235] px-2 py-0.5 text-xs text-[#9bb5a8]">
-                {staff.length} أعضاء
-              </span>
+              <Link
+                href="/players"
+                id="link-view-all-players"
+                className="text-xs font-semibold text-[#45c387] hover:underline flex items-center gap-1"
+              >
+                عرض كل اللاعبين ({totalPlayers})
+                <ChevronLeft className="h-4 w-4" />
+              </Link>
             </div>
 
-            <div className="divide-y divide-[#234235] overflow-hidden rounded-xl border border-[#234235] bg-[#0f1c18]/60">
-              {staff.length === 0 ? (
-                <div className="p-6 text-center text-xs text-[#9bb5a8]">
-                  لا يوجد أعضاء طاقم إضافيين حتى الآن. يمكنك دعوة مدربين واستقبال قريباً.
-                </div>
-              ) : (
-                staff.map((member) => (
-                  <div
-                    key={member.id}
-                    className="flex items-center justify-between p-3.5 hover:bg-[#162821]/50 transition-colors"
-                  >
-                    <div>
-                      <p className="text-xs font-semibold text-white">{member.user.name}</p>
-                      <p className="text-[11px] text-[#9bb5a8] font-mono">{member.user.email}</p>
-                    </div>
-                    <div className="text-left">
-                      <span className="inline-block rounded bg-[#234235] px-2 py-0.5 text-[11px] text-[#45c387]">
-                        {ROLE_LABELS_AR[member.role] || member.role}
-                      </span>
-                      {member.branch && (
-                        <p className="text-[10px] text-[#9bb5a8] mt-0.5">{member.branch.name}</p>
-                      )}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
+            {players.length === 0 ? (
+              <div className="py-12 text-center text-[#9bb5a8]">
+                <Users className="h-12 w-12 mx-auto text-[#234235] mb-3" />
+                <p className="text-sm font-medium text-[#e8f0ec]">
+                  لم يتم تسجيل أي لاعبين حتى الآن
+                </p>
+                <p className="text-xs text-[#9bb5a8] mt-1 mb-4">
+                  ابدأ بتسجيل أول لاعب في الأكاديمية وربطه بالفرع وولي الأمر.
+                </p>
+                <Link
+                  href="/players/new"
+                  className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#2f9e6b] to-[#36b379] px-4 py-2 text-xs font-semibold text-[#062016] shadow hover:brightness-110"
+                >
+                  <UserPlus className="h-4 w-4" />
+                  <span>تسجيل أول لاعب</span>
+                </Link>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-right text-xs">
+                  <thead>
+                    <tr className="border-b border-[#234235] text-[#9bb5a8]">
+                      <th className="py-2.5 px-3 font-semibold">اللاعب</th>
+                      <th className="py-2.5 px-3 font-semibold">الفرع</th>
+                      <th className="py-2.5 px-3 font-semibold">ولي الأمر</th>
+                      <th className="py-2.5 px-3 font-semibold">الحالة</th>
+                      <th className="py-2.5 px-3 font-semibold text-left">الإجراء</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#234235]">
+                    {players.map((p) => {
+                      const currentBranch = p.currentBranch;
+                      const primaryGuardian = p.primaryGuardian;
+
+                      return (
+                        <tr key={p.id} className="hover:bg-[#1a3328]/40 transition-colors">
+                          <td className="py-3 px-3">
+                            <div className="flex items-center gap-2.5">
+                              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#2f9e6b]/20 text-[#45c387] font-bold text-xs">
+                                {p.firstName.charAt(0)}
+                              </div>
+                              <div>
+                                <div className="font-semibold text-white">
+                                  {p.firstName} {p.lastName}
+                                </div>
+                                <div className="text-[11px] text-[#9bb5a8]">
+                                  {p.gender === 'MALE' ? 'ذكر' : 'أنثى'} •{' '}
+                                  {p.dateOfBirth.slice(0, 10)}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-3 px-3">
+                            <span className="text-[#e8f0ec]">
+                              {currentBranch?.name || 'غير مسجل بفرع'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3">
+                            {primaryGuardian ? (
+                              <div>
+                                <span className="text-[#e8f0ec] block">
+                                  {primaryGuardian.firstName} {primaryGuardian.lastName}
+                                </span>
+                                <span className="text-[10px] text-[#9bb5a8] font-mono flex items-center gap-1">
+                                  <Phone className="h-3 w-3" /> {primaryGuardian.phone}
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-[#9bb5a8]">-</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-3">
+                            <span
+                              className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                                p.status === 'ACTIVE'
+                                  ? 'bg-[#2f9e6b]/20 text-[#45c387] border border-[#2f9e6b]/30'
+                                  : 'bg-[#ef4444]/20 text-[#fca5a5] border border-[#ef4444]/30'
+                              }`}
+                            >
+                              {p.status === 'ACTIVE' ? 'نشط' : 'غير نشط'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 text-left">
+                            <Link
+                              href={`/players/${p.id}`}
+                              className="inline-flex items-center gap-1 rounded-lg border border-[#2b4c3e] bg-[#0f1c18] px-2.5 py-1 text-[11px] font-medium text-[#e8f0ec] hover:border-[#2f9e6b] hover:text-[#45c387] transition-all"
+                            >
+                              الملف
+                            </Link>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
 
-          {/* Branches */}
-          <div className="rounded-2xl border border-[#234235] bg-[#162821]/80 p-6 backdrop-blur-md">
-            <div className="flex items-center justify-between mb-4">
+          {/* Right 1 Col: Operational Branches List */}
+          <div className="rounded-2xl border border-[#234235] bg-[#162821]/80 p-6 backdrop-blur-md space-y-4">
+            <div className="flex items-center justify-between border-b border-[#234235] pb-4">
               <div className="flex items-center gap-2">
                 <GitBranch className="h-5 w-5 text-[#2f9e6b]" />
-                <h3 className="font-bold text-white text-base">فروع الأكاديمية (Branches)</h3>
+                <h2 className="text-lg font-bold text-white">فروع الأكاديمية</h2>
               </div>
-              <span className="rounded-md bg-[#234235] px-2 py-0.5 text-xs text-[#9bb5a8]">
-                {branches.length} فروع
-              </span>
+              <Link
+                href="/branches"
+                className="text-xs font-semibold text-[#45c387] hover:underline"
+              >
+                إدارة
+              </Link>
             </div>
 
-            <div className="divide-y divide-[#234235] overflow-hidden rounded-xl border border-[#234235] bg-[#0f1c18]/60">
-              {branches.length === 0 ? (
-                <div className="p-6 text-center text-xs text-[#9bb5a8]">
-                  يتم تحميل بيانات الفروع...
-                </div>
-              ) : (
-                branches.map((b) => (
+            {branches.length === 0 ? (
+              <div className="py-8 text-center text-[#9bb5a8]">
+                <GitBranch className="h-8 w-8 mx-auto text-[#234235] mb-2" />
+                <p className="text-xs">لم يتم تسجيل فروع حتى الآن</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {branches.map((b) => (
                   <div
                     key={b.id}
-                    className="flex items-center justify-between p-3.5 hover:bg-[#162821]/50 transition-colors"
+                    className="rounded-xl border border-[#234235] bg-[#0f1c18]/60 p-3.5 space-y-2 hover:border-[#2f9e6b]/40 transition-colors"
                   >
-                    <div>
-                      <p className="text-xs font-semibold text-white">{b.name}</p>
-                      <p className="text-[11px] text-[#9bb5a8]">{b.city || 'الفرع الرئيسي'}</p>
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-bold text-white text-sm">{b.name}</h4>
+                      {b.code && (
+                        <span className="rounded bg-[#234235] px-1.5 py-0.5 text-[10px] font-mono text-[#45c387]">
+                          {b.code}
+                        </span>
+                      )}
                     </div>
-                    <span className="rounded bg-[#234235] px-2 py-0.5 text-[11px] font-mono text-[#9bb5a8]">
-                      {b.code || 'MAIN'}
-                    </span>
+                    <div className="text-xs text-[#9bb5a8] flex items-center justify-between">
+                      <span>{b.city || 'المدينة غير محددة'}</span>
+                      <span className="text-[#45c387] font-semibold">
+                        {b.activePlayersCount || 0} لاعب
+                      </span>
+                    </div>
                   </div>
-                ))
-              )}
+                ))}
+              </div>
+            )}
+
+            <div className="pt-2">
+              <Link
+                href="/branches"
+                id="btn-add-branch-dashboard"
+                className="w-full flex items-center justify-center gap-2 rounded-xl border border-dashed border-[#2f9e6b]/40 bg-[#2f9e6b]/5 py-2.5 text-xs font-medium text-[#45c387] hover:bg-[#2f9e6b]/10 transition-colors"
+              >
+                <GitBranch className="h-4 w-4" />
+                <span>إضافة أو تعديل فرع</span>
+              </Link>
             </div>
           </div>
         </div>
