@@ -24,6 +24,7 @@ const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_BUILD_ID: initialBuildId,
   },
+  generateBuildId: async () => initialBuildId || `build-${Date.now().toString(36)}`,
   async headers() {
     return [
       {

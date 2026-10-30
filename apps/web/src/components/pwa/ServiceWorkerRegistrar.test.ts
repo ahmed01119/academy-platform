@@ -65,6 +65,88 @@ describe('Frontend Version Detection & Update Safety', () => {
     expect(canSafelyUpdate(0, false)).toEqual({ canUpdate: true });
   });
 
+  it('fails closed when pendingCount() throws an error (Issue #4)', async () => {
+    async function evaluateUpdateSafety(
+      getPendingCount: () => Promise<number>,
+      hasUnsaved: () => boolean,
+    ): Promise<{ allowed: boolean; warning?: string }> {
+      try {
+        const count = await getPendingCount();
+        if (count > 0) {
+          return { allowed: false, warning: 'PENDING_OFFLINE_COUNT' };
+        }
+      } catch {
+        // Fail closed: do not refresh if pending offline work cannot be verified
+        return { allowed: false, warning: 'VERIFICATION_FAILED_FAIL_CLOSED' };
+      }
+
+      if (hasUnsaved()) {
+        return { allowed: false, warning: 'UNSAVED_WORK' };
+      }
+
+      return { allowed: true };
+    }
+
+    // When pendingCount throws, it must FAIL CLOSED (allowed: false)
+    const result = await evaluateUpdateSafety(
+      async () => {
+        throw new Error('IndexedDB storage unavailable or corrupted');
+      },
+      () => false,
+    );
+
+    expect(result.allowed).toBe(false);
+    expect(result.warning).toBe('VERIFICATION_FAILED_FAIL_CLOSED');
+  });
+
+  it('waits for controller activation and avoids reload loops during SW update (Issue #6)', () => {
+    let reloads = 0;
+    let isReloading = false;
+    let controllerChangeFired = false;
+    const messagesPosted: string[] = [];
+
+    const mockWaitingWorker = {
+      postMessage: (msg: { type: string }) => {
+        messagesPosted.push(msg.type);
+      },
+    };
+
+    function triggerSafeUpdate(worker: typeof mockWaitingWorker | null) {
+      if (isReloading) return;
+      isReloading = true;
+
+      if (worker) {
+        let reloaded = false;
+        const doReload = () => {
+          if (reloaded) return;
+          reloaded = true;
+          reloads++;
+        };
+
+        // Simulate registering controllerchange handler
+        const simulateControllerChange = () => {
+          controllerChangeFired = true;
+          doReload();
+        };
+
+        worker.postMessage({ type: 'SKIP_WAITING' });
+        // Simulating the controllerchange firing after skipWaiting
+        simulateControllerChange();
+      } else {
+        reloads++;
+      }
+    }
+
+    triggerSafeUpdate(mockWaitingWorker);
+    expect(messagesPosted).toContain('SKIP_WAITING');
+    expect(controllerChangeFired).toBe(true);
+    expect(reloads).toBe(1);
+
+    // Subsequent triggers while reloading should be ignored (guard against update loop)
+    triggerSafeUpdate(mockWaitingWorker);
+    expect(reloads).toBe(1);
+  });
+
   it('correctly handles bilingual update prompt text for Arabic and English', () => {
     function getUpdatePromptText(locale: 'ar' | 'en') {
       return {

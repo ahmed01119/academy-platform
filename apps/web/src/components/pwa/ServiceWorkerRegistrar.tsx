@@ -31,6 +31,7 @@ export function ServiceWorkerRegistrar() {
   const [pendingWarning, setPendingWarning] = useState<string | null>(null);
   const [dismissed, setDismissed] = useState(false);
   const registrationRef = useRef<ServiceWorkerRegistration | null>(null);
+  const isReloadingRef = useRef(false);
 
   const checkVersionManifest = useCallback(async () => {
     if (typeof window === 'undefined') return;
@@ -140,7 +141,13 @@ export function ServiceWorkerRegistrar() {
         return;
       }
     } catch {
-      // Ignore count error and continue check
+      // Issue #4: Fail closed and prevent updates when pending offline work cannot be verified
+      setPendingWarning(
+        locale === 'ar'
+          ? 'تعذر التحقق من العمليات غير المتزامنة. تم إيقاف التحديث للحفاظ على بياناتك. يرجى إعادة المحاولة لاحقاً.'
+          : 'Unable to verify pending offline work. Update halted to protect local data. Please try again later.',
+      );
+      return;
     }
 
     if (hasUnsavedWork()) {
@@ -152,10 +159,31 @@ export function ServiceWorkerRegistrar() {
       return;
     }
 
+    if (isReloadingRef.current) return;
+    isReloadingRef.current = true;
+
     if (waitingWorker) {
+      // Issue #6: Wait for safe controller activation before reloading to prevent update loops
+      let reloaded = false;
+      const doReload = () => {
+        if (reloaded) return;
+        reloaded = true;
+        window.location.reload();
+      };
+
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.addEventListener('controllerchange', doReload, {
+          once: true,
+        });
+      }
+
       waitingWorker.postMessage({ type: 'SKIP_WAITING' });
+
+      // Fallback reload if controllerchange event does not fire within 3 seconds
+      window.setTimeout(doReload, 3000);
+    } else {
+      window.location.reload();
     }
-    window.location.reload();
   };
 
   return (

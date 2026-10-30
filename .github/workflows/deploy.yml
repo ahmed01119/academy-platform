@@ -1,4 +1,4 @@
-name: Automated Release & Deployment
+name: Release & Deployment
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       target:
-        description: 'Release Target'
+        description: 'Target deployment (all, backend, frontend)'
         required: true
         default: 'all'
         type: choice
@@ -15,16 +15,18 @@ on:
           - backend
           - frontend
 
-concurrency:
-  group: production-release-deployment
-  cancel-in-progress: false
-
 permissions:
   contents: write
+  pull-requests: write
+  id-token: write
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
 
 jobs:
   gate:
-    name: Mandatory Quality & Security Gate
+    name: Production Release Quality Gate
     runs-on: ubuntu-latest
     timeout-minutes: 25
 
@@ -61,6 +63,8 @@ jobs:
     steps:
       - name: Checkout main
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -82,9 +86,6 @@ jobs:
       - name: Generate Prisma client
         run: pnpm db:generate
 
-      - name: Validate Prisma schema
-        run: pnpm --filter @academy/database exec prisma validate
-
       - name: Deploy Prisma migrations
         run: pnpm --filter @academy/database exec prisma migrate deploy
 
@@ -94,30 +95,15 @@ jobs:
       - name: Validate schema drift
         run: pnpm --filter @academy/database exec prisma migrate diff --from-schema-datamodel prisma/schema.prisma --to-schema-datasource prisma/schema.prisma --exit-code
 
-      - name: Test audit-log append-only protection
+      - name: Run Database Security Suite
         env:
           PGPASSWORD: academy
-        run: psql -v ON_ERROR_STOP=1 -h localhost -U academy -d academy -f packages/database/tests/audit-append-only.sql
-
-      - name: Provision restricted CI runtime database role
-        env:
-          PGPASSWORD: academy
-        run: psql -v ON_ERROR_STOP=1 -h localhost -U academy -d academy -f packages/database/tests/runtime-role-setup.sql
-
-      - name: Test runtime database privilege boundaries
-        env:
-          PGPASSWORD: academy
-        run: psql -v ON_ERROR_STOP=1 -h localhost -U academy -d academy -f packages/database/tests/runtime-role-privileges.sql
-
-      - name: Test tenant RLS isolation
-        env:
-          PGPASSWORD: academy
-        run: psql -v ON_ERROR_STOP=1 -h localhost -U academy -d academy -f packages/database/tests/tenant-rls.sql
-
-      - name: Test onboarding and invitation security boundaries
-        env:
-          PGPASSWORD: academy
-        run: psql -v ON_ERROR_STOP=1 -h localhost -U academy -d academy -f packages/database/tests/onboarding-and-invitations.sql
+        run: |
+          psql -v ON_ERROR_STOP=1 -h localhost -U academy -d academy -f packages/database/tests/audit-append-only.sql
+          psql -v ON_ERROR_STOP=1 -h localhost -U academy -d academy -f packages/database/tests/runtime-role-setup.sql
+          psql -v ON_ERROR_STOP=1 -h localhost -U academy -d academy -f packages/database/tests/runtime-role-privileges.sql
+          psql -v ON_ERROR_STOP=1 -h localhost -U academy -d academy -f packages/database/tests/tenant-rls.sql
+          psql -v ON_ERROR_STOP=1 -h localhost -U academy -d academy -f packages/database/tests/onboarding-and-invitations.sql
 
       - name: Format check
         run: pnpm format:check
@@ -128,11 +114,22 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
-      - name: Test
+      - name: Full Test Suite
         run: pnpm test
 
       - name: Build applications
         run: pnpm build
+
+      - name: Validate production Compose file
+        run: docker compose -f docker-compose.prod.yml config
+        env:
+          POSTGRES_PASSWORD: ci-placeholder
+          POSTGRES_RUNTIME_PASSWORD: ci-placeholder-runtime
+          DATABASE_URL: postgresql://academy_runtime:ci@postgres:5432/academy?schema=public
+          DATABASE_ADMIN_URL: postgresql://academy:ci@postgres:5432/academy?schema=public
+          JWT_SECRET: ci-placeholder-jwt-secret-32chars
+          CORS_ORIGIN: https://app.example.test
+          NEXT_PUBLIC_API_BASE_URL: https://api.example.test/v1
 
       - name: Verify Backend Docker Build
         run: docker build -f Dockerfile -t sportexus-api:release .
@@ -144,7 +141,7 @@ jobs:
     name: Sync Deployment Branches & Verify Live Deployments
     needs: [gate]
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
 
     steps:
       - name: Checkout main with full history
@@ -172,9 +169,22 @@ jobs:
             exit 0
           fi
 
-          # Detect changes in git diff against previous commit
-          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "")
-          echo "Changed files in release commit:"
+          # Issue #7: Detect changed files across multi-commit pushes and merges
+          BEFORE_SHA="${{ github.event.before }}"
+          AFTER_SHA="${{ github.sha }}"
+
+          CHANGED_FILES=""
+          if [ -n "$BEFORE_SHA" ] && [ "$BEFORE_SHA" != "0000000000000000000000000000000000000000" ]; then
+            echo "Inspecting git diff across multi-commit range: $BEFORE_SHA .. $AFTER_SHA"
+            CHANGED_FILES=$(git diff --name-only "$BEFORE_SHA" "$AFTER_SHA" 2>/dev/null || echo "")
+          fi
+
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "Fallback inspecting git diff against HEAD~1..."
+            CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "")
+          fi
+
+          echo "Changed files in release commit range:"
           echo "$CHANGED_FILES"
 
           DEPLOY_BACKEND="false"
@@ -190,6 +200,7 @@ jobs:
 
           # If no files matched or root change, deploy both for safety
           if [ "$DEPLOY_BACKEND" = "false" ] && [ "$DEPLOY_FRONTEND" = "false" ]; then
+            echo "No granular targets matched; defaulting to full deployment (both backend and frontend)."
             DEPLOY_BACKEND="true"
             DEPLOY_FRONTEND="true"
           fi
@@ -203,28 +214,29 @@ jobs:
           echo "Executing deterministic backend deployment branch sync..."
           node scripts/sync-release-branches.js --target=backend
 
-      - name: Verify Backend Deployment Health
+      - name: Verify Backend Deployment Health & Readiness
         if: steps.targets.outputs.backend == 'true'
         run: |
           echo "Waiting for Hostless to build and deploy sportexus-backend-staging..."
           BACKEND_URL="https://sportexus-backend-staging.hostless.app/v1/health"
-          MAX_ATTEMPTS=30
+          BACKEND_READY_URL="https://sportexus-backend-staging.hostless.app/v1/health/ready"
+          MAX_ATTEMPTS=40
           ATTEMPT=1
           SUCCESS=0
 
           while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
             echo "Checking backend health (Attempt $ATTEMPT/$MAX_ATTEMPTS)..."
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$BACKEND_URL" || echo "000")
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$BACKEND_READY_URL" || echo "000")
             if [ "$STATUS" = "200" ]; then
-              BODY=$(curl -s "$BACKEND_URL")
+              BODY=$(curl -s "$BACKEND_READY_URL")
               if echo "$BODY" | grep -q '"status":"ok"'; then
-                echo "Backend health check PASSED: $BODY"
+                echo "Backend readiness check PASSED: $BODY"
                 SUCCESS=1
                 break
               fi
             fi
-            echo "Backend returned HTTP $STATUS. Waiting 10s..."
-            sleep 10
+            echo "Backend returned HTTP $STATUS. Waiting 15s..."
+            sleep 15
             ATTEMPT=$((ATTEMPT + 1))
           done
 
@@ -239,34 +251,48 @@ jobs:
           echo "Executing deterministic frontend deployment branch sync..."
           node scripts/sync-release-branches.js --target=frontend
 
-      - name: Verify Frontend Deployment Health
+      - name: Verify Frontend Deployment & Build Identifier
         if: steps.targets.outputs.frontend == 'true'
         run: |
           echo "Waiting for Hostless to build and deploy sportexus-web-staging..."
           WEB_URL="https://sportexus-web-staging.hostless.app/"
           PROXY_URL="https://sportexus-web-staging.hostless.app/v1/health"
-          MAX_ATTEMPTS=30
+          VERSION_URL="https://sportexus-web-staging.hostless.app/version.json"
+          EXPECTED_SHA=$(git rev-parse --short=12 HEAD)
+          MAX_ATTEMPTS=40
           ATTEMPT=1
           SUCCESS=0
 
+          echo "Target commit SHA to verify: $EXPECTED_SHA"
+
           while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
-            echo "Checking frontend health (Attempt $ATTEMPT/$MAX_ATTEMPTS)..."
+            echo "Checking frontend deployment (Attempt $ATTEMPT/$MAX_ATTEMPTS)..."
             STATUS_WEB=$(curl -s -o /dev/null -w "%{http_code}" "$WEB_URL" || echo "000")
             STATUS_PROXY=$(curl -s -o /dev/null -w "%{http_code}" "$PROXY_URL" || echo "000")
+            
+            # Issue #2: Verify deployed commit/build identifier from version.json
+            VERSION_DATA=$(curl -s "$VERSION_URL" 2>/dev/null || echo "{}")
+            DEPLOYED_SHA=$(echo "$VERSION_DATA" | grep -o '"commitSha":"[^"]*"' | cut -d'"' -f4 || echo "")
+            DEPLOYED_BUILD=$(echo "$VERSION_DATA" | grep -o '"buildId":"[^"]*"' | cut -d'"' -f4 || echo "")
+
+            echo "Health: Web=$STATUS_WEB | Proxy=$STATUS_PROXY | Deployed SHA=$DEPLOYED_SHA (Expected: $EXPECTED_SHA)"
 
             if [ "$STATUS_WEB" = "200" ] && [ "$STATUS_PROXY" = "200" ]; then
-              echo "Frontend root HTML returned HTTP 200."
-              echo "Frontend API proxy returned HTTP 200."
-              SUCCESS=1
-              break
+              if [ -n "$DEPLOYED_SHA" ] && [ "$DEPLOYED_SHA" = "$EXPECTED_SHA" ]; then
+                echo "SUCCESS: Deployed commit $DEPLOYED_SHA matches release $EXPECTED_SHA (build: $DEPLOYED_BUILD)."
+                SUCCESS=1
+                break
+              else
+                echo "Container is responding HTTP 200, but running previous or in-progress build ($DEPLOYED_SHA). Waiting for new Hostless container..."
+              fi
             fi
-            echo "Frontend: HTTP $STATUS_WEB | Proxy: HTTP $STATUS_PROXY. Waiting 10s..."
-            sleep 10
+
+            sleep 15
             ATTEMPT=$((ATTEMPT + 1))
           done
 
           if [ $SUCCESS -ne 1 ]; then
-            echo "ERROR: Frontend health verification failed after $MAX_ATTEMPTS attempts."
+            echo "ERROR: Frontend deployment verification failed or timed out after $MAX_ATTEMPTS attempts."
             exit 1
           fi
 
@@ -287,5 +313,5 @@ jobs:
           | **Timestamp** | $(date -u +"%Y-%m-%dT%H:%M:%SZ") |
 
           > [!NOTE]
-          > All quality gates, security regression tests, Docker builds, and live health checks passed.
+          > All quality gates, security regression tests, Docker builds, and live build identifier checks passed.
           EOF

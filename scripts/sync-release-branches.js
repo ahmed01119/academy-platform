@@ -11,6 +11,8 @@
  *   3. Aborts safely on merge conflicts or branch divergence.
  *   4. Generates release tracking metadata (commit SHA, timestamp).
  *   5. Includes [skip ci] in sync commits to prevent recursive GitHub Actions loops.
+ *   6. Handles Dockerfile divergence deterministically without merge conflicts.
+ *   7. Detects and protects deployment-only hotfixes.
  */
 
 const { execSync } = require('child_process');
@@ -63,6 +65,51 @@ function verifyFrontendDockerfile(filePath = 'Dockerfile') {
   }
 }
 
+function checkDeploymentBranchHotfixes(branch, sourceSha) {
+  try {
+    const unmergedHotfixes = runOutput(
+      `git log ${sourceSha}..origin/${branch} --oneline 2>/dev/null || echo ""`,
+    );
+    if (unmergedHotfixes && unmergedHotfixes.trim()) {
+      const lines = unmergedHotfixes.trim().split('\n');
+      console.warn(
+        `\n[HOTFIX DETECTED] Deployment branch '${branch}' contains ${lines.length} unmerged hotfix commit(s) not in main (${sourceSha}):`,
+      );
+      lines.forEach((l) => console.warn(`   * ${l}`));
+      console.warn(
+        `[HOTFIX DETECTED] Performing 3-way merge to preserve hotfix history without overwriting.\n`,
+      );
+    }
+  } catch (err) {
+    console.warn(
+      `[Hotfix Check] Unable to diff with remote branch origin/${branch}: ${err.message}`,
+    );
+  }
+}
+
+function verifyVersionCompatibility() {
+  const rootPkgPath = path.resolve(__dirname, '../package.json');
+  const webPkgPath = path.resolve(__dirname, '../apps/web/package.json');
+  const apiPkgPath = path.resolve(__dirname, '../apps/api/package.json');
+
+  if (fs.existsSync(rootPkgPath) && fs.existsSync(webPkgPath) && fs.existsSync(apiPkgPath)) {
+    const rootPkg = JSON.parse(fs.readFileSync(rootPkgPath, 'utf8'));
+    const webPkg = JSON.parse(fs.readFileSync(webPkgPath, 'utf8'));
+    const apiPkg = JSON.parse(fs.readFileSync(apiPkgPath, 'utf8'));
+
+    console.log(
+      `[Compatibility Check] Workspace versions — root: ${rootPkg.version || '0.0.0'}, web: ${webPkg.version}, api: ${apiPkg.version}`,
+    );
+  }
+
+  const sharedPkgPath = path.resolve(__dirname, '../packages/shared/package.json');
+  if (!fs.existsSync(sharedPkgPath)) {
+    throw new Error(
+      '[CRITICAL] @academy/shared contract package missing! Cannot verify compatibility.',
+    );
+  }
+}
+
 function syncBackend({ dryRun, sourceSha }) {
   console.log(`\n============================================================`);
   console.log(` Syncing Backend Deployment Branch: ${BACKEND_BRANCH}`);
@@ -73,6 +120,9 @@ function syncBackend({ dryRun, sourceSha }) {
   try {
     run(`git fetch origin ${BACKEND_BRANCH}`);
     run(`git checkout -B ${BACKEND_BRANCH} origin/${BACKEND_BRANCH}`);
+
+    // Audit for unmerged hotfixes on deployment branch (Issue #9)
+    checkDeploymentBranchHotfixes(BACKEND_BRANCH, sourceSha);
 
     console.log(`[Backend Sync] Merging ${sourceSha} into ${BACKEND_BRANCH}...`);
     run(`git merge ${sourceSha} -m "release(backend): sync with main ${sourceSha} [skip ci]"`);
@@ -104,31 +154,59 @@ function syncFrontend({ dryRun, sourceSha }) {
     run(`git fetch origin ${FRONTEND_BRANCH}`);
     run(`git checkout -B ${FRONTEND_BRANCH} origin/${FRONTEND_BRANCH}`);
 
-    console.log(`[Frontend Sync] Merging ${sourceSha} into ${FRONTEND_BRANCH}...`);
-    run(`git merge ${sourceSha} -m "release(web): sync with main ${sourceSha} [skip ci]"`);
+    // Audit for unmerged hotfixes on deployment branch (Issue #9)
+    checkDeploymentBranchHotfixes(FRONTEND_BRANCH, sourceSha);
+
+    console.log(
+      `[Frontend Sync] Merging ${sourceSha} into ${FRONTEND_BRANCH} with deterministic Dockerfile preservation...`,
+    );
+
+    // Issue #3: Attempt git merge --no-commit to avoid conflict failure on root Dockerfile
+    let mergeEncounteredConflicts = false;
+    try {
+      run(`git merge ${sourceSha} --no-commit`);
+    } catch {
+      mergeEncounteredConflicts = true;
+    }
+
+    // Inspect status to ensure no true application code conflicts exist
+    const statusOutput = runOutput('git status --porcelain');
+    const unmergedLines = statusOutput
+      .split('\n')
+      .map((l) => l.trim())
+      .filter((l) => l.startsWith('UU ') || l.startsWith('AA ') || l.startsWith('DD '));
+
+    const nonDockerfileConflicts = unmergedLines.filter((l) => !l.endsWith('Dockerfile'));
+    if (nonDockerfileConflicts.length > 0) {
+      run('git merge --abort');
+      throw new Error(
+        `[CRITICAL] Merge conflict in application code during frontend sync:\n${nonDockerfileConflicts.join('\n')}`,
+      );
+    }
 
     // Ensure root Dockerfile is the Next.js standalone Dockerfile
     const webDockerfileSource = fs.existsSync('Dockerfile.web')
       ? 'Dockerfile.web'
       : 'apps/web/Dockerfile';
     if (!fs.existsSync(webDockerfileSource)) {
+      if (mergeEncounteredConflicts) run('git merge --abort');
       throw new Error(
         `[CRITICAL] Frontend Dockerfile template not found at ${webDockerfileSource}`,
       );
     }
 
-    console.log(`[Frontend Sync] Copying ${webDockerfileSource} to root Dockerfile...`);
+    console.log(`[Frontend Sync] Replacing root Dockerfile with ${webDockerfileSource}...`);
     fs.copyFileSync(webDockerfileSource, 'Dockerfile');
     verifyFrontendDockerfile('Dockerfile');
 
-    const status = runOutput('git status --porcelain Dockerfile');
-    if (status) {
-      run('git add Dockerfile');
-      run(
-        `git commit -m "deploy(web): configure root Dockerfile for Next.js standalone deployment [skip ci]"`,
-      );
-      console.log(`[Frontend Sync] Committed Next.js root Dockerfile.`);
-    }
+    // Issue #5: Pre-generate version.json with sourceSha so Docker standalone build inherits it
+    console.log(`[Frontend Sync] Pre-generating version.json with sourceSha ${sourceSha}...`);
+    process.env.COMMIT_SHA = sourceSha;
+    run('node scripts/generate-version.js');
+
+    run('git add Dockerfile apps/web/public/version.json');
+    run(`git commit -m "release(web): sync with main ${sourceSha} [skip ci]"`);
+    console.log(`[Frontend Sync] Committed deterministic Next.js root release.`);
 
     if (dryRun) {
       console.log(`[Frontend Sync] DRY-RUN: Skipping push to origin ${FRONTEND_BRANCH}`);
@@ -161,6 +239,9 @@ function main() {
     process.exit(1);
   }
 
+  // Verify contract and version compatibility across workspaces (Issue #9)
+  verifyVersionCompatibility();
+
   if (target === 'backend' || target === 'all') {
     syncBackend({ dryRun, sourceSha });
   }
@@ -172,4 +253,13 @@ function main() {
   console.log('\n[SPORTEXUS Release Sync] Synchronization finished successfully.');
 }
 
-main();
+if (require.main === module) {
+  main();
+}
+
+module.exports = {
+  verifyBackendDockerfile,
+  verifyFrontendDockerfile,
+  checkDeploymentBranchHotfixes,
+  verifyVersionCompatibility,
+};

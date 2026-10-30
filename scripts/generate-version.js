@@ -10,13 +10,30 @@ const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 
+function getExistingManifest() {
+  try {
+    const targetPath = path.resolve(__dirname, '../apps/web/public/version.json');
+    if (fs.existsSync(targetPath)) {
+      return JSON.parse(fs.readFileSync(targetPath, 'utf8'));
+    }
+  } catch {}
+  return null;
+}
+
 function getCommitSha() {
+  if (process.env.COMMIT_SHA) {
+    return process.env.COMMIT_SHA.slice(0, 12);
+  }
   if (process.env.GITHUB_SHA) {
     return process.env.GITHUB_SHA.slice(0, 12);
   }
   try {
     return execSync('git rev-parse --short=12 HEAD', { encoding: 'utf8' }).trim();
   } catch {
+    const existing = getExistingManifest();
+    if (existing?.commitSha && !existing.commitSha.startsWith('standalone-')) {
+      return existing.commitSha;
+    }
     return 'standalone-' + Date.now().toString(36);
   }
 }
@@ -34,7 +51,12 @@ function getPackageVersion() {
 function main() {
   const version = getPackageVersion();
   const commitSha = getCommitSha();
-  const buildId = process.env.BUILD_ID || `${commitSha}-${Date.now().toString(36)}`;
+  const existing = getExistingManifest();
+  const buildId =
+    process.env.BUILD_ID ||
+    (existing?.buildId && !existing.buildId.startsWith('standalone-')
+      ? existing.buildId
+      : `${commitSha}-${Date.now().toString(36)}`);
   const builtAt = new Date().toISOString();
 
   const manifest = {
