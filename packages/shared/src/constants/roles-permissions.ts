@@ -59,6 +59,10 @@ export const Permission = {
   GROUPS_MANAGE: 'groups.manage',
   SESSIONS_READ: 'sessions.read',
   SESSIONS_MANAGE: 'sessions.manage',
+  EVALUATIONS_READ: 'evaluations.read',
+  EVALUATIONS_CREATE: 'evaluations.create',
+  EVALUATIONS_MANAGE: 'evaluations.manage',
+  PLATFORM_MANAGE: 'platform.manage',
 } as const;
 
 export type Permission = (typeof Permission)[keyof typeof Permission];
@@ -89,6 +93,9 @@ export const ROLE_PERMISSIONS: Record<TenantRole, readonly Permission[]> = {
     Permission.GROUPS_MANAGE,
     Permission.SESSIONS_READ,
     Permission.SESSIONS_MANAGE,
+    Permission.EVALUATIONS_READ,
+    Permission.EVALUATIONS_CREATE,
+    Permission.EVALUATIONS_MANAGE,
   ],
   [TenantRole.MANAGER]: [
     Permission.BRANCHES_MANAGE,
@@ -112,6 +119,9 @@ export const ROLE_PERMISSIONS: Record<TenantRole, readonly Permission[]> = {
     Permission.GROUPS_MANAGE,
     Permission.SESSIONS_READ,
     Permission.SESSIONS_MANAGE,
+    Permission.EVALUATIONS_READ,
+    Permission.EVALUATIONS_CREATE,
+    Permission.EVALUATIONS_MANAGE,
   ],
   [TenantRole.BRANCH_MANAGER]: [
     Permission.BRANCHES_READ,
@@ -131,6 +141,8 @@ export const ROLE_PERMISSIONS: Record<TenantRole, readonly Permission[]> = {
     Permission.GROUPS_MANAGE,
     Permission.SESSIONS_READ,
     Permission.SESSIONS_MANAGE,
+    Permission.EVALUATIONS_READ,
+    Permission.EVALUATIONS_CREATE,
   ],
   [TenantRole.RECEPTIONIST]: [
     Permission.BRANCHES_READ,
@@ -152,6 +164,8 @@ export const ROLE_PERMISSIONS: Record<TenantRole, readonly Permission[]> = {
     Permission.ATTENDANCE_MARK,
     Permission.GROUPS_READ,
     Permission.SESSIONS_READ,
+    Permission.EVALUATIONS_READ,
+    Permission.EVALUATIONS_CREATE,
   ],
   [TenantRole.ACCOUNTANT]: [
     Permission.BRANCHES_READ,

@@ -209,11 +209,17 @@ export type AttendanceReportQuery = z.infer<typeof AttendanceReportQuerySchema>;
 export const AttendanceReportSummarySchema = z.object({
   totalSessions: z.number(),
   totalRecords: z.number(),
+  eligibleRecords: z.number().default(0),
   presentCount: z.number(),
   lateCount: z.number(),
   absentCount: z.number(),
   excusedCount: z.number(),
-  attendanceRate: z.number(), // percentage 0-100
+  unmarkedCount: z.number().default(0),
+  attendanceRate: z.number(), // (present + late) / eligibleRecords (0-100)
+  onTimeRate: z.number().default(0), // present / eligibleRecords (0-100)
+  lateRate: z.number().default(0), // late / eligibleRecords (0-100)
+  absenceRate: z.number().default(0), // (absent + excused) / eligibleRecords (0-100)
+  excusedRate: z.number().default(0), // excused / eligibleRecords (0-100)
   byGroup: z.array(
     z.object({
       groupId: z.string().uuid().nullable().optional(),

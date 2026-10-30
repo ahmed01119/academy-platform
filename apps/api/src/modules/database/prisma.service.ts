@@ -3,9 +3,13 @@ import {
   PrismaClient,
   withTenantTransaction,
   withAuthLookupTransaction,
+  withPlatformAdminTransaction,
+  withPortalUserTransaction,
   type TenantTransactionOptions,
   type TenantTransactionClient,
   type AuthLookupOptions,
+  type PlatformAdminTransactionOptions,
+  type PortalUserTransactionOptions,
 } from '@academy/database';
 
 @Injectable()
@@ -38,4 +42,25 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
   ): Promise<T> {
     return withAuthLookupTransaction(this, options, callback);
   }
+
+  /**
+   * Runs platform management queries under Platform Super Admin context.
+   */
+  async withPlatformAdminTransaction<T>(
+    options: PlatformAdminTransactionOptions,
+    callback: (tx: TenantTransactionClient) => Promise<T>,
+  ): Promise<T> {
+    return withPlatformAdminTransaction(this, options, callback);
+  }
+
+  /**
+   * Runs player/guardian self-service queries with user identity bound for RLS.
+   */
+  async withPortalUserTransaction<T>(
+    options: PortalUserTransactionOptions,
+    callback: (tx: TenantTransactionClient) => Promise<T>,
+  ): Promise<T> {
+    return withPortalUserTransaction(this, options, callback);
+  }
 }
+

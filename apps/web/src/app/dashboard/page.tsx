@@ -97,7 +97,7 @@ export default function DashboardPage() {
               <div className="flex items-center gap-2 mb-2">
                 <span className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-[#45c387] bg-[#2f9e6b]/15 px-2.5 py-1 rounded-full border border-[#2f9e6b]/30">
                   <ShieldCheck className="h-3.5 w-3.5" />
-                  Sprint 3 — المجموعات التدريبية والحضور والانصراف
+                  لوحة تحكم الأكاديمية والعمليات الرياضية
                 </span>
                 <span className="text-xs text-[#9bb5a8]">
                   {activeTenant?.tenantName || 'الأكاديمية النشطة'}

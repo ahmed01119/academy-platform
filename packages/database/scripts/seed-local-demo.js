@@ -575,12 +575,253 @@ async function main() {
     console.log('[Seed] Created Tomorrow Training Session (SCHEDULED) with 2 player records');
   }
 
+  // 12. Platform Super Admin User
+  const superAdminPasswordHash = await hashPassword('SuperAdmin123!');
+  let superAdminUser = await prisma.user.findUnique({
+    where: { email: 'superadmin@platform.sa' },
+  });
+  if (!superAdminUser) {
+    superAdminUser = await prisma.user.create({
+      data: {
+        email: 'superadmin@platform.sa',
+        passwordHash: superAdminPasswordHash,
+        name: 'مدير المنصة الرئيسي',
+        phone: '+966500000001',
+        isEmailVerified: true,
+        isPlatformSuperAdmin: true,
+      },
+    });
+    console.log('[Seed] Created Super Admin User:', superAdminUser.email);
+  } else {
+    await prisma.user.update({
+      where: { id: superAdminUser.id },
+      data: { isPlatformSuperAdmin: true },
+    });
+    console.log('[Seed] Updated Super Admin User:', superAdminUser.email);
+  }
+
+  // 13. Player User (Omar Al-Ghamdi)
+  const playerPasswordHash = await hashPassword('PlayerPass123!');
+  let playerUser = await prisma.user.findUnique({
+    where: { email: 'player.omar@academy.sa' },
+  });
+  if (!playerUser) {
+    playerUser = await prisma.user.create({
+      data: {
+        email: 'player.omar@academy.sa',
+        passwordHash: playerPasswordHash,
+        name: 'عمر الغامدي',
+        phone: '+966551112233',
+        isEmailVerified: true,
+      },
+    });
+    console.log('[Seed] Created Player User:', playerUser.email);
+  }
+
+  // Link Omar's player record to playerUser
+  if (seededPlayers[0]) {
+    await prisma.player.update({
+      where: { id: seededPlayers[0].id },
+      data: { userId: playerUser.id },
+    });
+    console.log('[Seed] Linked Player Omar to user:', playerUser.email);
+  }
+
+  // 14. Guardian User (Fahad Al-Ghamdi)
+  const parentPasswordHash = await hashPassword('ParentPass123!');
+  let guardianUser = await prisma.user.findUnique({
+    where: { email: 'parent.fahad@academy.sa' },
+  });
+  if (!guardianUser) {
+    guardianUser = await prisma.user.create({
+      data: {
+        email: 'parent.fahad@academy.sa',
+        passwordHash: parentPasswordHash,
+        name: 'فهد الغامدي',
+        phone: '+966551112233',
+        isEmailVerified: true,
+      },
+    });
+    console.log('[Seed] Created Guardian User:', guardianUser.email);
+  }
+
+  // Link Guardian record to guardianUser
+  const omarGuardian = await prisma.guardian.findFirst({
+    where: { playerId: seededPlayers[0].id },
+  });
+  if (omarGuardian) {
+    await prisma.guardian.update({
+      where: { id: omarGuardian.id },
+      data: { userId: guardianUser.id },
+    });
+    console.log('[Seed] Linked Guardian record to user:', guardianUser.email);
+  }
+
+  // 15. Evaluation Templates
+  let defaultTemplate = await prisma.evaluationTemplate.findFirst({
+    where: { tenantId: tenant.id, isDefault: true },
+  });
+
+  if (!defaultTemplate) {
+    defaultTemplate = await prisma.evaluationTemplate.create({
+      data: {
+        tenantId: tenant.id,
+        sport: 'FOOTBALL',
+        name: 'نموذج تقييم كرة القدم الشامل (معياري)',
+        description: 'تقييم الأداء الرباعي المتوازن: المهارات الفنية، الوعي التكتيكي، الجاهزية البدنية، والسلوك الرياضي',
+        isDefault: true,
+        criteria: [
+          { id: 'crit-1', name: 'التحكم بالكرة والمراوغة', category: 'TECHNICAL', weight: 1, maxScore: 10 },
+          { id: 'crit-2', name: 'دقة وسرعة التمرير', category: 'TECHNICAL', weight: 1, maxScore: 10 },
+          { id: 'crit-3', name: 'التمركز والرؤية الميدانية', category: 'TACTICAL', weight: 1, maxScore: 10 },
+          { id: 'crit-4', name: 'السرعة والرشاقة بالكرة', category: 'PHYSICAL', weight: 1, maxScore: 10 },
+          { id: 'crit-5', name: 'الانضباط والروح الرياضية', category: 'BEHAVIORAL', weight: 1, maxScore: 10 },
+        ],
+      },
+    });
+    console.log('[Seed] Created Default Evaluation Template:', defaultTemplate.name);
+  }
+
+  let u11Template = await prisma.evaluationTemplate.findFirst({
+    where: { tenantId: tenant.id, ageCategory: 'U-11' },
+  });
+
+  if (!u11Template) {
+    u11Template = await prisma.evaluationTemplate.create({
+      data: {
+        tenantId: tenant.id,
+        sport: 'FOOTBALL',
+        ageCategory: 'U-11',
+        name: 'نموذج تقييم فئة البراعم U-11',
+        description: 'معايير تقييم مبسطة تركز على الشغف باللعبة والمهارة الأساسية والعمل الجماعي',
+        isDefault: false,
+        criteria: [
+          { id: 'u11-1', name: 'الاستلام والتسليم', category: 'TECHNICAL', weight: 1, maxScore: 10 },
+          { id: 'u11-2', name: 'التسديد نحو المرمى', category: 'TECHNICAL', weight: 1, maxScore: 10 },
+          { id: 'u11-3', name: 'التوافق العضلي والسرعة', category: 'PHYSICAL', weight: 1, maxScore: 10 },
+          { id: 'u11-4', name: 'الاستماع لتوجيهات المدرب', category: 'BEHAVIORAL', weight: 1, maxScore: 10 },
+        ],
+      },
+    });
+    console.log('[Seed] Created U-11 Evaluation Template:', u11Template.name);
+  }
+
+  // 16. Player Evaluations (Realistic sample evaluations)
+  const existingEvalsCount = await prisma.playerEvaluation.count({
+    where: { tenantId: tenant.id },
+  });
+
+  if (existingEvalsCount === 0 && seededPlayers.length >= 3) {
+    const omar = seededPlayers[0];
+    const saud = seededPlayers[1];
+    const yousef = seededPlayers[2];
+
+    // Omar evaluation 1 (14 days ago)
+    const date1 = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
+    await prisma.playerEvaluation.create({
+      data: {
+        tenantId: tenant.id,
+        playerId: omar.id,
+        evaluatorUserId: coachUser.id,
+        templateId: defaultTemplate.id,
+        evaluationDate: date1,
+        technicalScore: 8.5,
+        tacticalScore: 8.0,
+        physicalScore: 8.2,
+        behavioralScore: 9.5,
+        overallScore: 8.55,
+        metrics: { passing: 8.5, dribbling: 8.5, speed: 8.2, discipline: 9.5 },
+        strengths: 'دقة عالية في التمريرات القصيرة وهدوء رائع تحت الضغط',
+        areasForImprovement: 'يحتاج لتطوير استخدام القدم اليسرى في التسديد السريع',
+        privateCoachNotes: 'موهبة واعدة ومرشح لقيادة خط الوسط للفريق الأول في بطولات الأكاديميات',
+        guardianFeedback: 'عمر يبدي تطوراً ملحوظاً في تركيزه ومهاراته الجماعية داخل الملعب',
+        suggestedGoals: 'التدرب اليومي على الكرات العرضية والتسديد بالقدم الضعيفة',
+        isPublished: true,
+      },
+    });
+
+    // Omar evaluation 2 (3 days ago - improvement demonstrated)
+    const date2 = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+    await prisma.playerEvaluation.create({
+      data: {
+        tenantId: tenant.id,
+        playerId: omar.id,
+        evaluatorUserId: coachUser.id,
+        sessionId: sessionToday ? sessionToday.id : undefined,
+        templateId: defaultTemplate.id,
+        evaluationDate: date2,
+        technicalScore: 9.0,
+        tacticalScore: 8.8,
+        physicalScore: 8.6,
+        behavioralScore: 9.8,
+        overallScore: 9.05,
+        metrics: { passing: 9.0, dribbling: 9.0, speed: 8.6, discipline: 9.8 },
+        strengths: 'تطور استثنائي في الربط بين خط الدفاع والهجوم، والتسديد من مسافات متوسطة',
+        areasForImprovement: 'زيادة القوة البدنية في الالتحامات الهوائية',
+        privateCoachNotes: 'أداء ناضج جداً يفوق فئته العمرية. يستحق الدعم الكامل.',
+        guardianFeedback: 'مستوى متميز وشغف عالي جداً في التدريبات الأخيرة',
+        suggestedGoals: 'المحافظة على المعدل اللياقي والتركيز على ألعاب الهواء',
+        isPublished: true,
+      },
+    });
+
+    // Saud evaluation
+    await prisma.playerEvaluation.create({
+      data: {
+        tenantId: tenant.id,
+        playerId: saud.id,
+        evaluatorUserId: coachUser.id,
+        templateId: defaultTemplate.id,
+        evaluationDate: date2,
+        technicalScore: 8.0,
+        tacticalScore: 7.5,
+        physicalScore: 8.5,
+        behavioralScore: 8.8,
+        overallScore: 8.2,
+        metrics: { passing: 8.0, dribbling: 7.8, speed: 8.5, discipline: 8.8 },
+        strengths: 'سرعة فائقة وانطلاقات هجومية سريعة على الجناح الأيمن',
+        areasForImprovement: 'العودة الدفاعية عند فقدان الكرة',
+        privateCoachNotes: 'جناح سريع يحتاج إلى تعزيز الحس الدفاعي',
+        guardianFeedback: 'سعود لاعب مجتهد وسريع التطور ونشكر اهتمامكم',
+        suggestedGoals: 'تمارين تغطية المساحات والضغط العالي',
+        isPublished: true,
+      },
+    });
+
+    // Yousef evaluation
+    await prisma.playerEvaluation.create({
+      data: {
+        tenantId: tenant.id,
+        playerId: yousef.id,
+        evaluatorUserId: coachUser.id,
+        templateId: defaultTemplate.id,
+        evaluationDate: date2,
+        technicalScore: 7.5,
+        tacticalScore: 8.2,
+        physicalScore: 7.8,
+        behavioralScore: 9.0,
+        overallScore: 8.13,
+        metrics: { passing: 7.5, dribbling: 7.5, speed: 7.8, discipline: 9.0 },
+        strengths: 'ذكاء تكتيكي عالي وتمركز ممتاز في عمق الملعب',
+        areasForImprovement: 'اللياقة الهوائية وسرعة الارتداد',
+        privateCoachNotes: 'رؤية ميدانية رائعة يحتاج إلى زيادة التحمل',
+        guardianFeedback: 'يوسف يحب كرة القدم ويسعده هذا التقييم',
+        suggestedGoals: 'تمارين الجري المتقطع لرفع مستوى التحمل',
+        isPublished: true,
+      },
+    });
+
+    console.log('[Seed] Seeded realistic performance evaluations for demo players');
+  }
+
   console.log('\n=========================================');
-  console.log(' Demo Seeding Completed Successfully! ');
+  console.log(' Academy Platform — 5-Role Demo Ready! ');
   console.log('=========================================');
-  console.log('Tenant:     أكاديمية النجوم الرياضية (stars-academy)');
-  console.log('Admin User: admin@academy.sa / AdminPass123!');
-  console.log('Coach User: coach.ahmed@academy.sa / CoachPass123!');
+  console.log('1. Platform Super Admin: superadmin@platform.sa / SuperAdmin123!');
+  console.log('2. Academy Owner/Admin:  admin@academy.sa / AdminPass123!');
+  console.log('3. Coach / Trainer:      coach.ahmed@academy.sa / CoachPass123!');
+  console.log('4. Player:               player.omar@academy.sa / PlayerPass123! (عمر الغامدي)');
+  console.log('5. Parent / Guardian:    parent.fahad@academy.sa / ParentPass123! (فهد الغامدي)');
   console.log('=========================================\n');
 }
 

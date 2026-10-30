@@ -11,3 +11,6 @@ export * from './schemas/group';
 export * from './schemas/health';
 export * from './schemas/player';
 export * from './schemas/tenant-context';
+export * from './schemas/evaluation';
+export * from './schemas/platform';
+export * from './schemas/portal';
