@@ -24,28 +24,31 @@ graph TD
 ```
 
 ### 2.1 Player Safe Deletion Protocol
+
 - **Endpoint:** `GET /players/:id/deletion-impact`
 - **Impact Metrics:**
-  * Active branch enrollments
-  * Group memberships
-  * Scheduled / completed attendance events
-  * Financial ledger transactions
+  - Active branch enrollments
+  - Group memberships
+  - Scheduled / completed attendance events
+  - Financial ledger transactions
 - **Action:** `DELETE /players/:id` marks `status: 'INACTIVE'`, terminates active enrollments with `status: 'COMPLETED'`, removes active group memberships, revokes QR cards, and preserves financial transactions.
 - **Audit:** Records `PLAYER_ARCHIVED` in the audit log.
 
 ### 2.2 Branch Safe Archiving Protocol
+
 - **Endpoint:** `GET /branches/:id/deletion-impact`
 - **Impact Metrics:**
-  * Active player enrollments
-  * Training groups
-  * Scheduled / in-progress attendance sessions
-  * Active assigned staff memberships
-  * Financial transactions recorded under branch
+  - Active player enrollments
+  - Training groups
+  - Scheduled / in-progress attendance sessions
+  - Active assigned staff memberships
+  - Financial transactions recorded under branch
 - **Action:** `DELETE /branches/:id` sets `status: 'INACTIVE'`.
 - **Integrity Guarantee:** Prevents SQL foreign key constraint violations while preserving historical session cashier closings and invoices.
 - **Audit:** Records `BRANCH_ARCHIVED` in the audit log.
 
 ### 2.3 Platform Academy & User Protection
+
 - **Last Owner Safeguard:** Super Admins cannot suspend or delete the sole remaining Platform Owner (`isPlatformOwner: true`).
 - **Suspension vs Deletion:** Academy suspension revokes all user sessions and prevents login while preserving all tenant data intact for restoration.
 
@@ -60,6 +63,7 @@ graph TD
 ---
 
 ## 4. Test Suite & Verification Status
+
 - **@academy/api:** 190 / 190 tests passing (including new branch impact and archive unit tests).
 - **@academy/web:** 35 / 35 tests passing.
 - **@academy/shared:** 27 / 27 tests passing.

@@ -228,10 +228,16 @@ export function ApplicationsTab({
                       className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-sm transition-all"
                     >
                       {app.status === 'REJECTED'
-                        ? (locale === 'ar' ? 'إعادة النظر والاعتماد' : 'Reconsider Application')
+                        ? locale === 'ar'
+                          ? 'إعادة النظر والاعتماد'
+                          : 'Reconsider Application'
                         : app.status === 'MORE_INFO_REQUESTED'
-                        ? (locale === 'ar' ? 'مراجعة التحديث' : 'Review Update')
-                        : (locale === 'ar' ? 'مراجعة واعتماد' : 'Review & Decide')}
+                          ? locale === 'ar'
+                            ? 'مراجعة التحديث'
+                            : 'Review Update'
+                          : locale === 'ar'
+                            ? 'مراجعة واعتماد'
+                            : 'Review & Decide'}
                     </button>
                   )}
                 </div>
@@ -369,7 +375,8 @@ export function ApplicationsTab({
                       },
                       {
                         value: 'PRO',
-                        label: locale === 'ar' ? 'PRO (موصى بها للنمو)' : 'PRO (Recommended for Growth)',
+                        label:
+                          locale === 'ar' ? 'PRO (موصى بها للنمو)' : 'PRO (Recommended for Growth)',
                         description:
                           locale === 'ar'
                             ? '5 فروع / 250 لاعباً / نقطة تحصيل'
@@ -384,7 +391,9 @@ export function ApplicationsTab({
                             : '25 Branches / 2000 players / Advanced Analytics',
                       },
                     ]}
-                    aria-label={locale === 'ar' ? 'الباقة الابتدائية المعتمدة' : 'Assigned Initial SaaS Plan'}
+                    aria-label={
+                      locale === 'ar' ? 'الباقة الابتدائية المعتمدة' : 'Assigned Initial SaaS Plan'
+                    }
                   />
                   <p className="text-[11px] text-emerald-300/80 pt-1">
                     {locale === 'ar'

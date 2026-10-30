@@ -817,7 +817,9 @@ describe('AttendanceService', () => {
           status: 'PRESENT',
           idempotencyKey: 'idem-coach-1',
         }),
-      ).rejects.toThrow('Coaches are not permitted to record player attendance through QR or manual entry');
+      ).rejects.toThrow(
+        'Coaches are not permitted to record player attendance through QR or manual entry',
+      );
     });
 
     it('rejects recording attendance on future sessions beyond valid window for managers', async () => {
@@ -843,4 +845,3 @@ describe('AttendanceService', () => {
     });
   });
 });
-

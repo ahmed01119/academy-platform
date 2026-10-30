@@ -8,15 +8,7 @@ import { useLocale } from '../../lib/locale-context';
 import { getRoleHomeRoute } from '../../lib/role-routing';
 import { Navbar } from '../../components/Navbar';
 import { SportexusLogo } from '../../components/brand/SportexusLogo';
-import {
-  Mail,
-  Eye,
-  EyeOff,
-  AlertCircle,
-  ArrowRight,
-  ShieldCheck,
-  Loader2,
-} from 'lucide-react';
+import { Mail, Eye, EyeOff, AlertCircle, ArrowRight, ShieldCheck, Loader2 } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -94,9 +86,7 @@ export default function LoginPage() {
                 {locale === 'ar' ? 'تسجيل الدخول إلى سبورتكسس' : 'Sign In to Sportexus'}
               </h1>
               <p className="mt-1 text-xs sm:text-sm text-slate-400">
-                {locale === 'ar'
-                  ? 'منصة واحدة. لكل أكاديمية.'
-                  : 'One Platform. Every Academy.'}
+                {locale === 'ar' ? 'منصة واحدة. لكل أكاديمية.' : 'One Platform. Every Academy.'}
               </p>
             </div>
 
@@ -200,9 +190,7 @@ export default function LoginPage() {
             {/* Footer link */}
             <div className="mt-8 border-t border-slate-800 pt-6 text-center text-xs text-slate-400 relative z-10">
               <span>
-                {locale === 'ar'
-                  ? 'ليس لديك أكاديمية مسجلة بعد؟ '
-                  : "Don't have an academy yet? "}
+                {locale === 'ar' ? 'ليس لديك أكاديمية مسجلة بعد؟ ' : "Don't have an academy yet? "}
               </span>
               <Link href="/register" className="font-semibold text-[#00D6FF] hover:underline">
                 {locale === 'ar' ? 'سجّل أكاديميتك الآن' : 'Register your academy'}

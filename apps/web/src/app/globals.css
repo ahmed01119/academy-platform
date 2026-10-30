@@ -17,11 +17,11 @@
   --color-accent-primary-hover: var(--accent-primary-hover);
   --color-accent-primary-fg: var(--accent-primary-fg);
 
-  --color-sportexus-blue: #0A3BFF;
-  --color-sportexus-cyan: #00D6FF;
-  --color-sportexus-green: #22C55E;
-  --color-sportexus-lime: #84F06B;
-  --color-sportexus-navy: #0F172A;
+  --color-sportexus-blue: #0a3bff;
+  --color-sportexus-cyan: #00d6ff;
+  --color-sportexus-green: #22c55e;
+  --color-sportexus-lime: #84f06b;
+  --color-sportexus-navy: #0f172a;
 }
 
 :root {
@@ -38,11 +38,11 @@
   --border-app: #e2e8f0;
   --border-subtle: #edf2f7;
 
-  --accent-primary: #0A3BFF;
-  --accent-primary-hover: #002ECC;
+  --accent-primary: #0a3bff;
+  --accent-primary-hover: #002ecc;
   --accent-primary-fg: #ffffff;
-  --brand-primary: #0A3BFF;
-  --brand-primary-hover: #002ECC;
+  --brand-primary: #0a3bff;
+  --brand-primary-hover: #002ecc;
 
   --bg-card: #ffffff;
   --bg-card-hover: #f1f5f9;
@@ -80,15 +80,15 @@
   --border-app: #1e293b;
   --border-subtle: #152238;
 
-  --accent-primary: #00D6FF;
-  --accent-primary-hover: #38BDF8;
+  --accent-primary: #00d6ff;
+  --accent-primary-hover: #38bdf8;
   --accent-primary-fg: #070c18;
-  --brand-primary: #0A3BFF;
-  --brand-primary-hover: #00D6FF;
+  --brand-primary: #0a3bff;
+  --brand-primary-hover: #00d6ff;
 
   --badge-bg: rgba(0, 214, 255, 0.12);
   --badge-border: rgba(0, 214, 255, 0.35);
-  --badge-fg: #38BDF8;
+  --badge-fg: #38bdf8;
 
   --ambient-glow-1: rgba(10, 59, 255, 0.22);
   --ambient-glow-2: rgba(0, 214, 255, 0.16);

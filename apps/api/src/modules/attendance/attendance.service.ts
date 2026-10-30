@@ -465,14 +465,20 @@ export class AttendanceService {
   private async validateCoachSessionAccess(
     tx: any,
     tenantContext: TenantContext,
-    session: { branchId: string; coachUserId: string | null; groupId: string | null; sessionDate: Date },
-    targetPlayerIds: string[],
+    session: {
+      branchId: string;
+      coachUserId: string | null;
+      groupId: string | null;
+      sessionDate: Date;
+    },
+    _targetPlayerIds: string[],
   ): Promise<void> {
     // 1. Strict Coach Attendance Prohibition (Product requirement: Coaches must NOT be allowed to record player attendance)
     if (tenantContext.role === 'COACH') {
       throw new ForbiddenException({
         code: ErrorCode.FORBIDDEN,
-        message: 'Coaches are not permitted to record player attendance through QR or manual entry.',
+        message:
+          'Coaches are not permitted to record player attendance through QR or manual entry.',
       });
     }
 

@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { type ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 import type { Transporter } from 'nodemailer';
 
@@ -104,7 +104,11 @@ export class EmailService {
 
     // Determine provider
     const explicitProvider = this.configService.get<string>('MAIL_PROVIDER')?.toLowerCase();
-    if (explicitProvider === 'resend' || explicitProvider === 'smtp' || explicitProvider === 'dev') {
+    if (
+      explicitProvider === 'resend' ||
+      explicitProvider === 'smtp' ||
+      explicitProvider === 'dev'
+    ) {
       this.configuredProvider = explicitProvider;
     } else if (this.resendApiKey && !this.resendApiKey.includes('placeholder')) {
       this.configuredProvider = 'resend';
@@ -511,7 +515,10 @@ export class EmailService {
     const isAr = locale === 'ar';
     const safeOwner = escapeHtml(ownerName);
     const safeAcademy = escapeHtml(academyName);
-    const safeReason = escapeHtml(reason || (isAr ? 'لم يستوفِ الشروط المعتمدة لدى المنصة' : 'Requirements criteria not fully met'));
+    const safeReason = escapeHtml(
+      reason ||
+        (isAr ? 'لم يستوفِ الشروط المعتمدة لدى المنصة' : 'Requirements criteria not fully met'),
+    );
 
     const subject = isAr
       ? `تحديث بخصوص طلب تسجيل أكاديمية "${academyName}" — سبورتكسس`
@@ -519,7 +526,9 @@ export class EmailService {
 
     const html = this.renderBaseTemplate({
       locale,
-      preheader: isAr ? `تحديث بخصوص طلب تسجيل أكاديميتك.` : `Update regarding your academy application.`,
+      preheader: isAr
+        ? `تحديث بخصوص طلب تسجيل أكاديميتك.`
+        : `Update regarding your academy application.`,
       title: isAr ? 'تحديث بشأن طلب التسجيل' : 'Application Decision Update',
       greeting: isAr ? `مرحباً ${safeOwner}،` : `Hello ${safeOwner},`,
       bodyHtml: isAr
@@ -559,7 +568,10 @@ export class EmailService {
     const isAr = locale === 'ar';
     const safeOwner = escapeHtml(ownerName);
     const safeAcademy = escapeHtml(academyName);
-    const safeNotes = escapeHtml(notes || (isAr ? 'يرجى تقديم بيانات إضافية لاستكمال المراجعة' : 'Additional documentation required'));
+    const safeNotes = escapeHtml(
+      notes ||
+        (isAr ? 'يرجى تقديم بيانات إضافية لاستكمال المراجعة' : 'Additional documentation required'),
+    );
 
     const subject = isAr
       ? `مطلوب معلومات إضافية لطلب تسجيل أكاديمية "${academyName}" — سبورتكسس`
@@ -567,7 +579,9 @@ export class EmailService {
 
     const html = this.renderBaseTemplate({
       locale,
-      preheader: isAr ? `مطلوب بيانات إضافية لاستكمال الطلب.` : `Additional details required for your application.`,
+      preheader: isAr
+        ? `مطلوب بيانات إضافية لاستكمال الطلب.`
+        : `Additional details required for your application.`,
       title: isAr ? 'مطلوب معلومات إضافية' : 'Information Required',
       greeting: isAr ? `مرحباً ${safeOwner}،` : `Hello ${safeOwner},`,
       bodyHtml: isAr
@@ -662,7 +676,9 @@ export class EmailService {
 
     const html = this.renderBaseTemplate({
       locale,
-      preheader: isAr ? `تم تغيير كلمة المرور الخاصة بحسابك بنجاح.` : `Your account password has been updated.`,
+      preheader: isAr
+        ? `تم تغيير كلمة المرور الخاصة بحسابك بنجاح.`
+        : `Your account password has been updated.`,
       title: isAr ? 'تنبيه أمان الحساب' : 'Security Notification',
       greeting: isAr ? `مرحباً ${safeName}،` : `Hello ${safeName},`,
       bodyHtml: isAr
@@ -699,9 +715,7 @@ export class EmailService {
     const isAr = locale === 'ar';
     const safeName = escapeHtml(name);
 
-    const subject = isAr
-      ? `تأكيد البريد الإلكتروني — سبورتكسس`
-      : `Verify Your Email — Sportexus`;
+    const subject = isAr ? `تأكيد البريد الإلكتروني — سبورتكسس` : `Verify Your Email — Sportexus`;
 
     const html = this.renderBaseTemplate({
       locale,
@@ -850,9 +864,7 @@ export class EmailService {
     const inviterTextAr = safeInviter
       ? `بناءً على دعوة مرسلة من قِبل: <strong>${safeInviter}</strong>.`
       : '';
-    const inviterTextEn = safeInviter
-      ? `Invited by: <strong>${safeInviter}</strong>.`
-      : '';
+    const inviterTextEn = safeInviter ? `Invited by: <strong>${safeInviter}</strong>.` : '';
 
     const html = this.renderBaseTemplate({
       locale,
@@ -967,13 +979,16 @@ export class EmailService {
     const safeAcademy = escapeHtml(options.academyName);
     const safeReceipt = escapeHtml(options.receiptNumber);
     const safeMethod = escapeHtml(options.paymentMethod);
-    const safeDesc = escapeHtml(options.description || (isAr ? 'سداد اشتراك تدريبي' : 'Subscription payment'));
+    const safeDesc = escapeHtml(
+      options.description || (isAr ? 'سداد اشتراك تدريبي' : 'Subscription payment'),
+    );
     const safeCurrency = escapeHtml(options.currency || 'SAR');
     const safeAmount = Number(options.amount).toFixed(2);
-    const paymentDate = (options.date || new Date()).toLocaleDateString(
-      isAr ? 'ar-SA' : 'en-US',
-      { year: 'numeric', month: 'long', day: 'numeric' },
-    );
+    const paymentDate = (options.date || new Date()).toLocaleDateString(isAr ? 'ar-SA' : 'en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
 
     const subject = isAr
       ? `إيصال استلام دفعة #${options.receiptNumber} — ${options.academyName}`

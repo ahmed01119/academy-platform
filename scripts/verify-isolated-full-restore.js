@@ -1,9 +1,13 @@
 const path = require('path');
 const fs = require('fs');
 const { execSync } = require('child_process');
-const epPath = require.resolve('embedded-postgres', { paths: [path.resolve(__dirname, '../packages/database')] });
+const epPath = require.resolve('embedded-postgres', {
+  paths: [path.resolve(__dirname, '../packages/database')],
+});
 const { default: EmbeddedPostgres } = require(epPath);
-const prismaPath = require.resolve('@prisma/client', { paths: [path.resolve(__dirname, '../packages/database')] });
+const prismaPath = require.resolve('@prisma/client', {
+  paths: [path.resolve(__dirname, '../packages/database')],
+});
 const { PrismaClient } = require(prismaPath);
 
 async function main() {
@@ -17,20 +21,31 @@ async function main() {
     persistent: true,
   });
 
-  try { await pg.start(); } catch (e) {}
-  await new Promise(r => setTimeout(r, 2000));
+  try {
+    await pg.start();
+  } catch (e) {}
+  await new Promise((r) => setTimeout(r, 2000));
 
   const isolatedSchema = 'verify_isolated_db';
   const isolatedDbUrl = `postgresql://academy:academy@127.0.0.1:5432/academy?schema=${isolatedSchema}`;
 
-  console.log(`[Isolated Restore] Step 1: Pushing clean schema to isolated namespace "${isolatedSchema}"...`);
-  execSync('pnpm --filter @academy/database exec prisma db push --skip-generate --accept-data-loss', {
-    env: { ...process.env, DATABASE_URL: isolatedDbUrl },
-    stdio: 'pipe',
-  });
+  console.log(
+    `[Isolated Restore] Step 1: Pushing clean schema to isolated namespace "${isolatedSchema}"...`,
+  );
+  execSync(
+    'pnpm --filter @academy/database exec prisma db push --skip-generate --accept-data-loss',
+    {
+      env: { ...process.env, DATABASE_URL: isolatedDbUrl },
+      stdio: 'pipe',
+    },
+  );
 
   // Find latest snapshot
-  const backupFiles = fs.readdirSync('backups').filter(f => f.startsWith('sportexus_live_snapshot_')).sort().reverse();
+  const backupFiles = fs
+    .readdirSync('backups')
+    .filter((f) => f.startsWith('sportexus_live_snapshot_'))
+    .sort()
+    .reverse();
   const latestSnapshotPath = path.join('backups', backupFiles[0]);
   console.log(`[Isolated Restore] Step 2: Loading snapshot data from ${latestSnapshotPath}...`);
   const snapshot = JSON.parse(fs.readFileSync(latestSnapshotPath, 'utf8'));
@@ -100,7 +115,9 @@ async function main() {
   }
 
   console.log(`\n[Isolated Restore] Step 4: Verifying Restored Database Integrity...`);
-  console.log(`  Total Restored Records: ${restoredCount} (Matches snapshot: ${restoredCount === snapshot.totalRecords})`);
+  console.log(
+    `  Total Restored Records: ${restoredCount} (Matches snapshot: ${restoredCount === snapshot.totalRecords})`,
+  );
 
   // Financial verification
   const restoredTransactions = await isolatedPrisma.academyFinancialTransaction.findMany();
@@ -109,9 +126,13 @@ async function main() {
   const originalSum = originalTransactions.reduce((acc, t) => acc + Number(t.amount), 0);
 
   console.log(`\n--- FINANCIAL INTEGRITY CHECK ---`);
-  console.log(`  Transactions Count: ${restoredTransactions.length} (Expected: ${originalTransactions.length})`);
+  console.log(
+    `  Transactions Count: ${restoredTransactions.length} (Expected: ${originalTransactions.length})`,
+  );
   console.log(`  Transactions Total Sum: ${restoredSum} SAR (Expected: ${originalSum} SAR)`);
-  console.log(`  Financial Consistency: ${restoredSum === originalSum ? 'PASSED (100% Exact Match)' : 'FAILED'}`);
+  console.log(
+    `  Financial Consistency: ${restoredSum === originalSum ? 'PASSED (100% Exact Match)' : 'FAILED'}`,
+  );
 
   // Foreign Key Reference Check
   console.log(`\n--- FOREIGN KEY INTEGRITY CHECK ---`);
@@ -141,15 +162,18 @@ async function main() {
   console.log(`  Orphaned Attendance Records: ${orphanedAttendance[0].count} (Expected: 0)`);
 
   // Cleanup isolated test schema
-  console.log(`\n[Isolated Restore] Step 5: Dropping temporary isolated schema "${isolatedSchema}"...`);
+  console.log(
+    `\n[Isolated Restore] Step 5: Dropping temporary isolated schema "${isolatedSchema}"...`,
+  );
   await isolatedPrisma.$executeRawUnsafe(`DROP SCHEMA IF EXISTS "${isolatedSchema}" CASCADE;`);
   console.log(`  [+] Isolated verification schema successfully cleaned up.`);
 
   await isolatedPrisma.$disconnect();
-  try { await pg.stop(); } catch (e) {}
+  try {
+    await pg.stop();
+  } catch (e) {}
 
   console.log('\n[SUCCESS] Isolated PostgreSQL Schema & Data Restore Verified 100%!');
 }
 
 main().catch(console.error);
-

@@ -2935,14 +2935,7 @@
       "resourceType": "Branch",
       "resourceId": "e823c24d-8406-4c47-9eed-55b6d32073b2",
       "metadata": {
-        "changedFields": [
-          "name",
-          "city",
-          "address",
-          "phone",
-          "capacity",
-          "status"
-        ]
+        "changedFields": ["name", "city", "address", "phone", "capacity", "status"]
       },
       "ipAddress": null,
       "userAgent": null,

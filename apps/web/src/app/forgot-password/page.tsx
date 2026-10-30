@@ -124,7 +124,15 @@ export default function ForgotPasswordPage() {
                         className="flex items-center gap-1 text-[#00D6FF] hover:underline"
                       >
                         <Copy className="h-3 w-3" />
-                        <span>{copied ? (locale === 'ar' ? 'تم النسخ!' : 'Copied!') : (locale === 'ar' ? 'نسخ' : 'Copy')}</span>
+                        <span>
+                          {copied
+                            ? locale === 'ar'
+                              ? 'تم النسخ!'
+                              : 'Copied!'
+                            : locale === 'ar'
+                              ? 'نسخ'
+                              : 'Copy'}
+                        </span>
                       </button>
                     </div>
                     <p className="text-amber-300/70 text-[10px]">

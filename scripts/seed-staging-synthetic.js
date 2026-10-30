@@ -34,8 +34,8 @@ async function main() {
   if (isLocalHost && !process.env.ALLOW_LOCAL_SYNTHETIC_TEST_ONLY) {
     console.error(
       '\n[SECURITY GUARD TRIGGERED] Refusing to seed synthetic staging data against local database port 5432!\n' +
-      'This seeder is strictly dedicated for remote Neon staging environments.\n' +
-      'To test locally in an isolated schema, pass ALLOW_LOCAL_SYNTHETIC_TEST_ONLY=1 with an isolated schema param.\n'
+        'This seeder is strictly dedicated for remote Neon staging environments.\n' +
+        'To test locally in an isolated schema, pass ALLOW_LOCAL_SYNTHETIC_TEST_ONLY=1 with an isolated schema param.\n',
     );
     process.exit(1);
   }
@@ -46,9 +46,30 @@ async function main() {
   try {
     console.log('\n[1/6] Seeding Standard SaaS Subscription Plans...');
     const plans = [
-      { code: 'STARTER', name: 'Starter Plan (البداية)', maxPlayers: 50, maxBranches: 1, maxCoaches: 3, priceMonthly: 499 },
-      { code: 'PRO', name: 'Pro Plan (المحترف)', maxPlayers: 200, maxBranches: 3, maxCoaches: 10, priceMonthly: 999 },
-      { code: 'ENTERPRISE', name: 'Enterprise Plan (المؤسسي)', maxPlayers: 1000, maxBranches: 10, maxCoaches: 50, priceMonthly: 2499 },
+      {
+        code: 'STARTER',
+        name: 'Starter Plan (البداية)',
+        maxPlayers: 50,
+        maxBranches: 1,
+        maxCoaches: 3,
+        priceMonthly: 499,
+      },
+      {
+        code: 'PRO',
+        name: 'Pro Plan (المحترف)',
+        maxPlayers: 200,
+        maxBranches: 3,
+        maxCoaches: 10,
+        priceMonthly: 999,
+      },
+      {
+        code: 'ENTERPRISE',
+        name: 'Enterprise Plan (المؤسسي)',
+        maxPlayers: 1000,
+        maxBranches: 10,
+        maxCoaches: 50,
+        priceMonthly: 2499,
+      },
     ];
     for (const p of plans) {
       await prisma.saaSPlan.upsert({
@@ -78,7 +99,9 @@ async function main() {
       },
     });
 
-    console.log('[3/6] Creating Synthetic Academy 1: "أكاديمية الفرسان التجريبية" (knights-staging)...');
+    console.log(
+      '[3/6] Creating Synthetic Academy 1: "أكاديمية الفرسان التجريبية" (knights-staging)...',
+    );
     const tenant1 = await prisma.tenant.upsert({
       where: { slug: 'knights-staging' },
       update: { name: 'أكاديمية الفرسان التجريبية (Staging)', status: 'ACTIVE' },
@@ -154,7 +177,13 @@ async function main() {
     await prisma.tenantMembership.upsert({
       where: { tenantId_userId: { tenantId: tenant1.id, userId: coach1.id } },
       update: { role: 'COACH', status: 'ACTIVE', branchId: branch1.id },
-      create: { tenantId: tenant1.id, userId: coach1.id, role: 'COACH', status: 'ACTIVE', branchId: branch1.id },
+      create: {
+        tenantId: tenant1.id,
+        userId: coach1.id,
+        role: 'COACH',
+        status: 'ACTIVE',
+        branchId: branch1.id,
+      },
     });
 
     // Training Group
@@ -371,18 +400,28 @@ async function main() {
     console.log(`  -> Academy 1 (Knights) Players: ${knightsPlayers.length}`);
     console.log(`  -> Academy 2 (Hope) Players: ${hopePlayers.length}`);
     if (hopePlayers.length !== 0 || knightsPlayers.length !== 1) {
-      throw new Error('[ISOLATION BREACH] Multi-tenant scoping failed during synthetic validation!');
+      throw new Error(
+        '[ISOLATION BREACH] Multi-tenant scoping failed during synthetic validation!',
+      );
     }
     console.log('  [+] Strict Multi-Tenant Row-Level Isolation Verified 100%!');
 
     console.log('\n[6/6] Synthetic Staging Database Seeding Summary:');
     console.log('  -------------------------------------------------------------');
-    console.log('  Platform Superadmin:  staging-superadmin@sportexus.internal / StagingAdmin2026!');
-    console.log('  Academy 1 Owner:      owner.knights@sportexus.internal      / KnightsOwner2026!');
-    console.log('  Academy 1 Coach:      coach.knights@sportexus.internal      / KnightsCoach2026!');
+    console.log(
+      '  Platform Superadmin:  staging-superadmin@sportexus.internal / StagingAdmin2026!',
+    );
+    console.log(
+      '  Academy 1 Owner:      owner.knights@sportexus.internal      / KnightsOwner2026!',
+    );
+    console.log(
+      '  Academy 1 Coach:      coach.knights@sportexus.internal      / KnightsCoach2026!',
+    );
     console.log('  Academy 2 Owner:      owner.hope@sportexus.internal         / HopeOwner2026!');
     console.log('  -------------------------------------------------------------');
-    console.log('  [SUCCESS] Dedicated Staging Database Seeded Exclusively with Synthetic Records.');
+    console.log(
+      '  [SUCCESS] Dedicated Staging Database Seeded Exclusively with Synthetic Records.',
+    );
   } finally {
     await prisma.$disconnect();
   }

@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { ConfigService } from '@nestjs/config';
+import { type ConfigService } from '@nestjs/config';
 import { EmailService, escapeHtml } from './email.service';
-import * as nodemailer from 'nodemailer';
 
 const mockSendMail = vi.fn().mockResolvedValue({ messageId: 'smtp-msg-777' });
 

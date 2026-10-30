@@ -254,10 +254,7 @@ describe('api-client', () => {
     });
 
     // Fire two concurrent requests while access token is expired
-    const [branchesRes, playersRes] = await Promise.all([
-      api.branches.list(),
-      api.players.list(),
-    ]);
+    const [branchesRes, playersRes] = await Promise.all([api.branches.list(), api.players.list()]);
 
     expect(branchesRes).toHaveLength(1);
     expect(playersRes.items).toHaveLength(1);

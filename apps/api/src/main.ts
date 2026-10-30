@@ -45,13 +45,11 @@ async function bootstrap() {
         return callback(null, true);
       }
       // Allow wildcard pattern matches (e.g. *.trycloudflare.com)
-      const matchesWildcard = wildcardPatterns.some((suffix) =>
-        requestOrigin.endsWith(suffix),
-      );
+      const matchesWildcard = wildcardPatterns.some((suffix) => requestOrigin.endsWith(suffix));
       if (matchesWildcard) {
         return callback(null, true);
       }
-      return callback(new Error('CORS origin not allowed by policy'));
+      return callback(null, false);
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],

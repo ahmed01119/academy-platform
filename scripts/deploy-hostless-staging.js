@@ -17,10 +17,19 @@ const crypto = require('crypto');
 const { execSync } = require('child_process');
 
 const STAGING_ENV_PATH = path.resolve(__dirname, '../.env.staging');
-const PROVISION_SQL_PATH = path.resolve(__dirname, '../packages/database/scripts/provision-runtime-role.sql');
-const VERIFY_SQL_PATH = path.resolve(__dirname, '../packages/database/scripts/verify-production-role.sql');
+const PROVISION_SQL_PATH = path.resolve(
+  __dirname,
+  '../packages/database/scripts/provision-runtime-role.sql',
+);
+const VERIFY_SQL_PATH = path.resolve(
+  __dirname,
+  '../packages/database/scripts/verify-production-role.sql',
+);
 const SCHEMA_PATH = path.resolve(__dirname, '../packages/database/prisma/schema.prisma');
-const PRISMA_CLI = path.resolve(__dirname, '../packages/database/node_modules/prisma/build/index.js');
+const PRISMA_CLI = path.resolve(
+  __dirname,
+  '../packages/database/node_modules/prisma/build/index.js',
+);
 
 async function main() {
   console.log('=============================================================================');
@@ -31,7 +40,9 @@ async function main() {
   if (!fs.existsSync(STAGING_ENV_PATH)) {
     console.error('ERROR: .env.staging file not found.');
     console.error('Please create `.env.staging` from `.env.staging.example` with:');
-    console.error('HOSTLESS_DATABASE_ADMIN_URL=postgresql://academy:<PASSWORD>@<HOST>:<PORT>/sportexus-api-staging?sslmode=require\n');
+    console.error(
+      'HOSTLESS_DATABASE_ADMIN_URL=postgresql://academy:<PASSWORD>@<HOST>:<PORT>/sportexus-api-staging?sslmode=require\n',
+    );
     process.exit(1);
   }
 
@@ -49,7 +60,9 @@ async function main() {
   const parsedUrl = new URL(adminUrl);
   const hostname = parsedUrl.hostname.toLowerCase();
   if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '0.0.0.0') {
-    console.error(`FATAL SAFETY ABORT: Target host is "${hostname}". Local database modification is strictly prohibited.`);
+    console.error(
+      `FATAL SAFETY ABORT: Target host is "${hostname}". Local database modification is strictly prohibited.`,
+    );
     process.exit(1);
   }
 
@@ -69,12 +82,14 @@ async function main() {
     for (let attempt = 1; attempt <= 4; attempt++) {
       try {
         identityResult = await prisma.$queryRawUnsafe(
-          'SELECT current_database() AS dbname, current_user AS username, version() AS pg_version;'
+          'SELECT current_database() AS dbname, current_user AS username, version() AS pg_version;',
         );
         break;
       } catch (err) {
         if (attempt < 4) {
-          console.warn(`[Warning] Phase 2 connection attempt ${attempt}/4 failed. Retrying in 3 seconds...`);
+          console.warn(
+            `[Warning] Phase 2 connection attempt ${attempt}/4 failed. Retrying in 3 seconds...`,
+          );
           Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 3000);
         } else {
           throw err;
@@ -88,7 +103,9 @@ async function main() {
     console.log(`  - Engine:          ${pg_version.split(' ')[0]} ${pg_version.split(' ')[1]}`);
 
     if (dbname !== 'neondb') {
-      throw new Error(`DATABASE MISMATCH: Connected to "${dbname}", but required target is "neondb". Aborting for safety.`);
+      throw new Error(
+        `DATABASE MISMATCH: Connected to "${dbname}", but required target is "neondb". Aborting for safety.`,
+      );
     }
 
     // 5. Phase 3: Run Prisma Migrations
@@ -104,7 +121,9 @@ async function main() {
         break;
       } catch (err) {
         if (migrationAttempts < 3) {
-          console.warn(`[Warning] Migration deploy attempt ${migrationAttempts}/3 failed. Retrying in 3 seconds...`);
+          console.warn(
+            `[Warning] Migration deploy attempt ${migrationAttempts}/3 failed. Retrying in 3 seconds...`,
+          );
           Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 3000);
         } else {
           throw err;
@@ -128,7 +147,9 @@ async function main() {
             return;
           } catch (err) {
             if (attempts < maxRetries) {
-              console.warn(`[Warning] Database command failed (attempt ${attempts}/${maxRetries}). Retrying in 3 seconds...`);
+              console.warn(
+                `[Warning] Database command failed (attempt ${attempts}/${maxRetries}). Retrying in 3 seconds...`,
+              );
               Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 3000);
             } else {
               throw err;
@@ -150,10 +171,14 @@ async function main() {
     provisionSql = provisionSql.replaceAll('<STRONG_RUNTIME_PASSWORD>', runtimePassword);
 
     executeSqlScript(provisionSql);
-    console.log('✓ Role sportexus_app provisioned with least-privilege table, column, sequence & procedure grants.');
+    console.log(
+      '✓ Role sportexus_app provisioned with least-privilege table, column, sequence & procedure grants.',
+    );
 
     // 7. Phase 5: Execute Regression & Security Verification Suite
-    console.log('\n[Phase 5] Executing security and RLS regression suite (verify-production-role.sql)...');
+    console.log(
+      '\n[Phase 5] Executing security and RLS regression suite (verify-production-role.sql)...',
+    );
     const verifySql = fs.readFileSync(VERIFY_SQL_PATH, 'utf8');
     executeSqlScript(verifySql);
     console.log('✓ All 14 security invariants, RLS checks, and negative DML assertions PASSED.');
@@ -173,9 +198,11 @@ async function main() {
     });
     try {
       const runtimeIdentity = await runtimePrisma.$queryRawUnsafe(
-        'SELECT current_database() AS dbname, current_user AS username;'
+        'SELECT current_database() AS dbname, current_user AS username;',
       );
-      console.log(`✓ Successfully connected as runtime user: ${runtimeIdentity[0].username} on database: ${runtimeIdentity[0].dbname}`);
+      console.log(
+        `✓ Successfully connected as runtime user: ${runtimeIdentity[0].username} on database: ${runtimeIdentity[0].dbname}`,
+      );
     } finally {
       await runtimePrisma.$disconnect();
     }
@@ -183,7 +210,10 @@ async function main() {
     // 9. Write runtime URL to .env.staging (append or update)
     let updatedEnv = envContent;
     if (updatedEnv.includes('HOSTLESS_DATABASE_RUNTIME_URL=')) {
-      updatedEnv = updatedEnv.replace(/^HOSTLESS_DATABASE_RUNTIME_URL=.*$/m, `HOSTLESS_DATABASE_RUNTIME_URL=${finalRuntimeUrl}`);
+      updatedEnv = updatedEnv.replace(
+        /^HOSTLESS_DATABASE_RUNTIME_URL=.*$/m,
+        `HOSTLESS_DATABASE_RUNTIME_URL=${finalRuntimeUrl}`,
+      );
     } else {
       updatedEnv += `\n# Generated Runtime Connection for sportexus-backend-staging\nHOSTLESS_DATABASE_RUNTIME_URL=${finalRuntimeUrl}\n`;
     }
@@ -199,11 +229,12 @@ async function main() {
     console.log(`  ${STAGING_ENV_PATH}`);
     console.log(`\nNext Step (Hostless Dashboard):`);
     console.log(`  1. Open Hostless application: sportexus-backend-staging`);
-    console.log(`  2. In Environment Variables, set DATABASE_URL to the value of HOSTLESS_DATABASE_RUNTIME_URL`);
+    console.log(
+      `  2. In Environment Variables, set DATABASE_URL to the value of HOSTLESS_DATABASE_RUNTIME_URL`,
+    );
     console.log(`  3. Ensure DATABASE_ADMIN_URL is removed or empty`);
     console.log(`  4. Redeploy the application.`);
     console.log('=============================================================================\n');
-
   } finally {
     await prisma.$disconnect();
   }
@@ -213,4 +244,3 @@ main().catch((err) => {
   console.error('\nFATAL PROVISIONING ERROR:', err.message);
   process.exit(1);
 });
-

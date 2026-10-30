@@ -134,14 +134,19 @@ function ResetPasswordForm() {
                 required
                 value={token}
                 onChange={(e) => setToken(e.target.value)}
-                placeholder={locale === 'ar' ? 'أدخل الرمز المرسل...' : 'Enter the recovery token...'}
+                placeholder={
+                  locale === 'ar' ? 'أدخل الرمز المرسل...' : 'Enter the recovery token...'
+                }
                 dir="ltr"
                 className="w-full rounded-xl border border-slate-700 bg-slate-900/90 py-2.5 px-3 text-xs font-mono text-white placeholder-slate-500 focus:border-[#00D6FF] focus:ring-1 focus:ring-[#00D6FF] outline-none transition-all"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5" htmlFor="password">
+              <label
+                className="block text-xs font-semibold text-slate-300 mb-1.5"
+                htmlFor="password"
+              >
                 {locale === 'ar' ? 'كلمة المرور الجديدة *' : 'New Password *'}
               </label>
               <div className="relative">
@@ -166,7 +171,10 @@ function ResetPasswordForm() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5" htmlFor="confirmPassword">
+              <label
+                className="block text-xs font-semibold text-slate-300 mb-1.5"
+                htmlFor="confirmPassword"
+              >
                 {locale === 'ar' ? 'تأكيد كلمة المرور الجديدة *' : 'Confirm New Password *'}
               </label>
               <input

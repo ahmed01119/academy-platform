@@ -836,28 +836,51 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
 
               <div className="space-y-4 text-xs">
                 <p className="text-[var(--text-secondary)] leading-relaxed">
-                  أنت على وشك أرشفة اللاعب <strong className="text-[var(--text-primary)]">{deletionImpact.playerName}</strong>. تحافظ هذه العملية على سلامة الحضور، السجلات المالية، والتقييمات دون حذفها من قاعدة البيانات.
+                  أنت على وشك أرشفة اللاعب{' '}
+                  <strong className="text-[var(--text-primary)]">
+                    {deletionImpact.playerName}
+                  </strong>
+                  . تحافظ هذه العملية على سلامة الحضور، السجلات المالية، والتقييمات دون حذفها من
+                  قاعدة البيانات.
                 </p>
 
                 {/* Impact Summary Badges */}
                 <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-4 space-y-3">
-                  <h4 className="font-bold text-[var(--text-primary)]">تقرير الأثر والبيانات المرتبطة:</h4>
+                  <h4 className="font-bold text-[var(--text-primary)]">
+                    تقرير الأثر والبيانات المرتبطة:
+                  </h4>
                   <div className="grid grid-cols-2 gap-2 text-[11px]">
                     <div className="rounded-lg bg-[var(--bg-surface)] p-2.5 border border-[var(--border-subtle)]">
-                      <span className="text-[var(--text-secondary)] block">تسجيلات الفروع النشطة:</span>
-                      <strong className="text-amber-500 text-sm">{deletionImpact.activeEnrollments} (سيتم إلغاؤها)</strong>
+                      <span className="text-[var(--text-secondary)] block">
+                        تسجيلات الفروع النشطة:
+                      </span>
+                      <strong className="text-amber-500 text-sm">
+                        {deletionImpact.activeEnrollments} (سيتم إلغاؤها)
+                      </strong>
                     </div>
                     <div className="rounded-lg bg-[var(--bg-surface)] p-2.5 border border-[var(--border-subtle)]">
-                      <span className="text-[var(--text-secondary)] block">المجموعات التدريبية:</span>
-                      <strong className="text-amber-500 text-sm">{deletionImpact.activeGroupMemberships} (سيتم إيقافها)</strong>
+                      <span className="text-[var(--text-secondary)] block">
+                        المجموعات التدريبية:
+                      </span>
+                      <strong className="text-amber-500 text-sm">
+                        {deletionImpact.activeGroupMemberships} (سيتم إيقافها)
+                      </strong>
                     </div>
                     <div className="rounded-lg bg-[var(--bg-surface)] p-2.5 border border-[var(--border-subtle)]">
-                      <span className="text-[var(--text-secondary)] block">سجلات الحضور المحفوظة:</span>
-                      <strong className="text-emerald-500 text-sm">{deletionImpact.attendanceRecordsCount} حصة</strong>
+                      <span className="text-[var(--text-secondary)] block">
+                        سجلات الحضور المحفوظة:
+                      </span>
+                      <strong className="text-emerald-500 text-sm">
+                        {deletionImpact.attendanceRecordsCount} حصة
+                      </strong>
                     </div>
                     <div className="rounded-lg bg-[var(--bg-surface)] p-2.5 border border-[var(--border-subtle)]">
-                      <span className="text-[var(--text-secondary)] block">المعاملات المالية المحفوظة:</span>
-                      <strong className="text-emerald-500 text-sm">{deletionImpact.financialTransactionsCount} معاملة</strong>
+                      <span className="text-[var(--text-secondary)] block">
+                        المعاملات المالية المحفوظة:
+                      </span>
+                      <strong className="text-emerald-500 text-sm">
+                        {deletionImpact.financialTransactionsCount} معاملة
+                      </strong>
                     </div>
                   </div>
                 </div>

@@ -1,11 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { AuthService } from './auth.service';
-import {
-  BadRequestException,
-  ConflictException,
-  ForbiddenException,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { BadRequestException, ConflictException, UnauthorizedException } from '@nestjs/common';
 import type { PrismaService } from '../database/prisma.service';
 import type { PasswordService } from './password.service';
 import type { TokenService } from './token.service';

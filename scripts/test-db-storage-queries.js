@@ -1,9 +1,12 @@
 const path = require('path');
-const { PrismaClient } = require(path.resolve(__dirname, '../packages/database/node_modules/@prisma/client'));
+const { PrismaClient } = require(
+  path.resolve(__dirname, '../packages/database/node_modules/@prisma/client'),
+);
 const prisma = new PrismaClient();
 
 async function run() {
-  const dbSizeRes = await prisma.$queryRaw`SELECT pg_database_size(current_database())::text AS db_size`;
+  const dbSizeRes =
+    await prisma.$queryRaw`SELECT pg_database_size(current_database())::text AS db_size`;
   const tableCountRes = await prisma.$queryRaw`
     SELECT count(*)::text as count 
     FROM pg_class c 

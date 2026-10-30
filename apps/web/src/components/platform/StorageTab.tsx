@@ -111,7 +111,8 @@ export function StorageTab() {
             <Database className="w-4 h-4 text-emerald-400" />
           </div>
           <div className="text-2xl font-bold text-[var(--text-main)] font-mono">
-            {metrics?.formattedDatabaseSize || (isLoading ? '—' : (locale === 'ar' ? 'غير متوفر' : 'Unavailable'))}
+            {metrics?.formattedDatabaseSize ||
+              (isLoading ? '—' : locale === 'ar' ? 'غير متوفر' : 'Unavailable')}
           </div>
           <div className="text-[11px] text-[var(--text-muted)]">
             {metrics?.totalTables !== undefined
@@ -130,7 +131,11 @@ export function StorageTab() {
           <div className="text-2xl font-bold text-[var(--text-main)] font-mono">
             {metrics?.auditLogsCount !== undefined
               ? metrics.auditLogsCount.toLocaleString()
-              : (isLoading ? '—' : (locale === 'ar' ? 'غير متوفر' : 'Unavailable'))}
+              : isLoading
+                ? '—'
+                : locale === 'ar'
+                  ? 'غير متوفر'
+                  : 'Unavailable'}
           </div>
           <div className="text-[11px] text-[var(--text-muted)]">
             {metrics?.auditLogsSizeBytes !== undefined
@@ -149,7 +154,11 @@ export function StorageTab() {
           <div className="text-2xl font-bold text-[var(--text-main)] font-mono">
             {metrics?.estimatedMonthlyGrowthBytes !== undefined
               ? `~${Math.round(metrics.estimatedMonthlyGrowthBytes / 1024)} KB/mo`
-              : (isLoading ? '—' : (locale === 'ar' ? 'غير متوفر' : 'Unavailable'))}
+              : isLoading
+                ? '—'
+                : locale === 'ar'
+                  ? 'غير متوفر'
+                  : 'Unavailable'}
           </div>
           <div className="text-[11px] text-[var(--text-muted)]">
             {locale === 'ar' ? 'بناءً على وتيرة النشاط الحالية' : 'Based on recent throughput'}
@@ -167,19 +176,28 @@ export function StorageTab() {
             {metrics?.cacheStatus === 'CONNECTED'
               ? `${metrics.cacheKeysCount ?? 0}`
               : metrics?.cacheStatus === 'IN_MEMORY'
-                ? locale === 'ar' ? 'ذاكرة داخلية' : 'In-Memory'
-                : locale === 'ar' ? 'غير متوفر' : 'Unavailable'}
+                ? locale === 'ar'
+                  ? 'ذاكرة داخلية'
+                  : 'In-Memory'
+                : locale === 'ar'
+                  ? 'غير متوفر'
+                  : 'Unavailable'}
           </div>
           <div className="text-[11px] text-[var(--text-muted)]">
             {metrics?.cacheStatus === 'CONNECTED'
-              ? (locale === 'ar' ? 'جلسات ومفاتيح تحديد المعدل عبر Redis' : 'Active Redis rate-limits & tokens')
+              ? locale === 'ar'
+                ? 'جلسات ومفاتيح تحديد المعدل عبر Redis'
+                : 'Active Redis rate-limits & tokens'
               : metrics?.cacheStatus === 'IN_MEMORY'
-                ? (locale === 'ar' ? 'نظام تحديد المعدل الداخلي نشط' : 'Local memory rate-limiter active')
-                : (locale === 'ar' ? 'خدمة الكاش غير مهيأة' : 'Redis not configured')}
+                ? locale === 'ar'
+                  ? 'نظام تحديد المعدل الداخلي نشط'
+                  : 'Local memory rate-limiter active'
+                : locale === 'ar'
+                  ? 'خدمة الكاش غير مهيأة'
+                  : 'Redis not configured'}
           </div>
         </div>
       </div>
-
 
       {/* Action Bar */}
       <div className="p-4 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -287,7 +305,6 @@ export function StorageTab() {
                 </tr>
               ))}
             </tbody>
-
           </table>
         </div>
       </div>

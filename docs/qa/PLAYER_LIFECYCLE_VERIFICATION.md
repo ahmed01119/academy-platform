@@ -3,7 +3,9 @@
 ## 1. Standardized Player Registration Architecture
 
 ### 1.1 Field Inventory & Validation
+
 Both internal registration (`POST /players`) and public joining requests (`POST /players/join-requests`) capture standardized data points:
+
 - **Identity:** First Name, Last Name, Gender (`MALE`, `FEMALE`), Date of Birth (`YYYY-MM-DD`), National ID / Iqama (with tenant collision check).
 - **Medical & Emergency:** Emergency Contact Name, Emergency Contact Phone, Medical Notes (restricted to authorized roles with `PLAYERS_SENSITIVE_READ`).
 - **Primary Guardian:** First Name, Last Name, Relationship (`FATHER`, `MOTHER`, `GUARDIAN`, `RELATIVE`, `OTHER`), Phone, Email, `isPrimary: true`.
