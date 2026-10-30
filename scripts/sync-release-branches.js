@@ -261,7 +261,7 @@ function syncFrontend({ dryRun, sourceSha }) {
     process.env.COMMIT_SHA = sourceSha;
     run('node scripts/generate-version.js');
 
-    run('git add Dockerfile apps/web/public/version.json');
+    run('git add Dockerfile apps/web/public/version.json apps/web/public/sw.js');
 
     // Ensure all conflicts are cleanly resolved before committing
     const remainingConflicts = getUnresolvedConflicts();
