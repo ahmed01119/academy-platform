@@ -237,15 +237,15 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[var(--bg-base)] text-[var(--text-main)] flex flex-col transition-colors overflow-x-hidden">
+    <div className="min-h-screen bg-[var(--bg-base)] text-[var(--text-main)] flex flex-col transition-colors overflow-x-hidden animate-fade-in">
       <Navbar />
 
       <main className="flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-8">
         <div className="w-full max-w-2xl">
           {/* Card container — unified navy/blue Sportexus theme */}
-          <div className="rounded-2xl border border-slate-800 bg-[#0f172a]/90 p-6 sm:p-8 shadow-2xl backdrop-blur-xl relative overflow-hidden">
-            <div className="absolute -top-16 -right-16 h-40 w-40 rounded-full bg-[#0A3BFF]/25 blur-3xl" />
-            <div className="absolute -bottom-16 -left-16 h-40 w-40 rounded-full bg-[#00D6FF]/15 blur-3xl" />
+          <div className="rounded-3xl border border-[var(--border-app)] bg-[var(--bg-surface)]/95 p-6 sm:p-8 shadow-float backdrop-blur-xl relative overflow-hidden animate-scale-up">
+            <div className="absolute -top-16 -right-16 h-40 w-40 rounded-full bg-[var(--accent-blue)]/20 blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-16 -left-16 h-40 w-40 rounded-full bg-[var(--accent-primary)]/10 blur-3xl pointer-events-none" />
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-48 w-48 rounded-full bg-[#22C55E]/10 blur-3xl pointer-events-none" />
 
             {/* Confirmation State if registration application was submitted */}
@@ -288,7 +288,9 @@ export default function RegisterPage() {
                     <span className="text-slate-400">
                       {locale === 'ar' ? 'البريد الإلكتروني للإدارة' : 'Admin Email'}
                     </span>
-                    <span className="font-semibold text-[#00D6FF]">{submittedData.email}</span>
+                    <span className="font-semibold text-[var(--accent-primary)]">
+                      {submittedData.email}
+                    </span>
                   </div>
                   <div className="flex justify-between items-center border-b border-slate-800 pb-2">
                     <span className="text-slate-400">
@@ -358,7 +360,7 @@ export default function RegisterPage() {
                 <form onSubmit={handleSubmit} className="space-y-6 relative z-10">
                   {/* Section 1: Academy Info */}
                   <div className="rounded-xl border border-slate-700 bg-slate-900/50 p-4 space-y-4">
-                    <div className="flex items-center gap-2 text-xs font-bold text-[#00D6FF] tracking-wider uppercase">
+                    <div className="flex items-center gap-2 text-xs font-bold text-[var(--accent-primary)] tracking-wider uppercase">
                       <Building className="h-4 w-4" />
                       <span>
                         {locale === 'ar' ? 'بيانات الأكاديمية والرياضة' : 'Academy & Sport Details'}
@@ -392,7 +394,7 @@ export default function RegisterPage() {
                           className={`w-full rounded-xl border py-2.5 px-3 text-sm text-white placeholder-slate-500 outline-none transition-all ${
                             fieldErrors.academyName
                               ? 'border-rose-500 bg-rose-500/10 focus:border-rose-500 focus:ring-1 focus:ring-rose-500'
-                              : 'border-slate-700 bg-slate-900/90 focus:border-[#00D6FF] focus:ring-1 focus:ring-[#00D6FF]'
+                              : 'border-[var(--border-app)] bg-[var(--bg-surface-subtle)] text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:ring-1 focus:ring-[var(--accent-primary)]'
                           }`}
                         />
                         {fieldErrors.academyName && (
@@ -414,7 +416,7 @@ export default function RegisterPage() {
                           id="sport"
                           value={sport}
                           onChange={(e) => setSport(e.target.value)}
-                          className="w-full rounded-xl border border-slate-700 bg-slate-900/90 py-2.5 px-3 text-sm text-white focus:border-[#00D6FF] focus:ring-1 focus:ring-[#00D6FF] outline-none transition-all cursor-pointer"
+                          className="w-full rounded-xl border border-[var(--border-app)] bg-[var(--bg-surface-subtle)] py-2.5 px-3 text-sm text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:ring-1 focus:ring-[var(--accent-primary)] outline-none transition-all cursor-pointer"
                         >
                           {SPORTS_OPTIONS.map((opt) => (
                             <option key={opt.value} value={opt.value} className="bg-slate-900">
@@ -443,7 +445,7 @@ export default function RegisterPage() {
                           placeholder={
                             locale === 'ar' ? 'مثال: الرياض، السعودية' : 'e.g. Riyadh, KSA'
                           }
-                          className="w-full rounded-xl border border-slate-700 bg-slate-900/90 py-2.5 pr-3 pl-9 text-sm text-white placeholder-slate-500 focus:border-[#00D6FF] focus:ring-1 focus:ring-[#00D6FF] outline-none transition-all"
+                          className="w-full rounded-xl border border-[var(--border-app)] bg-[var(--bg-surface-subtle)] py-2.5 pr-3 pl-9 text-sm text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:ring-1 focus:ring-[var(--accent-primary)] outline-none transition-all"
                         />
                         <MapPin className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
                       </div>
@@ -452,7 +454,7 @@ export default function RegisterPage() {
 
                   {/* Section 2: Owner Info */}
                   <div className="rounded-xl border border-slate-700 bg-slate-900/50 p-4 space-y-4">
-                    <div className="flex items-center gap-2 text-xs font-bold text-[#00D6FF] tracking-wider uppercase">
+                    <div className="flex items-center gap-2 text-xs font-bold text-[var(--accent-primary)] tracking-wider uppercase">
                       <User className="h-4 w-4" />
                       <span>
                         {locale === 'ar' ? 'بيانات المالك وحساب الإدارة' : 'Owner & Admin Account'}
@@ -482,7 +484,7 @@ export default function RegisterPage() {
                           className={`w-full rounded-xl border py-2.5 px-3 text-sm text-white placeholder-slate-500 outline-none transition-all ${
                             fieldErrors.ownerName
                               ? 'border-rose-500 bg-rose-500/10 focus:border-rose-500 focus:ring-1 focus:ring-rose-500'
-                              : 'border-slate-700 bg-slate-900/90 focus:border-[#00D6FF] focus:ring-1 focus:ring-[#00D6FF]'
+                              : 'border-[var(--border-app)] bg-[var(--bg-surface-subtle)] text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:ring-1 focus:ring-[var(--accent-primary)]'
                           }`}
                         />
                         {fieldErrors.ownerName && (
@@ -517,7 +519,7 @@ export default function RegisterPage() {
                             className={`w-full rounded-xl border py-2.5 pr-3 pl-9 text-sm text-white placeholder-slate-500 outline-none transition-all ${
                               fieldErrors.phone
                                 ? 'border-rose-500 bg-rose-500/10 focus:border-rose-500 focus:ring-1 focus:ring-rose-500'
-                                : 'border-slate-700 bg-slate-900/90 focus:border-[#00D6FF] focus:ring-1 focus:ring-[#00D6FF]'
+                                : 'border-[var(--border-app)] bg-[var(--bg-surface-subtle)] text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:ring-1 focus:ring-[var(--accent-primary)]'
                             }`}
                           />
                           <Phone className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
@@ -555,7 +557,7 @@ export default function RegisterPage() {
                           className={`w-full rounded-xl border py-2.5 pr-3 pl-9 text-sm text-white placeholder-slate-500 outline-none transition-all ${
                             fieldErrors.email
                               ? 'border-rose-500 bg-rose-500/10 focus:border-rose-500 focus:ring-1 focus:ring-rose-500'
-                              : 'border-slate-700 bg-slate-900/90 focus:border-[#00D6FF] focus:ring-1 focus:ring-[#00D6FF]'
+                              : 'border-[var(--border-app)] bg-[var(--bg-surface-subtle)] text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:ring-1 focus:ring-[var(--accent-primary)]'
                           }`}
                         />
                         <Mail className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
@@ -593,7 +595,7 @@ export default function RegisterPage() {
                             className={`w-full rounded-xl border py-2.5 pr-3 pl-9 text-sm text-white placeholder-slate-500 outline-none transition-all ${
                               fieldErrors.password
                                 ? 'border-rose-500 bg-rose-500/10 focus:border-rose-500 focus:ring-1 focus:ring-rose-500'
-                                : 'border-slate-700 bg-slate-900/90 focus:border-[#00D6FF] focus:ring-1 focus:ring-[#00D6FF]'
+                                : 'border-[var(--border-app)] bg-[var(--bg-surface-subtle)] text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:ring-1 focus:ring-[var(--accent-primary)]'
                             }`}
                           />
                           <button
@@ -639,7 +641,7 @@ export default function RegisterPage() {
                           className={`w-full rounded-xl border py-2.5 px-3 text-sm text-white placeholder-slate-500 outline-none transition-all ${
                             fieldErrors.confirmPassword
                               ? 'border-rose-500 bg-rose-500/10 focus:border-rose-500 focus:ring-1 focus:ring-rose-500'
-                              : 'border-slate-700 bg-slate-900/90 focus:border-[#00D6FF] focus:ring-1 focus:ring-[#00D6FF]'
+                              : 'border-[var(--border-app)] bg-[var(--bg-surface-subtle)] text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:ring-1 focus:ring-[var(--accent-primary)]'
                           }`}
                         />
                         {fieldErrors.confirmPassword && (
@@ -751,7 +753,10 @@ export default function RegisterPage() {
                       ? 'لديك حساب بالفعل وتريد تسجيل الدخول؟ '
                       : 'Already have an account? '}
                   </span>
-                  <Link href="/login" className="font-semibold text-[#00D6FF] hover:underline">
+                  <Link
+                    href="/login"
+                    className="font-semibold text-[var(--accent-primary)] hover:underline transition-colors"
+                  >
                     {locale === 'ar' ? 'تسجيل الدخول إلى حسابك' : 'Sign in to your account'}
                   </Link>
                 </div>

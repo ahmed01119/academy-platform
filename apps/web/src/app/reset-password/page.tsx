@@ -85,19 +85,19 @@ function ResetPasswordForm() {
 
   return (
     <div className="w-full max-w-md mx-auto">
-      <div className="rounded-2xl border border-slate-800 bg-[#0f172a]/90 p-5 sm:p-8 shadow-2xl backdrop-blur-xl relative overflow-hidden">
+      <div className="rounded-3xl border border-[var(--border-app)] bg-[var(--bg-surface)]/95 p-5 sm:p-8 shadow-float backdrop-blur-xl relative overflow-hidden animate-scale-up">
         {/* Sportexus ambient glows */}
-        <div className="absolute -top-16 -right-16 h-40 w-40 rounded-full bg-[#0A3BFF]/25 blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-16 -left-16 h-40 w-40 rounded-full bg-[#00D6FF]/15 blur-3xl pointer-events-none" />
+        <div className="absolute -top-16 -right-16 h-40 w-40 rounded-full bg-[var(--accent-blue)]/20 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-16 -left-16 h-40 w-40 rounded-full bg-[var(--accent-primary)]/10 blur-3xl pointer-events-none" />
 
         <div className="text-center mb-8 relative z-10">
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-[#0A3BFF] to-[#00D6FF] shadow-lg shadow-blue-600/25">
             <KeyRound className="h-6 w-6 text-white" />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">
+          <h1 className="text-2xl font-bold tracking-tight text-[var(--text-main)]">
             {locale === 'ar' ? 'إعادة تعيين كلمة المرور' : 'Reset Password'}
           </h1>
-          <p className="mt-2 text-sm text-slate-400">
+          <p className="mt-2 text-sm text-[var(--text-muted)]">
             {locale === 'ar'
               ? 'أدخل رمز الاستعادة وكلمة المرور الجديدة لحسابك'
               : 'Enter your recovery code and new password'}
@@ -125,7 +125,10 @@ function ResetPasswordForm() {
         {!success && (
           <form onSubmit={handleSubmit} className="space-y-5 relative z-10">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5" htmlFor="token">
+              <label
+                className="block text-xs font-semibold text-[var(--text-sub)] mb-1.5"
+                htmlFor="token"
+              >
                 {locale === 'ar' ? 'رمز الاستعادة *' : 'Recovery Code *'}
               </label>
               <input
@@ -138,13 +141,13 @@ function ResetPasswordForm() {
                   locale === 'ar' ? 'أدخل الرمز المرسل...' : 'Enter the recovery token...'
                 }
                 dir="ltr"
-                className="w-full rounded-xl border border-slate-700 bg-slate-900/90 py-2.5 px-3 text-xs font-mono text-white placeholder-slate-500 focus:border-[#00D6FF] focus:ring-1 focus:ring-[#00D6FF] outline-none transition-all"
+                className="w-full rounded-xl border border-[var(--border-app)] bg-[var(--bg-surface-subtle)] py-2.5 px-3 text-xs font-mono text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:ring-1 focus:ring-[var(--accent-primary)] outline-none transition-all"
               />
             </div>
 
             <div>
               <label
-                className="block text-xs font-semibold text-slate-300 mb-1.5"
+                className="block text-xs font-semibold text-[var(--text-sub)] mb-1.5"
                 htmlFor="password"
               >
                 {locale === 'ar' ? 'كلمة المرور الجديدة *' : 'New Password *'}
@@ -158,7 +161,7 @@ function ResetPasswordForm() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••••••"
                   dir="ltr"
-                  className="w-full rounded-xl border border-slate-700 bg-slate-900/90 py-2.5 pr-4 pl-10 text-sm text-white placeholder-slate-500 focus:border-[#00D6FF] focus:ring-1 focus:ring-[#00D6FF] outline-none transition-all"
+                  className="w-full rounded-xl border border-[var(--border-app)] bg-[var(--bg-surface-subtle)] py-2.5 pr-4 pl-10 text-sm text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:ring-1 focus:ring-[var(--accent-primary)] outline-none transition-all"
                 />
                 <button
                   type="button"
@@ -172,7 +175,7 @@ function ResetPasswordForm() {
 
             <div>
               <label
-                className="block text-xs font-semibold text-slate-300 mb-1.5"
+                className="block text-xs font-semibold text-[var(--text-sub)] mb-1.5"
                 htmlFor="confirmPassword"
               >
                 {locale === 'ar' ? 'تأكيد كلمة المرور الجديدة *' : 'Confirm New Password *'}
@@ -185,7 +188,7 @@ function ResetPasswordForm() {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="••••••••••••"
                 dir="ltr"
-                className="w-full rounded-xl border border-slate-700 bg-slate-900/90 py-2.5 px-3 text-sm text-white placeholder-slate-500 focus:border-[#00D6FF] focus:ring-1 focus:ring-[#00D6FF] outline-none transition-all"
+                className="w-full rounded-xl border border-[var(--border-app)] bg-[var(--bg-surface-subtle)] py-2.5 px-3 text-sm text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:ring-1 focus:ring-[var(--accent-primary)] outline-none transition-all"
               />
             </div>
 
@@ -211,8 +214,11 @@ function ResetPasswordForm() {
           </form>
         )}
 
-        <div className="mt-8 border-t border-slate-800 pt-6 text-center text-xs text-slate-400 relative z-10">
-          <Link href="/login" className="font-semibold text-[#00D6FF] hover:underline">
+        <div className="mt-8 border-t border-[var(--border-subtle)] pt-6 text-center text-xs text-[var(--text-muted)] relative z-10">
+          <Link
+            href="/login"
+            className="font-semibold text-[var(--accent-primary)] hover:underline transition-colors"
+          >
             {locale === 'ar' ? 'العودة إلى تسجيل الدخول' : 'Back to sign in'}
           </Link>
         </div>
@@ -223,13 +229,13 @@ function ResetPasswordForm() {
 
 export default function ResetPasswordPage() {
   return (
-    <div className="min-h-screen bg-[var(--bg-base)] text-[var(--text-main)] flex flex-col overflow-x-hidden">
+    <div className="min-h-screen bg-[var(--bg-base)] text-[var(--text-main)] flex flex-col overflow-x-hidden animate-fade-in">
       <Navbar />
       <main className="flex-1 flex items-center justify-center p-3 sm:p-6 lg:p-8">
         <Suspense
           fallback={
             <div className="flex items-center gap-2 text-sm text-slate-400">
-              <Loader2 className="h-5 w-5 animate-spin text-[#00D6FF]" />
+              <Loader2 className="h-5 w-5 animate-spin text-[var(--accent-primary)]" />
               <span>جارٍ تحميل الصفحة...</span>
             </div>
           }
