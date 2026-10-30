@@ -13,7 +13,7 @@ import {
   KeyRound,
   Target,
 } from 'lucide-react';
-import type { PlayerPortalProfile, PlayerEvaluation } from '@academy/shared';
+import type { PlayerPortalProfile, PlayerPortalEvaluation } from '@academy/shared';
 
 export default function PlayerPortalPage() {
   const { user, isLoading: authLoading } = useAuth();
@@ -36,7 +36,7 @@ export default function PlayerPortalPage() {
       absent: number;
       attendanceRate: number;
     };
-    recentEvaluations: PlayerEvaluation[];
+    recentEvaluations: PlayerPortalEvaluation[];
   } | null>(null);
 
   const [claimTokenInput, setClaimTokenInput] = useState('');

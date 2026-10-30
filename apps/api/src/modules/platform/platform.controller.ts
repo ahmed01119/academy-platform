@@ -5,6 +5,7 @@ import {
   Inject,
   Param,
   Patch,
+  Post,
   Query,
   UseGuards,
 } from '@nestjs/common';
@@ -14,8 +15,10 @@ import { PlatformSuperAdminGuard } from '../auth/guards/platform-super-admin.gua
 import { CsrfGuard } from '../auth/guards/csrf.guard';
 import { CurrentUser } from '../auth/decorators/auth-user.decorator';
 import {
+  RequestSupportAccessSchema,
   UpdateAcademyStatusRequestSchema,
   UuidParamSchema,
+  type RequestSupportAccessRequest,
   type UpdateAcademyStatusRequest,
 } from '@academy/shared';
 
@@ -47,6 +50,17 @@ export class PlatformController {
     const academyId = UuidParamSchema.parse(rawId);
     const dto: UpdateAcademyStatusRequest = UpdateAcademyStatusRequestSchema.parse(body);
     return this.platformService.updateAcademyStatus(actorUserId, academyId, dto);
+  }
+
+  @Post('academies/:id/support-access')
+  async requestSupportAccess(
+    @CurrentUser('id') actorUserId: string,
+    @Param('id') rawId: string,
+    @Body() body: unknown,
+  ) {
+    const academyId = UuidParamSchema.parse(rawId);
+    const dto: RequestSupportAccessRequest = RequestSupportAccessSchema.parse(body);
+    return this.platformService.requestSupportAccess(actorUserId, academyId, dto);
   }
 
   @Get('audit-logs')

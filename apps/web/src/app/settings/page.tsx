@@ -4,7 +4,10 @@ import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../lib/auth-context';
+import { canAccessAdminRoutes, getRoleHomeRoute } from '../../lib/role-routing';
 import { Navbar } from '../../components/Navbar';
+import { ThemeToggle } from '../../components/ThemeToggle';
+import { LocaleToggle } from '../../components/LocaleToggle';
 import { api } from '../../lib/api-client';
 import type { AcademyProfile, UpdateAcademySettings } from '@academy/shared';
 import {
@@ -16,6 +19,7 @@ import {
   AlertCircle,
   CheckCircle2,
   ChevronRight,
+  Palette,
 } from 'lucide-react';
 
 export default function SettingsPage() {
@@ -38,10 +42,16 @@ export default function SettingsPage() {
   const [timezone, setTimezone] = useState('Africa/Cairo');
 
   useEffect(() => {
-    if (!isLoading && !user) {
-      router.push('/login');
+    if (!isLoading) {
+      if (!user) {
+        router.push('/login');
+        return;
+      }
+      if (!canAccessAdminRoutes(user, activeTenant)) {
+        router.push(getRoleHomeRoute(user, activeTenant));
+      }
     }
-  }, [user, isLoading, router]);
+  }, [user, activeTenant, isLoading, router]);
 
   const loadProfile = useCallback(async () => {
     if (!user || !activeTenant) return;
@@ -312,6 +322,40 @@ export default function SettingsPage() {
                   <option value="Asia/Dubai">توقيت دبي (UTC+4)</option>
                   <option value="UTC">التوقيت العالمي (UTC)</option>
                 </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Appearance & Personal Preferences */}
+          <div className="rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-6 backdrop-blur-md space-y-4">
+            <div className="flex items-center gap-2 border-b border-[var(--border-app)] pb-3 text-sm font-bold text-[var(--text-main)]">
+              <Palette className="h-4 w-4 text-[var(--accent-primary)]" />
+              <span>المظهر واللغة (Appearance & Language)</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-center">
+              <div>
+                <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">
+                  نمط المظهر (Theme Mode)
+                </label>
+                <div className="flex items-center gap-3">
+                  <ThemeToggle />
+                  <span className="text-xs text-[var(--text-muted)]">
+                    دعم الوضع النهاري والليلي وتفضيل النظام تلقائياً
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">
+                  لغة الواجهة (Interface Language)
+                </label>
+                <div className="flex items-center gap-3">
+                  <LocaleToggle />
+                  <span className="text-xs text-[var(--text-muted)]">
+                    التبديل الفوري بين العربية (RTL) والإنجليزية (LTR)
+                  </span>
+                </div>
               </div>
             </div>
           </div>

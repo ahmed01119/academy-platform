@@ -1,14 +1,81 @@
 @import 'tailwindcss';
 
+@theme {
+  --color-bg-base: var(--bg-base);
+  --color-bg-surface: var(--bg-surface);
+  --color-bg-surface-subtle: var(--bg-surface-subtle);
+  --color-bg-surface-elevated: var(--bg-surface-elevated);
+
+  --color-text-main: var(--text-main);
+  --color-text-muted: var(--text-muted);
+  --color-text-inverse: var(--text-inverse);
+
+  --color-border-app: var(--border-app);
+  --color-border-subtle: var(--border-subtle);
+
+  --color-accent-primary: var(--accent-primary);
+  --color-accent-primary-hover: var(--accent-primary-hover);
+  --color-accent-primary-fg: var(--accent-primary-fg);
+
+  --color-badge-bg: var(--badge-bg);
+  --color-badge-border: var(--badge-border);
+  --color-badge-fg: var(--badge-fg);
+}
+
 :root {
-  --color-bg: #0f1c18;
-  --color-surface: #162821;
-  --color-fg: #e8f0ec;
-  --color-muted: #9bb5a8;
-  --color-accent: #2f9e6b;
-  --color-accent-fg: #062016;
+  /* Light Theme — Clean, Professional Emerald Athletic Palette */
+  --bg-base: #f4f8f5;
+  --bg-surface: #ffffff;
+  --bg-surface-subtle: #ebf3ee;
+  --bg-surface-elevated: #ffffff;
+
+  --text-main: #0c1f17;
+  --text-muted: #4a685b;
+  --text-inverse: #ffffff;
+
+  --border-app: #cfe0d7;
+  --border-subtle: #e1ece6;
+
+  --accent-primary: #187a48;
+  --accent-primary-hover: #12633a;
+  --accent-primary-fg: #ffffff;
+
+  --badge-bg: #e2f4ea;
+  --badge-border: #a3dfbc;
+  --badge-fg: #0e5933;
+
   --font-display: 'IBM Plex Sans Arabic', 'Segoe UI', sans-serif;
   --font-body: 'IBM Plex Sans', 'Segoe UI', sans-serif;
+
+  --ambient-glow-1: rgba(24, 122, 72, 0.08);
+  --ambient-glow-2: rgba(31, 138, 87, 0.06);
+}
+
+[data-theme='dark'],
+.dark {
+  /* Dark Theme — Deep Premium Pitch Emerald */
+  --bg-base: #0b1612;
+  --bg-surface: #12221b;
+  --bg-surface-subtle: #162821;
+  --bg-surface-elevated: #192e25;
+
+  --text-main: #e8f0ec;
+  --text-muted: #9bb5a8;
+  --text-inverse: #062016;
+
+  --border-app: #234235;
+  --border-subtle: #1a3328;
+
+  --accent-primary: #2f9e6b;
+  --accent-primary-hover: #3bb87d;
+  --accent-primary-fg: #062016;
+
+  --badge-bg: rgba(47, 158, 107, 0.15);
+  --badge-border: rgba(47, 158, 107, 0.35);
+  --badge-fg: #45c387;
+
+  --ambient-glow-1: rgba(47, 158, 107, 0.18);
+  --ambient-glow-2: rgba(34, 92, 70, 0.3);
 }
 
 * {
@@ -22,11 +89,31 @@ body {
 }
 
 body {
-  background:
-    radial-gradient(1200px 600px at 10% -10%, rgba(47, 158, 107, 0.22), transparent 55%),
-    radial-gradient(900px 500px at 90% 0%, rgba(34, 92, 70, 0.35), transparent 50%), var(--color-bg);
-  color: var(--color-fg);
+  background-color: var(--bg-base);
+  background-image:
+    radial-gradient(1200px 600px at 10% -10%, var(--ambient-glow-1), transparent 55%),
+    radial-gradient(900px 500px at 90% 0%, var(--ambient-glow-2), transparent 50%);
+  color: var(--text-main);
   font-family: var(--font-body);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Accessible focus outline */
+*:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+/* Respect user reduced-motion setting */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 a {

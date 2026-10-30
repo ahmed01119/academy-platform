@@ -58,6 +58,7 @@ import type {
   PlayerDevelopmentProfile,
   PlayerEvaluation,
   PlayerPortalProfile,
+  PlayerPortalEvaluation,
   UpdateAcademyStatusRequest,
 } from '@academy/shared';
 
@@ -699,7 +700,7 @@ export const api = {
         absent: number;
         attendanceRate: number;
       };
-      recentEvaluations: PlayerEvaluation[];
+      recentEvaluations: PlayerPortalEvaluation[];
     }> {
       return request('/portal/player/me', { method: 'GET' });
     },

@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../lib/auth-context';
+import { canAccessAdminRoutes, getRoleHomeRoute } from '../../lib/role-routing';
 import { Navbar } from '../../components/Navbar';
 import { api } from '../../lib/api-client';
 import type {
@@ -53,10 +54,16 @@ export default function BranchesPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    if (!isLoading && !user) {
-      router.push('/login');
+    if (!isLoading) {
+      if (!user) {
+        router.push('/login');
+        return;
+      }
+      if (!canAccessAdminRoutes(user, activeTenant)) {
+        router.push(getRoleHomeRoute(user, activeTenant));
+      }
     }
-  }, [user, isLoading, router]);
+  }, [user, activeTenant, isLoading, router]);
 
   const loadBranches = useCallback(async () => {
     if (!user || !activeTenant) return;

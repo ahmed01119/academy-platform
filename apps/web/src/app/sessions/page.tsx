@@ -4,6 +4,7 @@ import React, { Suspense, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '../../lib/auth-context';
+import { canAccessAdminRoutes, canAccessCoachRoutes, getRoleHomeRoute } from '../../lib/role-routing';
 import { Navbar } from '../../components/Navbar';
 import { api } from '../../lib/api-client';
 import type {
@@ -80,10 +81,16 @@ function SessionsContent() {
   const [createError, setCreateError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isLoading && !user) {
-      router.push('/login');
+    if (!isLoading) {
+      if (!user) {
+        router.push('/login');
+        return;
+      }
+      if (!canAccessAdminRoutes(user, activeTenant) && !canAccessCoachRoutes(user, activeTenant)) {
+        router.push(getRoleHomeRoute(user, activeTenant));
+      }
     }
-  }, [user, isLoading, router]);
+  }, [user, activeTenant, isLoading, router]);
 
   const loadSessions = useCallback(
     async (currentPage = page) => {

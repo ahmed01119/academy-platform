@@ -43,6 +43,9 @@ interface MockPrisma {
     findUnique: MockFn;
     findMany: MockFn;
   };
+  playerEnrollment: {
+    findFirst: MockFn;
+  };
   user: {
     findMany: MockFn;
   };
@@ -96,6 +99,9 @@ describe('AttendanceService', () => {
       player: {
         findUnique: vi.fn(),
         findMany: vi.fn().mockResolvedValue([]),
+      },
+      playerEnrollment: {
+        findFirst: vi.fn().mockResolvedValue({ id: 'enr-1', status: 'ACTIVE' }),
       },
       user: {
         findMany: vi.fn().mockResolvedValue([]),
@@ -250,6 +256,19 @@ describe('AttendanceService', () => {
         }),
       ).rejects.toThrow(ConflictException);
     });
+
+    it('rejects recording attendance if player is not actively enrolled in the session branch', async () => {
+      mockPrisma.attendanceSession.findUnique.mockResolvedValue({
+        id: 'session-1',
+        branchId: tenantContext.branchId,
+        status: 'IN_PROGRESS',
+      });
+      mockPrisma.playerEnrollment.findFirst.mockResolvedValue(null);
+
+      await expect(service.recordAttendance(tenantContext, request)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
   });
 
   describe('bulkRecordAttendance', () => {
@@ -289,6 +308,23 @@ describe('AttendanceService', () => {
         }),
       );
     });
+
+    it('rejects bulk recording if a player is not actively enrolled in the session branch', async () => {
+      mockPrisma.attendanceSession.findUnique.mockResolvedValue({
+        id: 'session-1',
+        branchId: tenantContext.branchId,
+        status: 'IN_PROGRESS',
+      });
+      mockPrisma.playerEnrollment.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.bulkRecordAttendance(tenantContext, {
+          sessionId: 'session-1',
+          idempotencyKey: 'idemp-bulk-err',
+          records: [{ playerId: 'p-transferred', status: 'PRESENT' }],
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
   });
 
   describe('temporary QR check-in', () => {
@@ -323,6 +359,10 @@ describe('AttendanceService', () => {
         lastName: 'Ozora',
         status: 'ACTIVE',
       });
+      mockPrisma.playerEnrollment.findFirst.mockResolvedValue({
+        id: 'enr-1',
+        status: 'ACTIVE',
+      });
       mockPrisma.attendanceRecord.findUnique.mockResolvedValue({
         id: 'rec-1',
         sessionId: 'session-1',
@@ -348,6 +388,29 @@ describe('AttendanceService', () => {
           }),
         }),
       );
+    });
+
+    it('rejects QR check-in if player is not actively enrolled in the session branch', async () => {
+      const futureDate = new Date(Date.now() + 60000);
+      mockPrisma.attendanceSession.findUnique.mockResolvedValue({
+        id: 'session-1',
+        branchId: tenantContext.branchId,
+        status: 'IN_PROGRESS',
+        qrCodeSecret: 'valid-secret-token',
+        qrCodeExpiresAt: futureDate,
+      });
+      mockPrisma.player.findUnique.mockResolvedValue({
+        id: 'player-1',
+        status: 'ACTIVE',
+      });
+      mockPrisma.playerEnrollment.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.checkInViaQr(tenantContext, 'session-1', {
+          token: 'valid-secret-token',
+          playerId: 'player-1',
+        }),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('rejects expired QR token', async () => {

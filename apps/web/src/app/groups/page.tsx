@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../lib/auth-context';
+import { canAccessAdminRoutes, canAccessCoachRoutes, getRoleHomeRoute } from '../../lib/role-routing';
 import { Navbar } from '../../components/Navbar';
 import { api } from '../../lib/api-client';
 import type { BranchSummary, GroupStatus, TrainingGroupSummary } from '@academy/shared';
@@ -51,10 +52,16 @@ export default function GroupsPage() {
   const [createError, setCreateError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isLoading && !user) {
-      router.push('/login');
+    if (!isLoading) {
+      if (!user) {
+        router.push('/login');
+        return;
+      }
+      if (!canAccessAdminRoutes(user, activeTenant) && !canAccessCoachRoutes(user, activeTenant)) {
+        router.push(getRoleHomeRoute(user, activeTenant));
+      }
     }
-  }, [user, isLoading, router]);
+  }, [user, activeTenant, isLoading, router]);
 
   const loadGroups = useCallback(
     async (currentPage = page) => {
