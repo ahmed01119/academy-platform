@@ -45,12 +45,12 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.refresh_tokens TO academy_r
 REVOKE TRUNCATE ON TABLE public.refresh_tokens FROM academy_runtime_ci;
 
 -- Tenant-owned operational tables
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.tenant_memberships, public.invitations, public.attendance_sessions, public.attendance_records, public.attendance_idempotency, public.players, public.guardians, public.player_enrollments TO academy_runtime_ci;
-REVOKE TRUNCATE ON TABLE public.tenant_memberships, public.invitations, public.attendance_sessions, public.attendance_records, public.attendance_idempotency, public.players, public.guardians, public.player_enrollments FROM academy_runtime_ci;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.tenant_memberships, public.invitations, public.attendance_sessions, public.attendance_records, public.attendance_idempotency, public.players, public.guardians, public.player_enrollments, public.training_groups, public.group_coaches, public.group_members, public.training_schedules TO academy_runtime_ci;
+REVOKE TRUNCATE ON TABLE public.tenant_memberships, public.invitations, public.attendance_sessions, public.attendance_records, public.attendance_idempotency, public.players, public.guardians, public.player_enrollments, public.training_groups, public.group_coaches, public.group_members, public.training_schedules FROM academy_runtime_ci;
 
--- Append-only attendance corrections: SELECT and INSERT only. Never UPDATE, DELETE, or TRUNCATE!
-GRANT SELECT, INSERT ON TABLE public.attendance_corrections TO academy_runtime_ci;
-REVOKE UPDATE, DELETE, TRUNCATE ON TABLE public.attendance_corrections FROM academy_runtime_ci;
+-- Append-only attendance corrections and events: SELECT and INSERT only. Never UPDATE, DELETE, or TRUNCATE!
+GRANT SELECT, INSERT ON TABLE public.attendance_corrections, public.attendance_events TO academy_runtime_ci;
+REVOKE UPDATE, DELETE, TRUNCATE ON TABLE public.attendance_corrections, public.attendance_events FROM academy_runtime_ci;
 
 -- Scoped onboarding, invitation redemption and identity transition boundary execution
 GRANT EXECUTE ON FUNCTION public.issue_user_onboarding_token(uuid) TO academy_runtime_ci;

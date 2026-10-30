@@ -15,6 +15,9 @@ import {
   Users,
   GitBranch,
   Settings,
+  Layers,
+  CalendarCheck,
+  BarChart3,
 } from 'lucide-react';
 
 const ROLE_LABELS_AR: Record<string, string> = {
@@ -35,7 +38,7 @@ export function Navbar() {
     <header className="sticky top-0 z-50 w-full border-b border-[#234235] bg-[#0f1c18]/90 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Brand & Nav */}
-        <div className="flex items-center gap-8">
+        <div className="flex items-center gap-6 lg:gap-8">
           <Link href="/" className="flex items-center gap-3 group">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-[#2f9e6b] to-[#45c387] shadow-lg shadow-[#2f9e6b]/20 group-hover:scale-105 transition-transform duration-200">
               <ShieldCheck className="h-6 w-6 text-[#062016]" />
@@ -44,7 +47,7 @@ export function Navbar() {
               <div className="flex items-center gap-2">
                 <span className="font-bold tracking-tight text-lg text-white">منصة الأكاديمية</span>
                 <span className="rounded-full bg-[#2f9e6b]/20 px-2 py-0.5 text-xs font-semibold text-[#45c387] border border-[#2f9e6b]/40">
-                  Sprint 2
+                  Sprint 3
                 </span>
               </div>
               <p className="text-xs text-[#9bb5a8]">Academy Management Cloud</p>
@@ -59,7 +62,7 @@ export function Navbar() {
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-[#e8f0ec] hover:text-[#45c387] hover:bg-[#162821] transition-all"
               >
                 <LayoutDashboard className="h-4 w-4 text-[#2f9e6b]" />
-                <span>لوحة التحكم</span>
+                <span>الرئيسية</span>
               </Link>
               <Link
                 href="/players"
@@ -68,6 +71,30 @@ export function Navbar() {
               >
                 <Users className="h-4 w-4 text-[#2f9e6b]" />
                 <span>اللاعبين</span>
+              </Link>
+              <Link
+                href="/groups"
+                id="nav-link-groups"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-[#e8f0ec] hover:text-[#45c387] hover:bg-[#162821] transition-all"
+              >
+                <Layers className="h-4 w-4 text-[#2f9e6b]" />
+                <span>المجموعات</span>
+              </Link>
+              <Link
+                href="/sessions"
+                id="nav-link-sessions"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-[#e8f0ec] hover:text-[#45c387] hover:bg-[#162821] transition-all"
+              >
+                <CalendarCheck className="h-4 w-4 text-[#2f9e6b]" />
+                <span>الحصص والتحضير</span>
+              </Link>
+              <Link
+                href="/attendance/reports"
+                id="nav-link-reports"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-[#e8f0ec] hover:text-[#45c387] hover:bg-[#162821] transition-all"
+              >
+                <BarChart3 className="h-4 w-4 text-[#2f9e6b]" />
+                <span>التقارير</span>
               </Link>
               <Link
                 href="/branches"

@@ -7,6 +7,7 @@ export * from './schemas/attendance';
 export * from './schemas/auth';
 export * from './schemas/branch';
 export * from './schemas/enrollment';
+export * from './schemas/group';
 export * from './schemas/health';
 export * from './schemas/player';
 export * from './schemas/tenant-context';

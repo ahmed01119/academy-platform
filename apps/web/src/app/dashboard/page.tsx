@@ -17,7 +17,9 @@ import {
   ArrowUpRight,
   ChevronLeft,
   Phone,
-  UserCheck,
+  Layers,
+  CalendarCheck,
+  BarChart3,
 } from 'lucide-react';
 
 export default function DashboardPage() {
@@ -28,6 +30,8 @@ export default function DashboardPage() {
   const [totalPlayers, setTotalPlayers] = useState<number>(0);
   const [branches, setBranches] = useState<BranchSummary[]>([]);
   const [staffCount, setStaffCount] = useState<number>(0);
+  const [groupCount, setGroupCount] = useState<number>(0);
+  const [sessionCount, setSessionCount] = useState<number>(0);
   const [isFetchingData, setIsFetchingData] = useState(false);
 
   useEffect(() => {
@@ -41,15 +45,21 @@ export default function DashboardPage() {
       const loadDashboardData = async () => {
         setIsFetchingData(true);
         try {
-          const [playersRes, branchList, staffList] = await Promise.all([
+          const [playersRes, branchList, staffList, groupsRes, sessionsRes] = await Promise.all([
             api.players.list({ limit: 5 }).catch(() => ({ items: [], total: 0 })),
             api.branches.list().catch(() => []),
             api.tenancy.listStaff().catch(() => []),
+            api.groups.list({ page: 1, limit: 1 }).catch(() => ({ items: [], total: 0 })),
+            api.attendance
+              .listSessions({ page: 1, limit: 1 })
+              .catch(() => ({ items: [], total: 0 })),
           ]);
           setPlayers(playersRes.items);
           setTotalPlayers(playersRes.total);
           setBranches(branchList);
           setStaffCount(staffList.length);
+          setGroupCount(groupsRes.total);
+          setSessionCount(sessionsRes.total);
         } finally {
           setIsFetchingData(false);
         }
@@ -73,8 +83,6 @@ export default function DashboardPage() {
     return null;
   }
 
-  const activeEnrollmentsCount = branches.reduce((acc, b) => acc + (b.activePlayersCount || 0), 0);
-
   return (
     <div className="min-h-screen bg-[#0f1c18] text-[#e8f0ec] flex flex-col font-sans">
       <Navbar />
@@ -89,7 +97,7 @@ export default function DashboardPage() {
               <div className="flex items-center gap-2 mb-2">
                 <span className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-[#45c387] bg-[#2f9e6b]/15 px-2.5 py-1 rounded-full border border-[#2f9e6b]/30">
                   <ShieldCheck className="h-3.5 w-3.5" />
-                  Sprint 2 — الأكاديمية واللاعبين
+                  Sprint 3 — المجموعات التدريبية والحضور والانصراف
                 </span>
                 <span className="text-xs text-[#9bb5a8]">
                   {activeTenant?.tenantName || 'الأكاديمية النشطة'}
@@ -99,7 +107,7 @@ export default function DashboardPage() {
                 أهلاً بك، {user.name} 👋
               </h1>
               <p className="mt-1 text-sm text-[#9bb5a8]">
-                لوحة الإدارة المركزية للأكاديمية وفروعها وقيد اللاعبين والاشتراكات.
+                لوحة الإدارة المركزية للأكاديمية واللاعبين والمجموعات وحصص الحضور الذكية.
               </p>
             </div>
 
@@ -116,6 +124,15 @@ export default function DashboardPage() {
               </button>
 
               <Link
+                href="/sessions"
+                id="btn-quick-sessions"
+                className="flex items-center gap-2 rounded-xl border border-[#2b4c3e] bg-[#0f1c18] px-4 py-2.5 text-xs font-semibold text-[#45c387] hover:border-[#2f9e6b] transition-all cursor-pointer"
+              >
+                <CalendarCheck className="h-4 w-4" />
+                <span>شاشة التحضير</span>
+              </Link>
+
+              <Link
                 href="/players/new"
                 id="btn-new-player"
                 className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#2f9e6b] to-[#36b379] px-4 py-2.5 text-xs font-semibold text-[#062016] shadow-md shadow-[#2f9e6b]/20 hover:brightness-110 transition-all"
@@ -127,8 +144,8 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* KPI Metrics Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        {/* KPI Metrics Cards (6-item Grid for Sprint 3) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {/* Card 1: Players */}
           <Link
             href="/players"
@@ -144,12 +161,72 @@ export default function DashboardPage() {
             <div className="flex items-baseline justify-between">
               <span className="text-2xl sm:text-3xl font-extrabold text-white">{totalPlayers}</span>
               <span className="text-xs text-[#45c387] flex items-center gap-0.5">
-                عرض القائمة <ArrowUpRight className="h-3.5 w-3.5" />
+                عرض اللاعبين <ArrowUpRight className="h-3.5 w-3.5" />
               </span>
             </div>
           </Link>
 
-          {/* Card 2: Branches */}
+          {/* Card 2: Training Groups */}
+          <Link
+            href="/groups"
+            id="kpi-groups"
+            className="group rounded-2xl border border-[#234235] bg-[#162821]/80 p-5 hover:border-[#2f9e6b]/60 transition-all shadow-lg hover:shadow-[#2f9e6b]/10"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-medium text-[#9bb5a8]">المجموعات التدريبية</span>
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#2f9e6b]/15 text-[#45c387] group-hover:scale-110 transition-transform">
+                <Layers className="h-5 w-5" />
+              </div>
+            </div>
+            <div className="flex items-baseline justify-between">
+              <span className="text-2xl sm:text-3xl font-extrabold text-white">{groupCount}</span>
+              <span className="text-xs text-[#45c387] flex items-center gap-0.5">
+                إدارة المجموعات <ArrowUpRight className="h-3.5 w-3.5" />
+              </span>
+            </div>
+          </Link>
+
+          {/* Card 3: Training Sessions */}
+          <Link
+            href="/sessions"
+            id="kpi-sessions"
+            className="group rounded-2xl border border-[#234235] bg-[#162821]/80 p-5 hover:border-[#2f9e6b]/60 transition-all shadow-lg hover:shadow-[#2f9e6b]/10"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-medium text-[#9bb5a8]">الحصص وسجلات الحضور</span>
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#3b82f6]/15 text-[#60a5fa] group-hover:scale-110 transition-transform">
+                <CalendarCheck className="h-5 w-5" />
+              </div>
+            </div>
+            <div className="flex items-baseline justify-between">
+              <span className="text-2xl sm:text-3xl font-extrabold text-white">{sessionCount}</span>
+              <span className="text-xs text-[#60a5fa] flex items-center gap-0.5">
+                سجل الحصص <ArrowUpRight className="h-3.5 w-3.5" />
+              </span>
+            </div>
+          </Link>
+
+          {/* Card 4: Attendance Reports */}
+          <Link
+            href="/attendance/reports"
+            id="kpi-reports"
+            className="group rounded-2xl border border-[#234235] bg-[#162821]/80 p-5 hover:border-[#2f9e6b]/60 transition-all shadow-lg hover:shadow-[#2f9e6b]/10"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-medium text-[#9bb5a8]">تقارير الانضباط والحضور</span>
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#eab308]/15 text-[#facc15] group-hover:scale-110 transition-transform">
+                <BarChart3 className="h-5 w-5" />
+              </div>
+            </div>
+            <div className="flex items-baseline justify-between">
+              <span className="text-2xl sm:text-3xl font-extrabold text-white">التحليلات</span>
+              <span className="text-xs text-[#facc15] flex items-center gap-0.5">
+                عرض التقارير <ArrowUpRight className="h-3.5 w-3.5" />
+              </span>
+            </div>
+          </Link>
+
+          {/* Card 5: Branches */}
           <Link
             href="/branches"
             id="kpi-branches"
@@ -171,23 +248,7 @@ export default function DashboardPage() {
             </div>
           </Link>
 
-          {/* Card 3: Enrollments */}
-          <div className="rounded-2xl border border-[#234235] bg-[#162821]/80 p-5 shadow-lg">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-medium text-[#9bb5a8]">الاشتراكات بالفروع</span>
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#eab308]/15 text-[#facc15]">
-                <UserCheck className="h-5 w-5" />
-              </div>
-            </div>
-            <div className="flex items-baseline justify-between">
-              <span className="text-2xl sm:text-3xl font-extrabold text-white">
-                {activeEnrollmentsCount}
-              </span>
-              <span className="text-xs text-[#9bb5a8]">اشتراك نشط</span>
-            </div>
-          </div>
-
-          {/* Card 4: Staff */}
+          {/* Card 6: Staff */}
           <div className="rounded-2xl border border-[#234235] bg-[#162821]/80 p-5 shadow-lg">
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-medium text-[#9bb5a8]">الكادر الفني والإداري</span>

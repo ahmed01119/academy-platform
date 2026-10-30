@@ -5,16 +5,25 @@ import {
   Inject,
   Injectable,
   NotFoundException,
-  ServiceUnavailableException,
 } from '@nestjs/common';
+import crypto from 'node:crypto';
 import { PrismaService } from '../database/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import {
   ErrorCode,
   type AttendanceCorrection,
+  type AttendanceEventSummary,
   type AttendanceMutation,
+  type AttendanceReportQuery,
+  type AttendanceReportSummary,
   type BulkAttendanceSubmission,
   type CreateAttendanceSession,
+  type GenerateQrRequest,
+  type GenerateQrResponse,
+  type QrCheckInRequest,
+  type SessionDetails,
+  type SessionQuery,
+  type SessionSummary,
   type TenantContext,
 } from '@academy/shared';
 
@@ -27,6 +36,7 @@ export class AttendanceService {
 
   /**
    * Creates an attendance training session in a branch.
+   * If groupId is provided, automatically populates the session roster with all active group members.
    */
   async createSession(tenantContext: TenantContext, dto: CreateAttendanceSession) {
     if (tenantContext.branchId && tenantContext.branchId !== dto.branchId) {
@@ -49,17 +59,54 @@ export class AttendanceService {
           },
         });
 
-        if (!branch) {
+        if (!branch || branch.status !== 'ACTIVE') {
           throw new NotFoundException({
             code: ErrorCode.NOT_FOUND,
-            message: 'Branch not found in this academy',
+            message: 'Branch not found or inactive',
           });
+        }
+
+        // If groupId is provided, verify it exists and belongs to the same branch
+        let activeGroupMembers: Array<{ playerId: string }> = [];
+        if (dto.groupId) {
+          const group = await tx.trainingGroup.findUnique({
+            where: {
+              tenantId_id: {
+                tenantId: tenantContext.tenantId,
+                id: dto.groupId,
+              },
+            },
+            include: {
+              members: {
+                where: { status: 'ACTIVE' },
+                select: { playerId: true },
+              },
+            },
+          });
+
+          if (!group || group.status !== 'ACTIVE') {
+            throw new NotFoundException({
+              code: ErrorCode.NOT_FOUND,
+              message: 'Training group not found or inactive',
+            });
+          }
+
+          if (group.branchId !== dto.branchId) {
+            throw new BadRequestException({
+              code: ErrorCode.VALIDATION_FAILED,
+              message: 'Training group does not belong to the selected branch',
+            });
+          }
+
+          activeGroupMembers = group.members;
         }
 
         const session = await tx.attendanceSession.create({
           data: {
             tenantId: tenantContext.tenantId,
             branchId: dto.branchId,
+            groupId: dto.groupId || null,
+            coachUserId: dto.coachUserId || null,
             sport: dto.sport,
             groupName: dto.groupName.trim(),
             sessionDate: new Date(`${dto.sessionDate}T00:00:00.000Z`),
@@ -68,6 +115,19 @@ export class AttendanceService {
             status: 'SCHEDULED',
           },
         });
+
+        // Initialize roster records for all active group members as UNMARKED
+        if (activeGroupMembers.length > 0) {
+          await tx.attendanceRecord.createMany({
+            data: activeGroupMembers.map((m) => ({
+              tenantId: tenantContext.tenantId,
+              sessionId: session.id,
+              playerId: m.playerId,
+              status: 'UNMARKED',
+              version: 1,
+            })),
+          });
+        }
 
         await this.auditService.logEvent(
           {
@@ -78,8 +138,10 @@ export class AttendanceService {
             resourceId: session.id,
             metadata: {
               branchId: dto.branchId,
+              groupId: dto.groupId,
               groupName: dto.groupName,
               sessionDate: dto.sessionDate,
+              initialRosterCount: activeGroupMembers.length,
             },
           },
           tx,
@@ -91,9 +153,9 @@ export class AttendanceService {
   }
 
   /**
-   * Retrieves a session by ID with its attendance records.
+   * Retrieves a session by ID with its full attendance roster and counts.
    */
-  async getSession(tenantContext: TenantContext, sessionId: string) {
+  async getSession(tenantContext: TenantContext, sessionId: string): Promise<SessionDetails> {
     return this.prisma.withTenantTransaction(
       { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
       async (tx) => {
@@ -106,9 +168,13 @@ export class AttendanceService {
           },
           include: {
             branch: { select: { id: true, name: true, code: true } },
+            group: { select: { id: true, name: true } },
+            coachUser: { select: { id: true, name: true } },
             records: {
+              include: {
+                corrections: { orderBy: { createdAt: 'desc' } },
+              },
               orderBy: { createdAt: 'asc' },
-              include: { corrections: { orderBy: { createdAt: 'desc' } } },
             },
           },
         });
@@ -127,39 +193,183 @@ export class AttendanceService {
           });
         }
 
-        return session;
+        // Fetch player names for records
+        const playerIds = session.records.map((r) => r.playerId);
+        const players = await tx.player.findMany({
+          where: {
+            tenantId: tenantContext.tenantId,
+            id: { in: playerIds },
+          },
+          select: { id: true, firstName: true, lastName: true, photoUrl: true },
+        });
+
+        const playerMap = new Map(players.map((p) => [p.id, p]));
+
+        let present = 0;
+        let late = 0;
+        let absent = 0;
+        let excused = 0;
+        let unmarked = 0;
+
+        const roster = session.records.map((r) => {
+          if (r.status === 'PRESENT') present++;
+          else if (r.status === 'LATE') late++;
+          else if (r.status === 'ABSENT') absent++;
+          else if (r.status === 'EXCUSED') excused++;
+          else unmarked++;
+
+          const p = playerMap.get(r.playerId);
+          return {
+            recordId: r.id,
+            playerId: r.playerId,
+            playerName: p ? `${p.firstName} ${p.lastName}` : 'لاعب غير معروف',
+            photoUrl: p?.photoUrl || null,
+            status: r.status,
+            checkInTime: r.checkInTime ? r.checkInTime.toISOString() : null,
+            remarks: r.remarks,
+            version: r.version,
+          };
+        });
+
+        const hasActiveQr = Boolean(
+          session.qrCodeSecret &&
+          session.qrCodeExpiresAt &&
+          new Date(session.qrCodeExpiresAt) > new Date(),
+        );
+
+        return {
+          id: session.id,
+          tenantId: session.tenantId,
+          branchId: session.branchId,
+          branchName: session.branch.name,
+          groupId: session.groupId,
+          groupName: session.groupName,
+          coachUserId: session.coachUserId,
+          coachName: session.coachUser?.name || null,
+          sport: session.sport,
+          sessionDate: session.sessionDate.toISOString().slice(0, 10),
+          startTime: session.startTime,
+          endTime: session.endTime,
+          status: session.status,
+          totalExpected: session.records.length,
+          totalPresent: present,
+          totalLate: late,
+          totalAbsent: absent,
+          totalExcused: excused,
+          totalUnmarked: unmarked,
+          hasActiveQr,
+          closedAt: session.closedAt ? session.closedAt.toISOString() : null,
+          createdAt: session.createdAt.toISOString(),
+          roster,
+        };
       },
     );
   }
 
   /**
-   * Lists sessions in the academy, optionally filtered by branch and date.
+   * Lists sessions in the academy with summary metrics.
    */
-  async listSessions(tenantContext: TenantContext, branchId?: string, sessionDate?: string) {
-    const effectiveBranchId = tenantContext.branchId || branchId;
+  async listSessions(tenantContext: TenantContext, query?: SessionQuery) {
+    const effectiveBranchId = tenantContext.branchId || query?.branchId;
 
     return this.prisma.withTenantTransaction(
       { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
       async (tx) => {
-        return tx.attendanceSession.findMany({
-          where: {
-            tenantId: tenantContext.tenantId,
-            ...(effectiveBranchId ? { branchId: effectiveBranchId } : {}),
-            ...(sessionDate ? { sessionDate: new Date(`${sessionDate}T00:00:00.000Z`) } : {}),
-          },
+        const whereClause = {
+          tenantId: tenantContext.tenantId,
+          ...(effectiveBranchId ? { branchId: effectiveBranchId } : {}),
+          ...(query?.groupId ? { groupId: query.groupId } : {}),
+          ...(query?.coachUserId ? { coachUserId: query.coachUserId } : {}),
+          ...(query?.status ? { status: query.status } : {}),
+          ...(query?.dateFrom || query?.dateTo
+            ? {
+                sessionDate: {
+                  ...(query?.dateFrom ? { gte: new Date(`${query.dateFrom}T00:00:00.000Z`) } : {}),
+                  ...(query?.dateTo ? { lte: new Date(`${query.dateTo}T23:59:59.999Z`) } : {}),
+                },
+              }
+            : {}),
+        };
+
+        const page = query?.page || 1;
+        const limit = query?.limit || 20;
+        const skip = (page - 1) * limit;
+
+        const total = await tx.attendanceSession.count({ where: whereClause });
+
+        const sessions = await tx.attendanceSession.findMany({
+          where: whereClause,
+          skip,
+          take: limit,
+          orderBy: [{ sessionDate: 'desc' }, { startTime: 'asc' }],
           include: {
             branch: { select: { id: true, name: true, code: true } },
-            _count: { select: { records: true } },
+            coachUser: { select: { id: true, name: true } },
+            records: {
+              select: { status: true },
+            },
           },
-          orderBy: [{ sessionDate: 'desc' }, { startTime: 'asc' }],
         });
+
+        const items: SessionSummary[] = sessions.map((s) => {
+          let present = 0;
+          let late = 0;
+          let absent = 0;
+          let excused = 0;
+          let unmarked = 0;
+
+          for (const r of s.records) {
+            if (r.status === 'PRESENT') present++;
+            else if (r.status === 'LATE') late++;
+            else if (r.status === 'ABSENT') absent++;
+            else if (r.status === 'EXCUSED') excused++;
+            else unmarked++;
+          }
+
+          const hasActiveQr = Boolean(
+            s.qrCodeSecret && s.qrCodeExpiresAt && new Date(s.qrCodeExpiresAt) > new Date(),
+          );
+
+          return {
+            id: s.id,
+            tenantId: s.tenantId,
+            branchId: s.branchId,
+            branchName: s.branch.name,
+            groupId: s.groupId,
+            groupName: s.groupName,
+            coachUserId: s.coachUserId,
+            coachName: s.coachUser?.name || null,
+            sport: s.sport,
+            sessionDate: s.sessionDate.toISOString().slice(0, 10),
+            startTime: s.startTime,
+            endTime: s.endTime,
+            status: s.status,
+            totalExpected: s.records.length,
+            totalPresent: present,
+            totalLate: late,
+            totalAbsent: absent,
+            totalExcused: excused,
+            totalUnmarked: unmarked,
+            hasActiveQr,
+            closedAt: s.closedAt ? s.closedAt.toISOString() : null,
+            createdAt: s.createdAt.toISOString(),
+          };
+        });
+
+        return {
+          items,
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit) || 1,
+        };
       },
     );
   }
 
   /**
    * Closes an attendance session.
-   * Permission-controlled: Records cannot be directly modified once session is CLOSED.
+   * Records cannot be directly modified once session is CLOSED.
    */
   async closeSession(tenantContext: TenantContext, sessionId: string) {
     return this.prisma.withTenantTransaction(
@@ -201,6 +411,8 @@ export class AttendanceService {
             status: 'CLOSED',
             closedAt: new Date(),
             closedByUserId: tenantContext.actorUserId,
+            qrCodeSecret: null,
+            qrCodeExpiresAt: null,
           },
         });
 
@@ -222,31 +434,495 @@ export class AttendanceService {
 
   /**
    * Records attendance for a single player with idempotency and optimistic concurrency.
+   * Writes append-only AttendanceEvent for audit stream.
    */
-  async recordAttendance(_tenantContext: TenantContext, _dto: AttendanceMutation): Promise<never> {
-    // Fail closed: there is no verified player registry or session enrollment yet.
-    throw new ServiceUnavailableException(
-      'Attendance marking requires verified player enrollment and session roster',
+  async recordAttendance(tenantContext: TenantContext, dto: AttendanceMutation) {
+    return this.prisma.withTenantTransaction(
+      { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
+      async (tx) => {
+        // Idempotency check
+        const existingIdempotency = await tx.attendanceIdempotency.findUnique({
+          where: {
+            tenantId_key: {
+              tenantId: tenantContext.tenantId,
+              key: dto.idempotencyKey,
+            },
+          },
+        });
+
+        if (existingIdempotency?.response) {
+          return existingIdempotency.response;
+        }
+
+        const session = await tx.attendanceSession.findUnique({
+          where: {
+            tenantId_id: {
+              tenantId: tenantContext.tenantId,
+              id: dto.sessionId,
+            },
+          },
+        });
+
+        if (!session) {
+          throw new NotFoundException({
+            code: ErrorCode.NOT_FOUND,
+            message: 'Attendance session not found',
+          });
+        }
+
+        if (tenantContext.branchId && session.branchId !== tenantContext.branchId) {
+          throw new ForbiddenException({
+            code: ErrorCode.FORBIDDEN,
+            message: 'Access restricted to your assigned branch',
+          });
+        }
+
+        if (session.status === 'CLOSED') {
+          throw new BadRequestException({
+            code: ErrorCode.VALIDATION_FAILED,
+            message:
+              'Cannot record attendance on a closed session. Use correction workflow instead.',
+          });
+        }
+
+        // Find or create attendance record for this player
+        let record = await tx.attendanceRecord.findUnique({
+          where: {
+            sessionId_playerId: {
+              sessionId: dto.sessionId,
+              playerId: dto.playerId,
+            },
+          },
+        });
+
+        if (!record) {
+          // Verify player exists in tenant
+          const player = await tx.player.findUnique({
+            where: {
+              tenantId_id: {
+                tenantId: tenantContext.tenantId,
+                id: dto.playerId,
+              },
+            },
+          });
+
+          if (!player) {
+            throw new NotFoundException({
+              code: ErrorCode.NOT_FOUND,
+              message: 'Player not found in this academy',
+            });
+          }
+
+          record = await tx.attendanceRecord.create({
+            data: {
+              tenantId: tenantContext.tenantId,
+              sessionId: dto.sessionId,
+              playerId: dto.playerId,
+              status: 'UNMARKED',
+              version: 1,
+            },
+          });
+        }
+
+        // Optimistic concurrency check if provided
+        if (dto.expectedVersion !== undefined && record.version !== dto.expectedVersion) {
+          throw new ConflictException({
+            code: ErrorCode.VERSION_CONFLICT,
+            message: `Version conflict: expected ${dto.expectedVersion} but record version is ${record.version}`,
+          });
+        }
+
+        const previousStatus = record.status;
+        const isPresentOrLate = dto.status === 'PRESENT' || dto.status === 'LATE';
+
+        const updatedRecord = await tx.attendanceRecord.update({
+          where: { id: record.id },
+          data: {
+            status: dto.status,
+            version: record.version + 1,
+            checkInTime: isPresentOrLate ? record.checkInTime || new Date() : null,
+            markedByUserId: tenantContext.actorUserId,
+            remarks: dto.reason?.trim() || record.remarks,
+          },
+        });
+
+        // Write append-only attendance event
+        await tx.attendanceEvent.create({
+          data: {
+            tenantId: tenantContext.tenantId,
+            recordId: updatedRecord.id,
+            sessionId: dto.sessionId,
+            playerId: dto.playerId,
+            actorUserId: tenantContext.actorUserId,
+            previousStatus,
+            newStatus: dto.status,
+            source: 'MANUAL',
+            reason: dto.reason?.trim() || null,
+          },
+        });
+
+        const responsePayload = {
+          record: updatedRecord,
+          previousStatus,
+        };
+
+        // Save idempotency key
+        await tx.attendanceIdempotency.create({
+          data: {
+            tenantId: tenantContext.tenantId,
+            key: dto.idempotencyKey,
+            sessionId: dto.sessionId,
+            response: responsePayload,
+          },
+        });
+
+        return responsePayload;
+      },
     );
   }
 
   /**
-   * Bulk records attendance for multiple players in a session.
-   * Enforces idempotency and ensures no unregistered players are marked.
+   * Bulk records attendance for multiple players in a session with idempotency.
    */
-  async bulkRecordAttendance(
-    _tenantContext: TenantContext,
-    _dto: BulkAttendanceSubmission,
-  ): Promise<never> {
-    // Fail closed: there is no verified player registry or session enrollment yet.
-    throw new ServiceUnavailableException(
-      'Attendance marking requires verified player enrollment and session roster',
+  async bulkRecordAttendance(tenantContext: TenantContext, dto: BulkAttendanceSubmission) {
+    return this.prisma.withTenantTransaction(
+      { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
+      async (tx) => {
+        // Idempotency check
+        const existingIdempotency = await tx.attendanceIdempotency.findUnique({
+          where: {
+            tenantId_key: {
+              tenantId: tenantContext.tenantId,
+              key: dto.idempotencyKey,
+            },
+          },
+        });
+
+        if (existingIdempotency?.response) {
+          return existingIdempotency.response;
+        }
+
+        const session = await tx.attendanceSession.findUnique({
+          where: {
+            tenantId_id: {
+              tenantId: tenantContext.tenantId,
+              id: dto.sessionId,
+            },
+          },
+        });
+
+        if (!session) {
+          throw new NotFoundException({
+            code: ErrorCode.NOT_FOUND,
+            message: 'Attendance session not found',
+          });
+        }
+
+        if (tenantContext.branchId && session.branchId !== tenantContext.branchId) {
+          throw new ForbiddenException({
+            code: ErrorCode.FORBIDDEN,
+            message: 'Access restricted to your assigned branch',
+          });
+        }
+
+        if (session.status === 'CLOSED') {
+          throw new BadRequestException({
+            code: ErrorCode.VALIDATION_FAILED,
+            message: 'Cannot record attendance on a closed session',
+          });
+        }
+
+        const updatedRecords = [];
+
+        for (const item of dto.records) {
+          let record = await tx.attendanceRecord.findUnique({
+            where: {
+              sessionId_playerId: {
+                sessionId: dto.sessionId,
+                playerId: item.playerId,
+              },
+            },
+          });
+
+          if (!record) {
+            record = await tx.attendanceRecord.create({
+              data: {
+                tenantId: tenantContext.tenantId,
+                sessionId: dto.sessionId,
+                playerId: item.playerId,
+                status: 'UNMARKED',
+                version: 1,
+              },
+            });
+          }
+
+          if (item.expectedVersion !== undefined && record.version !== item.expectedVersion) {
+            throw new ConflictException({
+              code: ErrorCode.VERSION_CONFLICT,
+              message: `Version conflict for player ${item.playerId}: expected ${item.expectedVersion} but is ${record.version}`,
+            });
+          }
+
+          const previousStatus = record.status;
+          const isPresentOrLate = item.status === 'PRESENT' || item.status === 'LATE';
+
+          const updated = await tx.attendanceRecord.update({
+            where: { id: record.id },
+            data: {
+              status: item.status,
+              version: record.version + 1,
+              checkInTime: isPresentOrLate ? record.checkInTime || new Date() : null,
+              markedByUserId: tenantContext.actorUserId,
+              remarks: item.remarks?.trim() || record.remarks,
+            },
+          });
+
+          await tx.attendanceEvent.create({
+            data: {
+              tenantId: tenantContext.tenantId,
+              recordId: updated.id,
+              sessionId: dto.sessionId,
+              playerId: item.playerId,
+              actorUserId: tenantContext.actorUserId,
+              previousStatus,
+              newStatus: item.status,
+              source: 'BULK_MARK',
+              reason: item.remarks?.trim() || 'Bulk attendance submission',
+            },
+          });
+
+          updatedRecords.push(updated);
+        }
+
+        const responsePayload = {
+          count: updatedRecords.length,
+          records: updatedRecords,
+        };
+
+        await tx.attendanceIdempotency.create({
+          data: {
+            tenantId: tenantContext.tenantId,
+            key: dto.idempotencyKey,
+            sessionId: dto.sessionId,
+            response: responsePayload,
+          },
+        });
+
+        return responsePayload;
+      },
+    );
+  }
+
+  /**
+   * Generates a short-lived temporary QR code token for a session.
+   */
+  async generateQrCode(
+    tenantContext: TenantContext,
+    sessionId: string,
+    dto: GenerateQrRequest,
+  ): Promise<GenerateQrResponse> {
+    return this.prisma.withTenantTransaction(
+      { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
+      async (tx) => {
+        const session = await tx.attendanceSession.findUnique({
+          where: {
+            tenantId_id: {
+              tenantId: tenantContext.tenantId,
+              id: sessionId,
+            },
+          },
+        });
+
+        if (!session) {
+          throw new NotFoundException({
+            code: ErrorCode.NOT_FOUND,
+            message: 'Attendance session not found',
+          });
+        }
+
+        if (tenantContext.branchId && session.branchId !== tenantContext.branchId) {
+          throw new ForbiddenException({
+            code: ErrorCode.FORBIDDEN,
+            message: 'Access restricted to your assigned branch',
+          });
+        }
+
+        if (session.status === 'CLOSED') {
+          throw new BadRequestException({
+            code: ErrorCode.VALIDATION_FAILED,
+            message: 'Cannot generate QR code for a closed session',
+          });
+        }
+
+        const token = crypto.randomBytes(24).toString('hex');
+        const expiresInSeconds = dto.expiresInSeconds || 60;
+        const expiresAt = new Date(Date.now() + expiresInSeconds * 1000);
+
+        await tx.attendanceSession.update({
+          where: { id: sessionId },
+          data: {
+            qrCodeSecret: token,
+            qrCodeExpiresAt: expiresAt,
+          },
+        });
+
+        const qrPayload = JSON.stringify({
+          type: 'ACADEMY_CHECKIN',
+          sessionId,
+          token,
+          expiresAt: expiresAt.toISOString(),
+        });
+
+        return {
+          sessionId,
+          token,
+          qrPayload,
+          expiresAt: expiresAt.toISOString(),
+        };
+      },
+    );
+  }
+
+  /**
+   * Checks in a player using a temporary QR code token.
+   */
+  async checkInViaQr(tenantContext: TenantContext, sessionId: string, dto: QrCheckInRequest) {
+    return this.prisma.withTenantTransaction(
+      { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
+      async (tx) => {
+        const session = await tx.attendanceSession.findUnique({
+          where: {
+            tenantId_id: {
+              tenantId: tenantContext.tenantId,
+              id: sessionId,
+            },
+          },
+        });
+
+        if (!session) {
+          throw new NotFoundException({
+            code: ErrorCode.NOT_FOUND,
+            message: 'Attendance session not found',
+          });
+        }
+
+        if (session.status === 'CLOSED') {
+          throw new BadRequestException({
+            code: ErrorCode.VALIDATION_FAILED,
+            message: 'Attendance session is closed',
+          });
+        }
+
+        if (!session.qrCodeSecret || !session.qrCodeExpiresAt) {
+          throw new BadRequestException({
+            code: ErrorCode.VALIDATION_FAILED,
+            message: 'QR check-in is not active for this session',
+          });
+        }
+
+        if (new Date() > new Date(session.qrCodeExpiresAt)) {
+          throw new BadRequestException({
+            code: ErrorCode.VALIDATION_FAILED,
+            message: 'QR code has expired. Please ask the coach for a new QR code',
+          });
+        }
+
+        // Constant-time token comparison
+        const expectedBuffer = Buffer.from(session.qrCodeSecret);
+        const actualBuffer = Buffer.from(dto.token);
+        if (
+          expectedBuffer.length !== actualBuffer.length ||
+          !crypto.timingSafeEqual(expectedBuffer, actualBuffer)
+        ) {
+          throw new BadRequestException({
+            code: ErrorCode.VALIDATION_FAILED,
+            message: 'Invalid QR code token',
+          });
+        }
+
+        // Verify player exists and is active
+        const player = await tx.player.findUnique({
+          where: {
+            tenantId_id: {
+              tenantId: tenantContext.tenantId,
+              id: dto.playerId,
+            },
+          },
+        });
+
+        if (!player || player.status !== 'ACTIVE') {
+          throw new BadRequestException({
+            code: ErrorCode.VALIDATION_FAILED,
+            message: 'Player is not registered or not active',
+          });
+        }
+
+        let record = await tx.attendanceRecord.findUnique({
+          where: {
+            sessionId_playerId: {
+              sessionId,
+              playerId: dto.playerId,
+            },
+          },
+        });
+
+        const checkInTime = new Date();
+        const previousStatus = record ? record.status : 'UNMARKED';
+
+        if (!record) {
+          record = await tx.attendanceRecord.create({
+            data: {
+              tenantId: tenantContext.tenantId,
+              sessionId,
+              playerId: dto.playerId,
+              status: 'PRESENT',
+              checkInTime,
+              markedByUserId: tenantContext.actorUserId,
+              version: 1,
+            },
+          });
+        } else {
+          record = await tx.attendanceRecord.update({
+            where: { id: record.id },
+            data: {
+              status: 'PRESENT',
+              checkInTime: record.checkInTime || checkInTime,
+              version: record.version + 1,
+              markedByUserId: tenantContext.actorUserId,
+            },
+          });
+        }
+
+        // Log append-only event
+        await tx.attendanceEvent.create({
+          data: {
+            tenantId: tenantContext.tenantId,
+            recordId: record.id,
+            sessionId,
+            playerId: dto.playerId,
+            actorUserId: tenantContext.actorUserId,
+            previousStatus,
+            newStatus: 'PRESENT',
+            source: 'QR_CHECKIN',
+            reason: 'QR Code instant check-in',
+          },
+        });
+
+        return {
+          success: true,
+          message: `تم تسجيل حضور اللاعب ${player.firstName} ${player.lastName} بنجاح عبر رمز QR`,
+          playerId: player.id,
+          playerName: `${player.firstName} ${player.lastName}`,
+          checkInTime: checkInTime.toISOString(),
+          status: 'PRESENT',
+        };
+      },
     );
   }
 
   /**
    * Corrects attendance record after session closure or for auditable mistake corrections.
-   * Inserts immutable audit history into attendance_corrections table.
+   * Inserts immutable audit history into attendance_corrections table and attendance_events.
    */
   async correctAttendance(tenantContext: TenantContext, dto: AttendanceCorrection) {
     if (!dto.reason || dto.reason.trim().length < 3) {
@@ -315,6 +991,21 @@ export class AttendanceService {
           },
         });
 
+        // 3. Insert into immutable attendance_events log
+        await tx.attendanceEvent.create({
+          data: {
+            tenantId: tenantContext.tenantId,
+            recordId: record.id,
+            sessionId: record.sessionId,
+            playerId: record.playerId,
+            actorUserId: tenantContext.actorUserId,
+            previousStatus,
+            newStatus: dto.newStatus,
+            source: 'MANUAL',
+            reason: dto.reason.trim(),
+          },
+        });
+
         await this.auditService.logEvent(
           {
             tenantId: tenantContext.tenantId,
@@ -335,6 +1026,217 @@ export class AttendanceService {
         return {
           record: updatedRecord,
           correction,
+        };
+      },
+    );
+  }
+
+  /**
+   * Retrieves the immutable append-only event stream for a session.
+   */
+  async getSessionEvents(
+    tenantContext: TenantContext,
+    sessionId: string,
+  ): Promise<AttendanceEventSummary[]> {
+    return this.prisma.withTenantTransaction(
+      { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
+      async (tx) => {
+        const session = await tx.attendanceSession.findUnique({
+          where: {
+            tenantId_id: {
+              tenantId: tenantContext.tenantId,
+              id: sessionId,
+            },
+          },
+        });
+
+        if (!session) {
+          throw new NotFoundException({
+            code: ErrorCode.NOT_FOUND,
+            message: 'Attendance session not found',
+          });
+        }
+
+        if (tenantContext.branchId && session.branchId !== tenantContext.branchId) {
+          throw new ForbiddenException({
+            code: ErrorCode.FORBIDDEN,
+            message: 'Access restricted to your assigned branch',
+          });
+        }
+
+        const events = await tx.attendanceEvent.findMany({
+          where: {
+            tenantId: tenantContext.tenantId,
+            sessionId,
+          },
+          orderBy: { eventAt: 'desc' },
+          include: {
+            player: { select: { firstName: true, lastName: true } },
+          },
+        });
+
+        // Get actor names
+        const actorIds = events.map((e) => e.actorUserId).filter((id): id is string => Boolean(id));
+        const actors = await tx.user.findMany({
+          where: { id: { in: actorIds } },
+          select: { id: true, name: true },
+        });
+        const actorMap = new Map(actors.map((a) => [a.id, a.name]));
+
+        return events.map((e) => ({
+          id: e.id,
+          tenantId: e.tenantId,
+          recordId: e.recordId,
+          sessionId: e.sessionId,
+          playerId: e.playerId,
+          playerName: `${e.player.firstName} ${e.player.lastName}`,
+          actorUserId: e.actorUserId,
+          actorName: e.actorUserId ? actorMap.get(e.actorUserId) || null : null,
+          previousStatus: e.previousStatus,
+          newStatus: e.newStatus,
+          source: e.source,
+          reason: e.reason,
+          metadata: e.metadata as Record<string, unknown> | null,
+          eventAt: e.eventAt.toISOString(),
+        }));
+      },
+    );
+  }
+
+  /**
+   * Generates aggregated attendance reports across branches and groups.
+   */
+  async getAttendanceReports(
+    tenantContext: TenantContext,
+    query: AttendanceReportQuery,
+  ): Promise<AttendanceReportSummary> {
+    const effectiveBranchId = tenantContext.branchId || query.branchId;
+
+    return this.prisma.withTenantTransaction(
+      { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
+      async (tx) => {
+        const sessionWhere = {
+          tenantId: tenantContext.tenantId,
+          ...(effectiveBranchId ? { branchId: effectiveBranchId } : {}),
+          ...(query.groupId ? { groupId: query.groupId } : {}),
+          ...(query.dateFrom || query.dateTo
+            ? {
+                sessionDate: {
+                  ...(query.dateFrom ? { gte: new Date(`${query.dateFrom}T00:00:00.000Z`) } : {}),
+                  ...(query.dateTo ? { lte: new Date(`${query.dateTo}T23:59:59.999Z`) } : {}),
+                },
+              }
+            : {}),
+        };
+
+        const sessions = await tx.attendanceSession.findMany({
+          where: sessionWhere,
+          include: {
+            branch: { select: { id: true, name: true } },
+            records: {
+              where: query.playerId ? { playerId: query.playerId } : {},
+              select: { status: true },
+            },
+          },
+        });
+
+        let totalRecords = 0;
+        let presentCount = 0;
+        let lateCount = 0;
+        let absentCount = 0;
+        let excusedCount = 0;
+
+        const groupMap = new Map<
+          string,
+          { groupName: string; totalSessions: number; totalRecords: number; presentRecords: number }
+        >();
+        const branchMap = new Map<
+          string,
+          {
+            branchName: string;
+            totalSessions: number;
+            totalRecords: number;
+            presentRecords: number;
+          }
+        >();
+
+        for (const s of sessions) {
+          // Branch aggregation
+          const branchKey = s.branchId;
+          const bEntry = branchMap.get(branchKey) || {
+            branchName: s.branch.name,
+            totalSessions: 0,
+            totalRecords: 0,
+            presentRecords: 0,
+          };
+          bEntry.totalSessions++;
+
+          // Group aggregation
+          const groupKey = s.groupId || 'no_group';
+          const gEntry = groupMap.get(groupKey) || {
+            groupName: s.groupName,
+            totalSessions: 0,
+            totalRecords: 0,
+            presentRecords: 0,
+          };
+          gEntry.totalSessions++;
+
+          for (const r of s.records) {
+            totalRecords++;
+            bEntry.totalRecords++;
+            gEntry.totalRecords++;
+
+            if (r.status === 'PRESENT') {
+              presentCount++;
+              bEntry.presentRecords++;
+              gEntry.presentRecords++;
+            } else if (r.status === 'LATE') {
+              lateCount++;
+              bEntry.presentRecords++;
+              gEntry.presentRecords++;
+            } else if (r.status === 'ABSENT') {
+              absentCount++;
+            } else if (r.status === 'EXCUSED') {
+              excusedCount++;
+            }
+          }
+
+          branchMap.set(branchKey, bEntry);
+          groupMap.set(groupKey, gEntry);
+        }
+
+        const attendedCount = presentCount + lateCount;
+        const attendanceRate =
+          totalRecords > 0 ? Math.round((attendedCount / totalRecords) * 100) : 0;
+
+        const byGroup = Array.from(groupMap.entries()).map(([k, v]) => ({
+          groupId: k === 'no_group' ? null : k,
+          groupName: v.groupName,
+          totalSessions: v.totalSessions,
+          totalRecords: v.totalRecords,
+          attendanceRate:
+            v.totalRecords > 0 ? Math.round((v.presentRecords / v.totalRecords) * 100) : 0,
+        }));
+
+        const byBranch = Array.from(branchMap.entries()).map(([k, v]) => ({
+          branchId: k,
+          branchName: v.branchName,
+          totalSessions: v.totalSessions,
+          totalRecords: v.totalRecords,
+          attendanceRate:
+            v.totalRecords > 0 ? Math.round((v.presentRecords / v.totalRecords) * 100) : 0,
+        }));
+
+        return {
+          totalSessions: sessions.length,
+          totalRecords,
+          presentCount,
+          lateCount,
+          absentCount,
+          excusedCount,
+          attendanceRate,
+          byGroup,
+          byBranch,
         };
       },
     );
