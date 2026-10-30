@@ -20,7 +20,7 @@ docs/             Architecture, ADRs, database design, security boundaries
 ## Prerequisites
 
 - Node.js 22+ (`nvm use` / see `.nvmrc`)
-- pnpm 11+ (`corepack enable` then `corepack prepare pnpm@11.13.0 --activate`)
+- pnpm 11+ (`corepack enable` then `corepack prepare pnpm@11.13.1 --activate`)
 - Docker Desktop or local PostgreSQL 16+ & Redis 7+
 
 ## Quick start
