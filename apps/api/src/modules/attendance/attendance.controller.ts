@@ -27,6 +27,8 @@ import {
   GenerateQrRequestSchema,
   Permission,
   QrCheckInRequestSchema,
+  ScanPlayerQrRequestSchema,
+  OfflineAttendanceBatchSyncRequestSchema,
   SessionQuerySchema,
   UuidParamSchema,
   type AttendanceCorrection,
@@ -35,6 +37,8 @@ import {
   type CreateAttendanceSession,
   type GenerateQrRequest,
   type QrCheckInRequest,
+  type ScanPlayerQrRequest,
+  type OfflineAttendanceBatchSyncRequest,
   type TenantContext,
 } from '@academy/shared';
 
@@ -101,6 +105,31 @@ export class AttendanceController {
     const tenantContext: TenantContext = (req as Request & { tenantContext: TenantContext })
       .tenantContext;
     return this.attendanceService.checkInViaQr(tenantContext, validId, dto);
+  }
+
+  @Post('sessions/:id/scan-player-qr')
+  @RequirePermissions(Permission.ATTENDANCE_MARK)
+  @HttpCode(HttpStatus.OK)
+  async scanPlayerQr(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
+    const validId = UuidParamSchema.parse(id);
+    const dto: ScanPlayerQrRequest = ScanPlayerQrRequestSchema.parse(body);
+    const tenantContext: TenantContext = (req as Request & { tenantContext: TenantContext })
+      .tenantContext;
+    return this.attendanceService.scanPlayerQr(tenantContext, validId, dto);
+  }
+
+  @Post('sessions/:id/offline-sync')
+  @RequirePermissions(Permission.ATTENDANCE_MARK)
+  @HttpCode(HttpStatus.OK)
+  async syncOfflineBatch(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
+    const validId = UuidParamSchema.parse(id);
+    const dto: OfflineAttendanceBatchSyncRequest = OfflineAttendanceBatchSyncRequestSchema.parse({
+      ...(typeof body === 'object' && body !== null ? body : {}),
+      sessionId: validId,
+    });
+    const tenantContext: TenantContext = (req as Request & { tenantContext: TenantContext })
+      .tenantContext;
+    return this.attendanceService.syncOfflineBatch(tenantContext, dto);
   }
 
   @Get('sessions/:id/events')

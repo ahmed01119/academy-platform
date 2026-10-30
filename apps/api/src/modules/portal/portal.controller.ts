@@ -38,6 +38,12 @@ export class PortalController {
     return this.portalService.getPlayerPortalData(actorUserId);
   }
 
+  @Get('player/qr-card')
+  @UseGuards(JwtAuthGuard, CsrfGuard)
+  async getMyPlayerQrCard(@CurrentUser('id') actorUserId: string) {
+    return this.portalService.getMyPlayerQrCard(actorUserId);
+  }
+
   @Get('guardian/me')
   @UseGuards(JwtAuthGuard, CsrfGuard)
   async getGuardianProfile(@CurrentUser('id') actorUserId: string) {

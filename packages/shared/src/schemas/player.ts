@@ -131,3 +131,30 @@ export interface PlayerDetails extends PlayerSummary {
     createdAt: string;
   }>;
 }
+
+export const PlayerQrCardResponseSchema = z.object({
+  playerId: z.string().uuid(),
+  playerName: z.string(),
+  academyName: z.string(),
+  membershipNumber: z.string(),
+  photoUrl: z.string().nullable().optional(),
+  qrCardCode: z.string(),
+  issuedAt: z.string(),
+  isRevoked: z.boolean(),
+  revokedAt: z.string().nullable().optional(),
+});
+
+export type PlayerQrCardResponse = z.infer<typeof PlayerQrCardResponseSchema>;
+
+export const RotatePlayerQrCardRequestSchema = z.object({
+  reason: z.string().trim().min(3).max(200).optional(),
+});
+
+export type RotatePlayerQrCardRequest = z.infer<typeof RotatePlayerQrCardRequestSchema>;
+
+export const RevokePlayerQrCardRequestSchema = z.object({
+  reason: z.string().trim().min(3, 'Revocation reason is required').max(200),
+});
+
+export type RevokePlayerQrCardRequest = z.infer<typeof RevokePlayerQrCardRequestSchema>;
+

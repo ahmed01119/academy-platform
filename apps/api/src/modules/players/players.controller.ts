@@ -22,9 +22,13 @@ import {
   CreatePlayerSchema,
   Permission,
   PlayerQuerySchema,
+  RevokePlayerQrCardRequestSchema,
+  RotatePlayerQrCardRequestSchema,
   UpdatePlayerSchema,
   UuidParamSchema,
   type CreatePlayerRequest,
+  type RevokePlayerQrCardRequest,
+  type RotatePlayerQrCardRequest,
   type TenantContext,
   type UpdatePlayerRequest,
 } from '@academy/shared';
@@ -49,6 +53,42 @@ export class PlayersController {
   ) {
     const playerId = UuidParamSchema.parse(rawId);
     return this.playersService.getPlayerById(tenantContext, playerId);
+  }
+
+  @RequirePermissions(Permission.PLAYERS_READ)
+  @Get(':id/qr-card')
+  async getPlayerQrCard(
+    @CurrentTenantContext() tenantContext: TenantContext,
+    @Param('id') rawId: string,
+  ) {
+    const playerId = UuidParamSchema.parse(rawId);
+    return this.playersService.getPlayerQrCard(tenantContext, playerId);
+  }
+
+  @RequirePermissions(Permission.PLAYERS_UPDATE)
+  @Post(':id/qr-card/rotate')
+  @HttpCode(HttpStatus.OK)
+  async rotatePlayerQrCard(
+    @CurrentTenantContext() tenantContext: TenantContext,
+    @Param('id') rawId: string,
+    @Body() body: unknown,
+  ) {
+    const playerId = UuidParamSchema.parse(rawId);
+    const dto: RotatePlayerQrCardRequest = RotatePlayerQrCardRequestSchema.parse(body || {});
+    return this.playersService.rotatePlayerQrCard(tenantContext, playerId, dto);
+  }
+
+  @RequirePermissions(Permission.PLAYERS_UPDATE)
+  @Post(':id/qr-card/revoke')
+  @HttpCode(HttpStatus.OK)
+  async revokePlayerQrCard(
+    @CurrentTenantContext() tenantContext: TenantContext,
+    @Param('id') rawId: string,
+    @Body() body: unknown,
+  ) {
+    const playerId = UuidParamSchema.parse(rawId);
+    const dto: RevokePlayerQrCardRequest = RevokePlayerQrCardRequestSchema.parse(body);
+    return this.playersService.revokePlayerQrCard(tenantContext, playerId, dto);
   }
 
   @RequirePermissions(Permission.PLAYERS_CREATE)

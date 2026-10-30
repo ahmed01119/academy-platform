@@ -52,7 +52,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
     setThemeState(saved);
     applyTheme(saved);
-    setMounted(true);
 
     // Listen for OS theme changes if mode is 'system'
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');

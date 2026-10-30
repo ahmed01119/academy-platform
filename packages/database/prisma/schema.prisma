@@ -181,6 +181,7 @@ model Tenant {
   email     String?
   address   String?
   logoUrl   String?      @map("logo_url")
+  latenessGraceMinutes Int @default(15) @map("lateness_grace_minutes")
   createdAt DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -358,6 +359,9 @@ model AttendanceRecord {
   playerId       String           @map("player_id") @db.Uuid
   status         AttendanceStatus @default(UNMARKED)
   checkInTime    DateTime?        @map("check_in_time") @db.Timestamptz(3)
+  deviceObservedTime DateTime?    @map("device_observed_time") @db.Timestamptz(3)
+  isOfflineSync  Boolean          @default(false) @map("is_offline_sync")
+  syncStatus     String           @default("CONFIRMED") @map("sync_status")
   markedByUserId String?          @map("marked_by_user_id") @db.Uuid
   remarks        String?
   version        Int              @default(1)
@@ -427,6 +431,10 @@ model Player {
   userId                String?       @unique @map("user_id") @db.Uuid
   claimToken            String?       @map("claim_token")
   claimExpiresAt        DateTime?     @map("claim_expires_at") @db.Timestamptz(3)
+  membershipNumber      String?       @map("membership_number")
+  qrCardCode            String?       @unique @map("qr_card_code")
+  qrCardIssuedAt        DateTime?     @map("qr_card_issued_at") @db.Timestamptz(3)
+  qrCardRevokedAt       DateTime?     @map("qr_card_revoked_at") @db.Timestamptz(3)
   createdAt             DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt             DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -442,6 +450,7 @@ model Player {
   @@index([tenantId])
   @@index([tenantId, status])
   @@index([tenantId, nationalId])
+  @@index([tenantId, qrCardCode])
   @@index([tenantId, lastName, firstName])
   @@map("players")
 }
