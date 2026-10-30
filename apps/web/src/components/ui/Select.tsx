@@ -157,9 +157,7 @@ export function Select<T extends string = string>({
           ${isOpen ? 'ring-1 ring-[var(--accent-primary)] border-[var(--accent-primary)]' : ''}
         `}
       >
-        <span className="truncate">
-          {selectedOption ? selectedOption.label : placeholder}
-        </span>
+        <span className="truncate">{selectedOption ? selectedOption.label : placeholder}</span>
         <ChevronDown
           className={`h-4 w-4 shrink-0 text-[var(--text-muted)] transition-transform duration-200 ${
             isOpen ? 'rotate-180' : ''

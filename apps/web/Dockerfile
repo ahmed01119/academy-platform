@@ -1,27 +1,61 @@
+# =============================================================================
+# SPORTEXUS — Next.js Standalone Frontend Production Dockerfile
+# =============================================================================
 FROM node:22-alpine AS deps
 WORKDIR /app
+RUN apk add --no-cache libc6-compat
 RUN corepack enable && corepack prepare pnpm@11.13.1 --activate
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json .npmrc* ./
-COPY apps/web/package.json apps/web/package.json
-COPY apps/api/package.json apps/api/package.json
+
+# Copy workspace manifests
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
 COPY packages ./packages
+COPY apps/web/package.json ./apps/web/package.json
+COPY apps/api/package.json ./apps/api/package.json
+
 RUN pnpm install --frozen-lockfile
 
-FROM deps AS build
+# =============================================================================
+# Build Stage
+# =============================================================================
+FROM deps AS builder
+WORKDIR /app
 COPY . .
-ARG NEXT_PUBLIC_API_BASE_URL=http://localhost:3001/v1
-ARG NEXT_PUBLIC_APP_NAME=Academy Platform
-ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
-ENV NEXT_PUBLIC_APP_NAME=$NEXT_PUBLIC_APP_NAME
-ENV NEXT_TELEMETRY_DISABLED=1
-RUN pnpm --filter @academy/shared build && pnpm --filter @academy/web build
 
+# Set build-time environment flags
+ENV BUILD_STANDALONE=true
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_ENV=production
+
+# Compile shared library and build standalone Next.js app
+RUN pnpm --filter @academy/shared build && \
+    pnpm --filter @academy/web build
+
+# =============================================================================
+# Production Runner (Ultra-minimal Node.js runtime, ~150MB image)
+# =============================================================================
 FROM node:22-alpine AS runner
 WORKDIR /app
+
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN corepack enable && corepack prepare pnpm@11.13.1 --activate
-COPY --from=build /app /app
-EXPOSE 3000
-HEALTHCHECK --interval=20s --timeout=5s --retries=5 CMD wget -qO- http://127.0.0.1:3000/ || exit 1
-CMD ["pnpm", "--filter", "@academy/web", "start"]
+ENV HOSTNAME="0.0.0.0"
+ENV PORT=8000
+
+# Run as non-root user for container security
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
+
+# Copy standalone build output and static assets
+COPY --from=builder /app/apps/web/public ./apps/web/public
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/.next/static
+
+USER nextjs
+
+EXPOSE 8000
+
+# Healthcheck targeting dynamic PORT
+HEALTHCHECK --interval=20s --timeout=5s --retries=5 \
+  CMD wget -qO- http://127.0.0.1:${PORT:-8000}/ || exit 1
+
+CMD ["node", "apps/web/server.js"]

@@ -33,13 +33,10 @@ import {
   Database,
   Crown,
   Loader2,
-  Trash2,
-  Archive,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import type {
   PlatformAcademyItem,
-  AcademyDeletionImpact,
   PlatformAuditLogItem,
   PlatformOverviewMetrics,
   PlatformSecurityEvent,
@@ -135,57 +132,6 @@ function PlatformSuperAdminContent() {
 
   // Selected academy for plan modification modal
   const [editingAcademy, setEditingAcademy] = useState<PlatformAcademyItem | null>(null);
-
-  // Safe Academy Deletion / Impact State
-  const [selectedImpactAcademy, setSelectedImpactAcademy] = useState<PlatformAcademyItem | null>(null);
-  const [academyImpactData, setAcademyImpactData] = useState<AcademyDeletionImpact | null>(null);
-  const [isLoadingImpact, setIsLoadingImpact] = useState(false);
-  const [archiveSlugInput, setArchiveSlugInput] = useState('');
-  const [archiveReasonInput, setArchiveReasonInput] = useState('');
-  const [isSubmittingArchive, setIsSubmittingArchive] = useState(false);
-
-  const handleOpenAcademyArchiveModal = async (academy: PlatformAcademyItem) => {
-    setSelectedImpactAcademy(academy);
-    setAcademyImpactData(null);
-    setArchiveSlugInput('');
-    setArchiveReasonInput('');
-    setIsLoadingImpact(true);
-    try {
-      const impact = await apiClient.platform.getAcademyDeletionImpact(academy.id);
-      setAcademyImpactData(impact);
-    } catch (err: unknown) {
-      toast.error((err as Error)?.message || 'Failed to fetch academy impact report');
-      setSelectedImpactAcademy(null);
-    } finally {
-      setIsLoadingImpact(false);
-    }
-  };
-
-  const handleConfirmAcademyArchive = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedImpactAcademy || !academyImpactData) return;
-    if (archiveSlugInput.trim() !== selectedImpactAcademy.slug) {
-      toast.error(locale === 'ar' ? 'يرجى كتابة معرف الأكاديمية بدقة لتأكيد الإجراء' : 'Confirmation slug does not match');
-      return;
-    }
-
-    setIsSubmittingArchive(true);
-    try {
-      const res = await apiClient.platform.archiveAcademy(selectedImpactAcademy.id, {
-        confirmationSlug: archiveSlugInput.trim(),
-        reason: archiveReasonInput.trim() || 'Platform Owner Administrative Deletion/Archive',
-        permanent: academyImpactData.isEligibleForPermanentDeletion,
-      });
-
-      toast.success(res.message);
-      setSelectedImpactAcademy(null);
-      await loadData();
-    } catch (err: unknown) {
-      toast.error((err as Error)?.message || 'Failed to archive academy');
-    } finally {
-      setIsSubmittingArchive(false);
-    }
-  };
 
   const [selectedPlanCode, setSelectedPlanCode] = useState<
     'STARTER' | 'PRO' | 'ENTERPRISE' | 'CUSTOM'
@@ -490,8 +436,8 @@ function PlatformSuperAdminContent() {
       accessorKey: 'name',
       cell: (item) => (
         <div>
-          <div className="font-semibold text-[var(--text-primary)]">{item.name}</div>
-          <div className="text-xs text-[var(--text-secondary)] font-mono">{item.slug}</div>
+          <div className="font-semibold text-[var(--text-main)]">{item.name}</div>
+          <div className="text-xs text-[var(--text-muted)] font-mono">{item.slug}</div>
         </div>
       ),
     },
@@ -530,7 +476,7 @@ function PlatformSuperAdminContent() {
         const max = plan?.maxBranches ?? 1;
         const count = item.branchesCount || 0;
         return (
-          <span className="font-semibold text-xs text-[var(--text-primary)]">
+          <span className="font-semibold text-xs text-[var(--text-main)]">
             {count} / {max}
           </span>
         );
@@ -550,7 +496,7 @@ function PlatformSuperAdminContent() {
         return (
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <span className="font-semibold text-xs text-[var(--text-primary)]">
+              <span className="font-semibold text-xs text-[var(--text-main)]">
                 {count} / {max}
               </span>
               {isExceeded ? (
@@ -562,9 +508,7 @@ function PlatformSuperAdminContent() {
                   {pct}% تنبيه
                 </span>
               ) : (
-                <span className="text-[10px] text-[var(--text-muted)] font-mono">
-                  ({pct}%)
-                </span>
+                <span className="text-[10px] text-[var(--text-muted)] font-mono">({pct}%)</span>
               )}
             </div>
             <div className="h-1.5 w-24 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
@@ -636,10 +580,10 @@ function PlatformSuperAdminContent() {
             <button
               onClick={() => void loadData()}
               disabled={isLoading}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold rounded-lg bg-[var(--bg-card)] border border-[var(--border-subtle)] hover:bg-[var(--bg-card-hover)] text-[var(--text-primary)] transition-colors shadow-sm"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold rounded-lg bg-[var(--bg-card)] border border-[var(--border-subtle)] hover:bg-[var(--bg-card-hover)] text-[var(--text-main)] transition-colors shadow-sm"
             >
               <RefreshCw
-                className={`w-4 h-4 ${isLoading ? 'animate-spin text-[var(--brand-primary)]' : ''}`}
+                className={`w-4 h-4 ${isLoading ? 'animate-spin text-[var(--accent-primary)]' : ''}`}
               />
               {t('common.refresh', 'تحديث')}
             </button>
@@ -668,33 +612,51 @@ function PlatformSuperAdminContent() {
           <StatCard
             loading={isLoading}
             label={t('platform.kpiTotalAcademies', 'إجمالي الأكاديميات')}
-            value={metrics ? metrics.totalAcademies : (locale === 'ar' ? 'غير متوفر' : 'Unavailable')}
+            value={metrics ? metrics.totalAcademies : locale === 'ar' ? 'غير متوفر' : 'Unavailable'}
             icon={Building2}
-            trend={metrics ? { value: `${metrics.activeAcademies} نشطة`, isPositive: true } : undefined}
+            trend={
+              metrics ? { value: `${metrics.activeAcademies} نشطة`, isPositive: true } : undefined
+            }
           />
           <StatCard
             loading={isLoading}
             label={t('platform.kpiMrr', 'الإيراد الشهري (MRR)')}
-            value={metrics ? `${metrics.mrr.toLocaleString()} ${locale === 'ar' ? 'ر.س' : 'SAR'}` : (locale === 'ar' ? 'غير متوفر' : 'Unavailable')}
+            value={
+              metrics
+                ? `${metrics.mrr.toLocaleString()} ${locale === 'ar' ? 'ر.س' : 'SAR'}`
+                : locale === 'ar'
+                  ? 'غير متوفر'
+                  : 'Unavailable'
+            }
             icon={DollarSign}
-            trend={metrics ? { value: `${metrics.activeSubscriptions} باقة`, isPositive: true } : undefined}
+            trend={
+              metrics
+                ? { value: `${metrics.activeSubscriptions} باقة`, isPositive: true }
+                : undefined
+            }
           />
           <StatCard
             loading={isLoading}
             label={t('platform.kpiRevenue', 'المتحصلات الكلية')}
-            value={metrics ? `${metrics.collectedRevenue.toLocaleString()} ${locale === 'ar' ? 'ر.س' : 'SAR'}` : (locale === 'ar' ? 'غير متوفر' : 'Unavailable')}
+            value={
+              metrics
+                ? `${metrics.collectedRevenue.toLocaleString()} ${locale === 'ar' ? 'ر.س' : 'SAR'}`
+                : locale === 'ar'
+                  ? 'غير متوفر'
+                  : 'Unavailable'
+            }
             icon={TrendingUp}
           />
           <StatCard
             loading={isLoading}
             label={t('platform.kpiTotalPlayers', 'إجمالي اللاعبين')}
-            value={metrics ? metrics.totalPlayers : (locale === 'ar' ? 'غير متوفر' : 'Unavailable')}
+            value={metrics ? metrics.totalPlayers : locale === 'ar' ? 'غير متوفر' : 'Unavailable'}
             icon={Users}
           />
           <StatCard
             loading={isLoading}
             label={t('platform.kpiTotalCoaches', 'المدربين')}
-            value={metrics ? metrics.totalCoaches : (locale === 'ar' ? 'غير متوفر' : 'Unavailable')}
+            value={metrics ? metrics.totalCoaches : locale === 'ar' ? 'غير متوفر' : 'Unavailable'}
             icon={ShieldCheck}
           />
           <StatCard
@@ -720,140 +682,135 @@ function PlatformSuperAdminContent() {
           />
         </div>
 
-
         {/* Navigation Tabs - Responsive Scroll Strip without Page Overflow */}
         <div className="w-full max-w-full min-w-0 border-b border-[var(--border-subtle)] overflow-x-auto scrollbar-none py-1">
           <div className="flex items-center gap-1.5 sm:gap-2 min-w-max pb-0.5">
             <button
-
-            onClick={() => setActiveTab('academies')}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition-colors border-b-2 whitespace-nowrap ${
-              activeTab === 'academies'
-                ? 'border-[var(--brand-primary)] text-[var(--brand-primary)] bg-[var(--bg-card)]'
-                : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-            }`}
-          >
-            <Building2 className="w-4 h-4" />
-            {t('platform.tabAcademies', 'سجل الأكاديميات')}
-            <span className="px-1.5 py-0.2 rounded-full text-xs bg-[var(--bg-card-hover)] font-mono">
-              {academies.length}
-            </span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('applications')}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition-colors border-b-2 whitespace-nowrap ${
-              activeTab === 'applications'
-                ? 'border-[var(--brand-primary)] text-[var(--brand-primary)] bg-[var(--bg-card)]'
-                : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-            }`}
-          >
-            <Inbox className="w-4 h-4" />
-            {locale === 'ar' ? 'طلبات التأسيس' : 'Applications'}
-            {applications.filter((a) => a.status === 'PENDING_REVIEW').length > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full text-xs bg-amber-500/20 text-amber-400 font-mono">
-                {applications.filter((a) => a.status === 'PENDING_REVIEW').length}
+              onClick={() => setActiveTab('academies')}
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition-colors border-b-2 whitespace-nowrap ${
+                activeTab === 'academies'
+                  ? 'border-[var(--accent-primary)] text-[var(--accent-primary)] bg-[var(--bg-card)]'
+                  : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-main)]'
+              }`}
+            >
+              <Building2 className="w-4 h-4" />
+              {t('platform.tabAcademies', 'سجل الأكاديميات')}
+              <span className="px-1.5 py-0.2 rounded-full text-xs bg-[var(--bg-card-hover)] font-mono">
+                {academies.length}
               </span>
-            )}
-          </button>
+            </button>
 
-          <button
-            onClick={() => setActiveTab('users')}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition-colors border-b-2 whitespace-nowrap ${
-              activeTab === 'users'
-                ? 'border-[var(--brand-primary)] text-[var(--brand-primary)] bg-[var(--bg-card)]'
-                : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-            }`}
-          >
-            <Users className="w-4 h-4" />
-            {t('platform.tabUsers', 'إدارة المستخدمين والجلسات')}
-            <span className="px-1.5 py-0.2 rounded-full text-xs bg-[var(--bg-card-hover)] font-mono">
-              {usersList.length}
-            </span>
-          </button>
+            <button
+              onClick={() => setActiveTab('applications')}
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition-colors border-b-2 whitespace-nowrap ${
+                activeTab === 'applications'
+                  ? 'border-[var(--accent-primary)] text-[var(--accent-primary)] bg-[var(--bg-card)]'
+                  : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-main)]'
+              }`}
+            >
+              <Inbox className="w-4 h-4" />
+              {locale === 'ar' ? 'طلبات التأسيس' : 'Applications'}
+              {applications.filter((a) => a.status === 'PENDING_REVIEW').length > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full text-xs bg-amber-500/20 text-amber-400 font-mono">
+                  {applications.filter((a) => a.status === 'PENDING_REVIEW').length}
+                </span>
+              )}
+            </button>
 
-          <button
-            onClick={() => setActiveTab('plans')}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition-colors border-b-2 whitespace-nowrap ${
-              activeTab === 'plans'
-                ? 'border-[var(--brand-primary)] text-[var(--brand-primary)] bg-[var(--bg-card)]'
-                : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-            }`}
-          >
-            <Layers className="w-4 h-4" />
-            {t('platform.tabPlans', 'باقات الـ SaaS')}
-          </button>
-
-          <button
-            onClick={() => setActiveTab('storage')}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition-colors border-b-2 whitespace-nowrap ${
-              activeTab === 'storage'
-                ? 'border-[var(--brand-primary)] text-[var(--brand-primary)] bg-[var(--bg-card)]'
-                : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-            }`}
-          >
-            <Database className="w-4 h-4" />
-            {locale === 'ar' ? 'التخزين ودورة الحياة' : 'Storage & Lifecycle'}
-          </button>
-
-          <button
-            id="tab-platform-coowners"
-            onClick={() => setActiveTab('coowner')}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition-colors border-b-2 whitespace-nowrap ${
-              activeTab === 'coowner'
-                ? 'border-amber-400 text-amber-400 bg-[var(--bg-card)]'
-                : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-            }`}
-          >
-            <Crown className="w-4 h-4 text-amber-400" />
-            {locale === 'ar' ? 'ملكية المنصة والشركاء' : 'Platform Ownership & Co-Owners'}
-          </button>
-
-          <button
-            onClick={() => setActiveTab('governance')}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition-colors border-b-2 whitespace-nowrap ${
-              activeTab === 'governance'
-                ? 'border-[var(--brand-primary)] text-[var(--brand-primary)] bg-[var(--bg-card)]'
-                : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-            }`}
-          >
-            <ShieldCheck className="w-4 h-4" />
-            {locale === 'ar' ? 'حوكمة المنصة' : 'Governance'}
-          </button>
-
-          <button
-            onClick={() => setActiveTab('security')}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition-colors border-b-2 whitespace-nowrap ${
-              activeTab === 'security'
-                ? 'border-[var(--brand-primary)] text-[var(--brand-primary)] bg-[var(--bg-card)]'
-                : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-            }`}
-          >
-            <ShieldAlert className="w-4 h-4" />
-            {t('platform.tabSecurity', 'عمليات الأمان والحماية')}
-            {securityEvents.length > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full text-xs bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-200 font-mono">
-                {securityEvents.length}
+            <button
+              onClick={() => setActiveTab('users')}
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition-colors border-b-2 whitespace-nowrap ${
+                activeTab === 'users'
+                  ? 'border-[var(--accent-primary)] text-[var(--accent-primary)] bg-[var(--bg-card)]'
+                  : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-main)]'
+              }`}
+            >
+              <Users className="w-4 h-4" />
+              {t('platform.tabUsers', 'إدارة المستخدمين والجلسات')}
+              <span className="px-1.5 py-0.2 rounded-full text-xs bg-[var(--bg-card-hover)] font-mono">
+                {usersList.length}
               </span>
-            )}
-          </button>
+            </button>
 
-          <button
-            onClick={() => setActiveTab('audit')}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition-colors border-b-2 whitespace-nowrap ${
-              activeTab === 'audit'
-                ? 'border-[var(--brand-primary)] text-[var(--brand-primary)] bg-[var(--bg-card)]'
-                : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-            }`}
-          >
-            <ShieldCheck className="w-4 h-4" />
-            {t('platform.tabAudit', 'سجل التدقيق المركزي')}
-          </button>
+            <button
+              onClick={() => setActiveTab('plans')}
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition-colors border-b-2 whitespace-nowrap ${
+                activeTab === 'plans'
+                  ? 'border-[var(--accent-primary)] text-[var(--accent-primary)] bg-[var(--bg-card)]'
+                  : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-main)]'
+              }`}
+            >
+              <Layers className="w-4 h-4" />
+              {t('platform.tabPlans', 'باقات الـ SaaS')}
+            </button>
+
+            <button
+              onClick={() => setActiveTab('storage')}
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition-colors border-b-2 whitespace-nowrap ${
+                activeTab === 'storage'
+                  ? 'border-[var(--accent-primary)] text-[var(--accent-primary)] bg-[var(--bg-card)]'
+                  : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-main)]'
+              }`}
+            >
+              <Database className="w-4 h-4" />
+              {locale === 'ar' ? 'التخزين ودورة الحياة' : 'Storage & Lifecycle'}
+            </button>
+
+            <button
+              id="tab-platform-coowners"
+              onClick={() => setActiveTab('coowner')}
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition-colors border-b-2 whitespace-nowrap ${
+                activeTab === 'coowner'
+                  ? 'border-amber-400 text-amber-400 bg-[var(--bg-card)]'
+                  : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-main)]'
+              }`}
+            >
+              <Crown className="w-4 h-4 text-amber-400" />
+              {locale === 'ar' ? 'ملكية المنصة والشركاء' : 'Platform Ownership & Co-Owners'}
+            </button>
+
+            <button
+              onClick={() => setActiveTab('governance')}
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition-colors border-b-2 whitespace-nowrap ${
+                activeTab === 'governance'
+                  ? 'border-[var(--accent-primary)] text-[var(--accent-primary)] bg-[var(--bg-card)]'
+                  : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-main)]'
+              }`}
+            >
+              <ShieldCheck className="w-4 h-4" />
+              {locale === 'ar' ? 'حوكمة المنصة' : 'Governance'}
+            </button>
+
+            <button
+              onClick={() => setActiveTab('security')}
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition-colors border-b-2 whitespace-nowrap ${
+                activeTab === 'security'
+                  ? 'border-[var(--accent-primary)] text-[var(--accent-primary)] bg-[var(--bg-card)]'
+                  : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-main)]'
+              }`}
+            >
+              <ShieldAlert className="w-4 h-4" />
+              {t('platform.tabSecurity', 'عمليات الأمان والحماية')}
+              {securityEvents.length > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full text-xs bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-200 font-mono">
+                  {securityEvents.length}
+                </span>
+              )}
+            </button>
+
+            <button
+              onClick={() => setActiveTab('audit')}
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition-colors border-b-2 whitespace-nowrap ${
+                activeTab === 'audit'
+                  ? 'border-[var(--accent-primary)] text-[var(--accent-primary)] bg-[var(--bg-card)]'
+                  : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-main)]'
+              }`}
+            >
+              <ShieldCheck className="w-4 h-4" />
+              {t('platform.tabAudit', 'سجل التدقيق المركزي')}
+            </button>
+          </div>
         </div>
-      </div>
-
-
-
 
         {/* Tab 1: Academies */}
         {activeTab === 'academies' && (
@@ -907,7 +864,7 @@ function PlatformSuperAdminContent() {
           <div className="space-y-4">
             <div className="flex items-center gap-3">
               <div className="relative flex-1">
-                <Search className="w-4 h-4 absolute top-1/2 -translate-y-1/2 start-3 text-[var(--text-secondary)]" />
+                <Search className="w-4 h-4 absolute top-1/2 -translate-y-1/2 start-3 text-[var(--text-muted)]" />
                 <input
                   type="text"
                   value={userSearchQuery}
@@ -916,14 +873,14 @@ function PlatformSuperAdminContent() {
                     'platform.userSearchPlaceholder',
                     'بحث باسم المستخدم أو البريد...',
                   )}
-                  className="w-full ps-9 pe-4 py-2 rounded-lg bg-[var(--bg-card)] border border-[var(--border-subtle)] text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)]"
+                  className="w-full ps-9 pe-4 py-2 rounded-lg bg-[var(--bg-card)] border border-[var(--border-subtle)] text-sm text-[var(--text-main)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
                 />
               </div>
             </div>
 
             <div className="overflow-x-auto rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)]">
               <table className="w-full text-sm text-start">
-                <thead className="bg-[var(--bg-card-hover)] border-b border-[var(--border-subtle)] text-xs text-[var(--text-secondary)] uppercase">
+                <thead className="bg-[var(--bg-card-hover)] border-b border-[var(--border-subtle)] text-xs text-[var(--text-muted)] uppercase">
                   <tr>
                     <th className="px-4 py-3 text-start">المستخدم</th>
                     <th className="px-4 py-3 text-start">الأكاديميات والأدوار</th>
@@ -935,7 +892,7 @@ function PlatformSuperAdminContent() {
                 <tbody className="divide-y divide-[var(--border-subtle)]">
                   {filteredUsers.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="py-8 text-center text-[var(--text-secondary)]">
+                      <td colSpan={5} className="py-8 text-center text-[var(--text-muted)]">
                         {locale === 'ar' ? 'لا يوجد مستخدمين مطابقين' : 'No users found'}
                       </td>
                     </tr>
@@ -943,8 +900,8 @@ function PlatformSuperAdminContent() {
                     filteredUsers.map((u) => (
                       <tr key={u.id} className="hover:bg-[var(--bg-card-hover)] transition-colors">
                         <td className="px-4 py-3">
-                          <div className="font-semibold text-[var(--text-primary)]">{u.name}</div>
-                          <div className="text-xs text-[var(--text-secondary)] font-mono">
+                          <div className="font-semibold text-[var(--text-main)]">{u.name}</div>
+                          <div className="text-xs text-[var(--text-muted)] font-mono">
                             {u.email}
                           </div>
                           {u.isPlatformSuperAdmin && (
@@ -957,10 +914,10 @@ function PlatformSuperAdminContent() {
                           <div className="flex flex-col gap-1">
                             {u.memberships.map((m, idx) => (
                               <div key={idx} className="text-xs">
-                                <span className="font-medium text-[var(--text-primary)]">
+                                <span className="font-medium text-[var(--text-main)]">
                                   {m.tenantName}
                                 </span>
-                                <span className="ms-1.5 px-1.5 py-0.5 rounded text-[10px] bg-[var(--bg-card-hover)] text-[var(--text-secondary)] font-mono">
+                                <span className="ms-1.5 px-1.5 py-0.5 rounded text-[10px] bg-[var(--bg-card-hover)] text-[var(--text-muted)] font-mono">
                                   {m.role}
                                 </span>
                               </div>
@@ -1081,7 +1038,7 @@ function PlatformSuperAdminContent() {
                       <span className="px-2.5 py-1 rounded-full text-xs font-extrabold tracking-wide uppercase bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
                         {p.code}
                       </span>
-                      <span className="text-xs font-medium text-[var(--text-secondary)]">
+                      <span className="text-xs font-medium text-[var(--text-muted)]">
                         {p.isActive
                           ? locale === 'ar'
                             ? 'مفعلة'
@@ -1092,37 +1049,37 @@ function PlatformSuperAdminContent() {
                       </span>
                     </div>
 
-                    <h3 className="text-lg font-bold text-[var(--text-primary)] mb-1">{p.name}</h3>
-                    <p className="text-xs text-[var(--text-secondary)] mb-4">{p.description}</p>
+                    <h3 className="text-lg font-bold text-[var(--text-main)] mb-1">{p.name}</h3>
+                    <p className="text-xs text-[var(--text-muted)] mb-4">{p.description}</p>
 
                     <div className="mb-4">
-                      <div className="text-2xl font-black text-[var(--brand-primary)]">
+                      <div className="text-2xl font-black text-[var(--accent-primary)]">
                         {p.priceMonthly.toLocaleString()}{' '}
-                        <span className="text-xs font-normal text-[var(--text-secondary)]">
+                        <span className="text-xs font-normal text-[var(--text-muted)]">
                           {p.currency} / {locale === 'ar' ? 'شهرياً' : 'month'}
                         </span>
                       </div>
-                      <div className="text-xs text-[var(--text-secondary)] mt-0.5">
+                      <div className="text-xs text-[var(--text-muted)] mt-0.5">
                         {p.priceYearly.toLocaleString()} {p.currency} /{' '}
                         {locale === 'ar' ? 'سنوياً' : 'year'}
                       </div>
                     </div>
 
-                    <div className="space-y-2 py-3 border-t border-[var(--border-subtle)] text-xs text-[var(--text-primary)]">
+                    <div className="space-y-2 py-3 border-t border-[var(--border-subtle)] text-xs text-[var(--text-main)]">
                       <div className="flex justify-between">
-                        <span className="text-[var(--text-secondary)]">
+                        <span className="text-[var(--text-muted)]">
                           {locale === 'ar' ? 'الحد الأقصى للفروع:' : 'Max Branches:'}
                         </span>
                         <span className="font-bold">{p.maxBranches}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-[var(--text-secondary)]">
+                        <span className="text-[var(--text-muted)]">
                           {locale === 'ar' ? 'الحد الأقصى للاعبين:' : 'Max Players:'}
                         </span>
                         <span className="font-bold">{p.maxPlayers}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-[var(--text-secondary)]">
+                        <span className="text-[var(--text-muted)]">
                           {locale === 'ar' ? 'المدربين المسموح بهم:' : 'Max Coaches:'}
                         </span>
                         <span className="font-bold">{p.maxCoaches}</span>
@@ -1152,7 +1109,7 @@ function PlatformSuperAdminContent() {
                             });
                         }
                       }}
-                      className="w-full py-2 text-xs font-semibold rounded-lg bg-[var(--bg-card-hover)] hover:bg-[var(--border-subtle)] text-[var(--text-primary)] transition-colors"
+                      className="w-full py-2 text-xs font-semibold rounded-lg bg-[var(--bg-card-hover)] hover:bg-[var(--border-subtle)] text-[var(--text-main)] transition-colors"
                     >
                       {locale === 'ar' ? 'تعديل السعر والشروط' : 'Edit Plan Details'}
                     </button>
@@ -1209,7 +1166,7 @@ function PlatformSuperAdminContent() {
             </div>
 
             <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5">
-              <h3 className="font-bold text-[var(--text-primary)] mb-3 flex items-center gap-2">
+              <h3 className="font-bold text-[var(--text-main)] mb-3 flex items-center gap-2">
                 <ShieldAlert className="w-5 h-5 text-amber-500" />
                 {locale === 'ar'
                   ? 'سجل الأحداث الأمنية المباشر'
@@ -1217,7 +1174,7 @@ function PlatformSuperAdminContent() {
               </h3>
               <div className="divide-y divide-[var(--border-subtle)]">
                 {securityEvents.length === 0 ? (
-                  <p className="py-6 text-center text-sm text-[var(--text-secondary)]">
+                  <p className="py-6 text-center text-sm text-[var(--text-muted)]">
                     {locale === 'ar'
                       ? 'لا توجد أحداث أمنية مشبوهة مسجلة حديثاً.'
                       : 'No suspicious security signals logged.'}
@@ -1238,18 +1195,18 @@ function PlatformSuperAdminContent() {
                           >
                             {evt.severity}
                           </span>
-                          <span className="font-semibold text-xs text-[var(--text-primary)] font-mono">
+                          <span className="font-semibold text-xs text-[var(--text-main)] font-mono">
                             {evt.type}
                           </span>
                         </div>
-                        <p className="text-sm text-[var(--text-primary)]">{evt.description}</p>
+                        <p className="text-sm text-[var(--text-main)]">{evt.description}</p>
                         {evt.actorEmail && (
-                          <div className="text-xs text-[var(--text-secondary)] mt-0.5 font-mono">
+                          <div className="text-xs text-[var(--text-muted)] mt-0.5 font-mono">
                             User: {evt.actorEmail} {evt.ipAddress && `| IP: ${evt.ipAddress}`}
                           </div>
                         )}
                       </div>
-                      <div className="text-xs text-[var(--text-secondary)] whitespace-nowrap font-mono">
+                      <div className="text-xs text-[var(--text-muted)] whitespace-nowrap font-mono">
                         {new Date(evt.timestamp).toLocaleString(
                           locale === 'ar' ? 'ar-EG' : 'en-US',
                         )}
@@ -1266,7 +1223,7 @@ function PlatformSuperAdminContent() {
         {activeTab === 'audit' && (
           <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] overflow-x-auto">
             <table className="w-full text-sm text-start">
-              <thead className="bg-[var(--bg-card-hover)] border-b border-[var(--border-subtle)] text-xs text-[var(--text-secondary)] uppercase">
+              <thead className="bg-[var(--bg-card-hover)] border-b border-[var(--border-subtle)] text-xs text-[var(--text-muted)] uppercase">
                 <tr>
                   <th className="px-4 py-3 text-start">{t('common.date', 'التاريخ')}</th>
                   <th className="px-4 py-3 text-start">الإجراء</th>
@@ -1278,28 +1235,28 @@ function PlatformSuperAdminContent() {
               <tbody className="divide-y divide-[var(--border-subtle)]">
                 {auditLogs.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="py-8 text-center text-[var(--text-secondary)]">
+                    <td colSpan={5} className="py-8 text-center text-[var(--text-muted)]">
                       {locale === 'ar' ? 'لا توجد سجلات تدقيق' : 'No audit records'}
                     </td>
                   </tr>
                 ) : (
                   auditLogs.map((log) => (
                     <tr key={log.id} className="hover:bg-[var(--bg-card-hover)] transition-colors">
-                      <td className="px-4 py-3 text-xs text-[var(--text-secondary)] font-mono whitespace-nowrap">
+                      <td className="px-4 py-3 text-xs text-[var(--text-muted)] font-mono whitespace-nowrap">
                         {new Date(log.createdAt).toLocaleString(
                           locale === 'ar' ? 'ar-EG' : 'en-US',
                         )}
                       </td>
-                      <td className="px-4 py-3 font-semibold text-xs text-[var(--text-primary)] font-mono">
+                      <td className="px-4 py-3 font-semibold text-xs text-[var(--text-main)] font-mono">
                         {log.action}
                       </td>
-                      <td className="px-4 py-3 text-xs text-[var(--text-primary)] font-mono">
+                      <td className="px-4 py-3 text-xs text-[var(--text-main)] font-mono">
                         {log.actorEmail || 'System / Anonymous'}
                       </td>
-                      <td className="px-4 py-3 text-xs text-[var(--text-primary)]">
+                      <td className="px-4 py-3 text-xs text-[var(--text-main)]">
                         {log.tenantName || 'Platform Core'}
                       </td>
-                      <td className="px-4 py-3 text-xs text-[var(--text-secondary)] font-mono">
+                      <td className="px-4 py-3 text-xs text-[var(--text-muted)] font-mono">
                         {log.resourceType}{' '}
                         {log.resourceId ? `(${log.resourceId.slice(0, 8)}...)` : ''}
                       </td>
@@ -1336,15 +1293,15 @@ function PlatformSuperAdminContent() {
         {editingAcademy && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-150">
             <div className="w-full max-w-md p-6 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-subtle)] shadow-2xl space-y-4">
-              <h3 className="text-lg font-bold text-[var(--text-primary)]">
+              <h3 className="text-lg font-bold text-[var(--text-main)]">
                 {t('platform.changePlan', 'تعديل باقة الأكاديمية')}
               </h3>
-              <p className="text-xs text-[var(--text-secondary)]">
+              <p className="text-xs text-[var(--text-muted)]">
                 {editingAcademy.name} ({editingAcademy.slug})
               </p>
 
               <div className="space-y-2">
-                <label className="text-xs font-semibold text-[var(--text-primary)]">
+                <label className="text-xs font-semibold text-[var(--text-main)]">
                   {t('subscriptions.plan', 'خطة الاشتراك التجارية')}
                 </label>
                 <select
@@ -1354,7 +1311,7 @@ function PlatformSuperAdminContent() {
                       e.target.value as 'STARTER' | 'PRO' | 'ENTERPRISE' | 'CUSTOM',
                     )
                   }
-                  className="w-full px-3 py-2 rounded-lg bg-[var(--bg-card-hover)] border border-[var(--border-subtle)] text-sm text-[var(--text-primary)] font-medium"
+                  className="w-full px-3 py-2 rounded-lg bg-[var(--bg-card-hover)] border border-[var(--border-subtle)] text-sm text-[var(--text-main)] font-medium"
                 >
                   <option value="STARTER">STARTER (1 Branch / 50 Players)</option>
                   <option value="PRO">PRO (5 Branches / 250 Players / Cashiering)</option>
@@ -1367,7 +1324,7 @@ function PlatformSuperAdminContent() {
                 <button
                   type="button"
                   onClick={() => setEditingAcademy(null)}
-                  className="px-4 py-2 text-sm font-semibold rounded-lg bg-[var(--bg-card-hover)] hover:bg-[var(--border-subtle)] text-[var(--text-primary)]"
+                  className="px-4 py-2 text-sm font-semibold rounded-lg bg-[var(--bg-card-hover)] hover:bg-[var(--border-subtle)] text-[var(--text-main)]"
                 >
                   {t('common.cancel', 'إلغاء')}
                 </button>
@@ -1375,7 +1332,7 @@ function PlatformSuperAdminContent() {
                   type="button"
                   onClick={() => void handleSaveAcademyPlan()}
                   disabled={actionLoading === 'plan-modal'}
-                  className="px-4 py-2 text-sm font-semibold rounded-lg bg-[var(--brand-primary)] hover:bg-[var(--brand-primary-hover)] text-white shadow-sm"
+                  className="px-4 py-2 text-sm font-semibold rounded-lg bg-[var(--accent-primary)] hover:bg-[var(--accent-primary-hover)] text-white shadow-sm"
                 >
                   {actionLoading === 'plan-modal'
                     ? t('common.loading', 'جارٍ الحفظ...')

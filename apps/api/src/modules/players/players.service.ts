@@ -8,6 +8,7 @@ import {
   Injectable,
   Optional,
   NotFoundException,
+  Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import type { Prisma } from '@prisma/client';
@@ -37,6 +38,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class PlayersService {
+  private readonly logger = new Logger(PlayersService.name);
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(AuditService) private readonly auditService: AuditService,
@@ -395,13 +397,17 @@ export class PlayersService {
 
         // Determine date of birth from dateOfBirth or birthYear (supports birth year only format)
         const birthDateStr = dto.dateOfBirth
-          ? (dto.dateOfBirth.includes('-') ? dto.dateOfBirth : `${dto.dateOfBirth}-01-01`)
-          : (dto.birthYear ? `${dto.birthYear}-01-01` : '2015-01-01');
+          ? dto.dateOfBirth.includes('-')
+            ? dto.dateOfBirth
+            : `${dto.dateOfBirth}-01-01`
+          : dto.birthYear
+            ? `${dto.birthYear}-01-01`
+            : '2015-01-01';
 
         const membershipNumber =
           dto.jerseyNumber !== undefined && dto.jerseyNumber !== null
             ? String(dto.jerseyNumber)
-            : (dto.membershipNumber?.trim() || null);
+            : dto.membershipNumber?.trim() || null;
 
         // 1. Create player
         const player = await tx.player.create({
@@ -491,7 +497,9 @@ export class PlayersService {
               locale: 'ar',
             });
           } catch (mailErr: unknown) {
-            // Non-blocking email dispatch failure
+            this.logger.warn(
+              `Failed to dispatch welcome enrollment email: ${(mailErr as Error)?.message}`,
+            );
           }
         }
 
@@ -1131,7 +1139,8 @@ export class PlayersService {
           if (activePlayersCount >= sub.plan.maxPlayers) {
             throw new BadRequestException({
               code: ErrorCode.VALIDATION_FAILED,
-              message: 'بلغت الأكاديمية الحد الأقصى لعدد اللاعبين المسموح به في خطة الاشتراك الحالية (Subscription player limit reached)',
+              message:
+                'بلغت الأكاديمية الحد الأقصى لعدد اللاعبين المسموح به في خطة الاشتراك الحالية (Subscription player limit reached)',
             });
           }
         }
@@ -1365,16 +1374,24 @@ export class PlayersService {
 
         const warnings: string[] = [];
         if (activeEnrollments > 0) {
-          warnings.push(`Player has ${activeEnrollments} active branch enrollment(s) that will be terminated.`);
+          warnings.push(
+            `Player has ${activeEnrollments} active branch enrollment(s) that will be terminated.`,
+          );
         }
         if (activeGroupMemberships > 0) {
-          warnings.push(`Player is assigned to ${activeGroupMemberships} active training group(s).`);
+          warnings.push(
+            `Player is assigned to ${activeGroupMemberships} active training group(s).`,
+          );
         }
         if (player._count.attendanceEvents > 0) {
-          warnings.push(`Player has ${player._count.attendanceEvents} attendance event(s) which will remain archived.`);
+          warnings.push(
+            `Player has ${player._count.attendanceEvents} attendance event(s) which will remain archived.`,
+          );
         }
         if (player._count.financialTransactions > 0) {
-          warnings.push(`Player has ${player._count.financialTransactions} financial transaction(s) preserved in audit history.`);
+          warnings.push(
+            `Player has ${player._count.financialTransactions} financial transaction(s) preserved in audit history.`,
+          );
         }
 
         return {

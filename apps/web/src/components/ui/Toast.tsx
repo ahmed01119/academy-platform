@@ -148,7 +148,7 @@ function ToastCard({ item, onDismiss }: { item: ToastItem; onDismiss: () => void
   return (
     <div
       role="status"
-      className={`pointer-events-auto flex items-start gap-3 rounded-2xl border p-3.5 shadow-xl backdrop-blur-md transition-all animate-in fade-in slide-in-from-top-3 duration-200 ${style.border} ${style.bg}`}
+      className={`pointer-events-auto flex items-start gap-3 rounded-2xl border p-3.5 shadow-float backdrop-blur-md transition-all animate-scale-up duration-200 ${style.border} ${style.bg}`}
     >
       <div
         className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-xl ${style.badge}`}
@@ -158,11 +158,11 @@ function ToastCard({ item, onDismiss }: { item: ToastItem; onDismiss: () => void
 
       <div className="flex-1 min-w-0">
         {item.title && (
-          <h4 className="text-xs font-bold text-[var(--text-primary)] mb-0.5 leading-snug">
+          <h4 className="text-xs font-bold text-[var(--text-main)] mb-0.5 leading-snug">
             {item.title}
           </h4>
         )}
-        <p className="text-xs text-[var(--text-secondary)] leading-relaxed break-words">
+        <p className="text-xs text-[var(--text-muted)] leading-relaxed break-words">
           {item.message}
         </p>
       </div>
@@ -170,7 +170,7 @@ function ToastCard({ item, onDismiss }: { item: ToastItem; onDismiss: () => void
       <button
         type="button"
         onClick={onDismiss}
-        className="shrink-0 p-1 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-elevated)] transition-colors cursor-pointer"
+        className="shrink-0 p-1 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-surface-subtle)] transition-colors cursor-pointer"
         aria-label="إغلاق التنبيه"
       >
         <X className="h-3.5 w-3.5" />

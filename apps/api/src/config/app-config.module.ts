@@ -11,11 +11,13 @@ import { validateEnv } from './env.validation';
       cache: true,
       validate: validateEnv,
       // Search for .env in the api app directory and the monorepo root.
-      // This ensures the correct .env is loaded regardless of the CWD
-      // when the process is started (e.g. from repo root vs apps/api).
+      // __dirname at runtime = apps/api/dist/config/
+      // ../../.env  → apps/api/dist/.env          (does not exist — skipped gracefully)
+      // ../../../.env → apps/api/.env              ✅ primary
+      // ../../../../.env → monorepo root .env      ✅ fallback
       envFilePath: [
-        `${__dirname}/../../.env`,   // apps/api/dist/../../.env = apps/api/.env
-        `${__dirname}/../../../.env`, // fallback to monorepo root .env
+        `${__dirname}/../../../.env`, // apps/api/.env  (from dist/config → up 3 levels)
+        `${__dirname}/../../../../.env`, // monorepo root .env (fallback)
       ],
     }),
   ],

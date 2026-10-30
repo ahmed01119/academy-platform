@@ -1,11 +1,48 @@
 import type { NextConfig } from 'next';
+import fs from 'fs';
+import path from 'path';
+
+// Read generated buildId from public/version.json if available
+let initialBuildId = process.env.BUILD_ID || process.env.GITHUB_SHA || '';
+try {
+  const versionPath = path.resolve(__dirname, 'public/version.json');
+  if (fs.existsSync(versionPath)) {
+    const v = JSON.parse(fs.readFileSync(versionPath, 'utf8'));
+    if (v.buildId) initialBuildId = v.buildId;
+  }
+} catch {
+  // Ignore file read error in edge cases
+}
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   transpilePackages: ['@academy/shared'],
-  output: process.env.BUILD_STANDALONE === 'true' ? 'standalone' : undefined,
+  output:
+    process.env.BUILD_STANDALONE === 'true' || process.env.NODE_ENV === 'production'
+      ? 'standalone'
+      : undefined,
+  env: {
+    NEXT_PUBLIC_BUILD_ID: initialBuildId,
+  },
+  generateBuildId: async () => initialBuildId || `build-${Date.now().toString(36)}`,
   async headers() {
     return [
+      {
+        source: '/version.json',
+        headers: [
+          { key: 'Cache-Control', value: 'no-store, no-cache, must-revalidate, proxy-revalidate' },
+          { key: 'Pragma', value: 'no-cache' },
+          { key: 'Expires', value: '0' },
+        ],
+      },
+      {
+        source: '/sw.js',
+        headers: [
+          { key: 'Cache-Control', value: 'no-store, no-cache, must-revalidate, proxy-revalidate' },
+          { key: 'Pragma', value: 'no-cache' },
+          { key: 'Expires', value: '0' },
+        ],
+      },
       {
         source: '/(.*)',
         headers: [
@@ -20,24 +57,15 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  // Proxying to the backend API is handled dynamically at runtime by
+  // apps/web/src/app/v1/[...path]/route.ts. This ensures INTERNAL_API_URL is evaluated
+  // at runtime on every request without statically baking localhost into build artifacts.
   async rewrites() {
-    const rawTarget = process.env.INTERNAL_API_URL || 'http://127.0.0.1:3001';
-    const apiTarget = rawTarget.replace(/\/v1\/?$/, '');
-    return [
-      {
-        source: '/v1/:path*',
-        destination: `${apiTarget}/v1/:path*`,
-      },
-    ];
+    return [];
   },
-  // Ensure the Next.js server does not forward the browser's Origin header to the
-  // internal API. The API's CORS only needs to trust the Next.js server itself
-  // (server-to-server = no Origin header = allowed). The browser never talks to the
-  // API directly, so the API does not need to know the tunnel/public URL as an origin.
   async redirects() {
     return [];
   },
 };
 
 export default nextConfig;
-

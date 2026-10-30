@@ -30,7 +30,7 @@ async function measureRequest(path, method = 'GET', body = null, headers = {}) {
             headers: res.headers,
           });
         });
-      }
+      },
     );
     req.on('error', (err) => {
       resolve({ statusCode: 0, latency: Date.now() - start, error: err.message });
@@ -103,11 +103,15 @@ async function run() {
   // 4. Test Web frontend responsiveness (port 3000)
   const webStart = Date.now();
   const webRes = await new Promise((resolve) => {
-    http.get('http://127.0.0.1:3000/login', (res) => {
-      let d = '';
-      res.on('data', (c) => (d += c));
-      res.on('end', () => resolve({ statusCode: res.statusCode, latency: Date.now() - webStart }));
-    }).on('error', (err) => resolve({ statusCode: 0, error: err.message }));
+    http
+      .get('http://127.0.0.1:3000/login', (res) => {
+        let d = '';
+        res.on('data', (c) => (d += c));
+        res.on('end', () =>
+          resolve({ statusCode: res.statusCode, latency: Date.now() - webStart }),
+        );
+      })
+      .on('error', (err) => resolve({ statusCode: 0, error: err.message }));
   });
   console.log('Next.js /login response:', webRes.statusCode, 'latency:', webRes.latency, 'ms');
 

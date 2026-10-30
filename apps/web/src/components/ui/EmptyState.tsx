@@ -17,8 +17,8 @@ export function EmptyState({
   action,
 }: EmptyStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--border-app)] bg-[var(--bg-surface)] p-8 sm:p-12 text-center">
-      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--bg-surface-subtle)] text-[var(--accent-primary)] mb-4 shadow-sm">
+    <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-[var(--border-app)] bg-[var(--bg-surface)] p-8 sm:p-12 text-center shadow-xs animate-fade-in-up">
+      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-[var(--bg-surface-subtle)] to-[var(--bg-surface)] border border-[var(--border-subtle)] text-[var(--accent-primary)] mb-4 shadow-sm">
         <Icon className="h-7 w-7" />
       </div>
       <h3 className="text-base font-bold text-[var(--text-main)]">{title}</h3>

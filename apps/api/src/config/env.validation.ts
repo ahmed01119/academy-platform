@@ -5,6 +5,7 @@ const EnvSchema = z.object({
   PORT: z.coerce.number().int().positive().default(3001),
   API_VERSION: z.string().default('0.0.0'),
   DATABASE_URL: z.string().url().optional(),
+  DATABASE_ADMIN_URL: z.string().url().optional(),
   REDIS_URL: z.string().url().optional(),
   ALLOW_IN_MEMORY_RATE_LIMIT: z
     .union([z.boolean(), z.enum(['true', 'false'])])
@@ -13,7 +14,9 @@ const EnvSchema = z.object({
   JWT_SECRET: z.string().min(16).default('academy-platform-jwt-super-secret-key-32-chars!'),
   JWT_EXPIRES_IN: z.string().default('15m'),
   REFRESH_TOKEN_EXPIRES_DAYS: z.coerce.number().int().positive().default(7),
-  CORS_ORIGIN: z.string().default('http://localhost:3000'),
+  CORS_ORIGIN: z
+    .string()
+    .default('http://localhost:3000,https://sportexus-web-staging.hostless.app'),
   COOKIE_SECURE: z
     .union([z.boolean(), z.enum(['true', 'false'])])
     .transform((value) => value === true || value === 'true')
@@ -22,7 +25,7 @@ const EnvSchema = z.object({
 
 export type AppEnv = z.infer<typeof EnvSchema>;
 
-export function validateEnv(config: Record<string, unknown>): AppEnv {
+export function validateEnv(config: Record<string, unknown>): AppEnv & Record<string, unknown> {
   const parsed = EnvSchema.safeParse(config);
   if (!parsed.success) {
     const details = parsed.error.issues
@@ -54,9 +57,14 @@ export function validateEnv(config: Record<string, unknown>): AppEnv {
 
     const username = decodeURIComponent(databaseUrl.username).toLowerCase();
     if (!username || ['postgres', 'academy', 'root'].includes(username)) {
-      throw new Error('Production DATABASE_URL must use a dedicated unprivileged runtime role');
+      throw new Error(
+        `Production DATABASE_URL must use a dedicated unprivileged runtime role (e.g. 'sportexus_app'). Administrative role '${username}' is not permitted.`,
+      );
     }
   }
 
-  return parsed.data;
+  // Merge the validated (and default-filled) known keys back into the full raw config
+  // so that ALL environment variables — including email delivery vars like MAIL_PROVIDER,
+  // RESEND_API_KEY, MAIL_FROM_EMAIL, etc. — remain accessible via ConfigService.get().
+  return { ...config, ...parsed.data };
 }

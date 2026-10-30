@@ -61,7 +61,6 @@ export class PlatformService {
     @Optional() @Inject(RedisService) private readonly redisService?: RedisService,
   ) {}
 
-
   /**
    * Retrieves high-level SaaS platform metrics for Super Administrators.
    * Real database aggregations across tenants, subscriptions, users, and financials.
@@ -310,7 +309,7 @@ export class PlatformService {
   /**
    * Lists all users across the platform with roles, academies, and active sessions count.
    */
-    /**
+  /**
    * Pre-deletion impact assessment for an academy.
    * Reports affected branches, players, staff, financials, and attendance history.
    */
@@ -1245,9 +1244,7 @@ export class PlatformService {
     await this.notificationsService.createNotification({
       userId: result.userId,
       type: 'SECURITY',
-      title: isCoOwner
-        ? 'Platform Co-Owner Access Granted'
-        : 'Platform Super Admin Access Granted',
+      title: isCoOwner ? 'Platform Co-Owner Access Granted' : 'Platform Super Admin Access Granted',
       body: isCoOwner
         ? 'You have been granted Platform Co-Owner privileges by the Primary Platform Owner.'
         : 'You have been granted Platform Super Administrator privileges by the Platform Owner.',
@@ -1762,7 +1759,9 @@ export class PlatformService {
             'ar',
           );
         } catch (mailErr: any) {
-          this.logger.warn(`Failed to dispatch academy approval email: ${mailErr?.message ?? mailErr}`);
+          this.logger.warn(
+            `Failed to dispatch academy approval email: ${mailErr?.message ?? mailErr}`,
+          );
         }
       } else if (dto.status === 'REJECTED') {
         await this.notificationsService.createNotification({
@@ -1783,7 +1782,9 @@ export class PlatformService {
             'ar',
           );
         } catch (mailErr: any) {
-          this.logger.warn(`Failed to dispatch academy rejection email: ${mailErr?.message ?? mailErr}`);
+          this.logger.warn(
+            `Failed to dispatch academy rejection email: ${mailErr?.message ?? mailErr}`,
+          );
         }
       } else if (dto.status === 'MORE_INFO_REQUESTED') {
         await this.notificationsService.createNotification({
@@ -1804,7 +1805,9 @@ export class PlatformService {
             'ar',
           );
         } catch (mailErr: any) {
-          this.logger.warn(`Failed to dispatch more info requested email: ${mailErr?.message ?? mailErr}`);
+          this.logger.warn(
+            `Failed to dispatch more info requested email: ${mailErr?.message ?? mailErr}`,
+          );
         }
       }
     } catch (notifErr: any) {
@@ -1960,7 +1963,6 @@ export class PlatformService {
       };
     });
   }
-
 
   /**
    * Evaluates storage cleanup candidates without modifying any data.

@@ -70,7 +70,9 @@ export function PlayerJoinRequestsTab() {
 
   // Selected request for modal review or viewing
   const [selectedRequest, setSelectedRequest] = useState<PlayerJoinRequestItem | null>(null);
-  const [reviewAction, setReviewAction] = useState<'APPROVED' | 'REJECTED' | 'MORE_INFO_REQUESTED'>('APPROVED');
+  const [reviewAction, setReviewAction] = useState<'APPROVED' | 'REJECTED' | 'MORE_INFO_REQUESTED'>(
+    'APPROVED',
+  );
   const [selectedBranchId, setSelectedBranchId] = useState<string>('');
   const [selectedGroupId, setSelectedGroupId] = useState<string>('');
   const [reviewNotes, setReviewNotes] = useState('');
@@ -84,7 +86,8 @@ export function PlayerJoinRequestsTab() {
   const canCoachReview =
     activeTenant?.role === 'COACH' && Boolean(activeTenant?.canReviewApplications);
   const canReview = isOwnerOrManager || canCoachReview;
-  const isCoachWithoutDelegation = activeTenant?.role === 'COACH' && !activeTenant?.canReviewApplications;
+  const isCoachWithoutDelegation =
+    activeTenant?.role === 'COACH' && !activeTenant?.canReviewApplications;
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -128,18 +131,20 @@ export function PlayerJoinRequestsTab() {
             ? `✅ تم قبول طلب ${selectedRequest.playerName} وإضافته للأكاديمية بنجاح`
             : `✅ ${selectedRequest.playerName}'s request approved and enrolled successfully`
           : reviewAction === 'REJECTED'
-          ? ar
-            ? `تم رفض طلب ${selectedRequest.playerName}`
-            : `${selectedRequest.playerName}'s request rejected`
-          : ar
-          ? 'تم طلب معلومات إضافية من المتقدم'
-          : 'Additional information requested from applicant',
+            ? ar
+              ? `تم رفض طلب ${selectedRequest.playerName}`
+              : `${selectedRequest.playerName}'s request rejected`
+            : ar
+              ? 'تم طلب معلومات إضافية من المتقدم'
+              : 'Additional information requested from applicant',
       );
       setSelectedRequest(null);
       setReviewNotes('');
       await load();
     } catch (err: unknown) {
-      toast.error((err as Error)?.message || (ar ? 'فشل مراجعة الطلب' : 'Failed to review request'));
+      toast.error(
+        (err as Error)?.message || (ar ? 'فشل مراجعة الطلب' : 'Failed to review request'),
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -211,7 +216,11 @@ export function PlayerJoinRequestsTab() {
             type="search"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={ar ? 'بحث باسم اللاعب، ولي الأمر، أو البريد...' : 'Search by player name, guardian, email...'}
+            placeholder={
+              ar
+                ? 'بحث باسم اللاعب، ولي الأمر، أو البريد...'
+                : 'Search by player name, guardian, email...'
+            }
             className="w-full rounded-xl border border-[var(--border-app)] bg-[var(--bg-surface)] ps-9 pe-4 py-2.5 text-sm text-[var(--text-main)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-primary)]/60"
           />
         </div>
@@ -239,7 +248,13 @@ export function PlayerJoinRequestsTab() {
             <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
               <h3 className="font-bold text-sm text-[var(--text-main)] flex items-center gap-2">
                 <User className="h-4 w-4 text-[var(--accent-primary)]" />
-                {canReview ? (ar ? 'مراجعة واعتماد طلب اللاعب' : 'Review Player Join Request') : (ar ? 'تفاصيل طلب الانضمام' : 'Join Request Details')}
+                {canReview
+                  ? ar
+                    ? 'مراجعة واعتماد طلب اللاعب'
+                    : 'Review Player Join Request'
+                  : ar
+                    ? 'تفاصيل طلب الانضمام'
+                    : 'Join Request Details'}
               </h3>
               <button
                 onClick={() => setSelectedRequest(null)}
@@ -252,41 +267,67 @@ export function PlayerJoinRequestsTab() {
             {/* Application Data Card */}
             <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] p-4 space-y-2.5 text-xs text-[var(--text-muted)]">
               <div className="flex items-center justify-between pb-2 border-b border-[var(--border-subtle)]">
-                <span className="font-semibold text-sm text-[var(--text-main)]">{selectedRequest.playerName}</span>
-                <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold ${statusConfig[selectedRequest.status as keyof typeof statusConfig]?.color}`}>
-                  {statusConfig[selectedRequest.status as keyof typeof statusConfig]?.ar || selectedRequest.status}
+                <span className="font-semibold text-sm text-[var(--text-main)]">
+                  {selectedRequest.playerName}
+                </span>
+                <span
+                  className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold ${statusConfig[selectedRequest.status as keyof typeof statusConfig]?.color}`}
+                >
+                  {statusConfig[selectedRequest.status as keyof typeof statusConfig]?.ar ||
+                    selectedRequest.status}
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-3 pt-1">
                 <div>
-                  <span className="text-[10px] text-[var(--text-muted)] block">{ar ? 'البريد الإلكتروني:' : 'Email:'}</span>
-                  <span className="font-medium text-[var(--text-main)]">{selectedRequest.contactEmail}</span>
+                  <span className="text-[10px] text-[var(--text-muted)] block">
+                    {ar ? 'البريد الإلكتروني:' : 'Email:'}
+                  </span>
+                  <span className="font-medium text-[var(--text-main)]">
+                    {selectedRequest.contactEmail}
+                  </span>
                 </div>
                 <div>
-                  <span className="text-[10px] text-[var(--text-muted)] block">{ar ? 'الهاتف للتواصل:' : 'Phone:'}</span>
-                  <span className="font-medium text-[var(--text-main)]">{selectedRequest.contactPhone || '—'}</span>
+                  <span className="text-[10px] text-[var(--text-muted)] block">
+                    {ar ? 'الهاتف للتواصل:' : 'Phone:'}
+                  </span>
+                  <span className="font-medium text-[var(--text-main)]">
+                    {selectedRequest.contactPhone || '—'}
+                  </span>
                 </div>
                 <div>
-                  <span className="text-[10px] text-[var(--text-muted)] block">{ar ? 'تاريخ الميلاد:' : 'Date of Birth:'}</span>
+                  <span className="text-[10px] text-[var(--text-muted)] block">
+                    {ar ? 'تاريخ الميلاد:' : 'Date of Birth:'}
+                  </span>
                   <span className="font-medium text-[var(--text-main)]">
                     {selectedRequest.dateOfBirth
-                      ? new Date(selectedRequest.dateOfBirth).toLocaleDateString(ar ? 'ar-EG' : 'en-US')
+                      ? new Date(selectedRequest.dateOfBirth).toLocaleDateString(
+                          ar ? 'ar-EG' : 'en-US',
+                        )
                       : '—'}
                   </span>
                 </div>
                 <div>
-                  <span className="text-[10px] text-[var(--text-muted)] block">{ar ? 'ولي الأمر (للقُصّر):' : 'Guardian:'}</span>
-                  <span className="font-medium text-[var(--text-main)]">{selectedRequest.guardianName || '—'}</span>
+                  <span className="text-[10px] text-[var(--text-muted)] block">
+                    {ar ? 'ولي الأمر (للقُصّر):' : 'Guardian:'}
+                  </span>
+                  <span className="font-medium text-[var(--text-main)]">
+                    {selectedRequest.guardianName || '—'}
+                  </span>
                 </div>
               </div>
               {selectedRequest.reviewNotes && (
                 <div className="pt-2 border-t border-[var(--border-subtle)]">
-                  <span className="text-[10px] text-[var(--text-muted)] block">{ar ? 'ملاحظات المراجعة والتوثيق:' : 'Review Notes:'}</span>
-                  <p className="text-[var(--text-main)] mt-0.5 italic">{selectedRequest.reviewNotes}</p>
+                  <span className="text-[10px] text-[var(--text-muted)] block">
+                    {ar ? 'ملاحظات المراجعة والتوثيق:' : 'Review Notes:'}
+                  </span>
+                  <p className="text-[var(--text-main)] mt-0.5 italic">
+                    {selectedRequest.reviewNotes}
+                  </p>
                 </div>
               )}
               <div className="pt-2 text-[10px] text-[var(--text-muted)]">
-                {ar ? 'تاريخ تقديم الطلب:' : 'Submitted at:'} {new Date(selectedRequest.createdAt).toLocaleString(ar ? 'ar-EG' : 'en-US')}
+                {ar ? 'تاريخ تقديم الطلب:' : 'Submitted at:'}{' '}
+                {new Date(selectedRequest.createdAt).toLocaleString(ar ? 'ar-EG' : 'en-US')}
               </div>
             </div>
 
@@ -300,9 +341,24 @@ export function PlayerJoinRequestsTab() {
                   <div className="grid grid-cols-3 gap-2">
                     {(
                       [
-                        { value: 'APPROVED', ar: 'قبول وتسكين', en: 'Approve', color: 'border-emerald-500/50 text-emerald-400 bg-emerald-500/10' },
-                        { value: 'REJECTED', ar: 'رفض الطلب', en: 'Reject', color: 'border-rose-500/50 text-rose-400 bg-rose-500/10' },
-                        { value: 'MORE_INFO_REQUESTED', ar: 'طلب معلومات', en: 'Request Info', color: 'border-blue-500/50 text-blue-400 bg-blue-500/10' },
+                        {
+                          value: 'APPROVED',
+                          ar: 'قبول وتسكين',
+                          en: 'Approve',
+                          color: 'border-emerald-500/50 text-emerald-400 bg-emerald-500/10',
+                        },
+                        {
+                          value: 'REJECTED',
+                          ar: 'رفض الطلب',
+                          en: 'Reject',
+                          color: 'border-rose-500/50 text-rose-400 bg-rose-500/10',
+                        },
+                        {
+                          value: 'MORE_INFO_REQUESTED',
+                          ar: 'طلب معلومات',
+                          en: 'Request Info',
+                          color: 'border-blue-500/50 text-blue-400 bg-blue-500/10',
+                        },
                       ] as const
                     ).map((opt) => (
                       <button
@@ -337,9 +393,13 @@ export function PlayerJoinRequestsTab() {
                         }}
                         className="w-full rounded-lg border border-[var(--border-app)] bg-[var(--bg-surface)] px-2.5 py-2 text-xs text-[var(--text-main)] font-medium focus:outline-none"
                       >
-                        <option value="">{ar ? 'اختر الفرع الرياضي...' : 'Select branch...'}</option>
+                        <option value="">
+                          {ar ? 'اختر الفرع الرياضي...' : 'Select branch...'}
+                        </option>
                         {branches.map((b) => (
-                          <option key={b.id} value={b.id}>{b.name} ({b.city || 'الفرع'})</option>
+                          <option key={b.id} value={b.id}>
+                            {b.name} ({b.city || 'الفرع'})
+                          </option>
                         ))}
                       </select>
                     </div>
@@ -354,9 +414,13 @@ export function PlayerJoinRequestsTab() {
                         onChange={(e) => setSelectedGroupId(e.target.value)}
                         className="w-full rounded-lg border border-[var(--border-app)] bg-[var(--bg-surface)] px-2.5 py-2 text-xs text-[var(--text-main)] font-medium focus:outline-none"
                       >
-                        <option value="">{ar ? 'بدون فريق حالياً (تسكين لاحق)' : 'None (Assign later)'}</option>
+                        <option value="">
+                          {ar ? 'بدون فريق حالياً (تسكين لاحق)' : 'None (Assign later)'}
+                        </option>
                         {filteredGroups.map((g) => (
-                          <option key={g.id} value={g.id}>{g.name} ({g.sport})</option>
+                          <option key={g.id} value={g.id}>
+                            {g.name} ({g.sport})
+                          </option>
                         ))}
                       </select>
                     </div>
@@ -373,8 +437,12 @@ export function PlayerJoinRequestsTab() {
                     rows={2}
                     placeholder={
                       reviewAction === 'REJECTED'
-                        ? (ar ? 'وضح سبب الرفض لإبلاغ المتقدم...' : 'State reason for rejection...')
-                        : (ar ? 'أدخل أي ملاحظات فنية أو إدارية...' : 'Any technical notes...')
+                        ? ar
+                          ? 'وضح سبب الرفض لإبلاغ المتقدم...'
+                          : 'State reason for rejection...'
+                        : ar
+                          ? 'أدخل أي ملاحظات فنية أو إدارية...'
+                          : 'Any technical notes...'
                     }
                     className="w-full rounded-xl border border-[var(--border-app)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-main)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-primary)]/60 resize-none"
                   />
@@ -395,17 +463,25 @@ export function PlayerJoinRequestsTab() {
                       reviewAction === 'APPROVED'
                         ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:brightness-110'
                         : reviewAction === 'REJECTED'
-                        ? 'bg-gradient-to-r from-rose-600 to-red-600 hover:brightness-110'
-                        : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:brightness-110'
+                          ? 'bg-gradient-to-r from-rose-600 to-red-600 hover:brightness-110'
+                          : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:brightness-110'
                     }`}
                   >
                     {isSubmitting
-                      ? (ar ? 'جارٍ المعالجة...' : 'Processing...')
+                      ? ar
+                        ? 'جارٍ المعالجة...'
+                        : 'Processing...'
                       : reviewAction === 'APPROVED'
-                      ? (ar ? 'اعتماد وإضافة اللاعب' : 'Approve & Enroll')
-                      : reviewAction === 'REJECTED'
-                      ? (ar ? 'تأكيد الرفض' : 'Confirm Rejection')
-                      : (ar ? 'طلب معلومات إضافية' : 'Request Info')}
+                        ? ar
+                          ? 'اعتماد وإضافة اللاعب'
+                          : 'Approve & Enroll'
+                        : reviewAction === 'REJECTED'
+                          ? ar
+                            ? 'تأكيد الرفض'
+                            : 'Confirm Rejection'
+                          : ar
+                            ? 'طلب معلومات إضافية'
+                            : 'Request Info'}
                   </button>
                 </div>
               </form>
@@ -435,10 +511,16 @@ export function PlayerJoinRequestsTab() {
           <UserPlus className="h-10 w-10 text-[var(--text-muted)]/40 mx-auto mb-3" />
           <p className="text-sm font-semibold text-[var(--text-main)]">
             {searchQuery
-              ? (ar ? 'لا توجد نتائج مطابقة لشروط البحث' : 'No matching results found')
+              ? ar
+                ? 'لا توجد نتائج مطابقة لشروط البحث'
+                : 'No matching results found'
               : statusFilter !== 'ALL'
-              ? (ar ? 'لا توجد طلبات بهذه الحالة المحددة' : 'No applications in this category')
-              : (ar ? 'لا توجد طلبات انضمام جديدة حتى الآن' : 'No join applications received yet')}
+                ? ar
+                  ? 'لا توجد طلبات بهذه الحالة المحددة'
+                  : 'No applications in this category'
+                : ar
+                  ? 'لا توجد طلبات انضمام جديدة حتى الآن'
+                  : 'No join applications received yet'}
           </p>
           <p className="text-xs text-[var(--text-muted)] mt-1 max-w-sm mx-auto">
             {ar
@@ -489,12 +571,16 @@ export function PlayerJoinRequestsTab() {
                       )}
                     </div>
                     <div className="flex items-center gap-2 mt-2">
-                      <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold ${cfg?.color}`}>
+                      <span
+                        className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold ${cfg?.color}`}
+                      >
                         <StatusIcon className="h-3 w-3" />
                         {cfg ? (ar ? cfg.ar : cfg.en) : req.status}
                       </span>
                       <span className="text-[10px] text-[var(--text-muted)]">
-                        {new Date(req.createdAt).toLocaleDateString(ar ? 'ar-EG' : 'en-US', { dateStyle: 'medium' })}
+                        {new Date(req.createdAt).toLocaleDateString(ar ? 'ar-EG' : 'en-US', {
+                          dateStyle: 'medium',
+                        })}
                       </span>
                     </div>
                   </div>
