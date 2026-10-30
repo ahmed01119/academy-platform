@@ -67,18 +67,30 @@ function verifyFrontendDockerfile(filePath = 'Dockerfile') {
 
 function checkDeploymentBranchHotfixes(branch, sourceSha) {
   try {
-    const unmergedHotfixes = runOutput(
-      `git log ${sourceSha}..origin/${branch} --oneline 2>/dev/null || echo ""`,
-    );
-    if (unmergedHotfixes && unmergedHotfixes.trim()) {
-      const lines = unmergedHotfixes.trim().split('\n');
-      console.warn(
-        `\n[HOTFIX DETECTED] Deployment branch '${branch}' contains ${lines.length} unmerged hotfix commit(s) not in main (${sourceSha}):`,
-      );
-      lines.forEach((l) => console.warn(`   * ${l}`));
-      console.warn(
-        `[HOTFIX DETECTED] Performing 3-way merge to preserve hotfix history without overwriting.\n`,
-      );
+    let unmergedHotfixes = '';
+    try {
+      unmergedHotfixes = execSync(`git log ${sourceSha}..origin/${branch} --oneline`, {
+        encoding: 'utf8',
+        stdio: 'pipe',
+      }).trim();
+    } catch {
+      return;
+    }
+
+    if (unmergedHotfixes) {
+      const lines = unmergedHotfixes
+        .split('\n')
+        .map((l) => l.trim())
+        .filter(Boolean);
+      if (lines.length > 0) {
+        console.warn(
+          `\n[HOTFIX DETECTED] Deployment branch '${branch}' contains ${lines.length} unmerged hotfix commit(s) not in main (${sourceSha}):`,
+        );
+        lines.forEach((l) => console.warn(`   * ${l}`));
+        console.warn(
+          `[HOTFIX DETECTED] Performing 3-way merge to preserve hotfix history without overwriting.\n`,
+        );
+      }
     }
   } catch (err) {
     console.warn(
