@@ -1,9 +1,15 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useLocale } from '../../lib/locale-context';
 import { offlineEngine } from '../../lib/offline-engine';
 
+const RUNNING_BUILD_ID = process.env.NEXT_PUBLIC_BUILD_ID || '';
+
+/**
+ * Checks if the user is currently interacting with an input, editing a form,
+ * or if a critical platform operation marked the document as busy.
+ */
 function hasUnsavedWork(): boolean {
   if (typeof document === 'undefined') return false;
   if (document.body.dataset.academyBusy === 'true') return true;
@@ -21,60 +27,103 @@ function hasUnsavedWork(): boolean {
 export function ServiceWorkerRegistrar() {
   const { locale } = useLocale();
   const [waitingWorker, setWaitingWorker] = useState<ServiceWorker | null>(null);
+  const [updateAvailable, setUpdateAvailable] = useState(false);
   const [pendingWarning, setPendingWarning] = useState<string | null>(null);
+  const [dismissed, setDismissed] = useState(false);
   const registrationRef = useRef<ServiceWorkerRegistration | null>(null);
 
+  const checkVersionManifest = useCallback(async () => {
+    if (typeof window === 'undefined') return;
+    if (document.hidden || !navigator.onLine) return;
+    if (!RUNNING_BUILD_ID) return;
+
+    try {
+      const res = await fetch(`/version.json?ts=${Date.now()}`, {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache, no-store' },
+      });
+      if (res.ok) {
+        const data = (await res.json()) as { buildId?: string; version?: string };
+        if (data?.buildId && data.buildId !== RUNNING_BUILD_ID) {
+          setUpdateAvailable(true);
+        }
+      }
+    } catch {
+      // Version check is best-effort and silent
+    }
+  }, []);
+
   useEffect(() => {
-    if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
-    if (process.env.NODE_ENV === 'development') return;
+    if (typeof window === 'undefined') return;
 
     let cancelled = false;
-    void navigator.serviceWorker
-      .register('/sw.js', { scope: '/' })
-      .then((registration) => {
-        if (cancelled) return;
-        registrationRef.current = registration;
-        if (registration.waiting) {
-          setWaitingWorker(registration.waiting);
-        }
-        registration.addEventListener('updatefound', () => {
-          const installing = registration.installing;
-          if (!installing) return;
-          installing.addEventListener('statechange', () => {
-            if (installing.state === 'installed' && navigator.serviceWorker.controller) {
-              setWaitingWorker(registration.waiting);
-            }
-          });
-        });
-      })
-      .catch((err) => {
-        console.error('Service worker registration failed', err);
-      });
 
-    // Check for updates periodically and when reconnecting
-    const checkForUpdates = () => {
+    // 1. Service worker lifecycle management (in production or supported envs)
+    if ('serviceWorker' in navigator && process.env.NODE_ENV !== 'development') {
+      void navigator.serviceWorker
+        .register('/sw.js', { scope: '/' })
+        .then((registration) => {
+          if (cancelled) return;
+          registrationRef.current = registration;
+          if (registration.waiting) {
+            setWaitingWorker(registration.waiting);
+            setUpdateAvailable(true);
+          }
+          registration.addEventListener('updatefound', () => {
+            const installing = registration.installing;
+            if (!installing) return;
+            installing.addEventListener('statechange', () => {
+              if (installing.state === 'installed' && navigator.serviceWorker.controller) {
+                setWaitingWorker(registration.waiting);
+                setUpdateAvailable(true);
+              }
+            });
+          });
+        })
+        .catch((err) => {
+          console.error('Service worker registration failed', err);
+        });
+    }
+
+    // 2. Initial version check
+    void checkVersionManifest();
+
+    // 3. Periodic and event-driven update checks
+    const handleCheckAll = () => {
       registrationRef.current?.update().catch(() => {});
+      void checkVersionManifest();
     };
 
-    const intervalTimer = window.setInterval(checkForUpdates, 15 * 60 * 1000);
-    window.addEventListener('online', checkForUpdates);
-    window.addEventListener('focus', checkForUpdates);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        handleCheckAll();
+      }
+    };
+
+    // Check every 10 minutes
+    const intervalTimer = window.setInterval(handleCheckAll, 10 * 60 * 1000);
+    window.addEventListener('online', handleCheckAll);
+    window.addEventListener('focus', handleCheckAll);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       cancelled = true;
       window.clearInterval(intervalTimer);
-      window.removeEventListener('online', checkForUpdates);
-      window.removeEventListener('focus', checkForUpdates);
+      window.removeEventListener('online', handleCheckAll);
+      window.removeEventListener('focus', handleCheckAll);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, []);
+  }, [checkVersionManifest]);
 
-  if (!waitingWorker) return null;
+  if ((!updateAvailable && !waitingWorker) || dismissed) {
+    return null;
+  }
 
   const title = locale === 'ar' ? 'يتوفر إصدار جديد للتطبيق' : 'An application update is available';
   const body =
     locale === 'ar'
-      ? 'تم تجهيز نسخة أحدث من المنصة. لن يتم التحديث أثناء تعبئة النماذج أو أثناء وجود عمليات حضور غير متزامنة.'
-      : 'A newer version has been prepared. The app will not refresh during form edits or pending attendance synchronization.';
+      ? 'تم نشر نسخة أحدث من المنصة. لن يتم التحديث أثناء تعبئة النماذج أو أثناء وجود عمليات حضور غير متزامنة.'
+      : 'A newer version has been deployed. The app will not refresh during form edits or pending attendance synchronization.';
   const later = locale === 'ar' ? 'لاحقاً' : 'Later';
   const refresh = locale === 'ar' ? 'تحديث الآن' : 'Update now';
 
@@ -103,7 +152,9 @@ export function ServiceWorkerRegistrar() {
       return;
     }
 
-    waitingWorker.postMessage({ type: 'SKIP_WAITING' });
+    if (waitingWorker) {
+      waitingWorker.postMessage({ type: 'SKIP_WAITING' });
+    }
     window.location.reload();
   };
 
@@ -125,7 +176,7 @@ export function ServiceWorkerRegistrar() {
           <button
             type="button"
             className="rounded-xl border border-[var(--border-app)] px-3 py-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer"
-            onClick={() => setWaitingWorker(null)}
+            onClick={() => setDismissed(true)}
           >
             {later}
           </button>

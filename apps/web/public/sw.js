@@ -1,26 +1,29 @@
 /* Sportexus PWA Service Worker.
- * Cache static shell and brand assets only. Never cache /v1 API, cookies, or authenticated HTML.
+ * Cache static shell and brand assets only.
+ * NEVER cache /v1 API, /version.json, /sw.js, cookies, or authenticated HTML.
  */
-const VERSION = 'sportexus-shell-v1';
+const VERSION = 'sportexus-shell-v2';
 const PRECACHE = ['/offline', '/manifest.webmanifest', '/icon', '/apple-icon'];
 
 self.addEventListener('install', (event) => {
+  // Pre-cache core offline assets.
+  // DO NOT call self.skipWaiting() here — allow existing pages to finish their workflows.
+  // skipWaiting will only be called when the user confirms the update prompt.
   event.waitUntil(
     caches
       .open(VERSION)
-      .then((cache) => cache.addAll(PRECACHE))
-      .then(() => self.skipWaiting()),
+      .then((cache) => cache.addAll(PRECACHE)),
   );
 });
 
 self.addEventListener('activate', (event) => {
+  // Clean up older caches
   event.waitUntil(
     caches
       .keys()
       .then((keys) =>
         Promise.all(keys.filter((key) => key !== VERSION).map((key) => caches.delete(key))),
-      )
-      .then(() => self.clients.claim()),
+      ),
   );
 });
 
@@ -28,7 +31,19 @@ function isApiRequest(url) {
   return url.pathname.startsWith('/v1') || url.pathname.includes('/v1/');
 }
 
+function isBypassedAsset(url) {
+  // Never cache version metadata or service worker file itself
+  return (
+    url.pathname === '/version.json' ||
+    url.pathname === '/sw.js' ||
+    isApiRequest(url)
+  );
+}
+
 function isStaticAsset(url) {
+  if (isBypassedAsset(url)) {
+    return false;
+  }
   return (
     url.pathname.startsWith('/_next/static/') ||
     url.pathname.startsWith('/brand/') ||
@@ -51,7 +66,8 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  if (isApiRequest(url)) {
+  // Network-only for API, version manifest, and SW
+  if (isBypassedAsset(url)) {
     return;
   }
 
