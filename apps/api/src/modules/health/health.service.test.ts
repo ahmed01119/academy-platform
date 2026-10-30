@@ -9,10 +9,12 @@ function makeService(options: {
   postgresOk?: boolean;
   redisConfigured?: boolean;
   redisOk?: boolean;
+  allowInMemoryRateLimit?: boolean;
 }) {
   const config = {
     apiVersion: '0.0.0',
     nodeEnv: options.nodeEnv ?? 'development',
+    allowInMemoryRateLimit: options.allowInMemoryRateLimit ?? false,
   } as AppConfigService;
 
   const prisma = {
@@ -62,10 +64,22 @@ describe('HealthService', () => {
     expect(result.status).toBe('ok');
   });
 
-  it('skips redis in production when unconfigured and reports degraded', async () => {
+  it('skips redis in production when unconfigured and reports degraded by default', async () => {
     const service = makeService({ redisConfigured: false, nodeEnv: 'production' });
     const result = await service.getReadiness();
     expect(result.checks?.redis).toBe('skipped');
     expect(result.status).toBe('degraded');
+  });
+
+  it('skips redis in production when unconfigured but in-memory fallback is allowed and reports ok', async () => {
+    const service = makeService({
+      redisConfigured: false,
+      nodeEnv: 'production',
+      allowInMemoryRateLimit: true,
+    });
+    const result = await service.getReadiness();
+    expect(result.checks?.redis).toBe('skipped');
+    expect(result.status).toBe('ok');
+    await expect(service.getPlatformHealth()).resolves.toBe('HEALTHY');
   });
 });

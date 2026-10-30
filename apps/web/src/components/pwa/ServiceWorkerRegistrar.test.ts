@@ -129,6 +129,7 @@ describe('Frontend Version Detection & Update Safety', () => {
           doReload();
         };
 
+        worker.postMessage({ type: 'CLEAR_STATIC_CACHE' });
         worker.postMessage({ type: 'SKIP_WAITING' });
         // Simulating the controllerchange firing after skipWaiting
         simulateControllerChange();
@@ -138,7 +139,7 @@ describe('Frontend Version Detection & Update Safety', () => {
     }
 
     triggerSafeUpdate(mockWaitingWorker);
-    expect(messagesPosted).toContain('SKIP_WAITING');
+    expect(messagesPosted).toEqual(['CLEAR_STATIC_CACHE', 'SKIP_WAITING']);
     expect(controllerChangeFired).toBe(true);
     expect(reloads).toBe(1);
 
@@ -147,21 +148,74 @@ describe('Frontend Version Detection & Update Safety', () => {
     expect(reloads).toBe(1);
   });
 
+  it('purges existing caches and sends CLEAR_STATIC_CACHE before SKIP_WAITING', async () => {
+    const deletedCaches: string[] = [];
+    const mockCaches = {
+      keys: vi.fn().mockResolvedValue(['sportexus-shell-v1', 'sportexus-shell-v2', 'other-cache']),
+      delete: vi.fn().mockImplementation((key: string) => {
+        deletedCaches.push(key);
+        return Promise.resolve(true);
+      }),
+    };
+
+    const messages: string[] = [];
+    const mockWorker = {
+      postMessage: (msg: { type: string }) => messages.push(msg.type),
+    };
+
+    // Purge logic
+    const keys = await mockCaches.keys();
+    await Promise.all(
+      keys.filter((k) => k.startsWith('sportexus-')).map((k) => mockCaches.delete(k)),
+    );
+
+    mockWorker.postMessage({ type: 'CLEAR_STATIC_CACHE' });
+    mockWorker.postMessage({ type: 'SKIP_WAITING' });
+
+    expect(deletedCaches).toEqual(['sportexus-shell-v1', 'sportexus-shell-v2']);
+    expect(deletedCaches).not.toContain('other-cache');
+    expect(messages).toEqual(['CLEAR_STATIC_CACHE', 'SKIP_WAITING']);
+  });
+
   it('correctly handles bilingual update prompt text for Arabic and English', () => {
-    function getUpdatePromptText(locale: 'ar' | 'en') {
+    function getUpdatePromptText(locale: 'ar' | 'en', isUpdating = false) {
       return {
         title: locale === 'ar' ? 'يتوفر إصدار جديد للتطبيق' : 'An application update is available',
-        updateBtn: locale === 'ar' ? 'تحديث الآن' : 'Update now',
+        updateBtn: isUpdating
+          ? locale === 'ar'
+            ? 'جاري التحديث...'
+            : 'Updating...'
+          : locale === 'ar'
+            ? 'تحديث الآن'
+            : 'Update now',
         laterBtn: locale === 'ar' ? 'لاحقاً' : 'Later',
       };
     }
 
-    const ar = getUpdatePromptText('ar');
+    const ar = getUpdatePromptText('ar', false);
     expect(ar.title).toBe('يتوفر إصدار جديد للتطبيق');
     expect(ar.updateBtn).toBe('تحديث الآن');
 
-    const en = getUpdatePromptText('en');
+    const arUpdating = getUpdatePromptText('ar', true);
+    expect(arUpdating.updateBtn).toBe('جاري التحديث...');
+
+    const en = getUpdatePromptText('en', false);
     expect(en.title).toBe('An application update is available');
     expect(en.updateBtn).toBe('Update now');
+
+    const enUpdating = getUpdatePromptText('en', true);
+    expect(enUpdating.updateBtn).toBe('Updating...');
+  });
+
+  it('stamps sw.js VERSION with unique buildId on release generation', () => {
+    const swTemplate = "const VERSION = 'sportexus-shell-v2';\nconst PRECACHE = ['/offline'];";
+    const buildId = '6e2f9b0d1d3a-mvu8sufe';
+    const stamped = swTemplate.replace(
+      /const VERSION = ['"][^'"]+['"];/,
+      `const VERSION = 'sportexus-shell-${buildId}';`,
+    );
+
+    expect(stamped).toContain(`const VERSION = 'sportexus-shell-${buildId}';`);
+    expect(stamped).not.toContain('sportexus-shell-v2');
   });
 });

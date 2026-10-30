@@ -24,12 +24,30 @@ function hasUnsavedWork(): boolean {
   );
 }
 
+/**
+ * Safely purge all cached application assets from the CacheStorage API.
+ */
+async function purgeAppCaches(): Promise<void> {
+  if (typeof window === 'undefined' || !('caches' in window)) return;
+  try {
+    const keys = await window.caches.keys();
+    await Promise.all(
+      keys
+        .filter((k) => k.startsWith('sportexus-') || k.includes('shell'))
+        .map((k) => window.caches.delete(k)),
+    );
+  } catch {
+    // Best-effort cache cleanup
+  }
+}
+
 export function ServiceWorkerRegistrar() {
   const { locale } = useLocale();
   const [waitingWorker, setWaitingWorker] = useState<ServiceWorker | null>(null);
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [pendingWarning, setPendingWarning] = useState<string | null>(null);
   const [dismissed, setDismissed] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
   const registrationRef = useRef<ServiceWorkerRegistration | null>(null);
   const isReloadingRef = useRef(false);
 
@@ -45,14 +63,19 @@ export function ServiceWorkerRegistrar() {
       });
       if (res.ok) {
         const data = (await res.json()) as { buildId?: string; version?: string };
-        if (data?.buildId && data.buildId !== RUNNING_BUILD_ID) {
-          setUpdateAvailable(true);
+        if (data?.buildId) {
+          if (data.buildId !== RUNNING_BUILD_ID) {
+            setUpdateAvailable(true);
+          } else {
+            // Running build matches server manifest — dismiss banner if no worker is waiting
+            setUpdateAvailable((prev) => (waitingWorker ? prev : false));
+          }
         }
       }
     } catch {
       // Version check is best-effort and silent
     }
-  }, []);
+  }, [waitingWorker]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -126,10 +149,18 @@ export function ServiceWorkerRegistrar() {
       ? 'تم نشر نسخة أحدث من المنصة. لن يتم التحديث أثناء تعبئة النماذج أو أثناء وجود عمليات حضور غير متزامنة.'
       : 'A newer version has been deployed. The app will not refresh during form edits or pending attendance synchronization.';
   const later = locale === 'ar' ? 'لاحقاً' : 'Later';
-  const refresh = locale === 'ar' ? 'تحديث الآن' : 'Update now';
+  const refresh = isUpdating
+    ? locale === 'ar'
+      ? 'جاري التحديث...'
+      : 'Updating...'
+    : locale === 'ar'
+      ? 'تحديث الآن'
+      : 'Update now';
 
   const handleApplyUpdate = async () => {
+    if (isUpdating || isReloadingRef.current) return;
     setPendingWarning(null);
+
     try {
       const pending = await offlineEngine.pendingCount();
       if (pending > 0) {
@@ -159,39 +190,62 @@ export function ServiceWorkerRegistrar() {
       return;
     }
 
-    if (isReloadingRef.current) return;
+    setIsUpdating(true);
     isReloadingRef.current = true;
 
-    if (waitingWorker) {
-      // Issue #6: Wait for safe controller activation before reloading to prevent update loops
-      let reloaded = false;
-      const doReload = () => {
-        if (reloaded) return;
-        reloaded = true;
+    try {
+      // Purge cached shell assets to avoid stale chunk cache hits
+      await purgeAppCaches();
+
+      if (waitingWorker) {
+        // Issue #6: Wait for safe controller activation before reloading to prevent update loops
+        let reloaded = false;
+        const doReload = () => {
+          if (reloaded) return;
+          reloaded = true;
+          window.location.reload();
+        };
+
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.addEventListener('controllerchange', doReload, {
+            once: true,
+          });
+        }
+
+        // Send cache-clear and skip-waiting signals
+        waitingWorker.postMessage({ type: 'CLEAR_STATIC_CACHE' });
+        waitingWorker.postMessage({ type: 'SKIP_WAITING' });
+
+        // Fallback reload if controllerchange event does not fire within 3 seconds
+        window.setTimeout(doReload, 3000);
+      } else {
         window.location.reload();
-      };
-
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.addEventListener('controllerchange', doReload, {
-          once: true,
-        });
       }
-
-      waitingWorker.postMessage({ type: 'SKIP_WAITING' });
-
-      // Fallback reload if controllerchange event does not fire within 3 seconds
-      window.setTimeout(doReload, 3000);
-    } else {
-      window.location.reload();
+    } catch {
+      setIsUpdating(false);
+      isReloadingRef.current = false;
+      setPendingWarning(
+        locale === 'ar'
+          ? 'حدث خطأ أثناء تفعيل التحديث. يرجى إعادة تحميل الصفحة يدوياً.'
+          : 'An error occurred while applying the update. Please refresh the page manually.',
+      );
     }
   };
 
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-4 z-50 flex justify-center px-4">
       <div className="pointer-events-auto max-w-lg rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-4 shadow-2xl space-y-3">
-        <div>
-          <p className="text-sm font-semibold text-[var(--text-main)]">{title}</p>
-          <p className="mt-1 text-xs text-[var(--text-muted)] leading-relaxed">{body}</p>
+        <div className="flex items-start gap-3">
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-[var(--text-main)]">{title}</p>
+            <p className="mt-1 text-xs text-[var(--text-muted)] leading-relaxed">{body}</p>
+          </div>
+          {isUpdating && (
+            <div
+              className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-[var(--accent-primary)] border-t-transparent"
+              aria-label="Loading"
+            />
+          )}
         </div>
 
         {pendingWarning && (
@@ -203,16 +257,21 @@ export function ServiceWorkerRegistrar() {
         <div className="flex items-center justify-end gap-2 pt-1">
           <button
             type="button"
-            className="rounded-xl border border-[var(--border-app)] px-3 py-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer"
+            disabled={isUpdating}
+            className="rounded-xl border border-[var(--border-app)] px-3 py-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={() => setDismissed(true)}
           >
             {later}
           </button>
           <button
             type="button"
-            className="rounded-xl bg-[var(--accent-primary)] px-4 py-1.5 text-xs font-semibold text-white shadow-md hover:opacity-90 transition-all cursor-pointer"
+            disabled={isUpdating}
+            className="rounded-xl bg-[var(--accent-primary)] px-4 py-1.5 text-xs font-semibold text-white shadow-md hover:opacity-90 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
             onClick={() => void handleApplyUpdate()}
           >
+            {isUpdating && (
+              <span className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
+            )}
             {refresh}
           </button>
         </div>

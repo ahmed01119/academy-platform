@@ -2,7 +2,7 @@
  * Cache static shell and brand assets only.
  * NEVER cache /v1 API, /version.json, /sw.js, cookies, or authenticated HTML.
  */
-const VERSION = 'sportexus-shell-v2';
+const VERSION = 'sportexus-shell-6e2f9b0d1d3a-mvu8sufe';
 const PRECACHE = ['/offline', '/manifest.webmanifest', '/icon', '/apple-icon'];
 
 self.addEventListener('install', (event) => {
@@ -92,5 +92,16 @@ self.addEventListener('fetch', (event) => {
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
+  }
+  if (event.data && event.data.type === 'CLEAR_STATIC_CACHE') {
+    event.waitUntil(
+      caches
+        .keys()
+        .then((keys) =>
+          Promise.all(
+            keys.filter((key) => key.startsWith('sportexus-')).map((key) => caches.delete(key)),
+          ),
+        ),
+    );
   }
 });

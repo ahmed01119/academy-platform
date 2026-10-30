@@ -272,8 +272,8 @@ jobs:
             
             # Issue #2: Verify deployed commit/build identifier from version.json
             VERSION_DATA=$(curl -s "$VERSION_URL" 2>/dev/null || echo "{}")
-            DEPLOYED_SHA=$(echo "$VERSION_DATA" | grep -o '"commitSha":"[^"]*"' | cut -d'"' -f4 || echo "")
-            DEPLOYED_BUILD=$(echo "$VERSION_DATA" | grep -o '"buildId":"[^"]*"' | cut -d'"' -f4 || echo "")
+            DEPLOYED_SHA=$(node -e 'try{const d=JSON.parse(process.argv[1]);console.log(d.commitSha||"")}catch{console.log("")}' "$VERSION_DATA")
+            DEPLOYED_BUILD=$(node -e 'try{const d=JSON.parse(process.argv[1]);console.log(d.buildId||"")}catch{console.log("")}' "$VERSION_DATA")
 
             echo "Health: Web=$STATUS_WEB | Proxy=$STATUS_PROXY | Deployed SHA=$DEPLOYED_SHA (Expected: $EXPECTED_SHA)"
 

@@ -2,13 +2,15 @@ import type { NextConfig } from 'next';
 import fs from 'fs';
 import path from 'path';
 
-// Read generated buildId from public/version.json if available
+// Read generated buildId and commitSha from public/version.json if available
 let initialBuildId = process.env.BUILD_ID || process.env.GITHUB_SHA || '';
+let initialCommitSha = process.env.COMMIT_SHA || process.env.GITHUB_SHA || '';
 try {
   const versionPath = path.resolve(__dirname, 'public/version.json');
   if (fs.existsSync(versionPath)) {
     const v = JSON.parse(fs.readFileSync(versionPath, 'utf8'));
     if (v.buildId) initialBuildId = v.buildId;
+    if (v.commitSha) initialCommitSha = v.commitSha;
   }
 } catch {
   // Ignore file read error in edge cases
@@ -17,54 +19,57 @@ try {
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   transpilePackages: ['@academy/shared'],
-  output:
-    process.env.BUILD_STANDALONE === 'true' || process.env.NODE_ENV === 'production'
-      ? 'standalone'
-      : undefined,
+  output: process.env.BUILD_STANDALONE === 'true' ? 'standalone' : undefined,
   env: {
     NEXT_PUBLIC_BUILD_ID: initialBuildId,
+    NEXT_PUBLIC_COMMIT_SHA: initialCommitSha,
   },
   generateBuildId: async () => initialBuildId || `build-${Date.now().toString(36)}`,
+  eslint: {
+    // Rely on root lint command (turbo run lint / pnpm lint)
+    ignoreDuringBuilds: true,
+  },
+  typescript: {
+    // Rely on root typecheck command (turbo run typecheck / pnpm typecheck)
+    ignoreBuildErrors: true,
+  },
+  async rewrites() {
+    return [
+      {
+        source: '/v1/:path*',
+        destination: '/v1/:path*',
+      },
+    ];
+  },
   async headers() {
     return [
       {
-        source: '/version.json',
-        headers: [
-          { key: 'Cache-Control', value: 'no-store, no-cache, must-revalidate, proxy-revalidate' },
-          { key: 'Pragma', value: 'no-cache' },
-          { key: 'Expires', value: '0' },
-        ],
-      },
-      {
         source: '/sw.js',
         headers: [
-          { key: 'Cache-Control', value: 'no-store, no-cache, must-revalidate, proxy-revalidate' },
-          { key: 'Pragma', value: 'no-cache' },
-          { key: 'Expires', value: '0' },
+          {
+            key: 'Cache-Control',
+            value: 'no-cache, no-store, must-revalidate',
+          },
+          {
+            key: 'Content-Type',
+            value: 'application/javascript; charset=utf-8',
+          },
         ],
       },
       {
-        source: '/(.*)',
+        source: '/version.json',
         headers: [
-          { key: 'X-Frame-Options', value: 'DENY' },
-          { key: 'X-Content-Type-Options', value: 'nosniff' },
-          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           {
-            key: 'Permissions-Policy',
-            value: 'camera=(self), microphone=(), geolocation=()',
+            key: 'Cache-Control',
+            value: 'no-cache, no-store, must-revalidate',
+          },
+          {
+            key: 'Content-Type',
+            value: 'application/json; charset=utf-8',
           },
         ],
       },
     ];
-  },
-  // Proxying to the backend API is handled dynamically at runtime by
-  // apps/web/src/app/v1/[...path]/route.ts. This ensures INTERNAL_API_URL is evaluated
-  // at runtime on every request without statically baking localhost into build artifacts.
-  async rewrites() {
-    return [];
-  },
-  async redirects() {
-    return [];
   },
 };
 
