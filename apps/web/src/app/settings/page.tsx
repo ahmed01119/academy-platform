@@ -69,7 +69,9 @@ export default function SettingsPage() {
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState('COACH');
   const [isInviting, setIsInviting] = useState(false);
-  const [inviteMsg, setInviteMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [inviteMsg, setInviteMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(
+    null,
+  );
 
   // Form Fields
   const [name, setName] = useState('');
@@ -170,12 +172,7 @@ export default function SettingsPage() {
       const res = await api.tenancy.inviteStaff({
         email: inviteEmail.trim(),
         role: inviteRole as
-          | 'COACH'
-          | 'MANAGER'
-          | 'BRANCH_MANAGER'
-          | 'RECEPTIONIST'
-          | 'ACCOUNTANT'
-          | 'VIEWER',
+          'COACH' | 'MANAGER' | 'BRANCH_MANAGER' | 'RECEPTIONIST' | 'ACCOUNTANT' | 'VIEWER',
       });
 
       setInviteMsg({
@@ -332,14 +329,22 @@ export default function SettingsPage() {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3 text-center">
                   <span className="text-[10px] text-[var(--text-muted)] block">المعرف السيادي</span>
-                  <span className="text-xs font-mono font-bold text-[var(--text-main)]">{profile.slug}</span>
+                  <span className="text-xs font-mono font-bold text-[var(--text-main)]">
+                    {profile.slug}
+                  </span>
                 </div>
                 <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3 text-center">
-                  <span className="text-[10px] text-[var(--text-muted)] block">العملة المعتمدة</span>
-                  <span className="text-xs font-bold text-[var(--brand-primary)]">{profile.currency}</span>
+                  <span className="text-[10px] text-[var(--text-muted)] block">
+                    العملة المعتمدة
+                  </span>
+                  <span className="text-xs font-bold text-[var(--brand-primary)]">
+                    {profile.currency}
+                  </span>
                 </div>
                 <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3 text-center">
-                  <span className="text-[10px] text-[var(--text-muted)] block">حالة الأكاديمية</span>
+                  <span className="text-[10px] text-[var(--text-muted)] block">
+                    حالة الأكاديمية
+                  </span>
                   <span className="text-xs font-bold text-emerald-500">{profile.status}</span>
                 </div>
                 <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3 text-center">
@@ -434,7 +439,9 @@ export default function SettingsPage() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-[var(--text-main)] block">العملة الأساسية</label>
+                    <label className="text-xs font-semibold text-[var(--text-main)] block">
+                      العملة الأساسية
+                    </label>
                     <select
                       value={currency}
                       onChange={(e) => setCurrency(e.target.value)}
@@ -448,7 +455,9 @@ export default function SettingsPage() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-[var(--text-main)] block">المنطقة الزمنية</label>
+                    <label className="text-xs font-semibold text-[var(--text-main)] block">
+                      المنطقة الزمنية
+                    </label>
                     <select
                       value={timezone}
                       onChange={(e) => setTimezone(e.target.value)}
@@ -489,12 +498,16 @@ export default function SettingsPage() {
                       <span>دعوة موظف جديد للانضمام</span>
                     </h3>
                     <p className="text-xs text-[var(--text-muted)] mt-1">
-                      سيتلقى المدعو رابط دعوة عبر البريد الإلكتروني لإنشاء حساب والانضمام للأكاديمية بالدور المحدد.
+                      سيتلقى المدعو رابط دعوة عبر البريد الإلكتروني لإنشاء حساب والانضمام للأكاديمية
+                      بالدور المحدد.
                     </p>
                   </div>
                   <button
                     type="button"
-                    onClick={() => { setIsInviteModalOpen(true); setInviteMsg(null); }}
+                    onClick={() => {
+                      setIsInviteModalOpen(true);
+                      setInviteMsg(null);
+                    }}
                     className="shrink-0 inline-flex items-center gap-2 rounded-xl bg-blue-500/15 border border-blue-500/30 px-4 py-2 text-xs font-bold text-blue-400 hover:bg-blue-500/25 transition-all"
                   >
                     <UserPlus className="h-3.5 w-3.5" />
@@ -510,13 +523,16 @@ export default function SettingsPage() {
                 <span>تفويض صلاحيات الكادر التدريبي (RBAC)</span>
               </h3>
               <p className="text-xs text-[var(--text-muted)]">
-                تتيح هذه اللوحة لمالك الأكاديمية تفويض مدربين محددين بمراجعة وقبول أو رفض طلبات انضمام اللاعبين الجدد داخل فروعهم وفرقهم الرياضية دون منحهم صلاحيات إدارية عامة.
+                تتيح هذه اللوحة لمالك الأكاديمية تفويض مدربين محددين بمراجعة وقبول أو رفض طلبات
+                انضمام اللاعبين الجدد داخل فروعهم وفرقهم الرياضية دون منحهم صلاحيات إدارية عامة.
               </p>
             </div>
 
             <div className="rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] overflow-hidden shadow-sm">
               <div className="p-4 border-b border-[var(--border-subtle)] flex items-center justify-between">
-                <span className="text-xs font-bold text-[var(--text-main)]">قائمة الكادر والمدربين</span>
+                <span className="text-xs font-bold text-[var(--text-main)]">
+                  قائمة الكادر والمدربين
+                </span>
                 <span className="text-xs text-[var(--text-muted)]">{staffList.length} أعضاء</span>
               </div>
 
@@ -536,21 +552,27 @@ export default function SettingsPage() {
                         className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-[var(--bg-surface-subtle)] transition-colors"
                       >
                         <div className="flex items-start gap-3">
-                          <div className={`h-10 w-10 rounded-xl flex items-center justify-center font-bold text-xs ${
-                            isCoach ? 'bg-blue-500/10 text-blue-400' : 'bg-emerald-500/10 text-emerald-400'
-                          }`}>
+                          <div
+                            className={`h-10 w-10 rounded-xl flex items-center justify-center font-bold text-xs ${
+                              isCoach
+                                ? 'bg-blue-500/10 text-blue-400'
+                                : 'bg-emerald-500/10 text-emerald-400'
+                            }`}
+                          >
                             {member.user?.name ? member.user.name.slice(0, 2).toUpperCase() : 'ST'}
                           </div>
                           <div>
                             <div className="font-semibold text-sm text-[var(--text-main)] flex items-center gap-2">
                               <span>{member.user?.name || 'مستخدم بدون اسم'}</span>
-                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                                member.role === 'OWNER'
-                                  ? 'bg-amber-500/20 text-amber-400'
-                                  : isCoach
-                                  ? 'bg-blue-500/20 text-blue-400'
-                                  : 'bg-emerald-500/20 text-emerald-400'
-                              }`}>
+                              <span
+                                className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                  member.role === 'OWNER'
+                                    ? 'bg-amber-500/20 text-amber-400'
+                                    : isCoach
+                                      ? 'bg-blue-500/20 text-blue-400'
+                                      : 'bg-emerald-500/20 text-emerald-400'
+                                }`}
+                              >
                                 {member.role}
                               </span>
                             </div>
@@ -582,19 +604,25 @@ export default function SettingsPage() {
                                   : 'bg-[var(--bg-base)] border border-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-main)] hover:border-[var(--brand-primary)]'
                               }`}
                             >
-                              <ShieldCheck className={`h-3.5 w-3.5 ${canReview ? 'text-emerald-400' : 'text-[var(--text-muted)]'}`} />
+                              <ShieldCheck
+                                className={`h-3.5 w-3.5 ${canReview ? 'text-emerald-400' : 'text-[var(--text-muted)]'}`}
+                              />
                               <span>
                                 {delegatingId === member.id
                                   ? 'جارٍ التحديث...'
                                   : canReview
-                                  ? 'مفوض لمراجعة طلبات اللاعبين'
-                                  : 'تفعيل تفويض مراجعة الطلبات'}
+                                    ? 'مفوض لمراجعة طلبات اللاعبين'
+                                    : 'تفعيل تفويض مراجعة الطلبات'}
                               </span>
                             </button>
                           ) : isCoach ? (
-                            <span className={`text-[11px] font-medium px-2 py-1 rounded-lg ${
-                              canReview ? 'text-emerald-400 bg-emerald-500/10' : 'text-[var(--text-muted)] bg-[var(--bg-base)]'
-                            }`}>
+                            <span
+                              className={`text-[11px] font-medium px-2 py-1 rounded-lg ${
+                                canReview
+                                  ? 'text-emerald-400 bg-emerald-500/10'
+                                  : 'text-[var(--text-muted)] bg-[var(--bg-base)]'
+                              }`}
+                            >
                               {canReview ? 'مفوض لمراجعة الطلبات' : 'مشاهدة فقط'}
                             </span>
                           ) : (
@@ -647,7 +675,9 @@ export default function SettingsPage() {
                               )}
                             </div>
                             <div className="text-[11px] text-[var(--text-muted)] mt-0.5 flex items-center gap-2">
-                              <span>أُرسلت في: {new Date(inv.createdAt).toLocaleDateString('ar-EG')}</span>
+                              <span>
+                                أُرسلت في: {new Date(inv.createdAt).toLocaleDateString('ar-EG')}
+                              </span>
                               <span>•</span>
                               <span className={inv.isExpired ? 'text-rose-400 font-bold' : ''}>
                                 {inv.isExpired
@@ -703,12 +733,17 @@ export default function SettingsPage() {
                 </div>
                 <div>
                   <div className="font-bold text-sm text-[var(--text-main)]">دعوة موظف جديد</div>
-                  <div className="text-xs text-[var(--text-muted)]">سيتلقى دعوة عبر البريد الإلكتروني</div>
+                  <div className="text-xs text-[var(--text-muted)]">
+                    سيتلقى دعوة عبر البريد الإلكتروني
+                  </div>
                 </div>
               </div>
               <button
                 type="button"
-                onClick={() => { setIsInviteModalOpen(false); setInviteMsg(null); }}
+                onClick={() => {
+                  setIsInviteModalOpen(false);
+                  setInviteMsg(null);
+                }}
                 className="h-8 w-8 rounded-lg flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-surface-subtle)] transition-colors"
               >
                 <X className="h-4 w-4" />
@@ -718,12 +753,18 @@ export default function SettingsPage() {
             {/* Modal Body */}
             <form onSubmit={(e) => void handleInviteStaff(e)} className="p-5 space-y-4">
               {inviteMsg && (
-                <div className={`flex items-start gap-2.5 rounded-xl border p-3 text-xs ${
-                  inviteMsg.type === 'success'
-                    ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
-                    : 'border-rose-500/30 bg-rose-500/10 text-rose-400'
-                }`}>
-                  {inviteMsg.type === 'success' ? <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5" /> : <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />}
+                <div
+                  className={`flex items-start gap-2.5 rounded-xl border p-3 text-xs ${
+                    inviteMsg.type === 'success'
+                      ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+                      : 'border-rose-500/30 bg-rose-500/10 text-rose-400'
+                  }`}
+                >
+                  {inviteMsg.type === 'success' ? (
+                    <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5" />
+                  ) : (
+                    <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                  )}
                   <span>{inviteMsg.text}</span>
                 </div>
               )}
@@ -766,7 +807,10 @@ export default function SettingsPage() {
               <div className="flex items-center justify-end gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => { setIsInviteModalOpen(false); setInviteMsg(null); }}
+                  onClick={() => {
+                    setIsInviteModalOpen(false);
+                    setInviteMsg(null);
+                  }}
                   className="px-4 py-2 rounded-xl border border-[var(--border-app)] text-xs font-semibold text-[var(--text-muted)] hover:text-[var(--text-main)] hover:border-[var(--text-muted)] transition-all"
                 >
                   إلغاء
@@ -776,7 +820,11 @@ export default function SettingsPage() {
                   disabled={isInviting}
                   className="inline-flex items-center gap-2 rounded-xl bg-blue-500 px-5 py-2 text-xs font-bold text-white shadow hover:bg-blue-600 transition-all disabled:opacity-60"
                 >
-                  {isInviting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                  {isInviting ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Send className="h-3.5 w-3.5" />
+                  )}
                   <span>{isInviting ? 'جارٍ الإرسال...' : 'إرسال الدعوة'}</span>
                 </button>
               </div>

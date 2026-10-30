@@ -47,18 +47,21 @@ NEXT_PUBLIC_APP_URL="https://sportexus.yourdomain.com"
 ## 3. Database Migration & Baseline Data Restoration
 
 ### Step 3.1: Apply Schema Migrations
+
 ```bash
 # Push Prisma schema to target cloud database
 pnpm --filter @academy/database prisma db push
 ```
 
 ### Step 3.2: Restore Baseline Data (Preserving all 902 records)
+
 ```bash
 # Execute isolated restore script from verified backup
 node scripts/db-restore.js backups/sportexus_backup_2026-10-28T00-57-09-057Z.json
 ```
 
 ### Step 3.3: Verify Record Counts
+
 ```bash
 # Verify all 31 models populated correctly
 node scripts/check-cols.js
@@ -69,6 +72,7 @@ node scripts/check-cols.js
 ## 4. Frontend & Backend Deployment Steps
 
 ### 4.1 Deploying API on Render / Railway
+
 1. Connect GitHub repository `ahmed01119/academy-platform`.
 2. Set Root Directory: `apps/api`.
 3. Set Build Command: `pnpm install --frozen-lockfile && pnpm --filter @academy/shared build && pnpm --filter @academy/api build`.
@@ -77,6 +81,7 @@ node scripts/check-cols.js
 6. Verify Health Check: `curl https://<render-url>/v1/health/ready`.
 
 ### 4.2 Deploying Frontend on Vercel
+
 1. Import repository on Vercel.
 2. Set Framework Preset: `Next.js`.
 3. Set Root Directory: `apps/web`.

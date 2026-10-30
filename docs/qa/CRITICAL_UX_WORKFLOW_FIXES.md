@@ -1,4 +1,5 @@
 # Sportexus — Critical UX & Workflow Fixes Report
+
 **Audit Date:** 2026-10-28  
 **Environment:** Production-grade Local Daemon Matrix (Next.js 15.3.3 @ port 3000, NestJS 10 @ port 3001, PostgreSQL 18.4 @ port 5432, Cloudflare Tunnel @ port 3000)  
 **Database Status:** 905 Live Records Intact across 21 Relational Tables. Zero data loss.  
@@ -9,6 +10,7 @@
 ## Executive Summary
 
 During the production reality audit of Sportexus, 4 critical operational and UX defects were identified and prioritized for complete remediation:
+
 1. **Broken Subscription Plan Selector** in the Platform Owner Academy Review modal.
 2. **Employee Invitations Never Delivered** due to missing email service invocation.
 3. **Quick Attendance Button Missing & Unauthorized Coach Attendance Entry** violating the strict operational principle that coaches must not mark or submit attendance.
@@ -21,12 +23,14 @@ All 4 issues have been completely engineered, verified with automated unit and i
 ## Issue 1 — Broken Subscription Plan Selector
 
 ### 1.1 Problem Statement & Root Cause
+
 - **Observed Behavior:** In the Platform Owner dashboard (`ApplicationsTab.tsx`), opening the Academy Application Review modal displayed a dropdown for assigning subscription plans (`STARTER`, `PRO`, `ENTERPRISE`). In dark mode, native `<select>` and `<option>` elements rendered with white/unthemed backgrounds and near-white text on Windows Chromium engines, rendering choices unreadable. Furthermore, native select controls lacked keyboard accessibility, visual state indication, and bilingual description details.
 - **Root Cause:**
   1. Chromium on Windows does not style child `<option>` elements from CSS custom variables without explicit `color-scheme: light dark` or explicit background color declarations.
   2. The review dialog relied on standard unstyled `<select>` elements rather than the design system's interactive primitives.
 
 ### 1.2 Implementation Details
+
 - **New Accessible Combobox/Select Component (`apps/web/src/components/ui/Select.tsx`):**
   - Built custom, accessible dropdown component with WAI-ARIA `combobox`, `listbox`, and `option` roles.
   - Supports keyboard navigation: `ArrowDown`/`ArrowUp` to cycle options, `Enter`/`Space` to select, `Escape`/`Tab` to dismiss.
@@ -42,6 +46,7 @@ All 4 issues have been completely engineered, verified with automated unit and i
     - **ENTERPRISE:** "لاعبين وفروع غير محدودة / Unlimited players & branches"
 
 ### 1.3 Verification Evidence
+
 - Component typechecked cleanly with TypeScript `tsc --noEmit`.
 - Tested in both dark and light modes with high contrast confirmed.
 
@@ -50,6 +55,7 @@ All 4 issues have been completely engineered, verified with automated unit and i
 ## Issue 2 — Employee Invitations Are Not Delivered by Email
 
 ### 2.1 Problem Statement & Root Cause
+
 - **Observed Behavior:** In Academy Settings (`/settings`), an academy owner or manager could invite staff (Branch Managers, Coaches, Accountants, Receptionists). The UI toasted "Invitation sent successfully", but invited staff never received any email.
 - **Root Cause:**
   - `TenancyService.inviteStaff` created a `StaffInvitation` record with an invitation token in the database, but **never invoked `EmailService`**.
@@ -57,6 +63,7 @@ All 4 issues have been completely engineered, verified with automated unit and i
   - No interface existed for listing, resending, or revoking pending staff invitations.
 
 ### 2.2 Implementation Details
+
 - **Email Service Expansion (`apps/api/src/modules/email/email.service.ts`):**
   - Implemented `sendStaffInvite(dto)` dispatching a responsive, branded HTML email template featuring:
     - Academy Name and Invited Role.
@@ -79,6 +86,7 @@ All 4 issues have been completely engineered, verified with automated unit and i
     - Interactive "إعادة إرسال / Resend" and "إلغاء / Revoke" action buttons with loading states.
 
 ### 2.3 Test Evidence
+
 - **Automated Tests (`tenancy.service.test.ts`):**
   - `inviteStaff > creates staff invitation and sends branded invitation email`: PASS.
   - `inviteStaff > throws ConflictException if pending invitation already exists for this email`: PASS.
@@ -89,6 +97,7 @@ All 4 issues have been completely engineered, verified with automated unit and i
 ## Issue 3 — Quick Attendance Missing & Coach Attendance Prohibition
 
 ### 3.1 Problem Statement & Root Cause
+
 - **Observed Behavior:**
   1. Quick Attendance was buried in nested navigation menus rather than accessible directly from the Academy Dashboard.
   2. Coaches were historically assigned permissions to mark attendance for their assigned sessions.
@@ -97,6 +106,7 @@ All 4 issues have been completely engineered, verified with automated unit and i
   - Attendance recording (both QR scanning and manual roster entry) is strictly reserved for administrative and desk staff: `OWNER`, `MANAGER`, `BRANCH_MANAGER`, and `RECEPTIONIST`. Coaches are restricted to read-only visibility of player attendance.
 
 ### 3.2 Implementation Details
+
 - **Role Permission System (`packages/shared/src/constants/roles-permissions.ts`):**
   - Stripped `Permission.ATTENDANCE_MARK` and `Permission.ATTENDANCE_CLOSE` from `ROLE_PERMISSIONS[TenantRole.COACH]`.
   - Recompiled shared distribution bundle.
@@ -106,7 +116,8 @@ All 4 issues have been completely engineered, verified with automated unit and i
     if (userRole === TenantRole.COACH) {
       throw new ForbiddenException({
         code: 'COACH_ATTENDANCE_FORBIDDEN',
-        message: 'Coaches are strictly prohibited from marking player attendance. Attendance must be recorded by academy managers or receptionists.',
+        message:
+          'Coaches are strictly prohibited from marking player attendance. Attendance must be recorded by academy managers or receptionists.',
       });
     }
     ```
@@ -115,6 +126,7 @@ All 4 issues have been completely engineered, verified with automated unit and i
   - In `apps/web/src/app/dashboard/page.tsx`, added a prominent Quick Attendance CTA button with lightning icon (`Zap`) and bilingual label directly in the dashboard header for non-coach staff. Coaches see a read-only session schedule instead.
 
 ### 3.3 Test Evidence
+
 - **Automated Tests (`attendance.service.test.ts`):**
   - `markAttendance > strictly prohibits COACH role from marking attendance`: PASS.
   - `markAttendanceBatch > strictly prohibits COACH role from batch marking attendance`: PASS.
@@ -128,6 +140,7 @@ All 4 issues have been completely engineered, verified with automated unit and i
 ## Issue 4 — Academy Registration Form Validation Deficiencies
 
 ### 4.1 Problem Statement & Root Cause
+
 - **Observed Behavior:** In `/register`, when a new academy owner submitted invalid data (such as weak passwords, mismatched passwords, invalid phone numbers, or reserved subdomains):
   1. The page only showed a single generic banner error.
   2. Invalid fields were not visually highlighted.
@@ -136,6 +149,7 @@ All 4 issues have been completely engineered, verified with automated unit and i
   5. In some cases, valid form entries were lost upon backend rejections.
 
 ### 4.2 Implementation Details
+
 - **Comprehensive Client-Side Validation (`apps/web/src/app/register/page.tsx`):**
   - Implemented field-specific validation covering:
     - Academy Name (min 3 chars).
@@ -156,6 +170,7 @@ All 4 issues have been completely engineered, verified with automated unit and i
   - Gracefully maps backend 409 Conflict exceptions (e.g. `DOMAIN_TAKEN`, `EMAIL_TAKEN`) to the exact relevant field.
 
 ### 4.3 Verification Evidence
+
 - Tested with empty inputs: immediately highlights academy name, focuses first field.
 - Tested with weak password: live checklist alerts user in real time.
 - Tested with duplicate subdomain: maps backend error to subdomain field with red border and message.
@@ -164,9 +179,9 @@ All 4 issues have been completely engineered, verified with automated unit and i
 
 ## Summary Matrix
 
-| Issue | Root Cause | Fix Summary | Automated Test Status | Live Verification |
-|---|---|---|---|---|
-| **1. Plan Selector Contrast** | Missing option styles in Chromium dark mode | Custom accessible `Select` component + global form reset | Passed (`tsc --noEmit`) | Verified in Chrome & Edge |
-| **2. Staff Invitations Email** | `TenancyService` lacked email dispatch call | Branded email template, duplicate prevention, list/resend/revoke UI | 14/14 Tenancy Tests Passed | Verified endpoint & settings page |
-| **3. Quick Attendance & Coach Prohibition** | Missing dashboard CTA; coaches had mark permission | Prominent CTA button; coach role forbidden in backend & frontend | 27/27 Attendance Tests Passed | Verified forbidden exception & redirects |
-| **4. Registration Validation** | Single generic error, no field autofocus or criteria | Field-level validation, live password checklist, auto-focus, conflict mapping | Passed (`tsc --noEmit`) | Verified interactive form behavior |
+| Issue                                       | Root Cause                                           | Fix Summary                                                                   | Automated Test Status         | Live Verification                        |
+| ------------------------------------------- | ---------------------------------------------------- | ----------------------------------------------------------------------------- | ----------------------------- | ---------------------------------------- |
+| **1. Plan Selector Contrast**               | Missing option styles in Chromium dark mode          | Custom accessible `Select` component + global form reset                      | Passed (`tsc --noEmit`)       | Verified in Chrome & Edge                |
+| **2. Staff Invitations Email**              | `TenancyService` lacked email dispatch call          | Branded email template, duplicate prevention, list/resend/revoke UI           | 14/14 Tenancy Tests Passed    | Verified endpoint & settings page        |
+| **3. Quick Attendance & Coach Prohibition** | Missing dashboard CTA; coaches had mark permission   | Prominent CTA button; coach role forbidden in backend & frontend              | 27/27 Attendance Tests Passed | Verified forbidden exception & redirects |
+| **4. Registration Validation**              | Single generic error, no field autofocus or criteria | Field-level validation, live password checklist, auto-focus, conflict mapping | Passed (`tsc --noEmit`)       | Verified interactive form behavior       |

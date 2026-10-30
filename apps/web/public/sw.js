@@ -9,11 +9,7 @@ self.addEventListener('install', (event) => {
   // Pre-cache core offline assets.
   // DO NOT call self.skipWaiting() here — allow existing pages to finish their workflows.
   // skipWaiting will only be called when the user confirms the update prompt.
-  event.waitUntil(
-    caches
-      .open(VERSION)
-      .then((cache) => cache.addAll(PRECACHE)),
-  );
+  event.waitUntil(caches.open(VERSION).then((cache) => cache.addAll(PRECACHE)));
 });
 
 self.addEventListener('activate', (event) => {
@@ -34,11 +30,7 @@ function isApiRequest(url) {
 
 function isBypassedAsset(url) {
   // Never cache version metadata or service worker file itself
-  return (
-    url.pathname === '/version.json' ||
-    url.pathname === '/sw.js' ||
-    isApiRequest(url)
-  );
+  return url.pathname === '/version.json' || url.pathname === '/sw.js' || isApiRequest(url);
 }
 
 function isStaticAsset(url) {

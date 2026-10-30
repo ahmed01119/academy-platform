@@ -39,7 +39,10 @@ export const RegisterResponseSchema = z.object({
   academyName: z.string().optional(),
   accessToken: z.string().optional(),
   user: z.lazy(() => UserSummarySchema).optional(),
-  activeTenant: z.lazy(() => TenantMembershipSummarySchema).nullable().optional(),
+  activeTenant: z
+    .lazy(() => TenantMembershipSummarySchema)
+    .nullable()
+    .optional(),
   memberships: z.lazy(() => z.array(TenantMembershipSummarySchema)).optional(),
 });
 

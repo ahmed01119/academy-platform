@@ -36,9 +36,7 @@ export class TenancyService {
     @Inject(EmailService) private readonly emailService: EmailService,
   ) {
     this.appPublicUrl =
-      process.env.APP_PUBLIC_URL ||
-      process.env.NEXT_PUBLIC_APP_URL ||
-      'http://localhost:3000';
+      process.env.APP_PUBLIC_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
   }
 
   /**

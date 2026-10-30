@@ -33,7 +33,9 @@ export function CoOwnerTab() {
   const [showInviteForm, setShowInviteForm] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteName, setInviteName] = useState('');
-  const [inviteRole, setInviteRole] = useState<'PLATFORM_CO_OWNER' | 'SUPER_ADMIN'>('PLATFORM_CO_OWNER');
+  const [inviteRole, setInviteRole] = useState<'PLATFORM_CO_OWNER' | 'SUPER_ADMIN'>(
+    'PLATFORM_CO_OWNER',
+  );
   const [isInviting, setIsInviting] = useState(false);
   const [confirmRevoke, setConfirmRevoke] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -45,9 +47,7 @@ export function CoOwnerTab() {
     try {
       const list = await apiClient.platform.listUsers();
       // Filter to platform-level admins only
-      const platformAdmins = list.filter(
-        (u) => u.isPlatformSuperAdmin || u.isPlatformOwner,
-      );
+      const platformAdmins = list.filter((u) => u.isPlatformSuperAdmin || u.isPlatformOwner);
       setAdmins(platformAdmins);
     } catch {
       toast.error(ar ? 'فشل تحميل قائمة مديري المنصة' : 'Failed to load platform admins');
@@ -95,9 +95,7 @@ export function CoOwnerTab() {
     try {
       await apiClient.platform.updatePlatformAdminRole(targetUserId, { role: newRole });
       toast.success(
-        ar
-          ? `تم تحديث دور ${targetName} بنجاح`
-          : `Role for ${targetName} updated successfully`,
+        ar ? `تم تحديث دور ${targetName} بنجاح` : `Role for ${targetName} updated successfully`,
       );
       await load();
     } catch (err: unknown) {
@@ -117,17 +115,15 @@ export function CoOwnerTab() {
       toast.success(ar ? `تم إلغاء جلسات ${userName}` : `Sessions revoked for ${userName}`);
       setConfirmRevoke(null);
     } catch (err: unknown) {
-      toast.error((err as Error)?.message || (ar ? 'فشل إلغاء الجلسات' : 'Failed to revoke sessions'));
+      toast.error(
+        (err as Error)?.message || (ar ? 'فشل إلغاء الجلسات' : 'Failed to revoke sessions'),
+      );
     }
   };
 
   const filtered = admins.filter((a) => {
     const q = searchQuery.toLowerCase();
-    return (
-      !q ||
-      a.name.toLowerCase().includes(q) ||
-      a.email.toLowerCase().includes(q)
-    );
+    return !q || a.name.toLowerCase().includes(q) || a.email.toLowerCase().includes(q);
   });
 
   return (
@@ -287,8 +283,12 @@ export function CoOwnerTab() {
                   className="flex-1 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 py-2.5 text-xs font-bold text-white disabled:opacity-50 hover:brightness-110 transition-all"
                 >
                   {isInviting
-                    ? (ar ? 'جارٍ الإرسال...' : 'Sending...')
-                    : (ar ? 'إرسال الدعوة' : 'Send Invite')}
+                    ? ar
+                      ? 'جارٍ الإرسال...'
+                      : 'Sending...'
+                    : ar
+                      ? 'إرسال الدعوة'
+                      : 'Send Invite'}
                 </button>
               </div>
             </form>
@@ -329,12 +329,16 @@ export function CoOwnerTab() {
                 className="rounded-xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
               >
                 <div className="flex items-center gap-3">
-                  <div className={`h-10 w-10 rounded-xl flex items-center justify-center text-sm font-bold ${isOwner ? 'bg-amber-500/20 text-amber-300' : 'bg-blue-500/20 text-blue-300'}`}>
+                  <div
+                    className={`h-10 w-10 rounded-xl flex items-center justify-center text-sm font-bold ${isOwner ? 'bg-amber-500/20 text-amber-300' : 'bg-blue-500/20 text-blue-300'}`}
+                  >
                     {admin.name.slice(0, 2).toUpperCase()}
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold text-sm text-[var(--text-main)]">{admin.name}</span>
+                      <span className="font-semibold text-sm text-[var(--text-main)]">
+                        {admin.name}
+                      </span>
                       {isOwner && (
                         <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-bold text-amber-400 border border-amber-500/30">
                           <Crown className="h-2.5 w-2.5" />
@@ -384,7 +388,9 @@ export function CoOwnerTab() {
                       <>
                         {isOwner ? (
                           <button
-                            onClick={() => void handleUpdateRole(admin.id, admin.name, 'SUPER_ADMIN')}
+                            onClick={() =>
+                              void handleUpdateRole(admin.id, admin.name, 'SUPER_ADMIN')
+                            }
                             disabled={actionLoading === `role-${admin.id}`}
                             className="flex items-center gap-1 rounded-xl border border-blue-500/40 bg-blue-500/10 px-2.5 py-1.5 text-xs font-semibold text-blue-300 hover:bg-blue-500/20 transition-colors"
                             title={ar ? 'تخفيض إلى مدير منصة عادي' : 'Demote to Super Admin'}
@@ -394,10 +400,16 @@ export function CoOwnerTab() {
                           </button>
                         ) : (
                           <button
-                            onClick={() => void handleUpdateRole(admin.id, admin.name, 'PLATFORM_OWNER')}
+                            onClick={() =>
+                              void handleUpdateRole(admin.id, admin.name, 'PLATFORM_OWNER')
+                            }
                             disabled={actionLoading === `role-${admin.id}`}
                             className="flex items-center gap-1 rounded-xl border border-amber-500/40 bg-amber-500/10 px-2.5 py-1.5 text-xs font-semibold text-amber-300 hover:bg-amber-500/20 transition-colors"
-                            title={ar ? 'ترقية المستخدم لمالك مشارك للمنصة' : 'Promote to Platform Co-Owner'}
+                            title={
+                              ar
+                                ? 'ترقية المستخدم لمالك مشارك للمنصة'
+                                : 'Promote to Platform Co-Owner'
+                            }
                           >
                             <Crown className="h-3 w-3 text-amber-400" />
                             <span>{ar ? 'ترقية لمالك مشارك' : 'Make Co-Owner'}</span>
@@ -408,7 +420,11 @@ export function CoOwnerTab() {
                           onClick={() => void handleUpdateRole(admin.id, admin.name, 'REVOKE')}
                           disabled={actionLoading === `role-${admin.id}`}
                           className="flex items-center gap-1 rounded-xl border border-rose-500/40 bg-rose-500/10 px-2.5 py-1.5 text-xs font-semibold text-rose-300 hover:bg-rose-500/20 transition-colors"
-                          title={ar ? 'سحب جميع صلاحيات إدارة المنصة' : 'Revoke platform admin privileges'}
+                          title={
+                            ar
+                              ? 'سحب جميع صلاحيات إدارة المنصة'
+                              : 'Revoke platform admin privileges'
+                          }
                         >
                           <X className="h-3 w-3" />
                           <span>{ar ? 'إلغاء الصلاحية' : 'Revoke'}</span>
@@ -454,23 +470,26 @@ export function CoOwnerTab() {
           {
             icon: Crown,
             label: ar ? 'المالك الأساسي' : 'Primary Owner',
-            value: admins.filter(a => a.isPlatformOwner).length,
+            value: admins.filter((a) => a.isPlatformOwner).length,
             color: 'text-amber-400 bg-amber-500/10',
           },
           {
             icon: ShieldCheck,
             label: ar ? 'مديرو المنصة' : 'Super Admins',
-            value: admins.filter(a => a.isPlatformSuperAdmin && !a.isPlatformOwner).length,
+            value: admins.filter((a) => a.isPlatformSuperAdmin && !a.isPlatformOwner).length,
             color: 'text-blue-400 bg-blue-500/10',
           },
           {
             icon: ShieldAlert,
             label: ar ? 'المعلقون' : 'Suspended',
-            value: admins.filter(a => a.isSuspended).length,
+            value: admins.filter((a) => a.isSuspended).length,
             color: 'text-rose-400 bg-rose-500/10',
           },
         ].map((stat) => (
-          <div key={stat.label} className="rounded-xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-4 flex items-center gap-3">
+          <div
+            key={stat.label}
+            className="rounded-xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-4 flex items-center gap-3"
+          >
             <div className={`h-9 w-9 rounded-xl flex items-center justify-center ${stat.color}`}>
               <stat.icon className="h-4 w-4" />
             </div>

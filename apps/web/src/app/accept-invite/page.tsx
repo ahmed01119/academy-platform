@@ -114,9 +114,7 @@ function AcceptInviteContent() {
                 <h3 className="font-bold text-[#4ADE80]">
                   {locale === 'ar' ? 'تهانينا! تم تفعيل العضوية بنجاح' : 'Membership Activated!'}
                 </h3>
-                <p className="mt-1 text-xs text-[#86EFAC] leading-relaxed">
-                  {successMessage}
-                </p>
+                <p className="mt-1 text-xs text-[#86EFAC] leading-relaxed">{successMessage}</p>
               </div>
             </div>
 
@@ -212,7 +210,9 @@ function AcceptInviteContent() {
                 </>
               ) : (
                 <>
-                  <span>{locale === 'ar' ? 'قبول الدعوة وتفعيل العضوية' : 'Accept Invitation & Join'}</span>
+                  <span>
+                    {locale === 'ar' ? 'قبول الدعوة وتفعيل العضوية' : 'Accept Invitation & Join'}
+                  </span>
                   <ArrowRight className="h-4 w-4 rotate-180" />
                 </>
               )}
@@ -249,4 +249,3 @@ export default function AcceptInvitePage() {
     </div>
   );
 }
-

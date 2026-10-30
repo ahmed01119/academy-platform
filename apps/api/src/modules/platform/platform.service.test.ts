@@ -49,7 +49,6 @@ describe('PlatformService', () => {
     sendAcademyRejected: MockFn;
   };
 
-
   const actorUserId = '00000000-0000-4000-8000-000000000001';
   const academyId = '00000000-0000-4000-8000-000000000101';
   const targetUserId = '00000000-0000-4000-8000-000000000002';
@@ -125,7 +124,6 @@ describe('PlatformService', () => {
       sendAcademyApproved: vi.fn().mockResolvedValue(true),
       sendAcademyRejected: vi.fn().mockResolvedValue(true),
     };
-
 
     service = new PlatformService(
       mockPrisma as unknown as PrismaService,
@@ -376,5 +374,3 @@ describe('PlatformService', () => {
     });
   });
 });
-
-

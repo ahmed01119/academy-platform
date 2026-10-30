@@ -86,7 +86,8 @@ export default function AttendanceHubPage() {
               التحضير السريع (Quick Attendance)
             </h3>
             <p className="text-xs text-[var(--text-muted)] leading-relaxed mb-4">
-              تسجيل كشف الحضور بنقرة واحدة لجميع اللاعبين، تبديل الحالة فورياً، وحفظ أوفلاين مع المزامنة التلقائية.
+              تسجيل كشف الحضور بنقرة واحدة لجميع اللاعبين، تبديل الحالة فورياً، وحفظ أوفلاين مع
+              المزامنة التلقائية.
             </p>
             <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">
               <span>بدء التحضير الفوري</span>
@@ -112,7 +113,8 @@ export default function AttendanceHubPage() {
               ماسح باركود QR الذكي
             </h3>
             <p className="text-xs text-[var(--text-muted)] leading-relaxed mb-4">
-              مسح فوري لبطاقات وهوية اللاعبين، التحقق من سريان الاشتراك والرسوم المتأخرة، مع مؤشرات صوتية وتنبيهات.
+              مسح فوري لبطاقات وهوية اللاعبين، التحقق من سريان الاشتراك والرسوم المتأخرة، مع مؤشرات
+              صوتية وتنبيهات.
             </p>
             <div className="flex items-center gap-1.5 text-xs font-bold text-blue-600 dark:text-blue-400">
               <span>تشغيل ماسح الكاميرا</span>
@@ -138,7 +140,8 @@ export default function AttendanceHubPage() {
               تقارير الحضور والالتزام
             </h3>
             <p className="text-xs text-[var(--text-muted)] leading-relaxed mb-4">
-              تحليلات نسب الحضور والغياب، مقارنة الفروع والمجموعات، وسجل تفصيلي قابل للطباعة والتصدير.
+              تحليلات نسب الحضور والغياب، مقارنة الفروع والمجموعات، وسجل تفصيلي قابل للطباعة
+              والتصدير.
             </p>
             <div className="flex items-center gap-1.5 text-xs font-bold text-purple-600 dark:text-purple-400">
               <span>عرض تقارير الحضور</span>

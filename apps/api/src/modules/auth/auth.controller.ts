@@ -95,10 +95,7 @@ export class AuthController {
   @UseGuards(CsrfGuard)
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
-  async register(
-    @Body() body: unknown,
-    @Req() req: Request,
-  ): Promise<RegisterResponse> {
+  async register(@Body() body: unknown, @Req() req: Request): Promise<RegisterResponse> {
     const dto: RegisterRequest = RegisterRequestSchema.parse(body);
     const ipAddress = req.ip || req.socket.remoteAddress;
     const userAgent = req.headers['user-agent'];
@@ -186,10 +183,7 @@ export class AuthController {
   @UseGuards(CsrfGuard)
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
-  async forgotPassword(
-    @Body() body: unknown,
-    @Req() req: Request,
-  ): Promise<{ message: string }> {
+  async forgotPassword(@Body() body: unknown, @Req() req: Request): Promise<{ message: string }> {
     const dto: ForgotPasswordRequest = ForgotPasswordRequestSchema.parse(body);
     const ipAddress = req.ip || req.socket.remoteAddress;
     const userAgent = req.headers['user-agent'];

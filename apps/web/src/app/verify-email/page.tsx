@@ -154,7 +154,9 @@ function VerifyEmailContent() {
               <CheckCircle2 className="h-6 w-6 shrink-0 text-[#22C55E] mt-0.5" />
               <div>
                 <h3 className="font-bold text-[#4ADE80]">
-                  {locale === 'ar' ? 'تم تأكيد البريد الإلكتروني بنجاح!' : 'Email Verified Successfully!'}
+                  {locale === 'ar'
+                    ? 'تم تأكيد البريد الإلكتروني بنجاح!'
+                    : 'Email Verified Successfully!'}
                 </h3>
                 <p className="mt-1 text-xs text-[#86EFAC] leading-relaxed">
                   {locale === 'ar'
@@ -187,7 +189,10 @@ function VerifyEmailContent() {
             {/* Manual Token Form */}
             <form onSubmit={handleManualSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5" htmlFor="token">
+                <label
+                  className="block text-xs font-semibold text-slate-300 mb-1.5"
+                  htmlFor="token"
+                >
                   {locale === 'ar' ? 'رمز التحقق (Token)' : 'Verification Token'}
                 </label>
                 <input
@@ -219,7 +224,9 @@ function VerifyEmailContent() {
             {/* Resend Link Section */}
             <div className="border-t border-slate-800/80 pt-6">
               <h2 className="text-xs font-semibold text-slate-300 mb-2">
-                {locale === 'ar' ? 'لم تستلم رسالة التحقق؟' : 'Didn’t receive the verification email?'}
+                {locale === 'ar'
+                  ? 'لم تستلم رسالة التحقق؟'
+                  : 'Didn’t receive the verification email?'}
               </h2>
 
               {resendError && (
@@ -269,7 +276,9 @@ function VerifyEmailContent() {
                   ) : (
                     <>
                       <RefreshCw className="h-3.5 w-3.5 text-[#00D6FF]" />
-                      <span>{locale === 'ar' ? 'إعادة إرسال رابط التحقق' : 'Resend Verification Link'}</span>
+                      <span>
+                        {locale === 'ar' ? 'إعادة إرسال رابط التحقق' : 'Resend Verification Link'}
+                      </span>
                     </>
                   )}
                 </button>
@@ -307,4 +316,3 @@ export default function VerifyEmailPage() {
     </div>
   );
 }
-

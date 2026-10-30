@@ -1,5 +1,5 @@
 'use client';
- 
+
 import { SportexusLogo } from '../../components/brand/SportexusLogo';
 
 export default function OfflinePage() {

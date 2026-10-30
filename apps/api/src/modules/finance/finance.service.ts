@@ -36,7 +36,9 @@ export class FinanceService {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(AuditService) private readonly auditService: AuditService,
-    @Optional() @Inject(NotificationsService) private readonly notificationsService?: NotificationsService,
+    @Optional()
+    @Inject(NotificationsService)
+    private readonly notificationsService?: NotificationsService,
     @Optional() @Inject(EmailService) private readonly emailService?: EmailService,
   ) {}
 
@@ -504,7 +506,9 @@ export class FinanceService {
               });
             }
           } catch (mailErr: unknown) {
-            this.logger.warn(`Failed to dispatch payment receipt email: ${(mailErr as Error)?.message}`);
+            this.logger.warn(
+              `Failed to dispatch payment receipt email: ${(mailErr as Error)?.message}`,
+            );
           }
         }
 

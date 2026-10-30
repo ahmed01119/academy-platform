@@ -9,11 +9,7 @@ import { PageHeader } from '../../../components/ui/PageHeader';
 import { useToast } from '../../../components/ui/Toast';
 import { api } from '../../../lib/api-client';
 import { offlineStore } from '../../../lib/offline-attendance-store';
-import type {
-  AttendanceStatus,
-  SessionDetails,
-  SessionSummary,
-} from '@academy/shared';
+import type { AttendanceStatus, SessionDetails, SessionSummary } from '@academy/shared';
 import {
   CheckCircle2,
   Clock4,
@@ -105,30 +101,33 @@ function QuickAttendanceContent() {
   }, [user, activeTenant, selectedSessionId]);
 
   // Load Session Details Roster
-  const loadRoster = useCallback(async (sid: string) => {
-    if (!sid) return;
-    setIsLoadingRoster(true);
-    try {
-      if (typeof navigator !== 'undefined' && !navigator.onLine) {
-        // Try offline store
-        const cached = await offlineStore.getCachedSession(sid);
-        if (cached) {
-          setSessionDetails(cached);
-          setIsLoadingRoster(false);
-          return;
+  const loadRoster = useCallback(
+    async (sid: string) => {
+      if (!sid) return;
+      setIsLoadingRoster(true);
+      try {
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+          // Try offline store
+          const cached = await offlineStore.getCachedSession(sid);
+          if (cached) {
+            setSessionDetails(cached);
+            setIsLoadingRoster(false);
+            return;
+          }
         }
+        const data = await api.attendance.getSession(sid);
+        setSessionDetails(data);
+        // Cache for offline resilience
+        await offlineStore.cacheSessionRoster(data);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'تعذر تحميل كشف الحضور';
+        toast.error(msg);
+      } finally {
+        setIsLoadingRoster(false);
       }
-      const data = await api.attendance.getSession(sid);
-      setSessionDetails(data);
-      // Cache for offline resilience
-      await offlineStore.cacheSessionRoster(data);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'تعذر تحميل كشف الحضور';
-      toast.error(msg);
-    } finally {
-      setIsLoadingRoster(false);
-    }
-  }, [toast]);
+    },
+    [toast],
+  );
 
   useEffect(() => {
     if (selectedSessionId) {
@@ -152,7 +151,11 @@ function QuickAttendanceContent() {
         item.playerId === playerId ? { ...item, status } : item,
       );
       // recalculate counts
-      let pCount = 0, lCount = 0, aCount = 0, eCount = 0, uCount = 0;
+      let pCount = 0,
+        lCount = 0,
+        aCount = 0,
+        eCount = 0,
+        uCount = 0;
       updatedRoster.forEach((r) => {
         if (r.status === 'PRESENT') pCount++;
         else if (r.status === 'LATE') lCount++;
@@ -209,9 +212,7 @@ function QuickAttendanceContent() {
     if (!selectedSessionId || !sessionDetails?.roster) return;
     setIsBulkMarking(true);
 
-    const unmarkedOrAbsent = sessionDetails.roster.filter(
-      (r) => r.status !== 'PRESENT',
-    );
+    const unmarkedOrAbsent = sessionDetails.roster.filter((r) => r.status !== 'PRESENT');
 
     if (unmarkedOrAbsent.length === 0) {
       toast.info('جميع اللاعبين مسجلين حضور بالفعل');
@@ -294,7 +295,10 @@ function QuickAttendanceContent() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-2.5">
               <Zap className="h-5 w-5 text-emerald-500" />
-              <label htmlFor="session-select" className="text-sm font-bold text-[var(--text-primary)]">
+              <label
+                htmlFor="session-select"
+                className="text-sm font-bold text-[var(--text-primary)]"
+              >
                 اختر الحصة التدريبية:
               </label>
             </div>

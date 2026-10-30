@@ -6,7 +6,7 @@ async function test() {
     name: 'Test Owner',
     email: 'testowner_' + Date.now().toString(36) + '@example.com',
     password: 'Password123!',
-    phone: '+966500000000'
+    phone: '+966500000000',
   };
 
   try {
@@ -14,9 +14,9 @@ async function test() {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Origin': 'http://localhost:3000'
+        Origin: 'http://localhost:3000',
       },
-      body: JSON.stringify(regPayload)
+      body: JSON.stringify(regPayload),
     });
     const text = await res.text();
     console.log('Register HTTP Status:', res.status);
@@ -31,13 +31,13 @@ async function test() {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Origin': 'https://unit-purpose-horn-boundary.trycloudflare.com',
-        'Cookie': 'access_token=some_old_token'
+        Origin: 'https://unit-purpose-horn-boundary.trycloudflare.com',
+        Cookie: 'access_token=some_old_token',
       },
       body: JSON.stringify({
         email: 'admin@academy.sa',
-        password: 'AdminPass123!'
-      })
+        password: 'AdminPass123!',
+      }),
     });
     const text = await res.text();
     console.log('Login HTTP Status (with tunnel origin & cookie):', res.status);

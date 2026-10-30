@@ -352,7 +352,8 @@ export const translations = {
       statusReversed: 'ملغي ومسترد',
       loading: 'جارٍ تحميل بيانات العمليات المالية والاشتراكات...',
       platform_admin_title: 'لوحة الإدارة المركزية',
-      platform_admin_desc: 'صفحة العمليات المالية مخصصة للأكاديميات. كمدير المنصة، يمكنك مراجعة التقارير المالية الإجمالية من لوحة تحكم المنصة.',
+      platform_admin_desc:
+        'صفحة العمليات المالية مخصصة للأكاديميات. كمدير المنصة، يمكنك مراجعة التقارير المالية الإجمالية من لوحة تحكم المنصة.',
       go_to_platform: 'الذهاب إلى لوحة إدارة المنصة',
     },
     subscriptions: {
@@ -733,7 +734,8 @@ export const translations = {
       statusReversed: 'Reversed',
       loading: 'Loading financial data and subscriptions...',
       platform_admin_title: 'Platform Administration',
-      platform_admin_desc: 'The Financial Operations page is for academy use. As a platform administrator, you can review aggregate financial reports from the Platform Management dashboard.',
+      platform_admin_desc:
+        'The Financial Operations page is for academy use. As a platform administrator, you can review aggregate financial reports from the Platform Management dashboard.',
       go_to_platform: 'Go to Platform Dashboard',
     },
     subscriptions: {

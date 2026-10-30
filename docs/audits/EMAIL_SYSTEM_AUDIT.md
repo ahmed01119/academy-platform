@@ -37,6 +37,7 @@ Every core business lifecycle event that requires user notification now reliably
 ```
 
 ### Key Engineering Features:
+
 1. **Provider Abstraction & Multi-Provider Support:**
    - **Resend REST API:** Fast modern HTTPS email delivery without local port 25/587 outbound firewall restrictions.
    - **Standard SMTP (Nodemailer):** Direct compatibility with AWS SES, Mailgun, SendGrid, Postmark, Brevo, or private enterprise SMTP servers.
@@ -64,32 +65,33 @@ Every core business lifecycle event that requires user notification now reliably
 
 ## 3. Audited & Implemented Email Workflows Matrix
 
-| # | Domain | Workflow / Trigger | Recipient | Bilingual Template | Security & Resilience |
-|---|--------|-------------------|-----------|--------------------|----------------------|
-| 1 | **Auth** | Academy Application Submitted | Academy Applicant | `sendAcademyApplicationReceived` | Rate-limited submission, escaped name |
-| 2 | **Auth** | Password Reset Requested | User Email | `sendPasswordReset` | Single-use expiring token (1 hour), neutral anti-enumeration response |
-| 3 | **Auth** | Password Changed Security Alert | User Email | `sendPasswordChangedNotification` | Dispatches on `resetPassword` & `changePassword` with IP, timestamp & device alert |
-| 4 | **Auth** | Email Verification Link | User Email | `sendEmailVerification` | Single-use expiring token, masked logs |
-| 5 | **Platform** | Academy Approved & Activated | Academy Owner | `sendAcademyApproved` | Direct login & activation dashboard button |
-| 6 | **Platform** | Academy Registration Rejected | Academy Applicant | `sendAcademyRejected` | Official notice with constructive review feedback notes |
-| 7 | **Platform** | Academy Additional Info Requested | Academy Applicant | `sendAcademyMoreInfoRequested` | Official notice requesting specific missing documents |
-| 8 | **Platform** | Platform Admin / Co-Owner Invite | Platform Invitee | `sendPlatformAdminInvite` | Role-specific invitation with setup action link |
-| 9 | **Tenancy** | Academy Staff Membership Invite | Invited Staff Member | `sendStaffInvite` | Single-use 7-day token, role & branch scoped |
-| 10 | **Players** | Player Registration & Enrollment | Primary Guardian | `sendPlayerEnrollmentWelcome` | Guardian welcome with player name, branch, sport & Portal link |
-| 11 | **Finance** | Official Payment Receipt | Payer / Guardian | `sendPaymentReceipt` | Official receipt with receipt #, amount, currency, payment method & date |
-| 12 | **Finance** | SaaS Subscription Expiration / Past-Due | Academy Owner | `sendSubscriptionAlert` | Plan name, expiry date & billing renewal URL |
+| #   | Domain       | Workflow / Trigger                      | Recipient            | Bilingual Template                | Security & Resilience                                                              |
+| --- | ------------ | --------------------------------------- | -------------------- | --------------------------------- | ---------------------------------------------------------------------------------- |
+| 1   | **Auth**     | Academy Application Submitted           | Academy Applicant    | `sendAcademyApplicationReceived`  | Rate-limited submission, escaped name                                              |
+| 2   | **Auth**     | Password Reset Requested                | User Email           | `sendPasswordReset`               | Single-use expiring token (1 hour), neutral anti-enumeration response              |
+| 3   | **Auth**     | Password Changed Security Alert         | User Email           | `sendPasswordChangedNotification` | Dispatches on `resetPassword` & `changePassword` with IP, timestamp & device alert |
+| 4   | **Auth**     | Email Verification Link                 | User Email           | `sendEmailVerification`           | Single-use expiring token, masked logs                                             |
+| 5   | **Platform** | Academy Approved & Activated            | Academy Owner        | `sendAcademyApproved`             | Direct login & activation dashboard button                                         |
+| 6   | **Platform** | Academy Registration Rejected           | Academy Applicant    | `sendAcademyRejected`             | Official notice with constructive review feedback notes                            |
+| 7   | **Platform** | Academy Additional Info Requested       | Academy Applicant    | `sendAcademyMoreInfoRequested`    | Official notice requesting specific missing documents                              |
+| 8   | **Platform** | Platform Admin / Co-Owner Invite        | Platform Invitee     | `sendPlatformAdminInvite`         | Role-specific invitation with setup action link                                    |
+| 9   | **Tenancy**  | Academy Staff Membership Invite         | Invited Staff Member | `sendStaffInvite`                 | Single-use 7-day token, role & branch scoped                                       |
+| 10  | **Players**  | Player Registration & Enrollment        | Primary Guardian     | `sendPlayerEnrollmentWelcome`     | Guardian welcome with player name, branch, sport & Portal link                     |
+| 11  | **Finance**  | Official Payment Receipt                | Payer / Guardian     | `sendPaymentReceipt`              | Official receipt with receipt #, amount, currency, payment method & date           |
+| 12  | **Finance**  | SaaS Subscription Expiration / Past-Due | Academy Owner        | `sendSubscriptionAlert`           | Plan name, expiry date & billing renewal URL                                       |
 
 ---
 
 ## 4. Frontend UX & Cooldown Hardening
 
 ### Forgot Password Screen (`apps/web/src/app/forgot-password/page.tsx`):
+
 - Added an observable 60-second cooldown timer once an email reset request is submitted.
 - The submit button is automatically disabled during the cooldown and shows:
   - Arabic: `إعادة الإرسال بعد X ثانية`
   - English: `Resend available in Xs`
 - Prevents accidental repeated clicks and avoids triggering backend Redis rate limit errors (`Too many password reset requests`).
-- Generic anti-enumeration response: *"If this email is registered, you will receive a one-time code to reset your password."*
+- Generic anti-enumeration response: _"If this email is registered, you will receive a one-time code to reset your password."_
 
 ---
 

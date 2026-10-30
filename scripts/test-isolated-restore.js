@@ -2,21 +2,32 @@ const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const prismaClientPath = require.resolve('@prisma/client', {
-  paths: [__dirname, path.resolve(__dirname, '../packages/database'), path.resolve(__dirname, '../apps/api')]
+  paths: [
+    __dirname,
+    path.resolve(__dirname, '../packages/database'),
+    path.resolve(__dirname, '../apps/api'),
+  ],
 });
 const { PrismaClient } = require(prismaClientPath);
 
 async function testIsolatedRestore() {
-  console.log('[Test Restore] Deploying Prisma schema to isolated schema "test_restore_isolated"...');
-  const testDbUrl = 'postgresql://academy:academy@localhost:5432/academy?schema=test_restore_isolated';
-  
+  console.log(
+    '[Test Restore] Deploying Prisma schema to isolated schema "test_restore_isolated"...',
+  );
+  const testDbUrl =
+    'postgresql://academy:academy@localhost:5432/academy?schema=test_restore_isolated';
+
   execSync('pnpm --filter @academy/database exec prisma db push --skip-generate', {
     env: { ...process.env, DATABASE_URL: testDbUrl },
-    stdio: 'inherit'
+    stdio: 'inherit',
   });
 
   // Find latest backup
-  const backupFiles = fs.readdirSync('backups').filter(f => f.startsWith('sportexus_backup_')).sort().reverse();
+  const backupFiles = fs
+    .readdirSync('backups')
+    .filter((f) => f.startsWith('sportexus_backup_'))
+    .sort()
+    .reverse();
   const latestBackup = path.join('backups', backupFiles[0]);
   console.log('[Test Restore] Reading backup file: ' + latestBackup);
 
@@ -25,13 +36,39 @@ async function testIsolatedRestore() {
   const data = content.data || content;
 
   const order = [
-    'saaSPlan', 'user', 'tenant', 'branch', 'tenantSport', 'tenantSubscription', 'tenantMembership',
-    'trainingGroup', 'trainingSchedule', 'player', 'guardian', 'groupCoach',
-    'groupMember', 'playerEnrollment', 'playerSubscriptionPlan', 'playerSubscription',
-    'evaluationTemplate', 'attendanceSession', 'attendanceRecord', 'attendanceCorrection',
-    'attendanceEvent', 'attendanceIdempotency', 'sessionCashierClosing', 'academyFinancialTransaction',
-    'playerEvaluation', 'appNotification', 'auditLog', 'academyApplication',
-    'playerRegistrationRequest', 'saaSInvoice', 'platformAnnouncement', 'invitation', 'refreshToken'
+    'saaSPlan',
+    'user',
+    'tenant',
+    'branch',
+    'tenantSport',
+    'tenantSubscription',
+    'tenantMembership',
+    'trainingGroup',
+    'trainingSchedule',
+    'player',
+    'guardian',
+    'groupCoach',
+    'groupMember',
+    'playerEnrollment',
+    'playerSubscriptionPlan',
+    'playerSubscription',
+    'evaluationTemplate',
+    'attendanceSession',
+    'attendanceRecord',
+    'attendanceCorrection',
+    'attendanceEvent',
+    'attendanceIdempotency',
+    'sessionCashierClosing',
+    'academyFinancialTransaction',
+    'playerEvaluation',
+    'appNotification',
+    'auditLog',
+    'academyApplication',
+    'playerRegistrationRequest',
+    'saaSInvoice',
+    'platformAnnouncement',
+    'invitation',
+    'refreshToken',
   ];
 
   let restoredTotal = 0;
@@ -44,7 +81,7 @@ async function testIsolatedRestore() {
           await testPrisma[model].upsert({
             where: { id: item.id },
             update: item,
-            create: item
+            create: item,
           });
           count++;
         } catch (e) {
@@ -56,7 +93,9 @@ async function testIsolatedRestore() {
     }
   }
 
-  console.log(`[Test Restore] Total records successfully restored into isolated schema: ${restoredTotal}`);
+  console.log(
+    `[Test Restore] Total records successfully restored into isolated schema: ${restoredTotal}`,
+  );
 
   // Clean up isolated schema
   console.log('[Test Restore] Dropping isolated schema "test_restore_isolated"...');
@@ -68,7 +107,7 @@ async function testIsolatedRestore() {
   console.log('====================================================');
 }
 
-testIsolatedRestore().catch(e => {
+testIsolatedRestore().catch((e) => {
   console.error('[Test Restore Failed]', e);
   process.exit(1);
 });
