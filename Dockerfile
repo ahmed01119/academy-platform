@@ -18,11 +18,13 @@ COPY apps/web/package.json ./apps/web/package.json
 RUN pnpm install --frozen-lockfile
 
 # Generate Prisma Client and compile packages in explicit dependency order:
-# 1. Generate Prisma Client (@academy/database)
-# 2. Compile shared contracts (@academy/shared)
-# 3. Compile database client and transactions (@academy/database)
-# 4. Compile API application with Nest CLI (@academy/api)
-RUN pnpm --filter @academy/database run generate && \
+# 1. Clean any stale build info
+# 2. Generate Prisma Client (@academy/database)
+# 3. Compile shared contracts (@academy/shared)
+# 4. Compile database client and transactions (@academy/database)
+# 5. Compile API application with Nest CLI (@academy/api)
+RUN find . -name "*.tsbuildinfo" -delete 2>/dev/null || true && \
+    pnpm --filter @academy/database run generate && \
     pnpm --filter @academy/shared build && \
     pnpm --filter @academy/database build && \
     pnpm --filter @academy/api build

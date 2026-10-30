@@ -3,6 +3,8 @@ node_modules
 **/dist
 .git
 .turbo
+*.tsbuildinfo
+**/*.tsbuildinfo
 backups
 *.log
 .env

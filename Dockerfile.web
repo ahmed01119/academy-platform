@@ -27,7 +27,8 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
 # Compile shared library and build standalone Next.js app in order
-RUN pnpm --filter @academy/shared build && \
+RUN find . -name "*.tsbuildinfo" -delete 2>/dev/null || true && \
+    pnpm --filter @academy/shared build && \
     pnpm --filter @academy/web build
 
 # =============================================================================

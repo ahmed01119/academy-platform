@@ -13,8 +13,8 @@
     }
   },
   "scripts": {
-    "build": "prisma generate && tsc -p tsconfig.json",
-    "clean": "rimraf dist",
+    "build": "prisma generate && rimraf dist tsconfig.tsbuildinfo && tsc -p tsconfig.json",
+    "clean": "rimraf dist tsconfig.tsbuildinfo",
     "generate": "prisma generate",
     "migrate:dev": "prisma migrate dev",
     "migrate:deploy": "prisma migrate deploy",
