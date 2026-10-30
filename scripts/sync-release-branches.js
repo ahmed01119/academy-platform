@@ -60,8 +60,7 @@ function syncBackend({ dryRun, sourceSha }) {
 
   try {
     run(`git fetch origin ${BACKEND_BRANCH}`);
-    run(`git checkout ${BACKEND_BRANCH}`);
-    run(`git pull --ff-only origin ${BACKEND_BRANCH}`);
+    run(`git checkout -B ${BACKEND_BRANCH} origin/${BACKEND_BRANCH}`);
 
     console.log(`[Backend Sync] Merging ${sourceSha} into ${BACKEND_BRANCH}...`);
     run(`git merge ${sourceSha} -m "release(backend): sync with main ${sourceSha} [skip ci]"`);
@@ -91,8 +90,7 @@ function syncFrontend({ dryRun, sourceSha }) {
 
   try {
     run(`git fetch origin ${FRONTEND_BRANCH}`);
-    run(`git checkout ${FRONTEND_BRANCH}`);
-    run(`git pull --ff-only origin ${FRONTEND_BRANCH}`);
+    run(`git checkout -B ${FRONTEND_BRANCH} origin/${FRONTEND_BRANCH}`);
 
     console.log(`[Frontend Sync] Merging ${sourceSha} into ${FRONTEND_BRANCH}...`);
     run(`git merge ${sourceSha} -m "release(web): sync with main ${sourceSha} [skip ci]"`);
