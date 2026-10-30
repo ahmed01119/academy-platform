@@ -14,7 +14,7 @@ export function ErrorState({ title, message, onRetry }: ErrorStateProps) {
   const { locale } = useLocale();
 
   return (
-    <div className="flex flex-col items-center justify-center rounded-2xl border border-rose-500/30 bg-rose-500/5 p-8 text-center space-y-3">
+    <div className="flex flex-col items-center justify-center rounded-3xl border border-rose-500/30 bg-rose-500/5 p-8 text-center space-y-3 shadow-xs animate-fade-in-up">
       <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-500">
         <AlertCircle className="h-6 w-6" />
       </div>

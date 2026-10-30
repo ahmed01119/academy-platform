@@ -42,15 +42,15 @@ export function DataTable<T>({
 
   if (isDataLoading) {
     return (
-      <div className="rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] overflow-hidden shadow-sm">
+      <div className="rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
           <table className="w-full text-start text-xs">
-            <thead className="bg-[var(--bg-surface-subtle)] border-b border-[var(--border-subtle)]">
+            <thead className="bg-[var(--bg-surface-subtle)]/75 border-b border-[var(--border-subtle)]">
               <tr>
                 {columns.map((c, idx) => (
                   <th
                     key={getColKey(c, idx)}
-                    className={`p-3.5 font-bold text-[var(--text-muted)] text-start ${
+                    className={`p-4 font-bold text-[var(--text-muted)] tracking-wider uppercase text-start text-[11px] ${
                       c.className || ''
                     }`}
                   >
@@ -76,15 +76,15 @@ export function DataTable<T>({
   }
 
   return (
-    <div className="rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] overflow-hidden shadow-sm">
+    <div className="rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] overflow-hidden shadow-xs">
       <div className="overflow-x-auto">
-        <table className="w-full text-start text-xs">
-          <thead className="bg-[var(--bg-surface-subtle)] border-b border-[var(--border-subtle)]">
+        <table className="w-full text-start text-xs border-collapse">
+          <thead className="bg-[var(--bg-surface-subtle)]/75 border-b border-[var(--border-subtle)]">
             <tr>
               {columns.map((c, idx) => (
                 <th
                   key={getColKey(c, idx)}
-                  className={`p-3.5 font-bold text-[var(--text-muted)] text-start ${
+                  className={`p-4 font-bold text-[var(--text-muted)] tracking-wider uppercase text-start text-[11px] select-none ${
                     c.className || ''
                   }`}
                 >
@@ -98,10 +98,10 @@ export function DataTable<T>({
               <tr
                 key={keyExtractor(item)}
                 onClick={() => onRowClick?.(item)}
-                className={`transition-colors ${
+                className={`group transition-all duration-150 ${
                   onRowClick
-                    ? 'cursor-pointer hover:bg-[var(--bg-surface-subtle)]'
-                    : 'hover:bg-[var(--bg-surface-subtle)]/50'
+                    ? 'cursor-pointer hover:bg-[var(--bg-surface-subtle)]/80 active:bg-[var(--bg-surface-subtle)]'
+                    : 'hover:bg-[var(--bg-surface-subtle)]/40'
                 }`}
               >
                 {columns.map((col, idx) => {
@@ -111,7 +111,9 @@ export function DataTable<T>({
                   return (
                     <td
                       key={colKey}
-                      className={`p-3.5 text-[var(--text-main)] ${col.className || ''}`}
+                      className={`p-4 text-[var(--text-main)] font-medium leading-relaxed align-middle ${
+                        col.className || ''
+                      }`}
                     >
                       {renderFn
                         ? renderFn(item)

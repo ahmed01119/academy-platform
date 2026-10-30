@@ -33,7 +33,7 @@ export function PageHeader({
     if (React.isValidElement(Icon)) return Icon;
     const IconComponent = Icon as React.ComponentType<{ className?: string }>;
     return (
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--brand-primary)]/10 text-[var(--brand-primary)]">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--accent-primary)]/10 text-[var(--accent-primary)]">
         <IconComponent className="h-5 w-5" />
       </div>
     );
@@ -52,13 +52,13 @@ export function PageHeader({
                 <React.Fragment key={crumb.label}>
                   {idx > 0 && <ChevronRight className="h-3 w-3 rtl:rotate-180 opacity-60" />}
                   {isLast || !crumb.href ? (
-                    <span className={isLast ? 'text-[var(--text-primary)] font-medium' : ''}>
+                    <span className={isLast ? 'text-[var(--text-main)] font-medium' : ''}>
                       {crumb.label}
                     </span>
                   ) : (
                     <Link
                       href={crumb.href}
-                      className="hover:text-[var(--brand-primary)] transition-colors"
+                      className="hover:text-[var(--accent-primary)] transition-colors"
                     >
                       {crumb.label}
                     </Link>
