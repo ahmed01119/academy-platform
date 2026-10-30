@@ -342,7 +342,7 @@ export default function FinanceDashboardPage() {
       <AppShell>
         <div className="flex h-[60vh] items-center justify-center">
           <div className="flex flex-col items-center gap-3">
-            <RefreshCw className="h-8 w-8 animate-spin text-[var(--brand-primary)]" />
+            <RefreshCw className="h-8 w-8 animate-spin text-[var(--accent-primary)]" />
             <p className="text-sm font-medium text-[var(--text-muted)]">
               {t('finance.loading', 'جارٍ تحميل بيانات العمليات المالية والاشتراكات...')}
             </p>
@@ -357,11 +357,11 @@ export default function FinanceDashboardPage() {
     return (
       <AppShell>
         <div className="flex h-[60vh] flex-col items-center justify-center gap-4 text-center px-4">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--brand-primary)]/10 border border-[var(--brand-primary)]/20">
-            <ShieldCheck className="h-8 w-8 text-[var(--brand-primary)]" />
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--accent-primary)]/10 border border-[var(--accent-primary)]/20">
+            <ShieldCheck className="h-8 w-8 text-[var(--accent-primary)]" />
           </div>
           <div className="space-y-2 max-w-sm">
-            <h2 className="text-xl font-bold text-[var(--text-primary)]">
+            <h2 className="text-xl font-bold text-[var(--text-main)]">
               {t('finance.platform_admin_title', 'لوحة الإدارة المركزية')}
             </h2>
             <p className="text-sm text-[var(--text-muted)] leading-relaxed">
@@ -373,7 +373,7 @@ export default function FinanceDashboardPage() {
           </div>
           <a
             href="/platform"
-            className="mt-2 flex items-center gap-2 rounded-xl bg-[var(--brand-primary)] px-5 py-2.5 text-sm font-semibold text-white hover:brightness-110 transition-all"
+            className="mt-2 flex items-center gap-2 rounded-xl bg-[var(--accent-primary)] px-5 py-2.5 text-sm font-semibold text-white hover:brightness-110 transition-all"
           >
             <Layers className="h-4 w-4" />
             {t('finance.go_to_platform', 'الذهاب إلى لوحة إدارة المنصة')}
@@ -420,25 +420,25 @@ export default function FinanceDashboardPage() {
                 type="button"
                 id="btn-print-finance-report"
                 onClick={handlePrint}
-                className="flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-2 text-xs font-semibold text-[var(--text-primary)] hover:border-[var(--brand-primary)] transition-all cursor-pointer"
+                className="flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-2 text-xs font-semibold text-[var(--text-main)] hover:border-[var(--accent-primary)] transition-all cursor-pointer"
               >
-                <Printer className="h-4 w-4 text-[var(--brand-primary)]" />
+                <Printer className="h-4 w-4 text-[var(--accent-primary)]" />
                 <span>طباعة تقرير مالي (PDF)</span>
               </button>
 
               <button
                 type="button"
                 onClick={handleExportCsv}
-                className="flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-2 text-xs font-semibold text-[var(--text-primary)] hover:border-[var(--brand-primary)] transition-all cursor-pointer"
+                className="flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-2 text-xs font-semibold text-[var(--text-main)] hover:border-[var(--accent-primary)] transition-all cursor-pointer"
               >
-                <Download className="h-4 w-4 text-[var(--brand-primary)]" />
+                <Download className="h-4 w-4 text-[var(--accent-primary)]" />
                 <span>{t('finance.exportStatement', 'تصدير كشف الحساب')}</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setIsCreateSubOpen(true)}
-                className="flex items-center gap-1.5 rounded-xl bg-[var(--brand-primary)] px-4 py-2 text-xs font-bold text-white shadow hover:brightness-110 transition-all cursor-pointer"
+                className="flex items-center gap-1.5 rounded-xl bg-[var(--accent-primary)] px-4 py-2 text-xs font-bold text-white shadow hover:brightness-110 transition-all cursor-pointer"
               >
                 <PlusCircle className="h-4 w-4" />
                 <span>إضافة اشتراك لاعب</span>
@@ -479,9 +479,9 @@ export default function FinanceDashboardPage() {
                 <span className="text-[11px] font-semibold">
                   {t('finance.monthlyRevenue', 'إيرادات الشهر')}
                 </span>
-                <TrendingUp className="h-4 w-4 text-[var(--brand-primary)]" />
+                <TrendingUp className="h-4 w-4 text-[var(--accent-primary)]" />
               </div>
-              <div className="text-xl font-extrabold text-[var(--text-primary)]">
+              <div className="text-xl font-extrabold text-[var(--text-main)]">
                 {metrics.monthlyRevenue.toLocaleString()}{' '}
                 <span className="text-xs font-normal">ر.س</span>
               </div>
@@ -535,8 +535,8 @@ export default function FinanceDashboardPage() {
             onClick={() => setActiveTab('OVERVIEW')}
             className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'OVERVIEW'
-                ? 'bg-[var(--brand-primary)] text-white shadow-sm'
-                : 'text-[var(--text-muted)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)]'
+                ? 'bg-[var(--accent-primary)] text-white shadow-sm'
+                : 'text-[var(--text-muted)] hover:bg-[var(--bg-surface-subtle)] hover:text-[var(--text-main)]'
             }`}
           >
             <Receipt className="h-4 w-4" />
@@ -548,8 +548,8 @@ export default function FinanceDashboardPage() {
             onClick={() => setActiveTab('SUBSCRIPTIONS')}
             className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'SUBSCRIPTIONS'
-                ? 'bg-[var(--brand-primary)] text-white shadow-sm'
-                : 'text-[var(--text-muted)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)]'
+                ? 'bg-[var(--accent-primary)] text-white shadow-sm'
+                : 'text-[var(--text-muted)] hover:bg-[var(--bg-surface-subtle)] hover:text-[var(--text-main)]'
             }`}
           >
             <Users className="h-4 w-4" />
@@ -561,8 +561,8 @@ export default function FinanceDashboardPage() {
             onClick={() => setActiveTab('PLANS')}
             className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'PLANS'
-                ? 'bg-[var(--brand-primary)] text-white shadow-sm'
-                : 'text-[var(--text-muted)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)]'
+                ? 'bg-[var(--accent-primary)] text-white shadow-sm'
+                : 'text-[var(--text-muted)] hover:bg-[var(--bg-surface-subtle)] hover:text-[var(--text-main)]'
             }`}
           >
             <Layers className="h-4 w-4" />
@@ -578,8 +578,8 @@ export default function FinanceDashboardPage() {
               {/* Payment Methods Breakdown */}
               <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 shadow-sm space-y-4">
                 <div className="flex items-center gap-2">
-                  <CreditCard className="h-4 w-4 text-[var(--brand-primary)]" />
-                  <h3 className="text-sm font-bold text-[var(--text-primary)]">
+                  <CreditCard className="h-4 w-4 text-[var(--accent-primary)]" />
+                  <h3 className="text-sm font-bold text-[var(--text-main)]">
                     {t('finance.paymentMethods', 'طرق الدفع المعتمدة')}
                   </h3>
                 </div>
@@ -595,7 +595,7 @@ export default function FinanceDashboardPage() {
                       return (
                         <div key={method} className="space-y-1">
                           <div className="flex justify-between text-xs">
-                            <span className="font-semibold text-[var(--text-primary)]">
+                            <span className="font-semibold text-[var(--text-main)]">
                               {method === 'CASH'
                                 ? 'نقدي (كاش)'
                                 : method === 'POS'
@@ -610,9 +610,9 @@ export default function FinanceDashboardPage() {
                               {amount.toLocaleString()} ر.س ({percentage}%)
                             </span>
                           </div>
-                          <div className="h-2 w-full rounded-full bg-[var(--bg-elevated)] overflow-hidden">
+                          <div className="h-2 w-full rounded-full bg-[var(--bg-surface-subtle)] overflow-hidden">
                             <div
-                              className="h-full rounded-full bg-[var(--brand-primary)]"
+                              className="h-full rounded-full bg-[var(--accent-primary)]"
                               style={{ width: `${percentage}%` }}
                             />
                           </div>
@@ -625,8 +625,8 @@ export default function FinanceDashboardPage() {
               {/* Branch Revenue Breakdown */}
               <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 shadow-sm space-y-4">
                 <div className="flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-[var(--brand-primary)]" />
-                  <h3 className="text-sm font-bold text-[var(--text-primary)]">
+                  <Building2 className="h-4 w-4 text-[var(--accent-primary)]" />
+                  <h3 className="text-sm font-bold text-[var(--text-main)]">
                     إيرادات الفروع والملاعب
                   </h3>
                 </div>
@@ -641,11 +641,9 @@ export default function FinanceDashboardPage() {
                     Object.entries(metrics.branchRevenue).map(([branchName, amount]) => (
                       <div
                         key={branchName}
-                        className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 text-xs flex justify-between items-center"
+                        className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] p-3 text-xs flex justify-between items-center"
                       >
-                        <span className="font-semibold text-[var(--text-primary)]">
-                          {branchName}
-                        </span>
+                        <span className="font-semibold text-[var(--text-main)]">{branchName}</span>
                         <span className="font-extrabold text-emerald-600 dark:text-emerald-400">
                           {amount.toLocaleString()} ر.س
                         </span>
@@ -660,7 +658,7 @@ export default function FinanceDashboardPage() {
             <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 shadow-sm space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
-                  <h3 className="text-sm font-bold text-[var(--text-primary)]">
+                  <h3 className="text-sm font-bold text-[var(--text-main)]">
                     سجل القيود والمعاملات المالية
                   </h3>
                   <p className="text-xs text-[var(--text-muted)]">
@@ -676,14 +674,14 @@ export default function FinanceDashboardPage() {
                       placeholder="بحث برقم الإيصال أو اللاعب..."
                       value={txSearch}
                       onChange={(e) => setTxSearch(e.target.value)}
-                      className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] pr-9 pl-3 py-1.5 text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:border-[var(--brand-primary)] focus:outline-none"
+                      className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] pr-9 pl-3 py-1.5 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:outline-none"
                     />
                   </div>
 
                   <select
                     value={txTypeFilter}
                     onChange={(e) => setTxTypeFilter(e.target.value)}
-                    className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-1.5 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none cursor-pointer"
+                    className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3 py-1.5 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none cursor-pointer"
                   >
                     <option value="ALL">جميع الحركات</option>
                     <option value="MEMBERSHIP_FEE">رسوم اشتراك لاعب</option>
@@ -717,9 +715,9 @@ export default function FinanceDashboardPage() {
                       {filteredTransactions.map((tx) => (
                         <tr
                           key={tx.id}
-                          className="hover:bg-[var(--bg-elevated)]/50 transition-colors"
+                          className="hover:bg-[var(--bg-surface-subtle)]/50 transition-colors"
                         >
-                          <td className="py-3 px-3 font-mono font-bold text-[var(--brand-primary)]">
+                          <td className="py-3 px-3 font-mono font-bold text-[var(--accent-primary)]">
                             {tx.receiptNumber || tx.id.slice(0, 8)}
                           </td>
                           <td className="py-3 px-3 text-[var(--text-muted)] font-mono">
@@ -730,7 +728,7 @@ export default function FinanceDashboardPage() {
                               minute: '2-digit',
                             })}
                           </td>
-                          <td className="py-3 px-3 font-bold text-[var(--text-primary)]">
+                          <td className="py-3 px-3 font-bold text-[var(--text-main)]">
                             {tx.playerName || 'مصروف تشغيلي للحصة'}
                           </td>
                           <td className="py-3 px-3">
@@ -805,7 +803,7 @@ export default function FinanceDashboardPage() {
           <div className="space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <h3 className="text-sm font-bold text-[var(--text-primary)]">
+                <h3 className="text-sm font-bold text-[var(--text-main)]">
                   {t('subscriptions.playerTitle', 'اشتراكات وعضويات اللاعبين')}
                 </h3>
                 <p className="text-xs text-[var(--text-muted)]">
@@ -821,14 +819,14 @@ export default function FinanceDashboardPage() {
                     placeholder="بحث باسم اللاعب..."
                     value={subSearch}
                     onChange={(e) => setSubSearch(e.target.value)}
-                    className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] pr-9 pl-3 py-1.5 text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:border-[var(--brand-primary)] focus:outline-none"
+                    className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] pr-9 pl-3 py-1.5 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:outline-none"
                   />
                 </div>
 
                 <select
                   value={subStatusFilter}
                   onChange={(e) => setSubStatusFilter(e.target.value)}
-                  className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-1.5 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none cursor-pointer"
+                  className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3 py-1.5 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none cursor-pointer"
                 >
                   <option value="ALL">جميع الحالات</option>
                   <option value="ACTIVE">نشط ومسدد</option>
@@ -848,7 +846,7 @@ export default function FinanceDashboardPage() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-right text-xs">
                     <thead>
-                      <tr className="border-b border-[var(--border-subtle)] bg-[var(--bg-elevated)]/50 text-[var(--text-muted)]">
+                      <tr className="border-b border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)]/50 text-[var(--text-muted)]">
                         <th className="py-3 px-4">اللاعب</th>
                         <th className="py-3 px-4">الباقة التدريبية</th>
                         <th className="py-3 px-4">تاريخ البداية</th>
@@ -864,9 +862,9 @@ export default function FinanceDashboardPage() {
                       {filteredSubscriptions.map((sub) => (
                         <tr
                           key={sub.id}
-                          className="hover:bg-[var(--bg-elevated)]/40 transition-colors"
+                          className="hover:bg-[var(--bg-surface-subtle)]/40 transition-colors"
                         >
-                          <td className="py-3 px-4 font-bold text-[var(--text-primary)]">
+                          <td className="py-3 px-4 font-bold text-[var(--text-main)]">
                             {sub.playerName}
                           </td>
                           <td className="py-3 px-4 text-[var(--text-muted)]">
@@ -878,7 +876,7 @@ export default function FinanceDashboardPage() {
                           <td className="py-3 px-4 font-mono text-[var(--text-muted)]">
                             {String(sub.dueDate).slice(0, 10)}
                           </td>
-                          <td className="py-3 px-4 font-mono font-bold text-[var(--text-primary)]">
+                          <td className="py-3 px-4 font-mono font-bold text-[var(--text-main)]">
                             {sub.feeAmount.toLocaleString()} ر.س
                           </td>
                           <td className="py-3 px-4 font-mono font-bold text-emerald-600 dark:text-emerald-400">
@@ -918,7 +916,7 @@ export default function FinanceDashboardPage() {
                             <button
                               type="button"
                               onClick={() => handleOpenPaymentModal(sub)}
-                              className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--brand-primary)] px-3 py-1.5 text-xs font-bold text-white shadow hover:brightness-110 transition-all cursor-pointer"
+                              className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--accent-primary)] px-3 py-1.5 text-xs font-bold text-white shadow hover:brightness-110 transition-all cursor-pointer"
                             >
                               <CreditCard className="h-3.5 w-3.5" />
                               <span>تحصيل دفعة</span>
@@ -939,15 +937,15 @@ export default function FinanceDashboardPage() {
           <div className="space-y-6">
             {/* SaaS Contract Card */}
             {tenantSub && (
-              <div className="rounded-2xl border border-[var(--brand-primary)]/40 bg-[var(--bg-surface)] p-6 shadow-sm space-y-4">
+              <div className="rounded-2xl border border-[var(--accent-primary)]/40 bg-[var(--bg-surface)] p-6 shadow-sm space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--brand-surface)] text-[var(--brand-primary)] font-bold">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--brand-surface)] text-[var(--accent-primary)] font-bold">
                       <ShieldCheck className="h-6 w-6" />
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <h3 className="text-base font-bold text-[var(--text-primary)]">
+                        <h3 className="text-base font-bold text-[var(--text-main)]">
                           عقد اشتراك الأكاديمية بالمنصة ({tenantSub.planName})
                         </h3>
                         <span className="rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 px-2.5 py-0.5 text-xs font-bold border border-emerald-500/30">
@@ -965,7 +963,7 @@ export default function FinanceDashboardPage() {
                     <span className="text-xs text-[var(--text-muted)] block">
                       قيمة الاشتراك الشهري (MRR)
                     </span>
-                    <span className="text-xl font-black text-[var(--brand-primary)]">
+                    <span className="text-xl font-black text-[var(--accent-primary)]">
                       {tenantSub.currentPrice.toLocaleString()} {tenantSub.currency || 'ر.س'}
                     </span>
                   </div>
@@ -974,7 +972,7 @@ export default function FinanceDashboardPage() {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 border-t border-[var(--border-subtle)] text-xs">
                   <div>
                     <span className="text-[var(--text-muted)] block mb-0.5">تاريخ بدء العقد:</span>
-                    <span className="font-mono font-bold text-[var(--text-primary)]">
+                    <span className="font-mono font-bold text-[var(--text-main)]">
                       {String(tenantSub.startDate).slice(0, 10)}
                     </span>
                   </div>
@@ -982,7 +980,7 @@ export default function FinanceDashboardPage() {
                     <span className="text-[var(--text-muted)] block mb-0.5">
                       تاريخ التجديد القادم:
                     </span>
-                    <span className="font-mono font-bold text-[var(--text-primary)]">
+                    <span className="font-mono font-bold text-[var(--text-main)]">
                       {String(tenantSub.renewalDate).slice(0, 10)}
                     </span>
                   </div>
@@ -990,7 +988,7 @@ export default function FinanceDashboardPage() {
                     <span className="text-[var(--text-muted)] block mb-0.5">
                       الحد الأقصى للفروع:
                     </span>
-                    <span className="font-bold text-[var(--text-primary)]">
+                    <span className="font-bold text-[var(--text-main)]">
                       {tenantSub.maxBranches} فروع
                     </span>
                   </div>
@@ -998,7 +996,7 @@ export default function FinanceDashboardPage() {
                     <span className="text-[var(--text-muted)] block mb-0.5">
                       الحد الأقصى للاعبين:
                     </span>
-                    <span className="font-bold text-[var(--text-primary)]">
+                    <span className="font-bold text-[var(--text-main)]">
                       {tenantSub.maxPlayers} لاعب
                     </span>
                   </div>
@@ -1010,7 +1008,7 @@ export default function FinanceDashboardPage() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-sm font-bold text-[var(--text-primary)]">
+                  <h3 className="text-sm font-bold text-[var(--text-main)]">
                     باقات العضويات والتدريب للأكاديمية
                   </h3>
                   <p className="text-xs text-[var(--text-muted)]">
@@ -1021,7 +1019,7 @@ export default function FinanceDashboardPage() {
                 <button
                   type="button"
                   onClick={() => setIsCreatePlanOpen(true)}
-                  className="flex items-center gap-1.5 rounded-xl bg-[var(--brand-primary)] px-4 py-2 text-xs font-bold text-white shadow hover:brightness-110 transition-all cursor-pointer"
+                  className="flex items-center gap-1.5 rounded-xl bg-[var(--accent-primary)] px-4 py-2 text-xs font-bold text-white shadow hover:brightness-110 transition-all cursor-pointer"
                 >
                   <PlusCircle className="h-4 w-4" />
                   <span>إنشاء باقة جديدة</span>
@@ -1036,7 +1034,7 @@ export default function FinanceDashboardPage() {
                   >
                     <div>
                       <div className="flex justify-between items-start">
-                        <h4 className="text-base font-bold text-[var(--text-primary)]">{p.name}</h4>
+                        <h4 className="text-base font-bold text-[var(--text-main)]">{p.name}</h4>
                         <span className="rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 text-[10px] font-bold">
                           {p.billingPeriod === 'MONTHLY' ? 'شهري' : p.billingPeriod}
                         </span>
@@ -1048,14 +1046,14 @@ export default function FinanceDashboardPage() {
 
                     <div className="pt-4 border-t border-[var(--border-subtle)] flex items-baseline justify-between">
                       <div>
-                        <span className="text-2xl font-black text-[var(--text-primary)]">
+                        <span className="text-2xl font-black text-[var(--text-main)]">
                           {p.feeAmount.toLocaleString()}
                         </span>
                         <span className="text-xs text-[var(--text-muted)] font-semibold mr-1">
                           ر.س / دورة
                         </span>
                       </div>
-                      <span className="text-xs text-[var(--brand-primary)] font-bold">
+                      <span className="text-xs text-[var(--accent-primary)] font-bold">
                         {p.billingPeriod === 'MONTHLY'
                           ? 'شهري'
                           : p.billingPeriod === 'PER_SESSION'
@@ -1081,7 +1079,7 @@ export default function FinanceDashboardPage() {
                   <CreditCard className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-[var(--text-primary)]">
+                  <h3 className="text-base font-bold text-[var(--text-main)]">
                     تحصيل دفعة مالية للاعب
                   </h3>
                   <p className="text-xs text-[var(--text-muted)]">
@@ -1092,22 +1090,22 @@ export default function FinanceDashboardPage() {
               <button
                 type="button"
                 onClick={() => setIsCollectPaymentOpen(false)}
-                className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                className="p-1 text-[var(--text-muted)] hover:text-[var(--text-main)]"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
             <form onSubmit={handleSubmitPayment} className="space-y-4">
-              <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 text-xs flex justify-between items-center">
+              <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] p-3 text-xs flex justify-between items-center">
                 <span className="text-[var(--text-muted)]">المتبقي على الاشتراك:</span>
-                <span className="font-extrabold text-[var(--brand-primary)]">
+                <span className="font-extrabold text-[var(--accent-primary)]">
                   {selectedSubForPayment.outstandingBalance} ر.س
                 </span>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                <label className="block text-xs font-semibold text-[var(--text-main)] mb-1">
                   المبلغ المحصل (ر.س) *
                 </label>
                 <input
@@ -1117,12 +1115,12 @@ export default function FinanceDashboardPage() {
                   required
                   value={paymentAmount}
                   onChange={(e) => setPaymentAmount(parseFloat(e.target.value) || 0)}
-                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2.5 text-sm font-bold text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none"
+                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-sm font-bold text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                <label className="block text-xs font-semibold text-[var(--text-main)] mb-1">
                   طريقة التحصيل *
                 </label>
                 <select
@@ -1130,7 +1128,7 @@ export default function FinanceDashboardPage() {
                   onChange={(e) =>
                     setPaymentMethod(e.target.value as 'CASH' | 'CARD' | 'POS' | 'BANK_TRANSFER')
                   }
-                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2.5 text-xs font-semibold text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none cursor-pointer"
+                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs font-semibold text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none cursor-pointer"
                 >
                   <option value="CASH">نقدي (كاش بالملعب)</option>
                   <option value="POS">جهاز نقاط البيع (POS / شبكة)</option>
@@ -1140,7 +1138,7 @@ export default function FinanceDashboardPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                <label className="block text-xs font-semibold text-[var(--text-main)] mb-1">
                   رقم الإيصال / المرجع
                 </label>
                 <input
@@ -1148,12 +1146,12 @@ export default function FinanceDashboardPage() {
                   placeholder="رقم الإيصال أو الحوالة..."
                   value={paymentRefNumber}
                   onChange={(e) => setPaymentRefNumber(e.target.value)}
-                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:border-[var(--brand-primary)] focus:outline-none"
+                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                <label className="block text-xs font-semibold text-[var(--text-main)] mb-1">
                   ملاحظات
                 </label>
                 <input
@@ -1161,7 +1159,7 @@ export default function FinanceDashboardPage() {
                   placeholder="ملاحظات توثيقية إضافية..."
                   value={paymentNotes}
                   onChange={(e) => setPaymentNotes(e.target.value)}
-                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:border-[var(--brand-primary)] focus:outline-none"
+                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:outline-none"
                 />
               </div>
 
@@ -1169,7 +1167,7 @@ export default function FinanceDashboardPage() {
                 <button
                   type="button"
                   onClick={() => setIsCollectPaymentOpen(false)}
-                  className="rounded-xl border border-[var(--border-subtle)] px-4 py-2 text-xs font-semibold text-[var(--text-muted)] hover:bg-[var(--bg-elevated)] transition-colors cursor-pointer"
+                  className="rounded-xl border border-[var(--border-subtle)] px-4 py-2 text-xs font-semibold text-[var(--text-muted)] hover:bg-[var(--bg-surface-subtle)] transition-colors cursor-pointer"
                 >
                   إلغاء
                 </button>
@@ -1197,7 +1195,7 @@ export default function FinanceDashboardPage() {
                   <RotateCcw className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-[var(--text-primary)]">
+                  <h3 className="text-base font-bold text-[var(--text-main)]">
                     عكس المعاملة وإلغاء القيد
                   </h3>
                   <p className="text-xs text-[var(--text-muted)]">
@@ -1208,7 +1206,7 @@ export default function FinanceDashboardPage() {
               <button
                 type="button"
                 onClick={() => setReversalTx(null)}
-                className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                className="p-1 text-[var(--text-muted)] hover:text-[var(--text-main)]"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -1221,7 +1219,7 @@ export default function FinanceDashboardPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                <label className="block text-xs font-semibold text-[var(--text-main)] mb-1">
                   سبب الإلغاء وعكس القيد (إلزامي) *
                 </label>
                 <textarea
@@ -1230,7 +1228,7 @@ export default function FinanceDashboardPage() {
                   value={reversalReason}
                   onChange={(e) => setReversalReason(e.target.value)}
                   placeholder="يرجى كتابة سبب الإلغاء بالتفصيل (مثل: خطأ في إدخال المبلغ، دفع مكرر، طلب ولي الأمر...)"
-                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:border-[var(--brand-primary)] focus:outline-none resize-none"
+                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] p-3 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:outline-none resize-none"
                 />
               </div>
 
@@ -1238,7 +1236,7 @@ export default function FinanceDashboardPage() {
                 <button
                   type="button"
                   onClick={() => setReversalTx(null)}
-                  className="rounded-xl border border-[var(--border-subtle)] px-4 py-2 text-xs font-semibold text-[var(--text-muted)] hover:bg-[var(--bg-elevated)] transition-colors cursor-pointer"
+                  className="rounded-xl border border-[var(--border-subtle)] px-4 py-2 text-xs font-semibold text-[var(--text-muted)] hover:bg-[var(--bg-surface-subtle)] transition-colors cursor-pointer"
                 >
                   إلغاء
                 </button>
@@ -1262,11 +1260,11 @@ export default function FinanceDashboardPage() {
           <div className="w-full max-w-lg rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-2xl relative space-y-4 animate-in fade-in zoom-in-95">
             <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
               <div className="flex items-center gap-2">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--brand-surface)] text-[var(--brand-primary)]">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--brand-surface)] text-[var(--accent-primary)]">
                   <PlusCircle className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-[var(--text-primary)]">
+                  <h3 className="text-base font-bold text-[var(--text-main)]">
                     تسجيل اشتراك جديد للاعب
                   </h3>
                   <p className="text-xs text-[var(--text-muted)]">
@@ -1277,7 +1275,7 @@ export default function FinanceDashboardPage() {
               <button
                 type="button"
                 onClick={() => setIsCreateSubOpen(false)}
-                className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                className="p-1 text-[var(--text-muted)] hover:text-[var(--text-main)]"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -1285,14 +1283,14 @@ export default function FinanceDashboardPage() {
 
             <form onSubmit={handleSubmitNewSubscription} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                <label className="block text-xs font-semibold text-[var(--text-main)] mb-1">
                   اختيار اللاعب *
                 </label>
                 <select
                   required
                   value={selectedPlayerId}
                   onChange={(e) => setSelectedPlayerId(e.target.value)}
-                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2.5 text-xs font-semibold text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none cursor-pointer"
+                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs font-semibold text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none cursor-pointer"
                 >
                   {allPlayers.map((p) => (
                     <option key={p.id} value={p.id}>
@@ -1303,7 +1301,7 @@ export default function FinanceDashboardPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                <label className="block text-xs font-semibold text-[var(--text-main)] mb-1">
                   الباقة التدريبية (اختياري)
                 </label>
                 <select
@@ -1314,7 +1312,7 @@ export default function FinanceDashboardPage() {
                     const chosen = plans.find((p) => p.id === planId);
                     if (chosen) setSubFeeAmount(chosen.feeAmount);
                   }}
-                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2.5 text-xs font-semibold text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none cursor-pointer"
+                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs font-semibold text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none cursor-pointer"
                 >
                   <option value="">بدون باقة محددة (مبلغ مخصص)</option>
                   {plans.map((p) => (
@@ -1327,7 +1325,7 @@ export default function FinanceDashboardPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                  <label className="block text-xs font-semibold text-[var(--text-main)] mb-1">
                     قيمة الاشتراك (ر.س) *
                   </label>
                   <input
@@ -1337,12 +1335,12 @@ export default function FinanceDashboardPage() {
                     required
                     value={subFeeAmount}
                     onChange={(e) => setSubFeeAmount(parseFloat(e.target.value) || 0)}
-                    className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 text-xs text-[var(--text-primary)] font-bold focus:border-[var(--brand-primary)] focus:outline-none"
+                    className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2 text-xs text-[var(--text-main)] font-bold focus:border-[var(--accent-primary)] focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                  <label className="block text-xs font-semibold text-[var(--text-main)] mb-1">
                     خصم ممنوح (ر.س)
                   </label>
                   <input
@@ -1351,14 +1349,14 @@ export default function FinanceDashboardPage() {
                     step="0.01"
                     value={subDiscountAmount}
                     onChange={(e) => setSubDiscountAmount(parseFloat(e.target.value) || 0)}
-                    className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none"
+                    className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none"
                   />
                 </div>
               </div>
 
               {subDiscountAmount > 0 && (
                 <div>
-                  <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                  <label className="block text-xs font-semibold text-[var(--text-main)] mb-1">
                     سبب الخصم الممنوح
                   </label>
                   <input
@@ -1366,13 +1364,13 @@ export default function FinanceDashboardPage() {
                     placeholder="مثال: خصم إخوة، منحة تفوق رياضي..."
                     value={subDiscountReason}
                     onChange={(e) => setSubDiscountReason(e.target.value)}
-                    className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none"
+                    className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none"
                   />
                 </div>
               )}
 
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                <label className="block text-xs font-semibold text-[var(--text-main)] mb-1">
                   تاريخ استحقاق التجديد *
                 </label>
                 <input
@@ -1380,12 +1378,12 @@ export default function FinanceDashboardPage() {
                   required
                   value={subDueDate}
                   onChange={(e) => setSubDueDate(e.target.value)}
-                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none"
+                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                <label className="block text-xs font-semibold text-[var(--text-main)] mb-1">
                   ملاحظات الاشتراك
                 </label>
                 <textarea
@@ -1393,7 +1391,7 @@ export default function FinanceDashboardPage() {
                   value={subNotes}
                   onChange={(e) => setSubNotes(e.target.value)}
                   placeholder="ملاحظات العضوية والاشتراك..."
-                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:border-[var(--brand-primary)] focus:outline-none resize-none"
+                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] p-3 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:outline-none resize-none"
                 />
               </div>
 
@@ -1401,14 +1399,14 @@ export default function FinanceDashboardPage() {
                 <button
                   type="button"
                   onClick={() => setIsCreateSubOpen(false)}
-                  className="rounded-xl border border-[var(--border-subtle)] px-4 py-2 text-xs font-semibold text-[var(--text-muted)] hover:bg-[var(--bg-elevated)] transition-colors cursor-pointer"
+                  className="rounded-xl border border-[var(--border-subtle)] px-4 py-2 text-xs font-semibold text-[var(--text-muted)] hover:bg-[var(--bg-surface-subtle)] transition-colors cursor-pointer"
                 >
                   إلغاء
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmittingNewSub || !selectedPlayerId || subFeeAmount <= 0}
-                  className="flex items-center gap-1.5 rounded-xl bg-[var(--brand-primary)] px-5 py-2 text-xs font-bold text-white shadow hover:brightness-110 disabled:opacity-50 transition-all cursor-pointer"
+                  className="flex items-center gap-1.5 rounded-xl bg-[var(--accent-primary)] px-5 py-2 text-xs font-bold text-white shadow hover:brightness-110 disabled:opacity-50 transition-all cursor-pointer"
                 >
                   {isSubmittingNewSub && <RefreshCw className="h-3.5 w-3.5 animate-spin" />}
                   <span>حفظ الاشتراك</span>
@@ -1425,11 +1423,11 @@ export default function FinanceDashboardPage() {
           <div className="w-full max-w-md rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-2xl relative space-y-4 animate-in fade-in zoom-in-95">
             <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
               <div className="flex items-center gap-2">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--brand-surface)] text-[var(--brand-primary)]">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--brand-surface)] text-[var(--accent-primary)]">
                   <Layers className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-[var(--text-primary)]">
+                  <h3 className="text-base font-bold text-[var(--text-main)]">
                     إنشاء باقة تدريبية جديدة
                   </h3>
                   <p className="text-xs text-[var(--text-muted)]">
@@ -1440,7 +1438,7 @@ export default function FinanceDashboardPage() {
               <button
                 type="button"
                 onClick={() => setIsCreatePlanOpen(false)}
-                className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                className="p-1 text-[var(--text-muted)] hover:text-[var(--text-main)]"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -1448,7 +1446,7 @@ export default function FinanceDashboardPage() {
 
             <form onSubmit={handleSubmitNewPlan} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                <label className="block text-xs font-semibold text-[var(--text-main)] mb-1">
                   اسم الباقة التدريبية *
                 </label>
                 <input
@@ -1457,13 +1455,13 @@ export default function FinanceDashboardPage() {
                   placeholder="مثال: باقة النخبة الشهرية (3 حصص أسبوعياً)"
                   value={planName}
                   onChange={(e) => setPlanName(e.target.value)}
-                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none"
+                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                  <label className="block text-xs font-semibold text-[var(--text-main)] mb-1">
                     السعر (ر.س) *
                   </label>
                   <input
@@ -1473,12 +1471,12 @@ export default function FinanceDashboardPage() {
                     required
                     value={planPrice}
                     onChange={(e) => setPlanPrice(parseFloat(e.target.value) || 0)}
-                    className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 text-xs text-[var(--text-primary)] font-bold focus:border-[var(--brand-primary)] focus:outline-none"
+                    className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2 text-xs text-[var(--text-main)] font-bold focus:border-[var(--accent-primary)] focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                  <label className="block text-xs font-semibold text-[var(--text-main)] mb-1">
                     دورة الفوترة *
                   </label>
                   <select
@@ -1488,7 +1486,7 @@ export default function FinanceDashboardPage() {
                         e.target.value as 'MONTHLY' | 'QUARTERLY' | 'ANNUAL' | 'PER_SESSION',
                       )
                     }
-                    className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 text-xs font-semibold text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none cursor-pointer"
+                    className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2 text-xs font-semibold text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none cursor-pointer"
                   >
                     <option value="MONTHLY">شهري (Monthly)</option>
                     <option value="QUARTERLY">ربع سنوي (3 أشهر)</option>
@@ -1499,7 +1497,7 @@ export default function FinanceDashboardPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                <label className="block text-xs font-semibold text-[var(--text-main)] mb-1">
                   وصف ومميزات الباقة
                 </label>
                 <textarea
@@ -1507,7 +1505,7 @@ export default function FinanceDashboardPage() {
                   value={planDescription}
                   onChange={(e) => setPlanDescription(e.target.value)}
                   placeholder="تفاصيل التمارين والمميزات المرفقة..."
-                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:border-[var(--brand-primary)] focus:outline-none resize-none"
+                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] p-3 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:outline-none resize-none"
                 />
               </div>
 
@@ -1515,14 +1513,14 @@ export default function FinanceDashboardPage() {
                 <button
                   type="button"
                   onClick={() => setIsCreatePlanOpen(false)}
-                  className="rounded-xl border border-[var(--border-subtle)] px-4 py-2 text-xs font-semibold text-[var(--text-muted)] hover:bg-[var(--bg-elevated)] transition-colors cursor-pointer"
+                  className="rounded-xl border border-[var(--border-subtle)] px-4 py-2 text-xs font-semibold text-[var(--text-muted)] hover:bg-[var(--bg-surface-subtle)] transition-colors cursor-pointer"
                 >
                   إلغاء
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmittingPlan || !planName.trim() || planPrice <= 0}
-                  className="flex items-center gap-1.5 rounded-xl bg-[var(--brand-primary)] px-5 py-2 text-xs font-bold text-white shadow hover:brightness-110 disabled:opacity-50 transition-all cursor-pointer"
+                  className="flex items-center gap-1.5 rounded-xl bg-[var(--accent-primary)] px-5 py-2 text-xs font-bold text-white shadow hover:brightness-110 disabled:opacity-50 transition-all cursor-pointer"
                 >
                   {isSubmittingPlan && <RefreshCw className="h-3.5 w-3.5 animate-spin" />}
                   <span>إنشاء الباقة</span>

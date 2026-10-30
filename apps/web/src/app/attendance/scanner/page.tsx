@@ -702,19 +702,19 @@ export default function MobileAttendanceScannerPage() {
         )}
 
         {/* Session Selector Header */}
-        <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 sm:p-5 shadow-sm">
+        <div className="rounded-3xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-4 sm:p-5 shadow-xs">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <label
                 htmlFor="session-selector"
-                className="block text-xs font-bold text-[var(--text-secondary)] mb-1.5"
+                className="block text-xs font-bold text-[var(--text-muted)] mb-1.5"
               >
                 اختر الحصة التدريبية المراد تسجيل الحضور لها:
               </label>
 
               {isLoadingSessions ? (
-                <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
-                  <RefreshCw className="h-3.5 w-3.5 animate-spin text-[var(--brand-primary)]" />
+                <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
+                  <RefreshCw className="h-3.5 w-3.5 animate-spin text-[var(--accent-primary)]" />
                   <span>جارٍ تحميل الحصص المتاحة...</span>
                 </div>
               ) : sessions.length === 0 ? (
@@ -726,7 +726,7 @@ export default function MobileAttendanceScannerPage() {
                   id="session-selector"
                   value={selectedSessionId}
                   onChange={(e) => setSelectedSessionId(e.target.value)}
-                  className="w-full sm:w-80 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2.5 text-xs font-semibold text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none cursor-pointer transition-colors"
+                  className="w-full sm:w-80 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs font-semibold text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none cursor-pointer transition-colors"
                 >
                   {sessions.map((s) => (
                     <option key={s.id} value={s.id}>
@@ -739,13 +739,13 @@ export default function MobileAttendanceScannerPage() {
 
             {selectedSession && (
               <div className="flex flex-wrap items-center gap-2 text-xs">
-                <span className="rounded-lg bg-[var(--bg-elevated)] px-3 py-1.5 text-[var(--brand-primary)] font-semibold border border-[var(--border-subtle)]">
+                <span className="rounded-lg bg-[var(--bg-surface-subtle)] px-3 py-1.5 text-[var(--accent-primary)] font-semibold border border-[var(--border-subtle)]">
                   📅 {selectedSession.sessionDate}
                 </span>
-                <span className="rounded-lg bg-[var(--bg-elevated)] px-3 py-1.5 text-[var(--brand-primary)] font-semibold border border-[var(--border-subtle)]">
+                <span className="rounded-lg bg-[var(--bg-surface-subtle)] px-3 py-1.5 text-[var(--accent-primary)] font-semibold border border-[var(--border-subtle)]">
                   ⏰ {selectedSession.startTime} - {selectedSession.endTime}
                 </span>
-                <span className="rounded-lg bg-[var(--bg-elevated)] px-3 py-1.5 text-[var(--text-primary)] font-semibold border border-[var(--border-subtle)]">
+                <span className="rounded-lg bg-[var(--bg-surface-subtle)] px-3 py-1.5 text-[var(--text-main)] font-semibold border border-[var(--border-subtle)]">
                   حضور: {selectedSession.totalPresent + selectedSession.totalLate} /{' '}
                   {selectedSession.totalExpected}
                 </span>
@@ -755,7 +755,7 @@ export default function MobileAttendanceScannerPage() {
         </div>
 
         {/* Viewfinder & Continuous Scanner Section */}
-        <div className="relative mx-auto w-full max-w-lg overflow-hidden rounded-3xl border-2 border-[var(--brand-primary)]/40 bg-black shadow-2xl">
+        <div className="relative mx-auto w-full max-w-lg overflow-hidden rounded-3xl border-2 border-[var(--accent-primary)]/40 bg-black shadow-2xl">
           {/* Video Feed */}
           <div className="relative aspect-[4/3] w-full bg-black overflow-hidden flex items-center justify-center">
             <video
@@ -781,7 +781,7 @@ export default function MobileAttendanceScannerPage() {
                   <div className="absolute -bottom-1 -left-1 h-6 w-6 border-b-4 border-l-4 border-emerald-400 rounded-bl-lg" />
 
                   {/* Horizontal Animated Laser Scanline */}
-                  <div className="absolute right-0 left-0 h-0.5 bg-gradient-to-r from-transparent via-emerald-400 to-transparent shadow-[0_0_12px_#45c387] animate-pulse" />
+                  <div className="absolute right-0 left-0 h-0.5 bg-gradient-to-r from-transparent via-[var(--accent-primary)] to-transparent shadow-[0_0_12px_var(--accent-primary)] animate-pulse-live" />
                 </div>
               </div>
             )}
@@ -789,7 +789,7 @@ export default function MobileAttendanceScannerPage() {
             {/* Camera Controls Overlay */}
             <div className="absolute top-3 right-3 left-3 flex items-center justify-between z-20">
               <span className="flex items-center gap-1.5 rounded-full bg-black/60 px-3 py-1 text-[11px] font-bold text-white backdrop-blur-md border border-white/10">
-                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
+                <span className="h-2 w-2 rounded-full bg-[var(--accent-primary)] animate-pulse-live" />
                 ماسح مستمر (Live Continuous)
               </span>
 
@@ -820,16 +820,16 @@ export default function MobileAttendanceScannerPage() {
 
             {/* Camera Inactive / Error Fallback */}
             {!isCameraActive && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-[var(--bg-surface)] p-6 text-center text-[var(--text-secondary)] z-10">
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-[var(--bg-surface)] p-6 text-center text-[var(--text-muted)] z-10">
                 <CameraOff className="h-12 w-12 text-red-500 mb-3 opacity-60" />
-                <p className="text-sm font-bold text-[var(--text-primary)]">الكاميرا غير مفعلة</p>
-                <p className="text-xs text-[var(--text-secondary)] mt-1 max-w-xs">
+                <p className="text-sm font-bold text-[var(--text-main)]">الكاميرا غير مفعلة</p>
+                <p className="text-xs text-[var(--text-muted)] mt-1 max-w-xs">
                   {cameraError || 'انقر لتفعيل الكاميرا والبدء في مسح بطاقات اللاعبين.'}
                 </p>
                 <button
                   type="button"
                   onClick={startCamera}
-                  className="mt-4 flex items-center gap-2 rounded-xl bg-[var(--brand-primary)] text-white px-5 py-2.5 text-xs font-bold shadow-lg hover:brightness-110 cursor-pointer"
+                  className="mt-4 flex items-center gap-2 rounded-xl bg-[var(--accent-primary)] text-white px-5 py-2.5 text-xs font-bold shadow-lg hover:brightness-110 cursor-pointer"
                 >
                   <Camera className="h-4 w-4" />
                   <span>تشغيل الكاميرا الآن</span>
@@ -872,14 +872,14 @@ export default function MobileAttendanceScannerPage() {
                   )}
 
                   <div>
-                    <h3 className="text-sm font-extrabold text-[var(--text-primary)]">
+                    <h3 className="text-sm font-extrabold text-[var(--text-main)]">
                       {activeFeedback.playerName
                         ? `${activeFeedback.playerName} • ${activeFeedback.title}`
                         : activeFeedback.title}
                     </h3>
                     <p className="text-xs mt-0.5 opacity-90">{activeFeedback.message}</p>
                     {activeFeedback.membershipNumber && (
-                      <span className="inline-block mt-1.5 font-mono text-[10px] font-bold bg-[var(--bg-elevated)] px-2 py-0.5 rounded border border-[var(--border-subtle)] text-[var(--text-primary)]">
+                      <span className="inline-block mt-1.5 font-mono text-[10px] font-bold bg-[var(--bg-surface-subtle)] px-2 py-0.5 rounded border border-[var(--border-subtle)] text-[var(--text-main)]">
                         {activeFeedback.membershipNumber}
                       </span>
                     )}
@@ -944,11 +944,11 @@ export default function MobileAttendanceScannerPage() {
         {/* Manual Input Fallback */}
         <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 sm:p-5 shadow-sm">
           <form onSubmit={handleManualSubmit} className="space-y-3">
-            <div className="flex items-center gap-2 text-xs font-bold text-[var(--text-primary)]">
-              <Search className="h-4 w-4 text-[var(--brand-primary)]" />
+            <div className="flex items-center gap-2 text-xs font-bold text-[var(--text-main)]">
+              <Search className="h-4 w-4 text-[var(--accent-primary)]" />
               <span>تسجيل يدوي كبديل (Manual Entry Fallback)</span>
             </div>
-            <p className="text-[11px] text-[var(--text-secondary)]">
+            <p className="text-[11px] text-[var(--text-muted)]">
               إذا كانت عدسة الكاميرا متسخة أو البطاقة تالفة، أدخل رمز بطاقة اللاعب يدوياً:
             </p>
 
@@ -958,12 +958,12 @@ export default function MobileAttendanceScannerPage() {
                 placeholder="أدخل رمز بطاقة اللاعب (مثال: a1b2c3d4e5...)"
                 value={manualCode}
                 onChange={(e) => setManualCode(e.target.value)}
-                className="flex-1 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2.5 text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:border-[var(--brand-primary)] focus:outline-none transition-colors"
+                className="flex-1 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:outline-none transition-colors"
               />
               <button
                 type="submit"
                 disabled={isSubmittingManual || !manualCode.trim()}
-                className="flex items-center gap-1.5 rounded-xl bg-[var(--brand-primary)] text-white px-4 py-2.5 text-xs font-bold hover:brightness-110 disabled:opacity-50 transition-all cursor-pointer"
+                className="flex items-center gap-1.5 rounded-xl bg-[var(--accent-primary)] text-white px-4 py-2.5 text-xs font-bold hover:brightness-110 disabled:opacity-50 transition-all cursor-pointer"
               >
                 {isSubmittingManual ? (
                   <RefreshCw className="h-4 w-4 animate-spin" />
@@ -977,10 +977,10 @@ export default function MobileAttendanceScannerPage() {
         </div>
 
         {/* Live Scanned Activity Feed */}
-        <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 space-y-4 shadow-sm">
+        <div className="rounded-3xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-5 space-y-4 shadow-xs">
           <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
-            <h2 className="text-sm font-bold text-[var(--text-primary)] flex items-center gap-2">
-              <RotateCcw className="h-4 w-4 text-[var(--brand-primary)]" />
+            <h2 className="text-sm font-bold text-[var(--text-main)] flex items-center gap-2">
+              <RotateCcw className="h-4 w-4 text-[var(--accent-primary)]" />
               <span>سجل عمليات المسح الأخيرة في هذه الحصة ({recentScans.length})</span>
             </h2>
 
@@ -988,7 +988,7 @@ export default function MobileAttendanceScannerPage() {
               <button
                 type="button"
                 onClick={() => setRecentScans([])}
-                className="text-[11px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+                className="text-[11px] text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer"
               >
                 مسح السجل
               </button>
@@ -996,7 +996,7 @@ export default function MobileAttendanceScannerPage() {
           </div>
 
           {recentScans.length === 0 ? (
-            <div className="py-8 text-center text-xs text-[var(--text-secondary)]">
+            <div className="py-8 text-center text-xs text-[var(--text-muted)]">
               لم يتم مسح أي بطاقة حتى الآن في هذه الجلسة. وجّه الكاميرا نحو بطاقة اللاعب للبدء.
             </div>
           ) : (
@@ -1018,14 +1018,14 @@ export default function MobileAttendanceScannerPage() {
                       }`}
                     />
                     <div>
-                      <span className="font-bold text-[var(--text-primary)]">
+                      <span className="font-bold text-[var(--text-main)]">
                         {scan.playerName || 'بطاقة غير محددة'}
                       </span>
-                      <p className="text-[11px] text-[var(--text-secondary)]">{scan.title}</p>
+                      <p className="text-[11px] text-[var(--text-muted)]">{scan.title}</p>
                     </div>
                   </div>
 
-                  <span className="font-mono text-[10px] text-[var(--text-secondary)]">
+                  <span className="font-mono text-[10px] text-[var(--text-muted)]">
                     {scan.timestamp}
                   </span>
                 </div>
@@ -1038,38 +1038,36 @@ export default function MobileAttendanceScannerPage() {
       {/* QUICK PAYMENT MODAL INSIDE SCANNER */}
       {isPaymentModalOpen && paymentPlayer && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="w-full max-w-md rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-2xl relative space-y-4 animate-in fade-in zoom-in-95">
+          <div className="w-full max-w-md rounded-3xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-6 shadow-float relative space-y-4 animate-scale-up">
             <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
               <div className="flex items-center gap-2">
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
                   <CreditCard className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-[var(--text-primary)]">
-                    تحصيل فوري للاعب
-                  </h3>
+                  <h3 className="text-base font-bold text-[var(--text-main)]">تحصيل فوري للاعب</h3>
                   <p className="text-xs text-[var(--text-muted)]">{paymentPlayer.name}</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setIsPaymentModalOpen(false)}
-                className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                className="p-1 text-[var(--text-muted)] hover:text-[var(--text-main)]"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
             <form onSubmit={handleSubmitQuickPayment} className="space-y-4">
-              <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 text-xs flex justify-between items-center">
+              <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] p-3 text-xs flex justify-between items-center">
                 <span className="text-[var(--text-muted)]">الرصيد المستحق:</span>
-                <span className="font-extrabold text-[var(--brand-primary)]">
+                <span className="font-extrabold text-[var(--accent-primary)]">
                   {paymentPlayer.outstandingBalance} ر.س
                 </span>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                <label className="block text-xs font-semibold text-[var(--text-main)] mb-1">
                   المبلغ المحصل (ر.س) *
                 </label>
                 <input
@@ -1079,12 +1077,12 @@ export default function MobileAttendanceScannerPage() {
                   required
                   value={paymentAmount}
                   onChange={(e) => setPaymentAmount(parseFloat(e.target.value) || 0)}
-                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2.5 text-sm font-bold text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none"
+                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-sm font-bold text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                <label className="block text-xs font-semibold text-[var(--text-main)] mb-1">
                   طريقة الدفع *
                 </label>
                 <select
@@ -1092,7 +1090,7 @@ export default function MobileAttendanceScannerPage() {
                   onChange={(e) =>
                     setPaymentMethod(e.target.value as 'CASH' | 'CARD' | 'POS' | 'BANK_TRANSFER')
                   }
-                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2.5 text-xs font-semibold text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none cursor-pointer"
+                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs font-semibold text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none cursor-pointer"
                 >
                   <option value="CASH">نقدي (كاش بالملعب)</option>
                   <option value="POS">جهاز نقاط البيع (POS / شبكة)</option>
@@ -1102,7 +1100,7 @@ export default function MobileAttendanceScannerPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                <label className="block text-xs font-semibold text-[var(--text-main)] mb-1">
                   ملاحظات الدفعة (اختياري)
                 </label>
                 <input
@@ -1110,7 +1108,7 @@ export default function MobileAttendanceScannerPage() {
                   placeholder="ملاحظات توثيقية إضافية..."
                   value={paymentNotes}
                   onChange={(e) => setPaymentNotes(e.target.value)}
-                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:border-[var(--brand-primary)] focus:outline-none"
+                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:outline-none"
                 />
               </div>
 
@@ -1118,7 +1116,7 @@ export default function MobileAttendanceScannerPage() {
                 <button
                   type="button"
                   onClick={() => setIsPaymentModalOpen(false)}
-                  className="rounded-xl border border-[var(--border-subtle)] px-4 py-2 text-xs font-semibold text-[var(--text-muted)] hover:bg-[var(--bg-elevated)] transition-colors cursor-pointer"
+                  className="rounded-xl border border-[var(--border-subtle)] px-4 py-2 text-xs font-semibold text-[var(--text-muted)] hover:bg-[var(--bg-surface-subtle)] transition-colors cursor-pointer"
                 >
                   إلغاء
                 </button>

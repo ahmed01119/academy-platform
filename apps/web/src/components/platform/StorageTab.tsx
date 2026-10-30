@@ -322,11 +322,11 @@ export function StorageTab() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="border-b border-[var(--border-subtle)] pb-3">
-              <h3 className="text-base font-bold text-[var(--text-primary)] flex items-center gap-2">
+              <h3 className="text-base font-bold text-[var(--text-main)] flex items-center gap-2">
                 <Eye className="w-5 h-5 text-blue-400" />
                 {locale === 'ar' ? 'نتائج الفحص التجريبي المسبق' : 'Dry-Run Maintenance Evaluation'}
               </h3>
-              <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+              <p className="text-xs text-[var(--text-muted)] mt-0.5">
                 {locale === 'ar'
                   ? 'تم تقييم المرشحين للتنظيف دون إجراء أي تعديل فعلي على البيانات.'
                   : 'Cleanup candidates evaluated safely without making any changes to data.'}
@@ -335,7 +335,7 @@ export function StorageTab() {
 
             <div className="grid grid-cols-2 gap-3">
               <div className="p-3 rounded-xl bg-[var(--bg-surface-subtle)] space-y-1">
-                <span className="text-[11px] text-[var(--text-secondary)]">
+                <span className="text-[11px] text-[var(--text-muted)]">
                   {locale === 'ar' ? 'جلسات ورموز منتهية' : 'Expired Sessions'}
                 </span>
                 <div className="text-lg font-bold text-emerald-400 font-mono">
@@ -344,7 +344,7 @@ export function StorageTab() {
               </div>
 
               <div className="p-3 rounded-xl bg-[var(--bg-surface-subtle)] space-y-1">
-                <span className="text-[11px] text-[var(--text-secondary)]">
+                <span className="text-[11px] text-[var(--text-muted)]">
                   {locale === 'ar' ? 'سجلات تدقيق تشغيلية قديمة' : 'Purgeable Audit Logs'}
                 </span>
                 <div className="text-lg font-bold text-emerald-400 font-mono">
@@ -364,7 +364,7 @@ export function StorageTab() {
 
             {/* Protected Records Safeguards Box */}
             <div className="p-4 rounded-xl bg-[var(--bg-surface-subtle)] border border-[var(--border-subtle)] space-y-2">
-              <h5 className="text-xs font-bold text-[var(--text-primary)] flex items-center gap-1.5">
+              <h5 className="text-xs font-bold text-[var(--text-main)] flex items-center gap-1.5">
                 <ShieldCheck className="w-4 h-4 text-emerald-400" />
                 {locale === 'ar'
                   ? 'سجلات محمية بالكامل بموجب السياسات'
@@ -372,28 +372,28 @@ export function StorageTab() {
               </h5>
               <div className="grid grid-cols-3 gap-2 text-center text-xs">
                 <div className="p-2 rounded-lg bg-[var(--bg-card)]">
-                  <div className="font-bold text-[var(--text-primary)] font-mono">
+                  <div className="font-bold text-[var(--text-main)] font-mono">
                     {dryRunData.protectedRecordsSummary.financialTransactionsCount}
                   </div>
-                  <div className="text-[10px] text-[var(--text-secondary)] mt-0.5">
+                  <div className="text-[10px] text-[var(--text-muted)] mt-0.5">
                     {locale === 'ar' ? 'معاملات مالية' : 'Financial Tx'}
                   </div>
                 </div>
 
                 <div className="p-2 rounded-lg bg-[var(--bg-card)]">
-                  <div className="font-bold text-[var(--text-primary)] font-mono">
+                  <div className="font-bold text-[var(--text-main)] font-mono">
                     {dryRunData.protectedRecordsSummary.activePlayersCount}
                   </div>
-                  <div className="text-[10px] text-[var(--text-secondary)] mt-0.5">
+                  <div className="text-[10px] text-[var(--text-muted)] mt-0.5">
                     {locale === 'ar' ? 'لاعبين نشطين' : 'Active Players'}
                   </div>
                 </div>
 
                 <div className="p-2 rounded-lg bg-[var(--bg-card)]">
-                  <div className="font-bold text-[var(--text-primary)] font-mono">
+                  <div className="font-bold text-[var(--text-main)] font-mono">
                     {dryRunData.protectedRecordsSummary.activeSubscriptionsCount}
                   </div>
-                  <div className="text-[10px] text-[var(--text-secondary)] mt-0.5">
+                  <div className="text-[10px] text-[var(--text-muted)] mt-0.5">
                     {locale === 'ar' ? 'اشتراكات نشطة' : 'Active Subs'}
                   </div>
                 </div>
@@ -404,7 +404,7 @@ export function StorageTab() {
               <button
                 type="button"
                 onClick={() => setIsDryRunModalOpen(false)}
-                className="px-4 py-2 text-xs font-semibold rounded-xl bg-[var(--bg-card-hover)] text-[var(--text-secondary)]"
+                className="px-4 py-2 text-xs font-semibold rounded-xl bg-[var(--bg-card-hover)] text-[var(--text-muted)]"
               >
                 {locale === 'ar' ? 'إغلاق' : 'Close'}
               </button>
@@ -426,11 +426,11 @@ export function StorageTab() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="border-b border-[var(--border-subtle)] pb-3">
-              <h3 className="text-base font-bold text-[var(--text-primary)] flex items-center gap-2">
+              <h3 className="text-base font-bold text-[var(--text-main)] flex items-center gap-2">
                 <Play className="w-5 h-5 text-emerald-400" />
                 {locale === 'ar' ? 'تأكيد إجراء الصيانة الآمنة' : 'Execute Storage Maintenance'}
               </h3>
-              <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+              <p className="text-xs text-[var(--text-muted)] mt-0.5">
                 {locale === 'ar'
                   ? 'اختر العمليات المطلوب تنفيذها بأمان تام مع توثيق العملية في سجل التدقيق.'
                   : 'Select approved cleanup operations. All actions are strictly audit logged.'}
@@ -446,12 +446,12 @@ export function StorageTab() {
                   className="mt-0.5 rounded text-emerald-500 focus:ring-emerald-500"
                 />
                 <div>
-                  <span className="text-xs font-bold text-[var(--text-primary)] block">
+                  <span className="text-xs font-bold text-[var(--text-main)] block">
                     {locale === 'ar'
                       ? 'حذف الجلسات والرموز المنتهية'
                       : 'Purge Expired Refresh Tokens'}
                   </span>
-                  <span className="text-[11px] text-[var(--text-secondary)]">
+                  <span className="text-[11px] text-[var(--text-muted)]">
                     {locale === 'ar'
                       ? 'تنظيف الرموز المنتهية أو الملغاة لتحرير مساحة الجلسات.'
                       : 'Remove expired and revoked tokens to reclaim auth storage.'}
@@ -468,12 +468,12 @@ export function StorageTab() {
                 />
                 <div className="space-y-2 flex-1">
                   <div>
-                    <span className="text-xs font-bold text-[var(--text-primary)] block">
+                    <span className="text-xs font-bold text-[var(--text-main)] block">
                       {locale === 'ar'
                         ? 'أرشفة السجلات التشغيلية غير المالية القديمة'
                         : 'Archive Aged Operational Logs'}
                     </span>
-                    <span className="text-[11px] text-[var(--text-secondary)]">
+                    <span className="text-[11px] text-[var(--text-muted)]">
                       {locale === 'ar'
                         ? 'تنظيف سجلات الأحداث الروتينية الأقدم من 90 يوماً. السجلات المالية لا تُحذف أبداً.'
                         : 'Purges non-financial audit logs older than threshold. Financial records are never deleted.'}
@@ -482,7 +482,7 @@ export function StorageTab() {
 
                   {enableLogPurge && (
                     <div className="flex items-center gap-2 pt-1">
-                      <span className="text-[11px] text-[var(--text-secondary)]">
+                      <span className="text-[11px] text-[var(--text-muted)]">
                         {locale === 'ar' ? 'الأقدم من (أيام):' : 'Older than (days):'}
                       </span>
                       <input
@@ -503,7 +503,7 @@ export function StorageTab() {
                   type="button"
                   onClick={() => setIsExecuteModalOpen(false)}
                   disabled={isExecuting}
-                  className="px-4 py-2 text-xs font-semibold rounded-xl bg-[var(--bg-card-hover)] text-[var(--text-secondary)]"
+                  className="px-4 py-2 text-xs font-semibold rounded-xl bg-[var(--bg-card-hover)] text-[var(--text-muted)]"
                 >
                   {locale === 'ar' ? 'إلغاء' : 'Cancel'}
                 </button>

@@ -299,10 +299,10 @@ export function ApplicationsTab({
             onClick={(e) => e.stopPropagation()}
           >
             <div className="border-b border-[var(--border-subtle)] pb-3">
-              <h3 className="text-base font-bold text-[var(--text-primary)]">
+              <h3 className="text-base font-bold text-[var(--text-main)]">
                 {locale === 'ar' ? 'مراجعة طلب تأسيس أكاديمية' : 'Review Academy Application'}
               </h3>
-              <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+              <p className="text-xs text-[var(--text-muted)] mt-0.5">
                 {reviewingApp.academyName} ({reviewingApp.academySlug})
               </p>
             </div>
@@ -310,7 +310,7 @@ export function ApplicationsTab({
             <form onSubmit={handleSubmitReview} className="space-y-4">
               {/* Decision radio */}
               <div className="space-y-2">
-                <label className="text-xs font-semibold text-[var(--text-primary)]">
+                <label className="text-xs font-semibold text-[var(--text-main)]">
                   {locale === 'ar' ? 'القرار الإداري' : 'Administrative Decision'}
                 </label>
                 <div className="grid grid-cols-3 gap-2">
@@ -320,7 +320,7 @@ export function ApplicationsTab({
                     className={`py-2 px-3 rounded-xl border text-xs font-semibold flex flex-col items-center gap-1 transition-all ${
                       reviewStatus === 'APPROVED'
                         ? 'border-emerald-500 bg-emerald-500/15 text-emerald-400'
-                        : 'border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] text-[var(--text-secondary)]'
+                        : 'border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] text-[var(--text-muted)]'
                     }`}
                   >
                     <CheckCircle2 className="w-4 h-4" />
@@ -333,7 +333,7 @@ export function ApplicationsTab({
                     className={`py-2 px-3 rounded-xl border text-xs font-semibold flex flex-col items-center gap-1 transition-all ${
                       reviewStatus === 'MORE_INFO_REQUESTED'
                         ? 'border-blue-500 bg-blue-500/15 text-blue-400'
-                        : 'border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] text-[var(--text-secondary)]'
+                        : 'border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] text-[var(--text-muted)]'
                     }`}
                   >
                     <HelpCircle className="w-4 h-4" />
@@ -346,7 +346,7 @@ export function ApplicationsTab({
                     className={`py-2 px-3 rounded-xl border text-xs font-semibold flex flex-col items-center gap-1 transition-all ${
                       reviewStatus === 'REJECTED'
                         ? 'border-rose-500 bg-rose-500/15 text-rose-400'
-                        : 'border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] text-[var(--text-secondary)]'
+                        : 'border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] text-[var(--text-muted)]'
                     }`}
                   >
                     <XCircle className="w-4 h-4" />
@@ -405,7 +405,7 @@ export function ApplicationsTab({
 
               {/* Review notes */}
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-[var(--text-primary)]">
+                <label className="text-xs font-semibold text-[var(--text-main)]">
                   {locale === 'ar'
                     ? 'ملاحظات المراجعة (تُرسل لمقدم الطلب)'
                     : 'Decision Notes (sent to applicant)'}
@@ -419,7 +419,7 @@ export function ApplicationsTab({
                       ? 'أدخل أي ملاحظات أو توجيهات لمقدم الطلب...'
                       : 'Enter optional guidance or rationale for the applicant...'
                   }
-                  className="w-full px-3 py-2 rounded-xl bg-[var(--bg-surface-subtle)] border border-[var(--border-subtle)] text-xs text-[var(--text-primary)] focus:outline-none focus:border-emerald-500"
+                  className="w-full px-3 py-2 rounded-xl bg-[var(--bg-surface-subtle)] border border-[var(--border-subtle)] text-xs text-[var(--text-main)] focus:outline-none focus:border-emerald-500"
                 />
               </div>
 
@@ -428,7 +428,7 @@ export function ApplicationsTab({
                   type="button"
                   onClick={() => setReviewingApp(null)}
                   disabled={isSubmitting}
-                  className="px-4 py-2 text-xs font-semibold rounded-xl bg-[var(--bg-card-hover)] text-[var(--text-secondary)]"
+                  className="px-4 py-2 text-xs font-semibold rounded-xl bg-[var(--bg-card-hover)] text-[var(--text-muted)]"
                 >
                   {locale === 'ar' ? 'إلغاء' : 'Cancel'}
                 </button>

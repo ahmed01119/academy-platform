@@ -181,14 +181,14 @@ export default function NewPlayerPage() {
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Section 1: Basic Information */}
           <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-sm space-y-4">
-            <div className="flex items-center gap-2 border-b border-[var(--border-subtle)] pb-3 text-sm font-bold text-[var(--text-primary)]">
-              <User className="h-4 w-4 text-[var(--brand-primary)]" />
+            <div className="flex items-center gap-2 border-b border-[var(--border-subtle)] pb-3 text-sm font-bold text-[var(--text-main)]">
+              <User className="h-4 w-4 text-[var(--accent-primary)]" />
               <span>1. البيانات الشخصية للاعب</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">
+                <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">
                   الاسم الأول *
                 </label>
                 <input
@@ -198,12 +198,12 @@ export default function NewPlayerPage() {
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
                   placeholder="مثال: يوسف"
-                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2.5 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none transition-colors"
+                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none transition-colors"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">
+                <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">
                   اسم العائلة *
                 </label>
                 <input
@@ -213,19 +213,19 @@ export default function NewPlayerPage() {
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
                   placeholder="مثال: الشريف"
-                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2.5 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none transition-colors"
+                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none transition-colors"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">
+                <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">
                   الجنس *
                 </label>
                 <select
                   id="select-gender"
                   value={gender}
                   onChange={(e) => setGender(e.target.value as PlayerGender)}
-                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2.5 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none transition-colors"
+                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none transition-colors"
                 >
                   <option value="MALE">ذكر</option>
                   <option value="FEMALE">أنثى</option>
@@ -234,13 +234,13 @@ export default function NewPlayerPage() {
 
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-xs font-semibold text-[var(--text-secondary)]">
+                  <label className="block text-xs font-semibold text-[var(--text-muted)]">
                     {useBirthYearOnly ? 'سنة الميلاد *' : 'تاريخ الميلاد *'}
                   </label>
                   <button
                     type="button"
                     onClick={() => setUseBirthYearOnly(!useBirthYearOnly)}
-                    className="text-[11px] text-[var(--brand-primary)] hover:underline font-medium"
+                    className="text-[11px] text-[var(--accent-primary)] hover:underline font-medium"
                   >
                     {useBirthYearOnly ? 'استخدام تاريخ كامل' : 'سنة الميلاد فقط'}
                   </button>
@@ -255,7 +255,7 @@ export default function NewPlayerPage() {
                     value={birthYear}
                     onChange={(e) => setBirthYear(e.target.value)}
                     placeholder="مثال: 2015"
-                    className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2.5 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none transition-colors"
+                    className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none transition-colors"
                   />
                 ) : (
                   <input
@@ -264,13 +264,13 @@ export default function NewPlayerPage() {
                     id="input-dob"
                     value={dateOfBirth}
                     onChange={(e) => setDateOfBirth(e.target.value)}
-                    className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2.5 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none transition-colors"
+                    className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none transition-colors"
                   />
                 )}
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">
+                <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">
                   رقم القميص (اختياري)
                 </label>
                 <input
@@ -281,12 +281,12 @@ export default function NewPlayerPage() {
                   value={jerseyNumber}
                   onChange={(e) => setJerseyNumber(e.target.value)}
                   placeholder="مثال: 10"
-                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2.5 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none transition-colors"
+                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none transition-colors"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">
+                <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">
                   الرقم القومي / جواز السفر (اختياري)
                 </label>
                 <input
@@ -295,7 +295,7 @@ export default function NewPlayerPage() {
                   value={nationalId}
                   onChange={(e) => setNationalId(e.target.value)}
                   placeholder="14 رقم للرقم القومي"
-                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2.5 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none transition-colors font-mono"
+                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none transition-colors font-mono"
                 />
               </div>
             </div>
@@ -303,14 +303,14 @@ export default function NewPlayerPage() {
 
           {/* Section 2: Emergency & Health */}
           <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-sm space-y-4">
-            <div className="flex items-center gap-2 border-b border-[var(--border-subtle)] pb-3 text-sm font-bold text-[var(--text-primary)]">
+            <div className="flex items-center gap-2 border-b border-[var(--border-subtle)] pb-3 text-sm font-bold text-[var(--text-main)]">
               <Heart className="h-4 w-4 text-red-500" />
               <span>2. بيانات الطوارئ والملاحظات الطبية</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">
+                <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">
                   اسم جهة الاتصال للطوارئ *
                 </label>
                 <input
@@ -320,12 +320,12 @@ export default function NewPlayerPage() {
                   value={emergencyContactName}
                   onChange={(e) => setEmergencyContactName(e.target.value)}
                   placeholder="مثال: أحمد الشريف (الأب)"
-                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2.5 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none transition-colors"
+                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none transition-colors"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">
+                <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">
                   هاتف الطوارئ *
                 </label>
                 <input
@@ -335,12 +335,12 @@ export default function NewPlayerPage() {
                   value={emergencyContactPhone}
                   onChange={(e) => setEmergencyContactPhone(e.target.value)}
                   placeholder="مثال: +201012345678"
-                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2.5 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none transition-colors font-mono"
+                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none transition-colors font-mono"
                 />
               </div>
 
               <div className="sm:col-span-2">
-                <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">
+                <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">
                   ملاحظات طبية أو حساسية (اختياري)
                 </label>
                 <textarea
@@ -349,7 +349,7 @@ export default function NewPlayerPage() {
                   value={medicalNotes}
                   onChange={(e) => setMedicalNotes(e.target.value)}
                   placeholder="أي حساسيات أو حالات صحية ينبغي للمدربين مراعاتها..."
-                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2.5 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none transition-colors"
+                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none transition-colors"
                 />
               </div>
             </div>
@@ -357,14 +357,14 @@ export default function NewPlayerPage() {
 
           {/* Section 3: Primary Guardian */}
           <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-sm space-y-4">
-            <div className="flex items-center gap-2 border-b border-[var(--border-subtle)] pb-3 text-sm font-bold text-[var(--text-primary)]">
-              <Users className="h-4 w-4 text-[var(--brand-primary)]" />
+            <div className="flex items-center gap-2 border-b border-[var(--border-subtle)] pb-3 text-sm font-bold text-[var(--text-main)]">
+              <Users className="h-4 w-4 text-[var(--accent-primary)]" />
               <span>3. بيانات ولي الأمر الأساسي</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">
+                <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">
                   الاسم الكامل لولي الأمر *
                 </label>
                 <input
@@ -374,19 +374,19 @@ export default function NewPlayerPage() {
                   value={guardianName}
                   onChange={(e) => setGuardianName(e.target.value)}
                   placeholder="الاسم الثلاثي لولي الأمر"
-                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2.5 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none transition-colors"
+                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none transition-colors"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">
+                <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">
                   صلة القرابة *
                 </label>
                 <select
                   id="select-guardian-relationship"
                   value={guardianRelationship}
                   onChange={(e) => setGuardianRelationship(e.target.value as GuardianRelationship)}
-                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2.5 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none transition-colors"
+                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none transition-colors"
                 >
                   <option value="FATHER">الأب</option>
                   <option value="MOTHER">الأم</option>
@@ -397,7 +397,7 @@ export default function NewPlayerPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">
+                <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">
                   رقم الهاتف *
                 </label>
                 <input
@@ -407,12 +407,12 @@ export default function NewPlayerPage() {
                   value={guardianPhone}
                   onChange={(e) => setGuardianPhone(e.target.value)}
                   placeholder="رقم الهاتف المحمول لولي الأمر"
-                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2.5 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none transition-colors font-mono"
+                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none transition-colors font-mono"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">
+                <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">
                   البريد الإلكتروني (اختياري)
                 </label>
                 <input
@@ -421,7 +421,7 @@ export default function NewPlayerPage() {
                   value={guardianEmail}
                   onChange={(e) => setGuardianEmail(e.target.value)}
                   placeholder="parent@example.com"
-                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2.5 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none transition-colors font-mono"
+                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none transition-colors font-mono"
                 />
               </div>
             </div>
@@ -429,14 +429,14 @@ export default function NewPlayerPage() {
 
           {/* Section 4: Initial Branch Enrollment */}
           <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-sm space-y-4">
-            <div className="flex items-center gap-2 border-b border-[var(--border-subtle)] pb-3 text-sm font-bold text-[var(--text-primary)]">
-              <GitBranch className="h-4 w-4 text-[var(--brand-primary)]" />
+            <div className="flex items-center gap-2 border-b border-[var(--border-subtle)] pb-3 text-sm font-bold text-[var(--text-main)]">
+              <GitBranch className="h-4 w-4 text-[var(--accent-primary)]" />
               <span>4. القيد بفرع الأكاديمية</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">
+                <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">
                   الفرع المخصص *
                 </label>
                 <select
@@ -444,7 +444,7 @@ export default function NewPlayerPage() {
                   id="select-initial-branch"
                   value={branchId}
                   onChange={(e) => setBranchId(e.target.value)}
-                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2.5 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none transition-colors"
+                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none transition-colors"
                 >
                   <option value="">اختر الفرع...</option>
                   {branches.map((b) => (
@@ -456,7 +456,7 @@ export default function NewPlayerPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">
+                <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">
                   تاريخ بدء القيد
                 </label>
                 <input
@@ -464,7 +464,7 @@ export default function NewPlayerPage() {
                   id="input-enrollment-start"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2.5 text-xs text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none transition-colors"
+                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none transition-colors"
                 />
               </div>
             </div>
@@ -474,7 +474,7 @@ export default function NewPlayerPage() {
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-[var(--border-subtle)]">
             <Link
               href="/players"
-              className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-5 py-2.5 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+              className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-5 py-2.5 text-xs font-semibold text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors"
             >
               إلغاء
             </Link>
@@ -483,7 +483,7 @@ export default function NewPlayerPage() {
               type="submit"
               id="btn-submit-player"
               disabled={isSubmitting}
-              className="inline-flex items-center gap-2 rounded-xl bg-[var(--brand-primary)] text-white px-6 py-2.5 text-xs font-semibold shadow-sm hover:brightness-110 transition-all disabled:opacity-50 cursor-pointer"
+              className="inline-flex items-center gap-2 rounded-xl bg-[var(--accent-primary)] text-white px-6 py-2.5 text-xs font-semibold shadow-sm hover:brightness-110 transition-all disabled:opacity-50 cursor-pointer"
             >
               <Save className="h-4 w-4" />
               <span>{isSubmitting ? 'جارٍ الحفظ...' : 'تسجيل وقيد اللاعب'}</span>

@@ -99,9 +99,9 @@ export default function DashboardPage() {
 
   return (
     <AppShell>
-      <div className="space-y-6">
+      <div className="space-y-6 animate-fade-in">
         {/* Welcome and Identity Hero Banner */}
-        <div className="rounded-2xl border border-[var(--border-app)] bg-gradient-to-br from-[var(--bg-surface)] via-[var(--bg-surface-subtle)] to-[var(--bg-surface)] p-6 sm:p-8 shadow-sm relative overflow-hidden">
+        <div className="rounded-3xl border border-[var(--border-app)] bg-gradient-to-br from-[var(--bg-surface)] via-[var(--bg-surface-subtle)] to-[var(--bg-surface)] p-6 sm:p-8 shadow-sm relative overflow-hidden">
           <div className="absolute top-0 start-0 w-80 h-80 bg-[var(--accent-primary)]/10 rounded-full blur-3xl pointer-events-none" />
 
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
@@ -175,7 +175,11 @@ export default function DashboardPage() {
 
         {/* 6-Grid Operational KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <Link href="/players" id="kpi-players">
+          <Link
+            href="/players"
+            id="kpi-players"
+            className="block card-hover-interactive rounded-2xl"
+          >
             <StatCard
               title={t('nav.players', 'اللاعبين والناشئين')}
               value={totalPlayers}
@@ -186,7 +190,7 @@ export default function DashboardPage() {
             />
           </Link>
 
-          <Link href="/groups" id="kpi-groups">
+          <Link href="/groups" id="kpi-groups" className="block card-hover-interactive rounded-2xl">
             <StatCard
               title={t('nav.groups', 'المجموعات التدريبية')}
               value={groupCount}
@@ -195,7 +199,11 @@ export default function DashboardPage() {
             />
           </Link>
 
-          <Link href="/sessions" id="kpi-sessions">
+          <Link
+            href="/sessions"
+            id="kpi-sessions"
+            className="block card-hover-interactive rounded-2xl"
+          >
             <StatCard
               title={t('nav.sessions', 'الحصص التدريبية')}
               value={sessionCount}
@@ -204,7 +212,11 @@ export default function DashboardPage() {
             />
           </Link>
 
-          <Link href="/attendance/reports" id="kpi-reports">
+          <Link
+            href="/attendance/reports"
+            id="kpi-reports"
+            className="block card-hover-interactive rounded-2xl"
+          >
             <StatCard
               title={t('nav.reports', 'تقارير الحضور')}
               value={locale === 'ar' ? 'التحليلات' : 'Analytics'}
@@ -213,7 +225,11 @@ export default function DashboardPage() {
             />
           </Link>
 
-          <Link href="/branches" id="kpi-branches">
+          <Link
+            href="/branches"
+            id="kpi-branches"
+            className="block card-hover-interactive rounded-2xl"
+          >
             <StatCard
               title={t('nav.branches', 'الفروع والملاعب')}
               value={branches.length}
@@ -235,7 +251,7 @@ export default function DashboardPage() {
         {/* Main Content Grid: Recent Players & Operational Branches */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Recent Players Table (2 Cols) */}
-          <div className="lg:col-span-2 rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-5 shadow-sm space-y-4">
+          <div className="lg:col-span-2 rounded-3xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-6 shadow-xs space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-[var(--border-subtle)]">
               <div className="flex items-center gap-2">
                 <Users className="h-5 w-5 text-[var(--accent-primary)]" />
@@ -358,7 +374,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Branches List (1 Col) */}
-          <div className="rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-5 shadow-sm space-y-4">
+          <div className="rounded-3xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-6 shadow-xs space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-[var(--border-subtle)]">
               <div className="flex items-center gap-2">
                 <GitBranch className="h-5 w-5 text-[var(--accent-primary)]" />
@@ -423,7 +439,7 @@ export default function DashboardPage() {
       {/* Player Join Requests - visible to OWNER and MANAGER only */}
       {(activeTenant?.role === 'OWNER' || activeTenant?.role === 'MANAGER') && (
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-8">
-          <div className="rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-6">
+          <div className="rounded-3xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-6 shadow-xs">
             <PlayerJoinRequestsTab />
           </div>
         </div>
