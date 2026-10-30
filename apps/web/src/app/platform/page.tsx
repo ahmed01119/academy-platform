@@ -508,9 +508,7 @@ function PlatformSuperAdminContent() {
                   {pct}% تنبيه
                 </span>
               ) : (
-                <span className="text-[10px] text-[var(--text-muted)] font-mono">
-                  ({pct}%)
-                </span>
+                <span className="text-[10px] text-[var(--text-muted)] font-mono">({pct}%)</span>
               )}
             </div>
             <div className="h-1.5 w-24 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
@@ -614,33 +612,51 @@ function PlatformSuperAdminContent() {
           <StatCard
             loading={isLoading}
             label={t('platform.kpiTotalAcademies', 'إجمالي الأكاديميات')}
-            value={metrics ? metrics.totalAcademies : (locale === 'ar' ? 'غير متوفر' : 'Unavailable')}
+            value={metrics ? metrics.totalAcademies : locale === 'ar' ? 'غير متوفر' : 'Unavailable'}
             icon={Building2}
-            trend={metrics ? { value: `${metrics.activeAcademies} نشطة`, isPositive: true } : undefined}
+            trend={
+              metrics ? { value: `${metrics.activeAcademies} نشطة`, isPositive: true } : undefined
+            }
           />
           <StatCard
             loading={isLoading}
             label={t('platform.kpiMrr', 'الإيراد الشهري (MRR)')}
-            value={metrics ? `${metrics.mrr.toLocaleString()} ${locale === 'ar' ? 'ر.س' : 'SAR'}` : (locale === 'ar' ? 'غير متوفر' : 'Unavailable')}
+            value={
+              metrics
+                ? `${metrics.mrr.toLocaleString()} ${locale === 'ar' ? 'ر.س' : 'SAR'}`
+                : locale === 'ar'
+                  ? 'غير متوفر'
+                  : 'Unavailable'
+            }
             icon={DollarSign}
-            trend={metrics ? { value: `${metrics.activeSubscriptions} باقة`, isPositive: true } : undefined}
+            trend={
+              metrics
+                ? { value: `${metrics.activeSubscriptions} باقة`, isPositive: true }
+                : undefined
+            }
           />
           <StatCard
             loading={isLoading}
             label={t('platform.kpiRevenue', 'المتحصلات الكلية')}
-            value={metrics ? `${metrics.collectedRevenue.toLocaleString()} ${locale === 'ar' ? 'ر.س' : 'SAR'}` : (locale === 'ar' ? 'غير متوفر' : 'Unavailable')}
+            value={
+              metrics
+                ? `${metrics.collectedRevenue.toLocaleString()} ${locale === 'ar' ? 'ر.س' : 'SAR'}`
+                : locale === 'ar'
+                  ? 'غير متوفر'
+                  : 'Unavailable'
+            }
             icon={TrendingUp}
           />
           <StatCard
             loading={isLoading}
             label={t('platform.kpiTotalPlayers', 'إجمالي اللاعبين')}
-            value={metrics ? metrics.totalPlayers : (locale === 'ar' ? 'غير متوفر' : 'Unavailable')}
+            value={metrics ? metrics.totalPlayers : locale === 'ar' ? 'غير متوفر' : 'Unavailable'}
             icon={Users}
           />
           <StatCard
             loading={isLoading}
             label={t('platform.kpiTotalCoaches', 'المدربين')}
-            value={metrics ? metrics.totalCoaches : (locale === 'ar' ? 'غير متوفر' : 'Unavailable')}
+            value={metrics ? metrics.totalCoaches : locale === 'ar' ? 'غير متوفر' : 'Unavailable'}
             icon={ShieldCheck}
           />
           <StatCard
@@ -666,140 +682,135 @@ function PlatformSuperAdminContent() {
           />
         </div>
 
-
         {/* Navigation Tabs - Responsive Scroll Strip without Page Overflow */}
         <div className="w-full max-w-full min-w-0 border-b border-[var(--border-subtle)] overflow-x-auto scrollbar-none py-1">
           <div className="flex items-center gap-1.5 sm:gap-2 min-w-max pb-0.5">
             <button
-
-            onClick={() => setActiveTab('academies')}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition-colors border-b-2 whitespace-nowrap ${
-              activeTab === 'academies'
-                ? 'border-[var(--brand-primary)] text-[var(--brand-primary)] bg-[var(--bg-card)]'
-                : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-            }`}
-          >
-            <Building2 className="w-4 h-4" />
-            {t('platform.tabAcademies', 'سجل الأكاديميات')}
-            <span className="px-1.5 py-0.2 rounded-full text-xs bg-[var(--bg-card-hover)] font-mono">
-              {academies.length}
-            </span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('applications')}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition-colors border-b-2 whitespace-nowrap ${
-              activeTab === 'applications'
-                ? 'border-[var(--brand-primary)] text-[var(--brand-primary)] bg-[var(--bg-card)]'
-                : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-            }`}
-          >
-            <Inbox className="w-4 h-4" />
-            {locale === 'ar' ? 'طلبات التأسيس' : 'Applications'}
-            {applications.filter((a) => a.status === 'PENDING_REVIEW').length > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full text-xs bg-amber-500/20 text-amber-400 font-mono">
-                {applications.filter((a) => a.status === 'PENDING_REVIEW').length}
+              onClick={() => setActiveTab('academies')}
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition-colors border-b-2 whitespace-nowrap ${
+                activeTab === 'academies'
+                  ? 'border-[var(--brand-primary)] text-[var(--brand-primary)] bg-[var(--bg-card)]'
+                  : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+              }`}
+            >
+              <Building2 className="w-4 h-4" />
+              {t('platform.tabAcademies', 'سجل الأكاديميات')}
+              <span className="px-1.5 py-0.2 rounded-full text-xs bg-[var(--bg-card-hover)] font-mono">
+                {academies.length}
               </span>
-            )}
-          </button>
+            </button>
 
-          <button
-            onClick={() => setActiveTab('users')}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition-colors border-b-2 whitespace-nowrap ${
-              activeTab === 'users'
-                ? 'border-[var(--brand-primary)] text-[var(--brand-primary)] bg-[var(--bg-card)]'
-                : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-            }`}
-          >
-            <Users className="w-4 h-4" />
-            {t('platform.tabUsers', 'إدارة المستخدمين والجلسات')}
-            <span className="px-1.5 py-0.2 rounded-full text-xs bg-[var(--bg-card-hover)] font-mono">
-              {usersList.length}
-            </span>
-          </button>
+            <button
+              onClick={() => setActiveTab('applications')}
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition-colors border-b-2 whitespace-nowrap ${
+                activeTab === 'applications'
+                  ? 'border-[var(--brand-primary)] text-[var(--brand-primary)] bg-[var(--bg-card)]'
+                  : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+              }`}
+            >
+              <Inbox className="w-4 h-4" />
+              {locale === 'ar' ? 'طلبات التأسيس' : 'Applications'}
+              {applications.filter((a) => a.status === 'PENDING_REVIEW').length > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full text-xs bg-amber-500/20 text-amber-400 font-mono">
+                  {applications.filter((a) => a.status === 'PENDING_REVIEW').length}
+                </span>
+              )}
+            </button>
 
-          <button
-            onClick={() => setActiveTab('plans')}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition-colors border-b-2 whitespace-nowrap ${
-              activeTab === 'plans'
-                ? 'border-[var(--brand-primary)] text-[var(--brand-primary)] bg-[var(--bg-card)]'
-                : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-            }`}
-          >
-            <Layers className="w-4 h-4" />
-            {t('platform.tabPlans', 'باقات الـ SaaS')}
-          </button>
-
-          <button
-            onClick={() => setActiveTab('storage')}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition-colors border-b-2 whitespace-nowrap ${
-              activeTab === 'storage'
-                ? 'border-[var(--brand-primary)] text-[var(--brand-primary)] bg-[var(--bg-card)]'
-                : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-            }`}
-          >
-            <Database className="w-4 h-4" />
-            {locale === 'ar' ? 'التخزين ودورة الحياة' : 'Storage & Lifecycle'}
-          </button>
-
-          <button
-            id="tab-platform-coowners"
-            onClick={() => setActiveTab('coowner')}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition-colors border-b-2 whitespace-nowrap ${
-              activeTab === 'coowner'
-                ? 'border-amber-400 text-amber-400 bg-[var(--bg-card)]'
-                : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-            }`}
-          >
-            <Crown className="w-4 h-4 text-amber-400" />
-            {locale === 'ar' ? 'ملكية المنصة والشركاء' : 'Platform Ownership & Co-Owners'}
-          </button>
-
-          <button
-            onClick={() => setActiveTab('governance')}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition-colors border-b-2 whitespace-nowrap ${
-              activeTab === 'governance'
-                ? 'border-[var(--brand-primary)] text-[var(--brand-primary)] bg-[var(--bg-card)]'
-                : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-            }`}
-          >
-            <ShieldCheck className="w-4 h-4" />
-            {locale === 'ar' ? 'حوكمة المنصة' : 'Governance'}
-          </button>
-
-          <button
-            onClick={() => setActiveTab('security')}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition-colors border-b-2 whitespace-nowrap ${
-              activeTab === 'security'
-                ? 'border-[var(--brand-primary)] text-[var(--brand-primary)] bg-[var(--bg-card)]'
-                : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-            }`}
-          >
-            <ShieldAlert className="w-4 h-4" />
-            {t('platform.tabSecurity', 'عمليات الأمان والحماية')}
-            {securityEvents.length > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full text-xs bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-200 font-mono">
-                {securityEvents.length}
+            <button
+              onClick={() => setActiveTab('users')}
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition-colors border-b-2 whitespace-nowrap ${
+                activeTab === 'users'
+                  ? 'border-[var(--brand-primary)] text-[var(--brand-primary)] bg-[var(--bg-card)]'
+                  : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+              }`}
+            >
+              <Users className="w-4 h-4" />
+              {t('platform.tabUsers', 'إدارة المستخدمين والجلسات')}
+              <span className="px-1.5 py-0.2 rounded-full text-xs bg-[var(--bg-card-hover)] font-mono">
+                {usersList.length}
               </span>
-            )}
-          </button>
+            </button>
 
-          <button
-            onClick={() => setActiveTab('audit')}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition-colors border-b-2 whitespace-nowrap ${
-              activeTab === 'audit'
-                ? 'border-[var(--brand-primary)] text-[var(--brand-primary)] bg-[var(--bg-card)]'
-                : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-            }`}
-          >
-            <ShieldCheck className="w-4 h-4" />
-            {t('platform.tabAudit', 'سجل التدقيق المركزي')}
-          </button>
+            <button
+              onClick={() => setActiveTab('plans')}
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition-colors border-b-2 whitespace-nowrap ${
+                activeTab === 'plans'
+                  ? 'border-[var(--brand-primary)] text-[var(--brand-primary)] bg-[var(--bg-card)]'
+                  : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+              }`}
+            >
+              <Layers className="w-4 h-4" />
+              {t('platform.tabPlans', 'باقات الـ SaaS')}
+            </button>
+
+            <button
+              onClick={() => setActiveTab('storage')}
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition-colors border-b-2 whitespace-nowrap ${
+                activeTab === 'storage'
+                  ? 'border-[var(--brand-primary)] text-[var(--brand-primary)] bg-[var(--bg-card)]'
+                  : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+              }`}
+            >
+              <Database className="w-4 h-4" />
+              {locale === 'ar' ? 'التخزين ودورة الحياة' : 'Storage & Lifecycle'}
+            </button>
+
+            <button
+              id="tab-platform-coowners"
+              onClick={() => setActiveTab('coowner')}
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition-colors border-b-2 whitespace-nowrap ${
+                activeTab === 'coowner'
+                  ? 'border-amber-400 text-amber-400 bg-[var(--bg-card)]'
+                  : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+              }`}
+            >
+              <Crown className="w-4 h-4 text-amber-400" />
+              {locale === 'ar' ? 'ملكية المنصة والشركاء' : 'Platform Ownership & Co-Owners'}
+            </button>
+
+            <button
+              onClick={() => setActiveTab('governance')}
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition-colors border-b-2 whitespace-nowrap ${
+                activeTab === 'governance'
+                  ? 'border-[var(--brand-primary)] text-[var(--brand-primary)] bg-[var(--bg-card)]'
+                  : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+              }`}
+            >
+              <ShieldCheck className="w-4 h-4" />
+              {locale === 'ar' ? 'حوكمة المنصة' : 'Governance'}
+            </button>
+
+            <button
+              onClick={() => setActiveTab('security')}
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition-colors border-b-2 whitespace-nowrap ${
+                activeTab === 'security'
+                  ? 'border-[var(--brand-primary)] text-[var(--brand-primary)] bg-[var(--bg-card)]'
+                  : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+              }`}
+            >
+              <ShieldAlert className="w-4 h-4" />
+              {t('platform.tabSecurity', 'عمليات الأمان والحماية')}
+              {securityEvents.length > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full text-xs bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-200 font-mono">
+                  {securityEvents.length}
+                </span>
+              )}
+            </button>
+
+            <button
+              onClick={() => setActiveTab('audit')}
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition-colors border-b-2 whitespace-nowrap ${
+                activeTab === 'audit'
+                  ? 'border-[var(--brand-primary)] text-[var(--brand-primary)] bg-[var(--bg-card)]'
+                  : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+              }`}
+            >
+              <ShieldCheck className="w-4 h-4" />
+              {t('platform.tabAudit', 'سجل التدقيق المركزي')}
+            </button>
+          </div>
         </div>
-      </div>
-
-
-
 
         {/* Tab 1: Academies */}
         {activeTab === 'academies' && (

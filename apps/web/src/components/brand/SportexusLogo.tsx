@@ -28,10 +28,20 @@ export function SportexusLogo({
   }[size];
 
   const content = (
-    <div dir="ltr" style={{ unicodeBidi: 'isolate' }} className={`inline-flex items-center gap-3 select-none group ${className}`}>
+    <div
+      dir="ltr"
+      style={{ unicodeBidi: 'isolate' }}
+      className={`inline-flex items-center gap-3 select-none group ${className}`}
+    >
       {/* Dynamic S Logo Symbol with Football */}
-      <div className={`relative shrink-0 flex items-center justify-center transition-transform duration-200 group-hover:scale-105 ${sizeClasses.symbol}`}>
-        <svg viewBox="0 0 240 240" fill="none" className="w-full h-full drop-shadow-[0_4px_12px_rgba(10,59,255,0.25)]">
+      <div
+        className={`relative shrink-0 flex items-center justify-center transition-transform duration-200 group-hover:scale-105 ${sizeClasses.symbol}`}
+      >
+        <svg
+          viewBox="0 0 240 240"
+          fill="none"
+          className="w-full h-full drop-shadow-[0_4px_12px_rgba(10,59,255,0.25)]"
+        >
           <defs>
             <linearGradient id="symUpper" x1="15%" y1="10%" x2="90%" y2="85%">
               <stop offset="0%" stopColor="#0A3BFF" />
@@ -112,7 +122,9 @@ export function SportexusLogo({
             >
               exus
             </span>
-            <span className="text-[10px] font-bold text-[#00D6FF] ms-0.5 -translate-y-2 opacity-80">™</span>
+            <span className="text-[10px] font-bold text-[#00D6FF] ms-0.5 -translate-y-2 opacity-80">
+              ™
+            </span>
           </div>
 
           <span

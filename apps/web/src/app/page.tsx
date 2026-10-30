@@ -689,7 +689,9 @@ export default function HomePage() {
                   className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#0A3BFF] via-[#0077FF] to-[#00D6FF] px-8 py-4 text-base font-bold text-white shadow-xl shadow-blue-600/30 hover:brightness-110 active:scale-95 transition-all"
                 >
                   <Sparkles className="h-5 w-5" />
-                  <span>{locale === 'ar' ? 'ابدأ تسجيل الأكاديمية الآن' : 'Register Academy Now'}</span>
+                  <span>
+                    {locale === 'ar' ? 'ابدأ تسجيل الأكاديمية الآن' : 'Register Academy Now'}
+                  </span>
                   <ChevronIcon className="h-5 w-5" />
                 </Link>
                 <button

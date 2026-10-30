@@ -383,7 +383,6 @@ export default function FinanceDashboardPage() {
     );
   }
 
-
   return (
     <AppShell>
       <div className="space-y-6">

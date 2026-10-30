@@ -6,6 +6,8 @@ export const HealthStatusSchema = z.object({
   status: z.enum(['ok', 'degraded', 'down']),
   service: z.string().min(1),
   version: z.string().min(1),
+  commitSha: z.string().optional(),
+  buildId: z.string().optional(),
   timestamp: z.string().datetime(),
   checks: z
     .object({

@@ -75,7 +75,9 @@ export default function NewPlayerPage() {
     setErrorMessage(null);
 
     const effectiveDob = useBirthYearOnly
-      ? (birthYear.trim() ? `${birthYear.trim()}-01-01` : '')
+      ? birthYear.trim()
+        ? `${birthYear.trim()}-01-01`
+        : ''
       : dateOfBirth;
 
     if (!firstName.trim() || !lastName.trim() || !effectiveDob) {

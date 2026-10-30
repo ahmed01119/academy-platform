@@ -36,7 +36,9 @@ export class FinanceService {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(AuditService) private readonly auditService: AuditService,
-    @Optional() @Inject(NotificationsService) private readonly notificationsService?: NotificationsService,
+    @Optional()
+    @Inject(NotificationsService)
+    private readonly notificationsService?: NotificationsService,
     @Optional() @Inject(EmailService) private readonly emailService?: EmailService,
   ) {}
 
@@ -504,7 +506,9 @@ export class FinanceService {
               });
             }
           } catch (mailErr: unknown) {
-            this.logger.warn(`Failed to dispatch payment receipt email: ${(mailErr as Error)?.message}`);
+            this.logger.warn(
+              `Failed to dispatch payment receipt email: ${(mailErr as Error)?.message}`,
+            );
           }
         }
 
@@ -874,7 +878,7 @@ export class FinanceService {
             href: '/finance',
           });
         }
-      } catch (notifyErr: any) {
+      } catch {
         // Notification dispatch failures should not fail transaction
       }
     }
@@ -981,7 +985,7 @@ export class FinanceService {
           body: `تمت الموافقة على طلب المصروف التدريبي بقيمة ${result.amount} ${result.currency}.`,
           href: '/coach',
         });
-      } catch (err) {
+      } catch {
         // Notification failure should not fail response
       }
     }
@@ -1072,7 +1076,7 @@ export class FinanceService {
           body: `تم رفض طلب المصروف التدريبي بقيمة ${result.amount}. السبب: ${dto.reason}`,
           href: '/coach',
         });
-      } catch (err) {
+      } catch {
         // Notification failure should not fail response
       }
     }

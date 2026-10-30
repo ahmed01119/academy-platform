@@ -4,19 +4,22 @@
 **Audit Date:** 2026-10-28  
 **Auditor:** Antigravity Autonomous Engineering Agent  
 **Environment:** Windows Server / Node.js v24.14.1 / Embedded PostgreSQL 18.4 / Turborepo  
-**Target Release:** Production Reality & Hardening  
+**Target Release:** Production Reality & Hardening
 
 ---
 
 ## 1. Root Cause of the Storage Metrics API Error
 
 ### Problem Statement
+
 When navigating to the Platform Owner Dashboard (`/platform`) and opening the **Storage & Lifecycle** tab (`/platform?tab=storage`), the browser threw a red toast notification and an error:
+
 ```text
 Cannot GET /v1/platform/storage/metrics (HTTP 404 Not Found)
 ```
 
 ### Detailed Root Cause Analysis
+
 1. **Route Mismatch:**
    - In `apps/web/src/lib/api-client.ts` (line 1036), the frontend method `getStorageMetrics()` dispatched a request to:
      ```typescript
@@ -39,8 +42,8 @@ Cannot GET /v1/platform/storage/metrics (HTTP 404 Not Found)
    - The legacy `getStorageMetrics()` implementation contained a `catch` block that silently substituted hardcoded fake data:
      ```typescript
      databaseSizeBytes = 10485760; // Hardcoded 10MB
-     totalTables = tables.length;  // Capped at 25 due to LIMIT 25
-     cacheKeysCount: 15;           // Hardcoded 15
+     totalTables = tables.length; // Capped at 25 due to LIMIT 25
+     cacheKeysCount: 15; // Hardcoded 15
      ```
    - This violated core data integrity principles by fabricating telemetry.
 
@@ -48,44 +51,45 @@ Cannot GET /v1/platform/storage/metrics (HTTP 404 Not Found)
 
 ## 2. Actual Route & Contract Before and After Fix
 
-| Attribute | Before Fix | After Fix |
-|---|---|---|
-| **Frontend Endpoint Call** | `/platform/storage/metrics` | `/platform/storage/metrics` (preserved contract) |
-| **Backend Controller Routes** | `@Get('storage/stats')` | `@Get('storage/metrics')` (Primary) & `@Get('storage/stats')` (Alias) |
-| **API Path (with Global Prefix)** | `/v1/platform/storage/stats` only | Both `/v1/platform/storage/metrics` and `/v1/platform/storage/stats` |
-| **HTTP Response Status** | `404 Not Found` | `200 OK` (when authenticated) / `401 Unauthorized` (when unauthenticated) |
-| **PostgreSQL Catalog Query** | Limited `pg_class` without data size breakdown | Queries `pg_database_size`, catalog table count, `pg_total_relation_size`, `pg_relation_size` (tableBytes), and `pg_indexes_size` |
-| **Redis Cache Telemetry** | Hardcoded `cacheKeysCount: 15` | Real `RedisService.getCacheMetrics()` returning `status: 'IN_MEMORY'`, `redisAvailable: false`, and live memory store count |
-| **Error Fallback Policy** | Silently returned fabricated 10MB mock data | In production: logs error and throws `ServiceUnavailableException({ code: 'STORAGE_METRICS_UNAVAILABLE' })`. No fake numbers. |
+| Attribute                         | Before Fix                                     | After Fix                                                                                                                         |
+| --------------------------------- | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| **Frontend Endpoint Call**        | `/platform/storage/metrics`                    | `/platform/storage/metrics` (preserved contract)                                                                                  |
+| **Backend Controller Routes**     | `@Get('storage/stats')`                        | `@Get('storage/metrics')` (Primary) & `@Get('storage/stats')` (Alias)                                                             |
+| **API Path (with Global Prefix)** | `/v1/platform/storage/stats` only              | Both `/v1/platform/storage/metrics` and `/v1/platform/storage/stats`                                                              |
+| **HTTP Response Status**          | `404 Not Found`                                | `200 OK` (when authenticated) / `401 Unauthorized` (when unauthenticated)                                                         |
+| **PostgreSQL Catalog Query**      | Limited `pg_class` without data size breakdown | Queries `pg_database_size`, catalog table count, `pg_total_relation_size`, `pg_relation_size` (tableBytes), and `pg_indexes_size` |
+| **Redis Cache Telemetry**         | Hardcoded `cacheKeysCount: 15`                 | Real `RedisService.getCacheMetrics()` returning `status: 'IN_MEMORY'`, `redisAvailable: false`, and live memory store count       |
+| **Error Fallback Policy**         | Silently returned fabricated 10MB mock data    | In production: logs error and throws `ServiceUnavailableException({ code: 'STORAGE_METRICS_UNAVAILABLE' })`. No fake numbers.     |
 
 ---
 
 ## 3. Real Database Metric Reconciliation Table
 
 Connected Database Identity:
+
 - **Database Name:** `academy`
 - **Database User:** `academy`
 - **Engine Version:** `PostgreSQL 18.4 on x86_64-windows, compiled by msvc-19.44.35226, 64-bit`
 - **Port:** `5432` (embedded PostgreSQL daemon)
 - **Schema:** `public`
 
-| Metric Name | Frontend Component | Backend Endpoint | Database Query / Source | Database Result | Displayed Result | Reconciliation Status |
-|---|---|---|---|---|---|:---:|
-| **إجمالي الأكاديميات (Total Academies)** | `StatCard` in `/platform` | `GET /v1/platform/metrics` | `SELECT count(*) FROM tenants` (`tx.tenant.count()`) | `20` | `20` | **VERIFIED MATCH** |
-| **الأكاديميات النشطة (Active Academies)** | `StatCard` trend in `/platform` | `GET /v1/platform/metrics` | `SELECT count(*) FROM tenants WHERE status = 'ACTIVE'` | `18` | `18 نشطة` | **VERIFIED MATCH** |
-| **الإيراد الشهري (MRR)** | `StatCard` in `/platform` | `GET /v1/platform/metrics` | `SELECT coalesce(ts.negotiated_price, sp.price_monthly, 0) FROM tenant_subscriptions ts JOIN saas_plans sp ON sp.code = ts.plan_code WHERE ts.status = 'ACTIVE'` | `18,386 SAR` | `18,386 ر.س` | **VERIFIED MATCH** |
-| **الاشتراكات النشطة (Active Subscriptions)** | `StatCard` trend in `/platform` | `GET /v1/platform/metrics` | `SELECT count(*) FROM tenant_subscriptions WHERE status = 'ACTIVE'` | `14` | `14 باقة` | **VERIFIED MATCH** |
-| **المتحصلات الكلية (Collected Revenue)** | `StatCard` in `/platform` | `GET /v1/platform/metrics` | `SELECT sum(amount) FROM saas_invoices WHERE status = 'PAID'` | `0` (null in DB, 0 paid B2B invoices) | `0 ر.س` | **VERIFIED MATCH** |
-| **إجمالي اللاعبين (Total Players)** | `StatCard` in `/platform` | `GET /v1/platform/metrics` | `SELECT count(*) FROM players` | `10` | `10` | **VERIFIED MATCH** |
-| **المدربين (Total Coaches)** | `StatCard` in `/platform` | `GET /v1/platform/metrics` | `SELECT count(*) FROM tenant_memberships WHERE role = 'COACH' AND status = 'ACTIVE'` | `1` | `1` | **VERIFIED MATCH** |
-| **حالة النظام (System Health)** | `StatCard` in `/platform` | `GET /v1/platform/metrics` | `SELECT 1` via Prisma health probe | `HEALTHY` | `HEALTHY` (اعتماديات متصلة) | **VERIFIED MATCH** |
-| **إجمالي المستخدمين (Total Users)** | Tab Badge on Users in `/platform` | `GET /v1/platform/users` | `SELECT count(*) FROM users` (all academy & platform accounts) | `35` | `35` | **VERIFIED MATCH** |
-| **مديرو المنصة (Platform Admins)** | `CoOwnerTab` | `GET /v1/platform/users` | `SELECT count(*) FROM users WHERE is_platform_super_admin = true` | `4` | `4` | **VERIFIED MATCH** |
-| **حجم قاعدة البيانات (Database Size)** | Card 1 in `StorageTab.tsx` | `GET /v1/platform/storage/metrics` | `SELECT pg_database_size(current_database()) AS db_size` | `13,596,351 bytes` (~12.97 MB) | `12.97 MB` | **VERIFIED MATCH** |
-| **عدد الجداول (Total Tables)** | Card 1 Subtitle in `StorageTab.tsx` | `GET /v1/platform/storage/metrics` | `SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relkind = 'r'` | `34` | `34 جدول مسجل في المخطط العام` | **VERIFIED MATCH** |
-| **سجلات التدقيق (Audit Logs Count & Size)** | Card 2 in `StorageTab.tsx` | `GET /v1/platform/storage/metrics` | `SELECT count(*) FROM audit_logs` & `pg_total_relation_size('audit_logs'::regclass)` | `376` records / `237,568 bytes` (~232 KB) | `376` (~232 KB) | **VERIFIED MATCH** |
-| **النمو الشهري التقديري (Monthly Growth)** | Card 3 in `StorageTab.tsx` | `GET /v1/platform/storage/metrics` | Throughput estimate from recent 30-day activity | `~679 KB/mo` | `~680 KB/mo` | **VERIFIED MATCH** |
-| **التخزين المؤقت Redis (Cache Keys)** | Card 4 in `StorageTab.tsx` | `GET /v1/platform/storage/metrics` | `RedisService.getCacheMetrics()` | `status: 'IN_MEMORY'`, `redisAvailable: false` | `ذاكرة داخلية (In-Memory)` — `نظام تحديد المعدل الداخلي نشط` | **VERIFIED MATCH** |
+| Metric Name                                  | Frontend Component                  | Backend Endpoint                   | Database Query / Source                                                                                                                                          | Database Result                                | Displayed Result                                             | Reconciliation Status |
+| -------------------------------------------- | ----------------------------------- | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------ | :-------------------: |
+| **إجمالي الأكاديميات (Total Academies)**     | `StatCard` in `/platform`           | `GET /v1/platform/metrics`         | `SELECT count(*) FROM tenants` (`tx.tenant.count()`)                                                                                                             | `20`                                           | `20`                                                         |  **VERIFIED MATCH**   |
+| **الأكاديميات النشطة (Active Academies)**    | `StatCard` trend in `/platform`     | `GET /v1/platform/metrics`         | `SELECT count(*) FROM tenants WHERE status = 'ACTIVE'`                                                                                                           | `18`                                           | `18 نشطة`                                                    |  **VERIFIED MATCH**   |
+| **الإيراد الشهري (MRR)**                     | `StatCard` in `/platform`           | `GET /v1/platform/metrics`         | `SELECT coalesce(ts.negotiated_price, sp.price_monthly, 0) FROM tenant_subscriptions ts JOIN saas_plans sp ON sp.code = ts.plan_code WHERE ts.status = 'ACTIVE'` | `18,386 SAR`                                   | `18,386 ر.س`                                                 |  **VERIFIED MATCH**   |
+| **الاشتراكات النشطة (Active Subscriptions)** | `StatCard` trend in `/platform`     | `GET /v1/platform/metrics`         | `SELECT count(*) FROM tenant_subscriptions WHERE status = 'ACTIVE'`                                                                                              | `14`                                           | `14 باقة`                                                    |  **VERIFIED MATCH**   |
+| **المتحصلات الكلية (Collected Revenue)**     | `StatCard` in `/platform`           | `GET /v1/platform/metrics`         | `SELECT sum(amount) FROM saas_invoices WHERE status = 'PAID'`                                                                                                    | `0` (null in DB, 0 paid B2B invoices)          | `0 ر.س`                                                      |  **VERIFIED MATCH**   |
+| **إجمالي اللاعبين (Total Players)**          | `StatCard` in `/platform`           | `GET /v1/platform/metrics`         | `SELECT count(*) FROM players`                                                                                                                                   | `10`                                           | `10`                                                         |  **VERIFIED MATCH**   |
+| **المدربين (Total Coaches)**                 | `StatCard` in `/platform`           | `GET /v1/platform/metrics`         | `SELECT count(*) FROM tenant_memberships WHERE role = 'COACH' AND status = 'ACTIVE'`                                                                             | `1`                                            | `1`                                                          |  **VERIFIED MATCH**   |
+| **حالة النظام (System Health)**              | `StatCard` in `/platform`           | `GET /v1/platform/metrics`         | `SELECT 1` via Prisma health probe                                                                                                                               | `HEALTHY`                                      | `HEALTHY` (اعتماديات متصلة)                                  |  **VERIFIED MATCH**   |
+| **إجمالي المستخدمين (Total Users)**          | Tab Badge on Users in `/platform`   | `GET /v1/platform/users`           | `SELECT count(*) FROM users` (all academy & platform accounts)                                                                                                   | `35`                                           | `35`                                                         |  **VERIFIED MATCH**   |
+| **مديرو المنصة (Platform Admins)**           | `CoOwnerTab`                        | `GET /v1/platform/users`           | `SELECT count(*) FROM users WHERE is_platform_super_admin = true`                                                                                                | `4`                                            | `4`                                                          |  **VERIFIED MATCH**   |
+| **حجم قاعدة البيانات (Database Size)**       | Card 1 in `StorageTab.tsx`          | `GET /v1/platform/storage/metrics` | `SELECT pg_database_size(current_database()) AS db_size`                                                                                                         | `13,596,351 bytes` (~12.97 MB)                 | `12.97 MB`                                                   |  **VERIFIED MATCH**   |
+| **عدد الجداول (Total Tables)**               | Card 1 Subtitle in `StorageTab.tsx` | `GET /v1/platform/storage/metrics` | `SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relkind = 'r'`                                   | `34`                                           | `34 جدول مسجل في المخطط العام`                               |  **VERIFIED MATCH**   |
+| **سجلات التدقيق (Audit Logs Count & Size)**  | Card 2 in `StorageTab.tsx`          | `GET /v1/platform/storage/metrics` | `SELECT count(*) FROM audit_logs` & `pg_total_relation_size('audit_logs'::regclass)`                                                                             | `376` records / `237,568 bytes` (~232 KB)      | `376` (~232 KB)                                              |  **VERIFIED MATCH**   |
+| **النمو الشهري التقديري (Monthly Growth)**   | Card 3 in `StorageTab.tsx`          | `GET /v1/platform/storage/metrics` | Throughput estimate from recent 30-day activity                                                                                                                  | `~679 KB/mo`                                   | `~680 KB/mo`                                                 |  **VERIFIED MATCH**   |
+| **التخزين المؤقت Redis (Cache Keys)**        | Card 4 in `StorageTab.tsx`          | `GET /v1/platform/storage/metrics` | `RedisService.getCacheMetrics()`                                                                                                                                 | `status: 'IN_MEMORY'`, `redisAvailable: false` | `ذاكرة داخلية (In-Memory)` — `نظام تحديد المعدل الداخلي نشط` |  **VERIFIED MATCH**   |
 
 ---
 
@@ -116,6 +120,7 @@ Connected Database Identity:
 ## 5. Root Cause of Persistent Error Indicators
 
 ### The Mobile Draggable Error Bubble
+
 - **Origin:** The floating draggable badge/bubble in the bottom-left corner of the mobile and desktop screens is the **Next.js Development Error Overlay** (part of Next.js 15 dev-mode Turbopack/Webpack runtime).
 - **Trigger:** Next.js injects this indicator into the DOM whenever:
   1. An unhandled promise rejection occurs in client-side React code.
@@ -142,9 +147,7 @@ Connected Database Identity:
    - **After:**
      ```tsx
      <div className="w-full max-w-full min-w-0 border-b border-[var(--border-subtle)] overflow-x-auto scrollbar-none py-1">
-       <div className="flex items-center gap-1.5 sm:gap-2 min-w-max pb-0.5">
-         ...
-       </div>
+       <div className="flex items-center gap-1.5 sm:gap-2 min-w-max pb-0.5">...</div>
      </div>
      ```
    - In `AppShell.tsx`: Added `overflow-x-hidden` to `<main>` while preserving natural vertical scrolling (`overflow-y-auto`).
@@ -158,15 +161,16 @@ Connected Database Identity:
 ## 7. Independent Verification of Previous Test Claims
 
 ### Audit of Claimed Tests
-| Category | Previous Claim | Actual Finding | Verification Method |
-|---|---|---|---|
-| **Automated Unit & Service Tests** | 258 tests passing | **262 tests passing (100% pass rate)** | Verified live via Vitest 3.2.7 against all packages |
-| **API Endpoints (`@academy/api`)** | 190 tests | **193 tests passed** (added storage regression tests) | `pnpm --filter @academy/api test` |
-| **Web Frontend (`@academy/web`)** | 35 tests | **36 tests passed** (added api-client storage test) | `pnpm --filter @academy/web test` |
-| **Shared Contracts (`@academy/shared`)** | 27 tests | **27 tests passed** | `pnpm --filter @academy/shared test` |
-| **Database Contracts (`@academy/database`)** | 6 tests | **6 tests passed** | `pnpm --filter @academy/database test` |
-| **Automated Playwright Browser Journeys** | Claimed 22 browser E2E journeys | **UNEXECUTED via automated Playwright** | Network restriction prevented downloading Playwright browser driver from `azureedge.net`. Journeys were manual/conceptual specifications, NOT automated Playwright test scripts. |
-| **Real Live API Verification** | Not independently confirmed | **VERIFIED via Node.js HTTP integration script** | `node scripts/test-storage-api.js` confirmed HTTP 200 on both direct API port 3001 and Next.js proxy port 3000. |
+
+| Category                                     | Previous Claim                  | Actual Finding                                        | Verification Method                                                                                                                                                              |
+| -------------------------------------------- | ------------------------------- | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Automated Unit & Service Tests**           | 258 tests passing               | **262 tests passing (100% pass rate)**                | Verified live via Vitest 3.2.7 against all packages                                                                                                                              |
+| **API Endpoints (`@academy/api`)**           | 190 tests                       | **193 tests passed** (added storage regression tests) | `pnpm --filter @academy/api test`                                                                                                                                                |
+| **Web Frontend (`@academy/web`)**            | 35 tests                        | **36 tests passed** (added api-client storage test)   | `pnpm --filter @academy/web test`                                                                                                                                                |
+| **Shared Contracts (`@academy/shared`)**     | 27 tests                        | **27 tests passed**                                   | `pnpm --filter @academy/shared test`                                                                                                                                             |
+| **Database Contracts (`@academy/database`)** | 6 tests                         | **6 tests passed**                                    | `pnpm --filter @academy/database test`                                                                                                                                           |
+| **Automated Playwright Browser Journeys**    | Claimed 22 browser E2E journeys | **UNEXECUTED via automated Playwright**               | Network restriction prevented downloading Playwright browser driver from `azureedge.net`. Journeys were manual/conceptual specifications, NOT automated Playwright test scripts. |
+| **Real Live API Verification**               | Not independently confirmed     | **VERIFIED via Node.js HTTP integration script**      | `node scripts/test-storage-api.js` confirmed HTTP 200 on both direct API port 3001 and Next.js proxy port 3000.                                                                  |
 
 ---
 

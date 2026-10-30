@@ -16,7 +16,7 @@ import { validateEnv } from './env.validation';
       // ../../../.env → apps/api/.env              ✅ primary
       // ../../../../.env → monorepo root .env      ✅ fallback
       envFilePath: [
-        `${__dirname}/../../../.env`,   // apps/api/.env  (from dist/config → up 3 levels)
+        `${__dirname}/../../../.env`, // apps/api/.env  (from dist/config → up 3 levels)
         `${__dirname}/../../../../.env`, // monorepo root .env (fallback)
       ],
     }),

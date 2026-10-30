@@ -89,18 +89,23 @@ describe('V1 API Proxy Runtime Route Handler', () => {
         statusText: 'OK',
         headers: mockHeaders,
         arrayBuffer: async () =>
-          new TextEncoder().encode(JSON.stringify({ user: { id: 'usr-1', email: 'test@academy.com' } })),
+          new TextEncoder().encode(
+            JSON.stringify({ user: { id: 'usr-1', email: 'test@academy.com' } }),
+          ),
       });
       global.fetch = mockFetch;
 
-      const req = new NextRequest('https://sportexus-web-staging.hostless.app/v1/auth/login?source=web', {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          'x-tenant-id': 'tenant-uuid-1234',
+      const req = new NextRequest(
+        'https://sportexus-web-staging.hostless.app/v1/auth/login?source=web',
+        {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'x-tenant-id': 'tenant-uuid-1234',
+          },
+          body: JSON.stringify({ email: 'test@academy.com', password: 'password123' }),
         },
-        body: JSON.stringify({ email: 'test@academy.com', password: 'password123' }),
-      });
+      );
 
       const res = await POST(req, {
         params: Promise.resolve({ path: ['auth', 'login'] }),

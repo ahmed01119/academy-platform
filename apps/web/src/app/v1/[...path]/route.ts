@@ -7,8 +7,7 @@ import { NextResponse } from 'next/server';
  * It will NEVER fall back to localhost in production.
  */
 export function resolveBackendBaseUrl(): string {
-  const configured =
-    process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL;
+  const configured = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL;
 
   if (configured && configured.trim()) {
     return configured.trim().replace(/\/v1\/?$/, '');
@@ -76,8 +75,7 @@ async function handleProxy(
   });
 
   // Preserve client IP and protocol forwarding
-  const clientIp =
-    req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip');
+  const clientIp = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip');
   if (clientIp) {
     forwardHeaders.set('x-forwarded-for', clientIp);
   }
@@ -132,7 +130,10 @@ async function handleProxy(
       headers: resHeaders,
     });
   } catch (err: unknown) {
-    console.error(`[SPORTEXUS Proxy Error] Failed to proxy to ${targetUrl}:`, (err as Error).message);
+    console.error(
+      `[SPORTEXUS Proxy Error] Failed to proxy to ${targetUrl}:`,
+      (err as Error).message,
+    );
     return NextResponse.json(
       {
         statusCode: 502,
