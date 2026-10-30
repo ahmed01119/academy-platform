@@ -18,7 +18,11 @@ const fs = require('fs');
 const path = require('path');
 
 function run(cmd, options = {}) {
-  return execSync(cmd, { encoding: 'utf8', stdio: options.silent ? 'pipe' : 'inherit', ...options });
+  return execSync(cmd, {
+    encoding: 'utf8',
+    stdio: options.silent ? 'pipe' : 'inherit',
+    ...options,
+  });
 }
 
 function runOutput(cmd) {
@@ -33,10 +37,13 @@ function verifyBackendDockerfile(filePath = 'Dockerfile') {
     throw new Error(`[CRITICAL] Backend Dockerfile not found at: ${filePath}`);
   }
   const content = fs.readFileSync(filePath, 'utf8');
-  const isBackend = content.includes('apps/api') || content.includes('NestJS') || content.includes('dist/main.js');
+  const isBackend =
+    content.includes('apps/api') || content.includes('NestJS') || content.includes('dist/main.js');
   const isFrontend = content.includes('apps/web') && content.includes('.next/standalone');
   if (!isBackend || isFrontend) {
-    throw new Error(`[CRITICAL] File at ${filePath} is NOT a valid backend Dockerfile! Aborting sync.`);
+    throw new Error(
+      `[CRITICAL] File at ${filePath} is NOT a valid backend Dockerfile! Aborting sync.`,
+    );
   }
 }
 
@@ -45,9 +52,14 @@ function verifyFrontendDockerfile(filePath = 'Dockerfile') {
     throw new Error(`[CRITICAL] Frontend Dockerfile not found at: ${filePath}`);
   }
   const content = fs.readFileSync(filePath, 'utf8');
-  const isFrontend = content.includes('apps/web') || content.includes('.next/standalone') || content.includes('BUILD_STANDALONE');
+  const isFrontend =
+    content.includes('apps/web') ||
+    content.includes('.next/standalone') ||
+    content.includes('BUILD_STANDALONE');
   if (!isFrontend) {
-    throw new Error(`[CRITICAL] File at ${filePath} is NOT a valid frontend Dockerfile! Aborting sync.`);
+    throw new Error(
+      `[CRITICAL] File at ${filePath} is NOT a valid frontend Dockerfile! Aborting sync.`,
+    );
   }
 }
 
@@ -96,9 +108,13 @@ function syncFrontend({ dryRun, sourceSha }) {
     run(`git merge ${sourceSha} -m "release(web): sync with main ${sourceSha} [skip ci]"`);
 
     // Ensure root Dockerfile is the Next.js standalone Dockerfile
-    const webDockerfileSource = fs.existsSync('Dockerfile.web') ? 'Dockerfile.web' : 'apps/web/Dockerfile';
+    const webDockerfileSource = fs.existsSync('Dockerfile.web')
+      ? 'Dockerfile.web'
+      : 'apps/web/Dockerfile';
     if (!fs.existsSync(webDockerfileSource)) {
-      throw new Error(`[CRITICAL] Frontend Dockerfile template not found at ${webDockerfileSource}`);
+      throw new Error(
+        `[CRITICAL] Frontend Dockerfile template not found at ${webDockerfileSource}`,
+      );
     }
 
     console.log(`[Frontend Sync] Copying ${webDockerfileSource} to root Dockerfile...`);
@@ -108,7 +124,9 @@ function syncFrontend({ dryRun, sourceSha }) {
     const status = runOutput('git status --porcelain Dockerfile');
     if (status) {
       run('git add Dockerfile');
-      run(`git commit -m "deploy(web): configure root Dockerfile for Next.js standalone deployment [skip ci]"`);
+      run(
+        `git commit -m "deploy(web): configure root Dockerfile for Next.js standalone deployment [skip ci]"`,
+      );
       console.log(`[Frontend Sync] Committed Next.js root Dockerfile.`);
     }
 
@@ -131,7 +149,9 @@ function main() {
   const target = targetArg ? targetArg.split('=')[1] : 'all';
 
   const sourceSha = runOutput('git rev-parse --short=12 HEAD');
-  console.log(`[SPORTEXUS Release Sync] Source commit: ${sourceSha} (dryRun: ${dryRun}, target: ${target})`);
+  console.log(
+    `[SPORTEXUS Release Sync] Source commit: ${sourceSha} (dryRun: ${dryRun}, target: ${target})`,
+  );
 
   // Verify git state is clean
   const uncommitted = runOutput('git status --porcelain');

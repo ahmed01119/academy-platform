@@ -874,7 +874,7 @@ export class FinanceService {
             href: '/finance',
           });
         }
-      } catch (notifyErr: any) {
+      } catch {
         // Notification dispatch failures should not fail transaction
       }
     }
@@ -981,7 +981,7 @@ export class FinanceService {
           body: `تمت الموافقة على طلب المصروف التدريبي بقيمة ${result.amount} ${result.currency}.`,
           href: '/coach',
         });
-      } catch (err) {
+      } catch {
         // Notification failure should not fail response
       }
     }
@@ -1072,7 +1072,7 @@ export class FinanceService {
           body: `تم رفض طلب المصروف التدريبي بقيمة ${result.amount}. السبب: ${dto.reason}`,
           href: '/coach',
         });
-      } catch (err) {
+      } catch {
         // Notification failure should not fail response
       }
     }

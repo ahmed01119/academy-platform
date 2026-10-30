@@ -466,7 +466,7 @@ export class AttendanceService {
     tx: any,
     tenantContext: TenantContext,
     session: { branchId: string; coachUserId: string | null; groupId: string | null; sessionDate: Date },
-    targetPlayerIds: string[],
+    _targetPlayerIds: string[],
   ): Promise<void> {
     // 1. Strict Coach Attendance Prohibition (Product requirement: Coaches must NOT be allowed to record player attendance)
     if (tenantContext.role === 'COACH') {

@@ -44,7 +44,10 @@ describe('Frontend Version Detection & Update Safety', () => {
   });
 
   it('prevents update when pending offline attendance operations exist', () => {
-    function canSafelyUpdate(pendingCount: number, hasUnsaved: boolean): { canUpdate: boolean; reason?: string } {
+    function canSafelyUpdate(
+      pendingCount: number,
+      hasUnsaved: boolean,
+    ): { canUpdate: boolean; reason?: string } {
       if (pendingCount > 0) {
         return { canUpdate: false, reason: 'PENDING_OFFLINE_OPERATIONS' };
       }
@@ -54,7 +57,10 @@ describe('Frontend Version Detection & Update Safety', () => {
       return { canUpdate: true };
     }
 
-    expect(canSafelyUpdate(3, false)).toEqual({ canUpdate: false, reason: 'PENDING_OFFLINE_OPERATIONS' });
+    expect(canSafelyUpdate(3, false)).toEqual({
+      canUpdate: false,
+      reason: 'PENDING_OFFLINE_OPERATIONS',
+    });
     expect(canSafelyUpdate(0, true)).toEqual({ canUpdate: false, reason: 'UNSAVED_FORM_WORK' });
     expect(canSafelyUpdate(0, false)).toEqual({ canUpdate: true });
   });

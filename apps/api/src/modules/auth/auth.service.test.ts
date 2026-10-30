@@ -3,7 +3,6 @@ import { AuthService } from './auth.service';
 import {
   BadRequestException,
   ConflictException,
-  ForbiddenException,
   UnauthorizedException,
 } from '@nestjs/common';
 import type { PrismaService } from '../database/prisma.service';

@@ -1,10 +1,8 @@
 import {
   BadRequestException,
   ConflictException,
-  ForbiddenException,
   Inject,
   Injectable,
-  InternalServerErrorException,
   Logger,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -18,7 +16,7 @@ import { EmailService } from '../email/email.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import {
   ErrorCode,
-  TenantRole,
+  type TenantRole,
   type AuthResponse,
   type ChangePasswordRequest,
   type ForgotPasswordRequest,
