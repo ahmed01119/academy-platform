@@ -17,9 +17,15 @@ COPY apps/web/package.json ./apps/web/package.json
 # Install dependencies using frozen lockfile
 RUN pnpm install --frozen-lockfile
 
-# Generate Prisma Client and compile packages
+# Generate Prisma Client and compile packages in explicit dependency order:
+# 1. Generate Prisma Client (@academy/database)
+# 2. Compile shared contracts (@academy/shared)
+# 3. Compile database client and transactions (@academy/database)
+# 4. Compile API application with Nest CLI (@academy/api)
 RUN pnpm --filter @academy/database run generate && \
-    pnpm turbo run build --filter=@academy/api...
+    pnpm --filter @academy/shared build && \
+    pnpm --filter @academy/database build && \
+    pnpm --filter @academy/api build
 
 # --- Runtime Stage ---
 FROM node:22-alpine AS runner

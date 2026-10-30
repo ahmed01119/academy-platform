@@ -13,6 +13,7 @@
  *   5. Includes [skip ci] in sync commits to prevent recursive GitHub Actions loops.
  *   6. Handles Dockerfile divergence deterministically without merge conflicts.
  *   7. Detects and protects deployment-only hotfixes.
+ *   8. Detects and safely aborts ALL unresolved Git merge conflicts.
  */
 
 const { execSync } = require('child_process');
@@ -33,6 +34,39 @@ function runOutput(cmd) {
 
 const BACKEND_BRANCH = process.env.BACKEND_DEPLOY_BRANCH || 'feat/email-system-hardening-and-e2e';
 const FRONTEND_BRANCH = process.env.FRONTEND_DEPLOY_BRANCH || 'deploy/sportexus-web-staging';
+
+function getUnresolvedConflicts() {
+  try {
+    const statusOutput = runOutput('git status --porcelain');
+    if (!statusOutput) return [];
+    return statusOutput
+      .split('\n')
+      .map((l) => l.trim())
+      .filter((l) => {
+        const code = l.slice(0, 2);
+        return code.includes('U') || code === 'AA' || code === 'DD';
+      })
+      .map((l) => ({
+        code: l.slice(0, 2),
+        file: l.slice(3).trim(),
+      }));
+  } catch {
+    return [];
+  }
+}
+
+function abortMergeIfConflicted() {
+  try {
+    const gitDir = path.resolve('.git');
+    const isMerging = fs.existsSync(path.join(gitDir, 'MERGE_HEAD'));
+    if (isMerging) {
+      console.warn(
+        '[SPORTEXUS Release Sync] Active unresolved merge in progress. Aborting merge safely...',
+      );
+      run('git merge --abort');
+    }
+  } catch {}
+}
 
 function verifyBackendDockerfile(filePath = 'Dockerfile') {
   if (!fs.existsSync(filePath)) {
@@ -137,7 +171,18 @@ function syncBackend({ dryRun, sourceSha }) {
     checkDeploymentBranchHotfixes(BACKEND_BRANCH, sourceSha);
 
     console.log(`[Backend Sync] Merging ${sourceSha} into ${BACKEND_BRANCH}...`);
-    run(`git merge ${sourceSha} -m "release(backend): sync with main ${sourceSha} [skip ci]"`);
+    try {
+      run(`git merge ${sourceSha} -m "release(backend): sync with main ${sourceSha} [skip ci]"`);
+    } catch (err) {
+      const conflicts = getUnresolvedConflicts();
+      abortMergeIfConflicted();
+      const conflictMsg =
+        conflicts.length > 0
+          ? `Unresolved merge conflicts detected:\n` +
+            conflicts.map((c) => `  [${c.code}] ${c.file}`).join('\n')
+          : err.message;
+      throw new Error(`[CRITICAL] Backend release sync failed! ${conflictMsg}`);
+    }
 
     // Verify root Dockerfile invariant
     verifyBackendDockerfile('Dockerfile');
@@ -151,6 +196,7 @@ function syncBackend({ dryRun, sourceSha }) {
       console.log(`[Backend Sync] Successfully pushed backend release!`);
     }
   } finally {
+    abortMergeIfConflicted();
     run(`git checkout ${currentBranch}`);
   }
 }
@@ -182,17 +228,14 @@ function syncFrontend({ dryRun, sourceSha }) {
     }
 
     // Inspect status to ensure no true application code conflicts exist
-    const statusOutput = runOutput('git status --porcelain');
-    const unmergedLines = statusOutput
-      .split('\n')
-      .map((l) => l.trim())
-      .filter((l) => l.startsWith('UU ') || l.startsWith('AA ') || l.startsWith('DD '));
+    const conflicts = getUnresolvedConflicts();
+    const nonDockerfileConflicts = conflicts.filter((c) => c.file !== 'Dockerfile');
 
-    const nonDockerfileConflicts = unmergedLines.filter((l) => !l.endsWith('Dockerfile'));
     if (nonDockerfileConflicts.length > 0) {
-      run('git merge --abort');
+      abortMergeIfConflicted();
       throw new Error(
-        `[CRITICAL] Merge conflict in application code during frontend sync:\n${nonDockerfileConflicts.join('\n')}`,
+        `[CRITICAL] Unresolved merge conflicts in application code during frontend sync:\n` +
+          nonDockerfileConflicts.map((c) => `  [${c.code}] ${c.file}`).join('\n'),
       );
     }
 
@@ -201,7 +244,7 @@ function syncFrontend({ dryRun, sourceSha }) {
       ? 'Dockerfile.web'
       : 'apps/web/Dockerfile';
     if (!fs.existsSync(webDockerfileSource)) {
-      if (mergeEncounteredConflicts) run('git merge --abort');
+      abortMergeIfConflicted();
       throw new Error(
         `[CRITICAL] Frontend Dockerfile template not found at ${webDockerfileSource}`,
       );
@@ -217,6 +260,17 @@ function syncFrontend({ dryRun, sourceSha }) {
     run('node scripts/generate-version.js');
 
     run('git add Dockerfile apps/web/public/version.json');
+
+    // Ensure all conflicts are cleanly resolved before committing
+    const remainingConflicts = getUnresolvedConflicts();
+    if (remainingConflicts.length > 0) {
+      abortMergeIfConflicted();
+      throw new Error(
+        `[CRITICAL] Unresolved merge conflicts remain after Dockerfile resolution:\n` +
+          remainingConflicts.map((c) => `  [${c.code}] ${c.file}`).join('\n'),
+      );
+    }
+
     run(`git commit -m "release(web): sync with main ${sourceSha} [skip ci]"`);
     console.log(`[Frontend Sync] Committed deterministic Next.js root release.`);
 
@@ -228,6 +282,7 @@ function syncFrontend({ dryRun, sourceSha }) {
       console.log(`[Frontend Sync] Successfully pushed frontend release!`);
     }
   } finally {
+    abortMergeIfConflicted();
     run(`git checkout ${currentBranch}`);
   }
 }
@@ -274,4 +329,6 @@ module.exports = {
   verifyFrontendDockerfile,
   checkDeploymentBranchHotfixes,
   verifyVersionCompatibility,
+  getUnresolvedConflicts,
+  abortMergeIfConflicted,
 };

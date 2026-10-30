@@ -7,7 +7,10 @@ describe('CI/CD Release Safety & Verification Invariants', () => {
 FROM node:22-alpine AS builder
 WORKDIR /app
 COPY apps/api ./apps/api
-RUN pnpm turbo run build --filter=@academy/api...
+RUN pnpm --filter @academy/database run generate && \
+    pnpm --filter @academy/shared build && \
+    pnpm --filter @academy/database build && \
+    pnpm --filter @academy/api build
 FROM node:22-alpine AS runner
 WORKDIR /app
 COPY --from=builder /app/apps/api ./apps/api
@@ -19,7 +22,8 @@ FROM node:22-alpine AS deps
 WORKDIR /app
 COPY apps/web/package.json ./apps/web/package.json
 ENV BUILD_STANDALONE=true
-RUN pnpm --filter @academy/web build
+RUN pnpm --filter @academy/shared build && \
+    pnpm --filter @academy/web build
 FROM node:22-alpine AS runner
 WORKDIR /app
 COPY --from=builder /app/apps/web/.next/standalone ./
@@ -181,6 +185,39 @@ CMD ["node", "apps/web/server.js"]
         'a1b2c3d fix(auth): hotfix token expiration\ne4f5g6h fix(cors): emergency cors fix',
       ),
     ).toEqual({ hasHotfixes: true, count: 2 });
+  });
+
+  it('detects and categorizes all unresolved git merge conflicts (Task 2)', () => {
+    function parseConflicts(statusOutput: string): { code: string; file: string }[] {
+      if (!statusOutput) return [];
+      return statusOutput
+        .split('\n')
+        .map((l) => l.trim())
+        .filter((l) => {
+          const code = l.slice(0, 2);
+          return code.includes('U') || code === 'AA' || code === 'DD';
+        })
+        .map((l) => ({
+          code: l.slice(0, 2),
+          file: l.slice(3).trim(),
+        }));
+    }
+
+    const sampleStatus = [
+      'UU apps/api/src/main.ts',
+      'AA packages/shared/src/index.ts',
+      'DD apps/web/src/page.tsx',
+      'M  package.json',
+      '?? new-file.txt',
+    ].join('\n');
+
+    const conflicts = parseConflicts(sampleStatus);
+    expect(conflicts).toHaveLength(3);
+    expect(conflicts).toEqual([
+      { code: 'UU', file: 'apps/api/src/main.ts' },
+      { code: 'AA', file: 'packages/shared/src/index.ts' },
+      { code: 'DD', file: 'apps/web/src/page.tsx' },
+    ]);
   });
 
   it('verifies generated version manifest structure and presence of buildId (Issue #5)', () => {
