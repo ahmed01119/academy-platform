@@ -172,7 +172,9 @@ function syncBackend({ dryRun, sourceSha }) {
 
     console.log(`[Backend Sync] Merging ${sourceSha} into ${BACKEND_BRANCH}...`);
     try {
-      run(`git merge ${sourceSha} -m "release(backend): sync with main ${sourceSha} [skip ci]"`);
+      run(
+        `git merge ${sourceSha} -X theirs -m "release(backend): sync with main ${sourceSha} [skip ci]"`,
+      );
     } catch (err) {
       const conflicts = getUnresolvedConflicts();
       abortMergeIfConflicted();
@@ -219,10 +221,10 @@ function syncFrontend({ dryRun, sourceSha }) {
       `[Frontend Sync] Merging ${sourceSha} into ${FRONTEND_BRANCH} with deterministic Dockerfile preservation...`,
     );
 
-    // Issue #3: Attempt git merge --no-commit to avoid conflict failure on root Dockerfile
+    // Issue #3: Attempt git merge -X theirs --no-commit to avoid conflict failure on root Dockerfile & identical files
     let mergeEncounteredConflicts = false;
     try {
-      run(`git merge ${sourceSha} --no-commit`);
+      run(`git merge ${sourceSha} -X theirs --no-commit`);
     } catch {
       mergeEncounteredConflicts = true;
     }
