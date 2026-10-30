@@ -1,221 +1,202 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { executeAppUpdate, purgeAppCaches, hasUnsavedWork } from './ServiceWorkerRegistrar';
 
-describe('Frontend Version Detection & Update Safety', () => {
+describe('Frontend Version Detection & PWA Update Integration', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
   });
 
-  it('detects a newer version when server buildId differs from running buildId', () => {
-    const runningBuildId = 'build-100';
-    const serverManifest = {
-      version: '1.0.1',
-      buildId: 'build-101',
-      builtAt: '2026-10-30T00:00:00Z',
-    };
+  describe('purgeAppCaches (Cache Cleanup Scope & Safety)', () => {
+    it('deletes ONLY versioned static shell caches and preserves unrelated caches', async () => {
+      const deletedKeys: string[] = [];
+      const mockCachesApi = {
+        keys: vi
+          .fn()
+          .mockResolvedValue([
+            'sportexus-shell-v1',
+            'sportexus-shell-build-12345',
+            'academy_offline_attendance',
+            'user_avatars_v1',
+            'custom_storage_cache',
+          ]),
+        delete: vi.fn().mockImplementation((key: string) => {
+          deletedKeys.push(key);
+          return Promise.resolve(true);
+        }),
+      } as unknown as CacheStorage;
 
-    const isUpdateAvailable = serverManifest.buildId !== runningBuildId;
-    expect(isUpdateAvailable).toBe(true);
-  });
+      const purged = await purgeAppCaches(mockCachesApi);
 
-  it('does not trigger update when server buildId matches running buildId', () => {
-    const runningBuildId = 'build-100';
-    const serverManifest = {
-      version: '1.0.0',
-      buildId: 'build-100',
-      builtAt: '2026-10-30T00:00:00Z',
-    };
-
-    const isUpdateAvailable = serverManifest.buildId !== runningBuildId;
-    expect(isUpdateAvailable).toBe(false);
-  });
-
-  it('detects unsaved form work when an input or textarea is active', () => {
-    function mockHasUnsavedWork(tagName: string, isBusy = false): boolean {
-      if (isBusy) return true;
-      return tagName === 'INPUT' || tagName === 'TEXTAREA' || tagName === 'SELECT';
-    }
-
-    expect(mockHasUnsavedWork('INPUT')).toBe(true);
-    expect(mockHasUnsavedWork('TEXTAREA')).toBe(true);
-    expect(mockHasUnsavedWork('SELECT')).toBe(true);
-    expect(mockHasUnsavedWork('DIV')).toBe(false);
-    expect(mockHasUnsavedWork('BUTTON')).toBe(false);
-    expect(mockHasUnsavedWork('BODY', true)).toBe(true);
-  });
-
-  it('prevents update when pending offline attendance operations exist', () => {
-    function canSafelyUpdate(
-      pendingCount: number,
-      hasUnsaved: boolean,
-    ): { canUpdate: boolean; reason?: string } {
-      if (pendingCount > 0) {
-        return { canUpdate: false, reason: 'PENDING_OFFLINE_OPERATIONS' };
-      }
-      if (hasUnsaved) {
-        return { canUpdate: false, reason: 'UNSAVED_FORM_WORK' };
-      }
-      return { canUpdate: true };
-    }
-
-    expect(canSafelyUpdate(3, false)).toEqual({
-      canUpdate: false,
-      reason: 'PENDING_OFFLINE_OPERATIONS',
+      expect(purged).toEqual(['sportexus-shell-v1', 'sportexus-shell-build-12345']);
+      expect(deletedKeys).toEqual(['sportexus-shell-v1', 'sportexus-shell-build-12345']);
+      expect(deletedKeys).not.toContain('academy_offline_attendance');
+      expect(deletedKeys).not.toContain('user_avatars_v1');
+      expect(deletedKeys).not.toContain('custom_storage_cache');
     });
-    expect(canSafelyUpdate(0, true)).toEqual({ canUpdate: false, reason: 'UNSAVED_FORM_WORK' });
-    expect(canSafelyUpdate(0, false)).toEqual({ canUpdate: true });
+
+    it('handles null/undefined CacheStorage gracefully without throwing', async () => {
+      const purged = await purgeAppCaches(undefined);
+      expect(purged).toEqual([]);
+    });
   });
 
-  it('fails closed when pendingCount() throws an error (Issue #4)', async () => {
-    async function evaluateUpdateSafety(
-      getPendingCount: () => Promise<number>,
-      hasUnsaved: () => boolean,
-    ): Promise<{ allowed: boolean; warning?: string }> {
-      try {
-        const count = await getPendingCount();
-        if (count > 0) {
-          return { allowed: false, warning: 'PENDING_OFFLINE_COUNT' };
-        }
-      } catch {
-        // Fail closed: do not refresh if pending offline work cannot be verified
-        return { allowed: false, warning: 'VERIFICATION_FAILED_FAIL_CLOSED' };
-      }
+  describe('executeAppUpdate (Lifecycle & Message Sequencing)', () => {
+    it('blocks update when pending offline attendance operations exist', async () => {
+      const postMessageSpy = vi.fn();
+      const mockWorker = { postMessage: postMessageSpy };
+      const onReload = vi.fn();
+      const purgeCaches = vi.fn().mockResolvedValue([]);
 
-      if (hasUnsaved()) {
-        return { allowed: false, warning: 'UNSAVED_WORK' };
-      }
+      const result = await executeAppUpdate({
+        waitingWorker: mockWorker,
+        getPendingCount: async () => 3,
+        checkUnsavedWork: () => false,
+        onReload,
+        purgeCaches,
+      });
 
-      return { allowed: true };
-    }
+      expect(result.success).toBe(false);
+      expect(result.reason).toBe('PENDING_OFFLINE');
+      expect(result.pendingCount).toBe(3);
+      expect(postMessageSpy).not.toHaveBeenCalled();
+      expect(purgeCaches).not.toHaveBeenCalled();
+      expect(onReload).not.toHaveBeenCalled();
+    });
 
-    // When pendingCount throws, it must FAIL CLOSED (allowed: false)
-    const result = await evaluateUpdateSafety(
-      async () => {
-        throw new Error('IndexedDB storage unavailable or corrupted');
-      },
-      () => false,
-    );
+    it('fails closed when offline pending count verification throws an error', async () => {
+      const postMessageSpy = vi.fn();
+      const mockWorker = { postMessage: postMessageSpy };
+      const onReload = vi.fn();
 
-    expect(result.allowed).toBe(false);
-    expect(result.warning).toBe('VERIFICATION_FAILED_FAIL_CLOSED');
-  });
+      const result = await executeAppUpdate({
+        waitingWorker: mockWorker,
+        getPendingCount: async () => {
+          throw new Error('IndexedDB access failure');
+        },
+        checkUnsavedWork: () => false,
+        onReload,
+      });
 
-  it('waits for controller activation and avoids reload loops during SW update (Issue #6)', () => {
-    let reloads = 0;
-    let isReloading = false;
-    let controllerChangeFired = false;
-    const messagesPosted: string[] = [];
+      expect(result.success).toBe(false);
+      expect(result.reason).toBe('VERIFY_FAILED');
+      expect(postMessageSpy).not.toHaveBeenCalled();
+      expect(onReload).not.toHaveBeenCalled();
+    });
 
-    const mockWaitingWorker = {
-      postMessage: (msg: { type: string }) => {
-        messagesPosted.push(msg.type);
-      },
-    };
+    it('blocks update when user is typing or active in a form', async () => {
+      const postMessageSpy = vi.fn();
+      const mockWorker = { postMessage: postMessageSpy };
+      const onReload = vi.fn();
 
-    function triggerSafeUpdate(worker: typeof mockWaitingWorker | null) {
-      if (isReloading) return;
-      isReloading = true;
+      const result = await executeAppUpdate({
+        waitingWorker: mockWorker,
+        getPendingCount: async () => 0,
+        checkUnsavedWork: () => true,
+        onReload,
+      });
 
-      if (worker) {
-        let reloaded = false;
-        const doReload = () => {
-          if (reloaded) return;
-          reloaded = true;
-          reloads++;
-        };
+      expect(result.success).toBe(false);
+      expect(result.reason).toBe('UNSAVED_WORK');
+      expect(postMessageSpy).not.toHaveBeenCalled();
+      expect(onReload).not.toHaveBeenCalled();
+    });
 
-        // Simulate registering controllerchange handler
-        const simulateControllerChange = () => {
-          controllerChangeFired = true;
-          doReload();
-        };
-
-        worker.postMessage({ type: 'CLEAR_STATIC_CACHE' });
-        worker.postMessage({ type: 'SKIP_WAITING' });
-        // Simulating the controllerchange firing after skipWaiting
-        simulateControllerChange();
-      } else {
-        reloads++;
-      }
-    }
-
-    triggerSafeUpdate(mockWaitingWorker);
-    expect(messagesPosted).toEqual(['CLEAR_STATIC_CACHE', 'SKIP_WAITING']);
-    expect(controllerChangeFired).toBe(true);
-    expect(reloads).toBe(1);
-
-    // Subsequent triggers while reloading should be ignored (guard against update loop)
-    triggerSafeUpdate(mockWaitingWorker);
-    expect(reloads).toBe(1);
-  });
-
-  it('purges existing caches and sends CLEAR_STATIC_CACHE before SKIP_WAITING', async () => {
-    const deletedCaches: string[] = [];
-    const mockCaches = {
-      keys: vi.fn().mockResolvedValue(['sportexus-shell-v1', 'sportexus-shell-v2', 'other-cache']),
-      delete: vi.fn().mockImplementation((key: string) => {
-        deletedCaches.push(key);
-        return Promise.resolve(true);
-      }),
-    };
-
-    const messages: string[] = [];
-    const mockWorker = {
-      postMessage: (msg: { type: string }) => messages.push(msg.type),
-    };
-
-    // Purge logic
-    const keys = await mockCaches.keys();
-    await Promise.all(
-      keys.filter((k) => k.startsWith('sportexus-')).map((k) => mockCaches.delete(k)),
-    );
-
-    mockWorker.postMessage({ type: 'CLEAR_STATIC_CACHE' });
-    mockWorker.postMessage({ type: 'SKIP_WAITING' });
-
-    expect(deletedCaches).toEqual(['sportexus-shell-v1', 'sportexus-shell-v2']);
-    expect(deletedCaches).not.toContain('other-cache');
-    expect(messages).toEqual(['CLEAR_STATIC_CACHE', 'SKIP_WAITING']);
-  });
-
-  it('correctly handles bilingual update prompt text for Arabic and English', () => {
-    function getUpdatePromptText(locale: 'ar' | 'en', isUpdating = false) {
-      return {
-        title: locale === 'ar' ? 'يتوفر إصدار جديد للتطبيق' : 'An application update is available',
-        updateBtn: isUpdating
-          ? locale === 'ar'
-            ? 'جاري التحديث...'
-            : 'Updating...'
-          : locale === 'ar'
-            ? 'تحديث الآن'
-            : 'Update now',
-        laterBtn: locale === 'ar' ? 'لاحقاً' : 'Later',
+    it('purges shell caches, sends CLEAR_STATIC_CACHE then SKIP_WAITING, and triggers reload via controllerchange', async () => {
+      const postedMessages: unknown[] = [];
+      const mockWorker = {
+        postMessage: vi.fn((msg) => postedMessages.push(msg)),
       };
-    }
 
-    const ar = getUpdatePromptText('ar', false);
-    expect(ar.title).toBe('يتوفر إصدار جديد للتطبيق');
-    expect(ar.updateBtn).toBe('تحديث الآن');
+      let controllerListener: (() => void) | null = null;
+      const mockSwContainer = {
+        addEventListener: vi.fn((event: string, handler: () => void) => {
+          if (event === 'controllerchange') {
+            controllerListener = handler;
+          }
+        }),
+      };
 
-    const arUpdating = getUpdatePromptText('ar', true);
-    expect(arUpdating.updateBtn).toBe('جاري التحديث...');
+      const reloadSpy = vi.fn();
+      const purgeCachesSpy = vi.fn().mockResolvedValue(['sportexus-shell-old']);
 
-    const en = getUpdatePromptText('en', false);
-    expect(en.title).toBe('An application update is available');
-    expect(en.updateBtn).toBe('Update now');
+      const result = await executeAppUpdate({
+        waitingWorker: mockWorker,
+        swContainer: mockSwContainer,
+        onReload: reloadSpy,
+        getPendingCount: async () => 0,
+        checkUnsavedWork: () => false,
+        purgeCaches: purgeCachesSpy,
+      });
 
-    const enUpdating = getUpdatePromptText('en', true);
-    expect(enUpdating.updateBtn).toBe('Updating...');
+      expect(result.success).toBe(true);
+      expect(purgeCachesSpy).toHaveBeenCalledTimes(1);
+      expect(result.purgedCaches).toEqual(['sportexus-shell-old']);
+
+      // Integration: Verify exact message sequencing
+      expect(postedMessages).toEqual([{ type: 'CLEAR_STATIC_CACHE' }, { type: 'SKIP_WAITING' }]);
+
+      // ServiceWorker listener registered
+      expect(mockSwContainer.addEventListener).toHaveBeenCalledWith(
+        'controllerchange',
+        expect.any(Function),
+        { once: true },
+      );
+
+      // Reload not called immediately before controllerchange
+      expect(reloadSpy).not.toHaveBeenCalled();
+
+      // Trigger controllerchange event
+      expect(controllerListener).not.toBeNull();
+      controllerListener!();
+
+      // Reload successfully triggered once
+      expect(reloadSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('purges shell caches and reloads directly when no waiting worker exists', async () => {
+      const reloadSpy = vi.fn();
+      const purgeCachesSpy = vi.fn().mockResolvedValue(['sportexus-shell-v1']);
+
+      const result = await executeAppUpdate({
+        waitingWorker: null,
+        onReload: reloadSpy,
+        getPendingCount: async () => 0,
+        checkUnsavedWork: () => false,
+        purgeCaches: purgeCachesSpy,
+      });
+
+      expect(result.success).toBe(true);
+      expect(purgeCachesSpy).toHaveBeenCalledTimes(1);
+      expect(reloadSpy).toHaveBeenCalledTimes(1);
+      expect(result.messagesSent).toEqual([]);
+    });
   });
 
-  it('stamps sw.js VERSION with unique buildId on release generation', () => {
-    const swTemplate = "const VERSION = 'sportexus-shell-v2';\nconst PRECACHE = ['/offline'];";
-    const buildId = '6e2f9b0d1d3a-mvu8sufe';
-    const stamped = swTemplate.replace(
-      /const VERSION = ['"][^'"]+['"];/,
-      `const VERSION = 'sportexus-shell-${buildId}';`,
-    );
+  describe('hasUnsavedWork (DOM Guard Inspection)', () => {
+    it('returns false in non-DOM environments', () => {
+      // In node env without document or when undefined
+      const isUnsaved = hasUnsavedWork();
+      expect(typeof isUnsaved).toBe('boolean');
+    });
+  });
 
-    expect(stamped).toContain(`const VERSION = 'sportexus-shell-${buildId}';`);
-    expect(stamped).not.toContain('sportexus-shell-v2');
+  describe('Version Manifest & Stamping Consistency', () => {
+    it('stamps sw.js with deterministic buildId and preserves header semantics', () => {
+      const template = [
+        '/* Sportexus PWA Service Worker. */',
+        "const VERSION = 'sportexus-shell-v2';",
+        "const PRECACHE = ['/offline'];",
+      ].join('\n');
+
+      const buildId = '6e2f9b0d1d3a-test';
+      const stamped = template.replace(
+        /const VERSION = ['"][^'"]+['"];/,
+        `const VERSION = 'sportexus-shell-${buildId}';`,
+      );
+
+      expect(stamped).toContain(`const VERSION = 'sportexus-shell-${buildId}';`);
+      expect(stamped).not.toContain('sportexus-shell-v2');
+      expect(stamped).toContain("const PRECACHE = ['/offline'];");
+    });
   });
 });

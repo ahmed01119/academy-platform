@@ -39,8 +39,8 @@ export class HealthService {
     else if (redis === 'down') {
       status = this.config.nodeEnv === 'production' ? 'down' : 'degraded';
     } else if (redis === 'skipped' && this.config.nodeEnv === 'production') {
-      // Redis required in production unless in-memory fallback is explicitly permitted
-      status = this.config.allowInMemoryRateLimit ? 'ok' : 'degraded';
+      // Redis required in production
+      status = 'degraded';
     }
     // redis === 'skipped' in development/test → status stays 'ok'
 

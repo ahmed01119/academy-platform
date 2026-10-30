@@ -19,57 +19,55 @@ try {
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   transpilePackages: ['@academy/shared'],
-  output: process.env.BUILD_STANDALONE === 'true' ? 'standalone' : undefined,
+  output:
+    process.env.BUILD_STANDALONE === 'true' || process.env.NODE_ENV === 'production'
+      ? 'standalone'
+      : undefined,
   env: {
     NEXT_PUBLIC_BUILD_ID: initialBuildId,
     NEXT_PUBLIC_COMMIT_SHA: initialCommitSha,
   },
   generateBuildId: async () => initialBuildId || `build-${Date.now().toString(36)}`,
-  eslint: {
-    // Rely on root lint command (turbo run lint / pnpm lint)
-    ignoreDuringBuilds: true,
-  },
-  typescript: {
-    // Rely on root typecheck command (turbo run typecheck / pnpm typecheck)
-    ignoreBuildErrors: true,
-  },
-  async rewrites() {
-    return [
-      {
-        source: '/v1/:path*',
-        destination: '/v1/:path*',
-      },
-    ];
-  },
   async headers() {
     return [
       {
-        source: '/sw.js',
+        source: '/version.json',
         headers: [
-          {
-            key: 'Cache-Control',
-            value: 'no-cache, no-store, must-revalidate',
-          },
-          {
-            key: 'Content-Type',
-            value: 'application/javascript; charset=utf-8',
-          },
+          { key: 'Cache-Control', value: 'no-store, no-cache, must-revalidate, proxy-revalidate' },
+          { key: 'Pragma', value: 'no-cache' },
+          { key: 'Expires', value: '0' },
         ],
       },
       {
-        source: '/version.json',
+        source: '/sw.js',
         headers: [
+          { key: 'Cache-Control', value: 'no-store, no-cache, must-revalidate, proxy-revalidate' },
+          { key: 'Pragma', value: 'no-cache' },
+          { key: 'Expires', value: '0' },
+        ],
+      },
+      {
+        source: '/(.*)',
+        headers: [
+          { key: 'X-Frame-Options', value: 'DENY' },
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           {
-            key: 'Cache-Control',
-            value: 'no-cache, no-store, must-revalidate',
-          },
-          {
-            key: 'Content-Type',
-            value: 'application/json; charset=utf-8',
+            key: 'Permissions-Policy',
+            value: 'camera=(self), microphone=(), geolocation=()',
           },
         ],
       },
     ];
+  },
+  // Proxying to the backend API is handled dynamically at runtime by
+  // apps/web/src/app/v1/[...path]/route.ts. This ensures INTERNAL_API_URL is evaluated
+  // at runtime on every request without statically baking localhost into build artifacts.
+  async rewrites() {
+    return [];
+  },
+  async redirects() {
+    return [];
   },
 };
 

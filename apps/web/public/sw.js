@@ -99,7 +99,9 @@ self.addEventListener('message', (event) => {
         .keys()
         .then((keys) =>
           Promise.all(
-            keys.filter((key) => key.startsWith('sportexus-')).map((key) => caches.delete(key)),
+            keys
+              .filter((key) => key.startsWith('sportexus-shell-'))
+              .map((key) => caches.delete(key)),
           ),
         ),
     );

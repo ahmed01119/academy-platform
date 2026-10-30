@@ -10,7 +10,7 @@ const RUNNING_BUILD_ID = process.env.NEXT_PUBLIC_BUILD_ID || '';
  * Checks if the user is currently interacting with an input, editing a form,
  * or if a critical platform operation marked the document as busy.
  */
-function hasUnsavedWork(): boolean {
+export function hasUnsavedWork(): boolean {
   if (typeof document === 'undefined') return false;
   if (document.body.dataset.academyBusy === 'true') return true;
   const active = document.activeElement;
@@ -26,18 +26,116 @@ function hasUnsavedWork(): boolean {
 
 /**
  * Safely purge all cached application assets from the CacheStorage API.
+ * Ensures that ONLY versioned static shell caches ('sportexus-shell-') are cleared.
+ * NEVER deletes offline attendance data (stored in IndexedDB), pending writes,
+ * or unrelated CacheStorage entries.
  */
-async function purgeAppCaches(): Promise<void> {
-  if (typeof window === 'undefined' || !('caches' in window)) return;
+export async function purgeAppCaches(
+  cachesApi = typeof window !== 'undefined' ? window.caches : undefined,
+): Promise<string[]> {
+  if (!cachesApi) return [];
   try {
-    const keys = await window.caches.keys();
-    await Promise.all(
-      keys
-        .filter((k) => k.startsWith('sportexus-') || k.includes('shell'))
-        .map((k) => window.caches.delete(k)),
-    );
+    const keys = await cachesApi.keys();
+    const shellKeys = keys.filter((k) => k.startsWith('sportexus-shell-'));
+    await Promise.all(shellKeys.map((k) => cachesApi.delete(k)));
+    return shellKeys;
   } catch {
-    // Best-effort cache cleanup
+    return [];
+  }
+}
+
+export interface ExecuteAppUpdateOptions {
+  waitingWorker: { postMessage: (msg: unknown) => void } | null;
+  swContainer?: {
+    addEventListener: (event: string, handler: () => void, options?: { once?: boolean }) => void;
+  } | null;
+  onReload?: () => void;
+  getPendingCount?: () => Promise<number>;
+  checkUnsavedWork?: () => boolean;
+  purgeCaches?: () => Promise<string[]>;
+}
+
+export interface ExecuteAppUpdateResult {
+  success: boolean;
+  reason?: 'PENDING_OFFLINE' | 'UNSAVED_WORK' | 'VERIFY_FAILED' | 'EXECUTION_ERROR';
+  pendingCount?: number;
+  purgedCaches?: string[];
+  messagesSent?: string[];
+}
+
+/**
+ * Core update application workflow:
+ * 1. Checks and guards pending offline attendance operations.
+ * 2. Checks and guards unsaved user input.
+ * 3. Purges only versioned static shell caches ('sportexus-shell-').
+ * 4. Dispatches CLEAR_STATIC_CACHE and SKIP_WAITING to waiting Service Worker.
+ * 5. Safely reloads upon controller activation or fallback timeout.
+ */
+export async function executeAppUpdate(
+  options: ExecuteAppUpdateOptions,
+): Promise<ExecuteAppUpdateResult> {
+  const {
+    waitingWorker,
+    swContainer = typeof navigator !== 'undefined' ? navigator.serviceWorker : null,
+    onReload = () => {
+      if (typeof window !== 'undefined') window.location.reload();
+    },
+    getPendingCount = () => offlineEngine.pendingCount(),
+    checkUnsavedWork = () => hasUnsavedWork(),
+    purgeCaches = () => purgeAppCaches(),
+  } = options;
+
+  let pending = 0;
+  try {
+    pending = await getPendingCount();
+    if (pending > 0) {
+      return { success: false, reason: 'PENDING_OFFLINE', pendingCount: pending };
+    }
+  } catch {
+    // Fail closed: halt update if offline pending count cannot be verified
+    return { success: false, reason: 'VERIFY_FAILED' };
+  }
+
+  if (checkUnsavedWork()) {
+    return { success: false, reason: 'UNSAVED_WORK' };
+  }
+
+  try {
+    const purged = await purgeCaches();
+    const messagesSent: string[] = [];
+
+    if (waitingWorker) {
+      let reloaded = false;
+      const doReload = () => {
+        if (reloaded) return;
+        reloaded = true;
+        onReload();
+      };
+
+      if (swContainer) {
+        swContainer.addEventListener('controllerchange', doReload, { once: true });
+      }
+
+      waitingWorker.postMessage({ type: 'CLEAR_STATIC_CACHE' });
+      messagesSent.push('CLEAR_STATIC_CACHE');
+
+      waitingWorker.postMessage({ type: 'SKIP_WAITING' });
+      messagesSent.push('SKIP_WAITING');
+
+      if (typeof window !== 'undefined') {
+        window.setTimeout(doReload, 3000);
+      }
+    } else {
+      onReload();
+    }
+
+    return {
+      success: true,
+      purgedCaches: purged,
+      messagesSent,
+    };
+  } catch {
+    return { success: false, reason: 'EXECUTION_ERROR' };
   }
 }
 
@@ -161,74 +259,43 @@ export function ServiceWorkerRegistrar() {
     if (isUpdating || isReloadingRef.current) return;
     setPendingWarning(null);
 
-    try {
-      const pending = await offlineEngine.pendingCount();
-      if (pending > 0) {
+    setIsUpdating(true);
+
+    const result = await executeAppUpdate({
+      waitingWorker,
+      onReload: () => {
+        isReloadingRef.current = true;
+        window.location.reload();
+      },
+    });
+
+    if (!result.success) {
+      setIsUpdating(false);
+      if (result.reason === 'PENDING_OFFLINE') {
         setPendingWarning(
           locale === 'ar'
-            ? `تنبيه: لديك ${pending} عملية حضور أو مسودة بانتظار المزامنة. يرجى إتمام المزامنة أولاً قبل تحديث التطبيق.`
-            : `Warning: You have ${pending} attendance scans or drafts waiting to sync. Please sync before updating.`,
+            ? `تنبيه: لديك ${result.pendingCount} عملية حضور أو مسودة بانتظار المزامنة. يرجى إتمام المزامنة أولاً قبل تحديث التطبيق.`
+            : `Warning: You have ${result.pendingCount} attendance scans or drafts waiting to sync. Please sync before updating.`,
         );
-        return;
-      }
-    } catch {
-      // Issue #4: Fail closed and prevent updates when pending offline work cannot be verified
-      setPendingWarning(
-        locale === 'ar'
-          ? 'تعذر التحقق من العمليات غير المتزامنة. تم إيقاف التحديث للحفاظ على بياناتك. يرجى إعادة المحاولة لاحقاً.'
-          : 'Unable to verify pending offline work. Update halted to protect local data. Please try again later.',
-      );
-      return;
-    }
-
-    if (hasUnsavedWork()) {
-      setPendingWarning(
-        locale === 'ar'
-          ? 'يرجى حفظ البيانات المفتوحة في النموذج أولاً قبل تحديث التطبيق.'
-          : 'Please save your active form before updating the application.',
-      );
-      return;
-    }
-
-    setIsUpdating(true);
-    isReloadingRef.current = true;
-
-    try {
-      // Purge cached shell assets to avoid stale chunk cache hits
-      await purgeAppCaches();
-
-      if (waitingWorker) {
-        // Issue #6: Wait for safe controller activation before reloading to prevent update loops
-        let reloaded = false;
-        const doReload = () => {
-          if (reloaded) return;
-          reloaded = true;
-          window.location.reload();
-        };
-
-        if ('serviceWorker' in navigator) {
-          navigator.serviceWorker.addEventListener('controllerchange', doReload, {
-            once: true,
-          });
-        }
-
-        // Send cache-clear and skip-waiting signals
-        waitingWorker.postMessage({ type: 'CLEAR_STATIC_CACHE' });
-        waitingWorker.postMessage({ type: 'SKIP_WAITING' });
-
-        // Fallback reload if controllerchange event does not fire within 3 seconds
-        window.setTimeout(doReload, 3000);
+      } else if (result.reason === 'UNSAVED_WORK') {
+        setPendingWarning(
+          locale === 'ar'
+            ? 'يرجى حفظ البيانات المفتوحة في النموذج أولاً قبل تحديث التطبيق.'
+            : 'Please save your active form before updating the application.',
+        );
+      } else if (result.reason === 'VERIFY_FAILED') {
+        setPendingWarning(
+          locale === 'ar'
+            ? 'تعذر التحقق من العمليات غير المتزامنة. تم إيقاف التحديث للحفاظ على بياناتك. يرجى إعادة المحاولة لاحقاً.'
+            : 'Unable to verify pending offline work. Update halted to protect local data. Please try again later.',
+        );
       } else {
-        window.location.reload();
+        setPendingWarning(
+          locale === 'ar'
+            ? 'حدث خطأ أثناء تفعيل التحديث. يرجى إعادة تحميل الصفحة يدوياً.'
+            : 'An error occurred while applying the update. Please refresh the page manually.',
+        );
       }
-    } catch {
-      setIsUpdating(false);
-      isReloadingRef.current = false;
-      setPendingWarning(
-        locale === 'ar'
-          ? 'حدث خطأ أثناء تفعيل التحديث. يرجى إعادة تحميل الصفحة يدوياً.'
-          : 'An error occurred while applying the update. Please refresh the page manually.',
-      );
     }
   };
 
