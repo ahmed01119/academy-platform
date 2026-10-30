@@ -1,9 +1,10 @@
 /**
- * SPORTEXUS — Version Manifest Generator
+ * SPORTEXUS — Version Manifest & Service Worker Stamping Generator
  *
  * Generates apps/web/public/version.json before Next.js build.
  * Exposes non-sensitive build metadata (buildId, version, builtAt).
- * Client-side AppUpdateNotifier uses this to detect new releases without querying Neon.
+ * Stamps apps/web/public/sw.js with the buildId to guarantee browser SW byte-diff
+ * and automatic cache-purge on release activation.
  */
 
 const fs = require('fs');
@@ -75,6 +76,20 @@ function main() {
   const targetPath = path.join(targetDir, 'version.json');
   fs.writeFileSync(targetPath, JSON.stringify(manifest, null, 2) + '\n', 'utf8');
   console.log(`[Version Generator] Generated ${targetPath}:`, manifest);
+
+  // Stamp sw.js with the buildId so browsers detect byte change and trigger lifecycle update
+  const swPath = path.join(targetDir, 'sw.js');
+  if (fs.existsSync(swPath)) {
+    let swContent = fs.readFileSync(swPath, 'utf8');
+    const updatedSw = swContent.replace(
+      /const VERSION = ['"][^'"]+['"];/,
+      `const VERSION = 'sportexus-shell-${buildId}';`,
+    );
+    if (updatedSw !== swContent) {
+      fs.writeFileSync(swPath, updatedSw, 'utf8');
+      console.log(`[Version Generator] Stamped ${swPath} with VERSION: sportexus-shell-${buildId}`);
+    }
+  }
 }
 
 main();
