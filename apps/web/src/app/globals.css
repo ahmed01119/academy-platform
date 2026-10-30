@@ -30,6 +30,7 @@
   --bg-surface: #ffffff;
   --bg-surface-subtle: #f1f5f9;
   --bg-surface-elevated: #ffffff;
+  --bg-elevated: #f1f5f9;
 
   --text-main: #0f172a;
   --text-muted: #475569;
@@ -45,7 +46,7 @@
   --brand-primary-hover: #002ecc;
 
   --bg-card: #ffffff;
-  --bg-card-hover: #f1f5f9;
+  --bg-card-hover: #f8fafc;
   --text-primary: #0f172a;
   --text-secondary: #475569;
 
@@ -53,11 +54,23 @@
   --badge-border: #bfdbfe;
   --badge-fg: #1d4ed8;
 
-  --font-display: 'IBM Plex Sans Arabic', 'Segoe UI', sans-serif;
-  --font-body: 'IBM Plex Sans', 'Segoe UI', sans-serif;
+  --glass-bg: rgba(255, 255, 255, 0.85);
+  --glass-border: rgba(226, 232, 240, 0.8);
+  --glass-highlight: rgba(255, 255, 255, 0.9);
 
-  --ambient-glow-1: rgba(10, 59, 255, 0.08);
-  --ambient-glow-2: rgba(0, 214, 255, 0.05);
+  --shadow-xs: 0 1px 2px 0 rgba(15, 23, 42, 0.04);
+  --shadow-sm: 0 1px 3px 0 rgba(15, 23, 42, 0.06), 0 1px 2px -1px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.07), 0 2px 4px -2px rgba(15, 23, 42, 0.05);
+  --shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -4px rgba(15, 23, 42, 0.04);
+  --shadow-xl: 0 20px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.03);
+  --shadow-float: 0 12px 30px -4px rgba(15, 23, 42, 0.1), 0 4px 12px -2px rgba(15, 23, 42, 0.05);
+  --shadow-glow: 0 0 25px -5px rgba(10, 59, 255, 0.15);
+
+  --font-display: 'IBM Plex Sans Arabic', 'Segoe UI', -apple-system, sans-serif;
+  --font-body: 'IBM Plex Sans', 'Segoe UI', -apple-system, sans-serif;
+
+  --ambient-glow-1: rgba(10, 59, 255, 0.06);
+  --ambient-glow-2: rgba(0, 214, 255, 0.04);
 }
 
 [data-theme='dark'],
@@ -67,9 +80,10 @@
   --bg-surface: #0f172a;
   --bg-surface-subtle: #141e33;
   --bg-surface-elevated: #1e293b;
+  --bg-elevated: #1e293b;
 
   --bg-card: #0f172a;
-  --bg-card-hover: #1e293b;
+  --bg-card-hover: #141e33;
   --text-primary: #f8fafc;
   --text-secondary: #94a3b8;
 
@@ -90,9 +104,21 @@
   --badge-border: rgba(0, 214, 255, 0.35);
   --badge-fg: #38bdf8;
 
-  --ambient-glow-1: rgba(10, 59, 255, 0.22);
-  --ambient-glow-2: rgba(0, 214, 255, 0.16);
-  --ambient-glow-green: rgba(34, 197, 94, 0.15);
+  --glass-bg: rgba(15, 23, 42, 0.75);
+  --glass-border: rgba(30, 41, 59, 0.7);
+  --glass-highlight: rgba(255, 255, 255, 0.04);
+
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.25);
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.35), 0 1px 2px -1px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 4px 8px -1px rgba(0, 0, 0, 0.45), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 12px 20px -3px rgba(0, 0, 0, 0.55), 0 4px 8px -4px rgba(0, 0, 0, 0.4);
+  --shadow-xl: 0 24px 35px -5px rgba(0, 0, 0, 0.65), 0 10px 15px -6px rgba(0, 0, 0, 0.45);
+  --shadow-float: 0 16px 36px -6px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  --shadow-glow: 0 0 30px -5px rgba(0, 214, 255, 0.22);
+
+  --ambient-glow-1: rgba(10, 59, 255, 0.2);
+  --ambient-glow-2: rgba(0, 214, 255, 0.14);
+  --ambient-glow-green: rgba(34, 197, 94, 0.12);
 }
 
 /* Universal Accessible Select & Option Contrast Rules */
@@ -133,8 +159,29 @@ body {
   color: var(--text-main);
   font-family: var(--font-body);
   transition:
-    background-color 0.2s ease,
-    color 0.2s ease;
+    background-color 0.25s ease,
+    color 0.25s ease;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom Sleek Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-app);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
 }
 
 /* Accessible focus outline */
@@ -143,14 +190,124 @@ body {
   outline-offset: 2px;
 }
 
+/* =============================================================================
+   Motion & Animation System (Hardware accelerated, reduced-motion friendly)
+   ============================================================================= */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleUp {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes pulseLive {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.15);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-scale-up {
+  animation: scaleUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-pulse-live {
+  animation: pulseLive 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Surface Classes */
+.glass-panel {
+  background-color: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+}
+
+.card-hover-interactive {
+  transition:
+    transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.2s ease;
+}
+
+.card-hover-interactive:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: rgba(10, 59, 255, 0.3);
+}
+
+[data-theme='dark'] .card-hover-interactive:hover,
+.dark .card-hover-interactive:hover {
+  border-color: rgba(0, 214, 255, 0.4);
+  box-shadow: var(--shadow-glow);
+}
+
+.shimmer-bg {
+  background: linear-gradient(
+    90deg,
+    var(--bg-surface-subtle) 0%,
+    var(--bg-surface-elevated) 50%,
+    var(--bg-surface-subtle) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.8s infinite linear;
+}
+
 /* Respect user reduced-motion setting */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
-    animation-duration: 0.01ms !important;
+    animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
   }
 }
