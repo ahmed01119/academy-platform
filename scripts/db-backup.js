@@ -48,14 +48,14 @@ async function runBackup() {
     'saaSInvoice',
     'platformAnnouncement',
     'invitation',
-    'refreshToken'
+    'refreshToken',
   ];
 
   const exportData = {
     exportedAt: new Date().toISOString(),
     version: '1.0.0',
     app: 'SPORTEXUS',
-    data: {}
+    data: {},
   };
 
   let totalRecords = 0;

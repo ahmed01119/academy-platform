@@ -10,26 +10,23 @@ interface SkeletonProps {
 export function Skeleton({ className = 'h-4 w-full', count = 1 }: SkeletonProps) {
   if (count > 1) {
     return (
-      <div className="space-y-2">
+      <div className="space-y-2.5">
         {Array.from({ length: count }).map((_, i) => (
-          <div
-            key={i}
-            className={`animate-pulse rounded-lg bg-[var(--bg-surface-subtle)] ${className}`}
-          />
+          <div key={i} className={`shimmer-bg rounded-xl ${className}`} />
         ))}
       </div>
     );
   }
 
-  return <div className={`animate-pulse rounded-lg bg-[var(--bg-surface-subtle)] ${className}`} />;
+  return <div className={`shimmer-bg rounded-xl ${className}`} />;
 }
 
 export function TableRowSkeleton({ cols = 5 }: { cols?: number }) {
   return (
-    <tr className="animate-pulse border-b border-[var(--border-subtle)]">
+    <tr className="border-b border-[var(--border-subtle)]">
       {Array.from({ length: cols }).map((_, i) => (
         <td key={i} className="p-4">
-          <div className="h-4 rounded bg-[var(--bg-surface-subtle)]" />
+          <div className="h-4 rounded-lg shimmer-bg" />
         </td>
       ))}
     </tr>

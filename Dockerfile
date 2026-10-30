@@ -26,8 +26,9 @@ ENV BUILD_STANDALONE=true
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
-# Compile shared library and build standalone Next.js app
-RUN pnpm --filter @academy/shared build && \
+# Compile shared library and build standalone Next.js app in order
+RUN find . -name "*.tsbuildinfo" -delete 2>/dev/null || true && \
+    pnpm --filter @academy/shared build && \
     pnpm --filter @academy/web build
 
 # =============================================================================
@@ -47,6 +48,7 @@ RUN addgroup --system --gid 1001 nodejs && \
 
 # Copy standalone build output and static assets
 COPY --from=builder /app/apps/web/public ./apps/web/public
+COPY --from=builder /app/apps/web/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/.next/static
 

@@ -55,7 +55,7 @@ async function runRestore() {
     'saaSInvoice',
     'platformAnnouncement',
     'invitation',
-    'refreshToken'
+    'refreshToken',
   ];
 
   let restoredTotal = 0;
@@ -69,7 +69,7 @@ async function runRestore() {
           await prisma[model].upsert({
             where: { id: item.id },
             update: item,
-            create: item
+            create: item,
           });
           count++;
         } catch (err) {

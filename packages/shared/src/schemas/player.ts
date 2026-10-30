@@ -40,7 +40,10 @@ export const CreatePlayerSchema = z.object({
   firstName: z.string().trim().min(2, 'First name must be at least 2 characters').max(50),
   lastName: z.string().trim().min(2, 'Last name must be at least 2 characters').max(50),
   gender: PlayerGenderSchema.default(PlayerGender.MALE),
-  dateOfBirth: z.string().regex(/^\d{4}(-\d{2}-\d{2})?$/, 'Date of birth must be YYYY-MM-DD or YYYY').optional(),
+  dateOfBirth: z
+    .string()
+    .regex(/^\d{4}(-\d{2}-\d{2})?$/, 'Date of birth must be YYYY-MM-DD or YYYY')
+    .optional(),
   birthYear: z.number().int().min(1950).max(2035).optional().nullable(),
   jerseyNumber: z.number().int().min(1).max(99).optional().nullable(),
   membershipNumber: z.string().trim().max(50).optional().nullable(),
@@ -182,4 +185,3 @@ export interface PlayerDeletionResponse {
   message: string;
   playerId: string;
 }
-

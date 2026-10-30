@@ -42,9 +42,7 @@ export class CsrfGuard implements CanActivate {
     // Wildcard CORS is not a valid CSRF trust boundary, even in development.
     // Only explicitly configured, well-formed HTTP(S) origins are trusted.
     // Supports exact origins and wildcard patterns like *.trycloudflare.com
-    const rawOrigins = this.config.corsOrigin
-      .split(',')
-      .map((value) => value.trim());
+    const rawOrigins = this.config.corsOrigin.split(',').map((value) => value.trim());
 
     const exactAllowed = rawOrigins.filter((value) => {
       if (value.startsWith('*.')) return false;
@@ -67,8 +65,7 @@ export class CsrfGuard implements CanActivate {
 
     if (origin) {
       const isAllowed =
-        exactAllowed.includes(origin) ||
-        wildcardSuffixes.some((suffix) => origin.endsWith(suffix));
+        exactAllowed.includes(origin) || wildcardSuffixes.some((suffix) => origin.endsWith(suffix));
       if (!isAllowed) {
         throw new ForbiddenException({
           code: ErrorCode.FORBIDDEN,

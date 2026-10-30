@@ -1,10 +1,8 @@
 import {
   BadRequestException,
   ConflictException,
-  ForbiddenException,
   Inject,
   Injectable,
-  InternalServerErrorException,
   Logger,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -18,7 +16,7 @@ import { EmailService } from '../email/email.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import {
   ErrorCode,
-  TenantRole,
+  type TenantRole,
   type AuthResponse,
   type ChangePasswordRequest,
   type ForgotPasswordRequest,
@@ -135,7 +133,9 @@ export class AuthService {
         });
       }
     } catch (e) {
-      this.logger.warn(`Failed to notify platform admins of new application: ${(e as Error)?.message}`);
+      this.logger.warn(
+        `Failed to notify platform admins of new application: ${(e as Error)?.message}`,
+      );
     }
 
     // Send confirmation email to applicant
@@ -458,7 +458,8 @@ export class AuthService {
       });
 
       try {
-        const appUrl = process.env.APP_PUBLIC_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+        const appUrl =
+          process.env.APP_PUBLIC_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
         const resetUrl = `${appUrl}/reset-password?token=${rawToken}`;
         await this.emailService.sendPasswordReset(user.email, user.name, resetUrl, 'ar');
       } catch (e) {
@@ -525,7 +526,9 @@ export class AuthService {
           );
         }
       } catch (e) {
-        this.logger.warn(`Failed to dispatch password changed security email: ${(e as Error)?.message}`);
+        this.logger.warn(
+          `Failed to dispatch password changed security email: ${(e as Error)?.message}`,
+        );
       }
 
       return {
@@ -628,7 +631,8 @@ export class AuthService {
       });
 
       try {
-        const appUrl = process.env.APP_PUBLIC_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+        const appUrl =
+          process.env.APP_PUBLIC_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
         const verifyUrl = `${appUrl}/verify-email?token=${rawToken}`;
         await this.emailService.sendEmailVerification(user.email, user.name, verifyUrl, 'ar');
       } catch (e) {
@@ -761,7 +765,9 @@ export class AuthService {
         'ar',
       );
     } catch (e) {
-      this.logger.warn(`Failed to dispatch password changed security email: ${(e as Error)?.message}`);
+      this.logger.warn(
+        `Failed to dispatch password changed security email: ${(e as Error)?.message}`,
+      );
     }
 
     this.logger.log(`Password changed for user ${userId}`);

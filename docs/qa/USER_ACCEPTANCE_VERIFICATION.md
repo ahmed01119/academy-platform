@@ -1,4 +1,5 @@
 # Sportexus — User Acceptance Verification Report
+
 **Date:** 2026-10-28  
 **Verification Level:** Comprehensive Multi-Role User Journey Validation  
 **Platform Version:** 1.0.0-release  
@@ -10,6 +11,7 @@
 ## 1. Scope & Verification Strategy
 
 This report captures the honest, end-to-end verification of real user journeys across all major system personas:
+
 1. **Platform Owner (Superadmin):** System overview, storage diagnostics, academy application approval with plan assignment.
 2. **Academy Owner & General Manager:** Tenant onboarding, staff invitation lifecycle, financial invoices, group assignments, quick attendance button.
 3. **Branch Manager & Receptionist:** Front-desk operations, player check-in via QR scan and interactive roster, invoice payment collection.
@@ -21,6 +23,7 @@ This report captures the honest, end-to-end verification of real user journeys a
 ## 2. Multi-Role Journey Verification
 
 ### Journey 1: Academy Application & Plan Selection (Platform Owner)
+
 - **Role:** `PLATFORM_OWNER`
 - **Initial State:** Pending academy application exists for review.
 - **Workflow Steps:**
@@ -39,6 +42,7 @@ This report captures the honest, end-to-end verification of real user journeys a
 ---
 
 ### Journey 2: Staff Invitation & Onboarding Lifecycle (Academy Owner)
+
 - **Role:** `OWNER`
 - **Workflow Steps:**
   1. Navigate to `/settings` -> Staff Management tab.
@@ -56,6 +60,7 @@ This report captures the honest, end-to-end verification of real user journeys a
 ---
 
 ### Journey 3: Quick Attendance & Coach Role Shield (Owner vs Coach)
+
 - **Roles:** `OWNER` (allowed) vs `COACH` (strictly prohibited)
 - **Workflow Steps (Owner):**
   1. Open Academy Dashboard at `/dashboard`.
@@ -76,6 +81,7 @@ This report captures the honest, end-to-end verification of real user journeys a
 ---
 
 ### Journey 4: Registration Form Validation & Error Handling (New Academy)
+
 - **Role:** Guest / New Academy Applicant
 - **Workflow Steps:**
   1. Navigate to `/register`.
@@ -93,13 +99,13 @@ This report captures the honest, end-to-end verification of real user journeys a
 
 ## 3. Automated Test Suite Breakdown
 
-| Package | Test Files | Total Tests | Passed | Failed |
-|---|---|---|---|---|
-| `@academy/api` | 19 | 193 | 193 | 0 |
-| `@academy/web` | 6 | 36 | 36 | 0 |
-| `@academy/shared` | 5 | 27 | 27 | 0 |
-| `@academy/database` | 1 | 6 | 6 | 0 |
-| **Total Monorepo** | **31** | **262** | **262** | **0** |
+| Package             | Test Files | Total Tests | Passed  | Failed |
+| ------------------- | ---------- | ----------- | ------- | ------ |
+| `@academy/api`      | 19         | 193         | 193     | 0      |
+| `@academy/web`      | 6          | 36          | 36      | 0      |
+| `@academy/shared`   | 5          | 27          | 27      | 0      |
+| `@academy/database` | 1          | 6           | 6       | 0      |
+| **Total Monorepo**  | **31**     | **262**     | **262** | **0**  |
 
 ---
 

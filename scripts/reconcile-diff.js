@@ -1,8 +1,12 @@
 const path = require('path');
 const fs = require('fs');
-const epPath = require.resolve('embedded-postgres', { paths: [path.resolve(__dirname, '../packages/database')] });
+const epPath = require.resolve('embedded-postgres', {
+  paths: [path.resolve(__dirname, '../packages/database')],
+});
 const { default: EmbeddedPostgres } = require(epPath);
-const prismaPath = require.resolve('@prisma/client', { paths: [path.resolve(__dirname, '../packages/database')] });
+const prismaPath = require.resolve('@prisma/client', {
+  paths: [path.resolve(__dirname, '../packages/database')],
+});
 const { PrismaClient } = require(prismaPath);
 
 async function main() {
@@ -24,19 +28,28 @@ async function main() {
   }
 
   // Wait 3 seconds for PostgreSQL socket to be ready
-  await new Promise(r => setTimeout(r, 3000));
+  await new Promise((r) => setTimeout(r, 3000));
 
   const prisma = new PrismaClient({
     datasources: {
       db: {
-        url: 'postgresql://academy:academy@127.0.0.1:5432/academy?schema=public'
-      }
-    }
+        url: 'postgresql://academy:academy@127.0.0.1:5432/academy?schema=public',
+      },
+    },
   });
-  const backup = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../backups/sportexus_backup_2026-10-28T00-57-09-057Z.json'), 'utf8'));
+  const backup = JSON.parse(
+    fs.readFileSync(
+      path.resolve(__dirname, '../backups/sportexus_backup_2026-10-28T00-57-09-057Z.json'),
+      'utf8',
+    ),
+  );
 
-  const liveTenants = await prisma.tenant.findMany({ select: { id: true, name: true, slug: true, status: true, createdAt: true } });
-  const liveUsers = await prisma.user.findMany({ select: { id: true, name: true, email: true, createdAt: true } });
+  const liveTenants = await prisma.tenant.findMany({
+    select: { id: true, name: true, slug: true, status: true, createdAt: true },
+  });
+  const liveUsers = await prisma.user.findMany({
+    select: { id: true, name: true, email: true, createdAt: true },
+  });
   const liveAuditCount = await prisma.auditLog.count();
 
   console.log('\n--- LIVE DATABASE COUNTS ---');
@@ -49,14 +62,14 @@ async function main() {
   console.log(`Backup Users Count: ${backup.data.user.length}`);
   console.log(`Backup Audit Logs Count: ${backup.data.auditLog.length}`);
 
-  const backupTenantIds = new Set(backup.data.tenant.map(t => t.id));
-  const newTenants = liveTenants.filter(t => !backupTenantIds.has(t.id));
+  const backupTenantIds = new Set(backup.data.tenant.map((t) => t.id));
+  const newTenants = liveTenants.filter((t) => !backupTenantIds.has(t.id));
 
   console.log('\n--- NEW TENANTS IN LIVE DB NOT IN BACKUP ---');
   console.log(JSON.stringify(newTenants, null, 2));
 
-  const backupUserIds = new Set(backup.data.user.map(u => u.id));
-  const newUsers = liveUsers.filter(u => !backupUserIds.has(u.id));
+  const backupUserIds = new Set(backup.data.user.map((u) => u.id));
+  const newUsers = liveUsers.filter((u) => !backupUserIds.has(u.id));
 
   console.log('\n--- NEW USERS IN LIVE DB NOT IN BACKUP ---');
   console.log(JSON.stringify(newUsers, null, 2));

@@ -65,7 +65,7 @@ export class PlatformController {
     return this.platformService.listAcademies(actorUserId, { status, search });
   }
 
-    @Get('academies/:id/deletion-impact')
+  @Get('academies/:id/deletion-impact')
   @UseGuards(PlatformOwnerGuard)
   async getAcademyDeletionImpact(
     @CurrentUser('id') actorUserId: string,
@@ -272,7 +272,6 @@ export class PlatformController {
   async getStorageStatsAlias(@CurrentUser('id') actorUserId: string) {
     return this.platformService.getStorageMetrics(actorUserId);
   }
-
 
   @Post('storage/maintenance/dry-run')
   async dryRunStorageMaintenance(@CurrentUser('id') actorUserId: string) {

@@ -1,9 +1,13 @@
 const path = require('path');
 const fs = require('fs');
 const { execSync } = require('child_process');
-const epPath = require.resolve('embedded-postgres', { paths: [path.resolve(__dirname, '../packages/database')] });
+const epPath = require.resolve('embedded-postgres', {
+  paths: [path.resolve(__dirname, '../packages/database')],
+});
 const { default: EmbeddedPostgres } = require(epPath);
-const prismaPath = require.resolve('@prisma/client', { paths: [path.resolve(__dirname, '../packages/database')] });
+const prismaPath = require.resolve('@prisma/client', {
+  paths: [path.resolve(__dirname, '../packages/database')],
+});
 const { PrismaClient } = require(prismaPath);
 
 async function main() {
@@ -24,19 +28,19 @@ async function main() {
     console.log('[PG Dump] (Server note: ' + e.message + ')');
   }
 
-  await new Promise(r => setTimeout(r, 2000));
+  await new Promise((r) => setTimeout(r, 2000));
 
   const prisma = new PrismaClient({
     datasources: {
-      db: { url: 'postgresql://academy:academy@127.0.0.1:5432/academy?schema=public' }
-    }
+      db: { url: 'postgresql://academy:academy@127.0.0.1:5432/academy?schema=public' },
+    },
   });
 
   // 1. Generate Schema DDL
   console.log('[PG Dump] Generating complete PostgreSQL schema DDL via Prisma engine...');
   const ddlSql = execSync(
     'pnpm --filter @academy/database exec prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script',
-    { encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 }
+    { encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 },
   );
 
   // 2. Query all tables in topological foreign key dependency order
@@ -108,14 +112,22 @@ async function main() {
 
   // Save full JSON backup
   const jsonPath = path.join(backupDir, `sportexus_live_snapshot_${timestamp}.json`);
-  fs.writeFileSync(jsonPath, JSON.stringify({
-    exportedAt: new Date().toISOString(),
-    version: '1.0.0',
-    totalRecords,
-    tenantCount: jsonData.tenant?.length || 0,
-    userCount: jsonData.user?.length || 0,
-    data: jsonData,
-  }, null, 2), 'utf8');
+  fs.writeFileSync(
+    jsonPath,
+    JSON.stringify(
+      {
+        exportedAt: new Date().toISOString(),
+        version: '1.0.0',
+        totalRecords,
+        tenantCount: jsonData.tenant?.length || 0,
+        userCount: jsonData.user?.length || 0,
+        data: jsonData,
+      },
+      null,
+      2,
+    ),
+    'utf8',
+  );
 
   // Save complete DDL SQL
   const ddlPath = path.join(backupDir, `sportexus_schema_${timestamp}.sql`);
@@ -126,8 +138,9 @@ async function main() {
   console.log(`  DDL Schema:    ${ddlPath}`);
 
   await prisma.$disconnect();
-  try { await pg.stop(); } catch (e) {}
+  try {
+    await pg.stop();
+  } catch (e) {}
 }
 
 main().catch(console.error);
-

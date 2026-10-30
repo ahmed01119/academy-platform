@@ -26,12 +26,7 @@ import {
 import { offlineEngine } from './offline-engine';
 
 export type AuthState =
-  | 'INITIALIZING'
-  | 'AUTHENTICATED'
-  | 'UNAUTHENTICATED'
-  | 'REFRESHING'
-  | 'SIGNING_OUT'
-  | 'ERROR';
+  'INITIALIZING' | 'AUTHENTICATED' | 'UNAUTHENTICATED' | 'REFRESHING' | 'SIGNING_OUT' | 'ERROR';
 
 export interface AuthContextValue {
   authState: AuthState;
@@ -40,7 +35,9 @@ export interface AuthContextValue {
   activeTenant: TenantMembershipSummary | null;
   memberships: TenantMembershipSummary[];
   error: string | null;
-  login: (data: LoginRequest) => Promise<{ user: UserSummary; activeTenant: TenantMembershipSummary | null }>;
+  login: (
+    data: LoginRequest,
+  ) => Promise<{ user: UserSummary; activeTenant: TenantMembershipSummary | null }>;
   register: (data: RegisterRequest) => Promise<RegisterResponse>;
   logout: () => Promise<void>;
   refreshToken: (token?: string) => Promise<void>;

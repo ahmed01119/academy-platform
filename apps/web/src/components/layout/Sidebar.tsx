@@ -277,11 +277,7 @@ export function Sidebar({ isMobileOpen = false, onCloseMobile }: SidebarProps) {
           }`}
         >
           <div onClick={onCloseMobile} className="overflow-hidden">
-            <SportexusLogo
-              variant={isCollapsed ? 'symbol' : 'full'}
-              href="/"
-              size="sm"
-            />
+            <SportexusLogo variant={isCollapsed ? 'symbol' : 'full'} href="/" size="sm" />
           </div>
 
           {/* Mobile close button */}
@@ -379,14 +375,14 @@ export function Sidebar({ isMobileOpen = false, onCloseMobile }: SidebarProps) {
                     title={isCollapsed ? item.label : undefined}
                     className={`group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-semibold transition-all ${
                       isActive
-                        ? 'bg-[var(--accent-primary)] text-white shadow-md shadow-emerald-600/25'
+                        ? 'bg-[var(--accent-primary)] text-[var(--accent-primary-fg)] font-bold shadow-sm'
                         : 'text-[var(--text-main)] hover:bg-[var(--bg-surface-subtle)] hover:text-[var(--accent-primary)]'
                     } ${isCollapsed ? 'justify-center px-2' : ''}`}
                   >
                     <IconComponent
                       className={`h-4 w-4 shrink-0 transition-transform group-hover:scale-110 ${
                         isActive
-                          ? 'text-white'
+                          ? 'text-[var(--accent-primary-fg)]'
                           : 'text-[var(--text-muted)] group-hover:text-[var(--accent-primary)]'
                       }`}
                     />
@@ -394,7 +390,7 @@ export function Sidebar({ isMobileOpen = false, onCloseMobile }: SidebarProps) {
                       <span className="truncate flex-1 text-[12px]">{item.label}</span>
                     )}
                     {!isCollapsed && item.badge && (
-                      <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[9px] font-extrabold text-emerald-300 border border-emerald-500/30">
+                      <span className="rounded-full bg-[var(--badge-bg)] px-2 py-0.5 text-[9px] font-extrabold text-[var(--badge-fg)] border border-[var(--badge-border)]">
                         {item.badge}
                       </span>
                     )}

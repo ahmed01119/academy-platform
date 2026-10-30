@@ -415,7 +415,9 @@ export const api = {
       });
     },
 
-    async updateProfile(data: UpdateUserProfileRequest): Promise<{ message: string; name?: string; phone?: string | null }> {
+    async updateProfile(
+      data: UpdateUserProfileRequest,
+    ): Promise<{ message: string; name?: string; phone?: string | null }> {
       return request('/auth/profile', {
         method: 'PATCH',
         body: JSON.stringify(data),
@@ -550,11 +552,16 @@ export const api = {
       });
     },
 
-    async acceptInvitation(data: { token: string }): Promise<{ message: string; tenantId: string }> {
-      const res = await request<{ message: string; tenantId: string }>('/tenants/invitations/accept', {
-        method: 'POST',
-        body: JSON.stringify(data),
-      });
+    async acceptInvitation(data: {
+      token: string;
+    }): Promise<{ message: string; tenantId: string }> {
+      const res = await request<{ message: string; tenantId: string }>(
+        '/tenants/invitations/accept',
+        {
+          method: 'POST',
+          body: JSON.stringify(data),
+        },
+      );
       if (res?.tenantId) {
         setActiveTenantIdHeader(res.tenantId);
       }
@@ -976,10 +983,7 @@ export const api = {
       return request(`/platform/academies/${id}/deletion-impact`, { method: 'GET' });
     },
 
-    async archiveAcademy(
-      id: string,
-      data: DeleteAcademyRequest,
-    ): Promise<DeleteAcademyResponse> {
+    async archiveAcademy(id: string, data: DeleteAcademyRequest): Promise<DeleteAcademyResponse> {
       return request(`/platform/academies/${id}/archive`, {
         method: 'POST',
         body: JSON.stringify(data),
@@ -1158,7 +1162,6 @@ export const api = {
       });
     },
   },
-
 
   finance: {
     async getTenantSubscription(): Promise<TenantSubscriptionItem> {

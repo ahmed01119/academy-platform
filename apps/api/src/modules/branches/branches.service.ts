@@ -424,10 +424,7 @@ export class BranchesService {
   /**
    * Generates a pre-deletion impact assessment report for a branch.
    */
-  async getBranchDeletionImpact(
-    tenantContext: TenantContext,
-    branchId: string,
-  ) {
+  async getBranchDeletionImpact(tenantContext: TenantContext, branchId: string) {
     return this.prisma.withTenantTransaction(
       { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
       async (tx) => {
@@ -478,10 +475,7 @@ export class BranchesService {
   /**
    * Safely archives a branch, marking it INACTIVE while preserving historical data.
    */
-  async archiveBranch(
-    tenantContext: TenantContext,
-    branchId: string,
-  ) {
+  async archiveBranch(tenantContext: TenantContext, branchId: string) {
     return this.prisma.withTenantTransaction(
       { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
       async (tx) => {

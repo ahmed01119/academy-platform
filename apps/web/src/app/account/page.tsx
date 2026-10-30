@@ -32,7 +32,9 @@ export default function AccountPage() {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [isSavingProfile, setIsSavingProfile] = useState(false);
-  const [profileMsg, setProfileMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [profileMsg, setProfileMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(
+    null,
+  );
 
   // Password form
   const [currentPassword, setCurrentPassword] = useState('');
@@ -40,7 +42,10 @@ export default function AccountPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPasswords, setShowPasswords] = useState(false);
   const [isSavingPassword, setIsSavingPassword] = useState(false);
-  const [passwordMsg, setPasswordMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [passwordMsg, setPasswordMsg] = useState<{
+    type: 'success' | 'error';
+    text: string;
+  } | null>(null);
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -66,11 +71,19 @@ export default function AccountPage() {
       });
       setProfileMsg({
         type: 'success',
-        text: locale === 'ar' ? 'تم تحديث الملف الشخصي بنجاح' : (res.message || 'Profile updated successfully'),
+        text:
+          locale === 'ar'
+            ? 'تم تحديث الملف الشخصي بنجاح'
+            : res.message || 'Profile updated successfully',
       });
       await refreshUser();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : locale === 'ar' ? 'فشل تحديث الملف الشخصي' : 'Failed to update profile';
+      const msg =
+        err instanceof Error
+          ? err.message
+          : locale === 'ar'
+            ? 'فشل تحديث الملف الشخصي'
+            : 'Failed to update profile';
       setProfileMsg({ type: 'error', text: msg });
     } finally {
       setIsSavingProfile(false);
@@ -84,7 +97,10 @@ export default function AccountPage() {
     if (newPassword !== confirmPassword) {
       setPasswordMsg({
         type: 'error',
-        text: locale === 'ar' ? 'كلمة المرور الجديدة وتأكيدها غير متطابقين' : 'New password and confirmation do not match',
+        text:
+          locale === 'ar'
+            ? 'كلمة المرور الجديدة وتأكيدها غير متطابقين'
+            : 'New password and confirmation do not match',
       });
       return;
     }
@@ -92,7 +108,10 @@ export default function AccountPage() {
     if (newPassword.length < 8) {
       setPasswordMsg({
         type: 'error',
-        text: locale === 'ar' ? 'يجب ألا تقل كلمة المرور الجديدة عن 8 أحرف' : 'New password must be at least 8 characters',
+        text:
+          locale === 'ar'
+            ? 'يجب ألا تقل كلمة المرور الجديدة عن 8 أحرف'
+            : 'New password must be at least 8 characters',
       });
       return;
     }
@@ -105,13 +124,21 @@ export default function AccountPage() {
       });
       setPasswordMsg({
         type: 'success',
-        text: locale === 'ar' ? 'تم تغيير كلمة المرور بنجاح' : (res.message || 'Password changed successfully'),
+        text:
+          locale === 'ar'
+            ? 'تم تغيير كلمة المرور بنجاح'
+            : res.message || 'Password changed successfully',
       });
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : locale === 'ar' ? 'فشل تغيير كلمة المرور' : 'Failed to change password';
+      const msg =
+        err instanceof Error
+          ? err.message
+          : locale === 'ar'
+            ? 'فشل تغيير كلمة المرور'
+            : 'Failed to change password';
       setPasswordMsg({ type: 'error', text: msg });
     } finally {
       setIsSavingPassword(false);
@@ -122,18 +149,14 @@ export default function AccountPage() {
     return (
       <AppShell>
         <div className="flex min-h-[60vh] items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-[var(--brand-primary)]" />
+          <Loader2 className="h-8 w-8 animate-spin text-[var(--accent-primary)]" />
         </div>
       </AppShell>
     );
   }
 
   return (
-    <AppShell
-      breadcrumbs={[
-        { label: locale === 'ar' ? 'الحساب الشخصي' : 'My Account' },
-      ]}
-    >
+    <AppShell breadcrumbs={[{ label: locale === 'ar' ? 'الحساب الشخصي' : 'My Account' }]}>
       <PageHeader
         title={locale === 'ar' ? 'إدارة الحساب الشخصي' : 'Account Settings'}
         description={
@@ -211,7 +234,10 @@ export default function AccountPage() {
 
             {/* Name */}
             <div>
-              <label htmlFor="account-name" className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">
+              <label
+                htmlFor="account-name"
+                className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5"
+              >
                 <span className="flex items-center gap-1.5">
                   <User className="h-3.5 w-3.5" />
                   {locale === 'ar' ? 'الاسم الكامل *' : 'Full Name *'}
@@ -229,7 +255,10 @@ export default function AccountPage() {
 
             {/* Phone */}
             <div>
-              <label htmlFor="account-phone" className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">
+              <label
+                htmlFor="account-phone"
+                className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5"
+              >
                 <span className="flex items-center gap-1.5">
                   <Phone className="h-3.5 w-3.5" />
                   {locale === 'ar' ? 'رقم الهاتف' : 'Phone Number'}
@@ -317,7 +346,10 @@ export default function AccountPage() {
 
           <form onSubmit={handleChangePassword} className="space-y-4">
             <div>
-              <label htmlFor="current-password" className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">
+              <label
+                htmlFor="current-password"
+                className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5"
+              >
                 {locale === 'ar' ? 'كلمة المرور الحالية *' : 'Current Password *'}
               </label>
               <div className="relative">
@@ -342,7 +374,10 @@ export default function AccountPage() {
             </div>
 
             <div>
-              <label htmlFor="new-password" className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">
+              <label
+                htmlFor="new-password"
+                className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5"
+              >
                 {locale === 'ar' ? 'كلمة المرور الجديدة *' : 'New Password *'}
               </label>
               <input
@@ -363,7 +398,10 @@ export default function AccountPage() {
             </div>
 
             <div>
-              <label htmlFor="confirm-password" className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">
+              <label
+                htmlFor="confirm-password"
+                className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5"
+              >
                 {locale === 'ar' ? 'تأكيد كلمة المرور الجديدة *' : 'Confirm New Password *'}
               </label>
               <input
@@ -418,10 +456,16 @@ export default function AccountPage() {
               <Mail className="h-3.5 w-3.5 text-emerald-400" />
               {locale === 'ar' ? 'تأكيد البريد' : 'Email Verification'}
             </div>
-            <div className={`text-xs font-semibold ${user.isEmailVerified ? 'text-emerald-400' : 'text-amber-400'}`}>
+            <div
+              className={`text-xs font-semibold ${user.isEmailVerified ? 'text-emerald-400' : 'text-amber-400'}`}
+            >
               {user.isEmailVerified
-                ? locale === 'ar' ? '✓ مؤكد' : '✓ Verified'
-                : locale === 'ar' ? '⚠ غير مؤكد' : '⚠ Unverified'}
+                ? locale === 'ar'
+                  ? '✓ مؤكد'
+                  : '✓ Verified'
+                : locale === 'ar'
+                  ? '⚠ غير مؤكد'
+                  : '⚠ Unverified'}
             </div>
           </div>
 
@@ -442,10 +486,16 @@ export default function AccountPage() {
             </div>
             <div className="text-xs font-semibold text-purple-400">
               {user.isPlatformSuperAdmin
-                ? locale === 'ar' ? 'مشرف المنصة' : 'Platform Super Admin'
+                ? locale === 'ar'
+                  ? 'مشرف المنصة'
+                  : 'Platform Super Admin'
                 : user.isPlatformOwner
-                  ? locale === 'ar' ? 'مالك المنصة' : 'Platform Owner'
-                  : locale === 'ar' ? 'مستخدم عادي' : 'Standard User'}
+                  ? locale === 'ar'
+                    ? 'مالك المنصة'
+                    : 'Platform Owner'
+                  : locale === 'ar'
+                    ? 'مستخدم عادي'
+                    : 'Standard User'}
             </div>
           </div>
         </div>

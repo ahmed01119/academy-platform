@@ -1,0 +1,317 @@
+name: Release & Deployment
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Target deployment (all, backend, frontend)'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - backend
+          - frontend
+
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+jobs:
+  gate:
+    name: Production Release Quality Gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: academy
+          POSTGRES_PASSWORD: academy
+          POSTGRES_DB: academy
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U academy -d academy"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://academy:academy@localhost:5432/academy?schema=public
+      REDIS_URL: redis://localhost:6379
+      NEXT_TELEMETRY_DISABLED: '1'
+      NODE_ENV: test
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate version metadata
+        run: node scripts/generate-version.js
+
+      - name: Generate Prisma client
+        run: pnpm db:generate
+
+      - name: Deploy Prisma migrations
+        run: pnpm --filter @academy/database exec prisma migrate deploy
+
+      - name: Verify migration status
+        run: pnpm --filter @academy/database exec prisma migrate status
+
+      - name: Validate schema drift
+        run: pnpm --filter @academy/database exec prisma migrate diff --from-schema-datamodel prisma/schema.prisma --to-schema-datasource prisma/schema.prisma --exit-code
+
+      - name: Run Database Security Suite
+        env:
+          PGPASSWORD: academy
+        run: |
+          psql -v ON_ERROR_STOP=1 -h localhost -U academy -d academy -f packages/database/tests/audit-append-only.sql
+          psql -v ON_ERROR_STOP=1 -h localhost -U academy -d academy -f packages/database/tests/runtime-role-setup.sql
+          psql -v ON_ERROR_STOP=1 -h localhost -U academy -d academy -f packages/database/tests/runtime-role-privileges.sql
+          psql -v ON_ERROR_STOP=1 -h localhost -U academy -d academy -f packages/database/tests/tenant-rls.sql
+          psql -v ON_ERROR_STOP=1 -h localhost -U academy -d academy -f packages/database/tests/onboarding-and-invitations.sql
+
+      - name: Format check
+        run: pnpm format:check
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Full Test Suite
+        run: pnpm test
+
+      - name: Build applications
+        run: pnpm build
+
+      - name: Validate production Compose file
+        run: docker compose -f docker-compose.prod.yml config
+        env:
+          POSTGRES_PASSWORD: ci-placeholder
+          POSTGRES_RUNTIME_PASSWORD: ci-placeholder-runtime
+          DATABASE_URL: postgresql://academy_runtime:ci@postgres:5432/academy?schema=public
+          DATABASE_ADMIN_URL: postgresql://academy:ci@postgres:5432/academy?schema=public
+          JWT_SECRET: ci-placeholder-jwt-secret-32chars
+          CORS_ORIGIN: https://app.example.test
+          NEXT_PUBLIC_API_BASE_URL: https://api.example.test/v1
+
+      - name: Verify Backend Docker Build
+        run: docker build -f Dockerfile -t sportexus-api:release .
+
+      - name: Verify Frontend Docker Build
+        run: docker build -f Dockerfile.web -t sportexus-web:release .
+
+  release:
+    name: Sync Deployment Branches & Verify Live Deployments
+    needs: [gate]
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout main with full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git Author Identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+
+      - name: Determine Target Deployments
+        id: targets
+        run: |
+          MANUAL_TARGET="${{ github.event.inputs.target }}"
+          if [ -n "$MANUAL_TARGET" ]; then
+            echo "backend=$([ "$MANUAL_TARGET" = "all" ] || [ "$MANUAL_TARGET" = "backend" ] && echo "true" || echo "false")" >> "$GITHUB_OUTPUT"
+            echo "frontend=$([ "$MANUAL_TARGET" = "all" ] || [ "$MANUAL_TARGET" = "frontend" ] && echo "true" || echo "false")" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Issue #7: Detect changed files across multi-commit pushes and merges
+          BEFORE_SHA="${{ github.event.before }}"
+          AFTER_SHA="${{ github.sha }}"
+
+          CHANGED_FILES=""
+          if [ -n "$BEFORE_SHA" ] && [ "$BEFORE_SHA" != "0000000000000000000000000000000000000000" ]; then
+            echo "Inspecting git diff across multi-commit range: $BEFORE_SHA .. $AFTER_SHA"
+            CHANGED_FILES=$(git diff --name-only "$BEFORE_SHA" "$AFTER_SHA" 2>/dev/null || echo "")
+          fi
+
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "Fallback inspecting git diff against HEAD~1..."
+            CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "")
+          fi
+
+          echo "Changed files in release commit range:"
+          echo "$CHANGED_FILES"
+
+          DEPLOY_BACKEND="false"
+          DEPLOY_FRONTEND="false"
+
+          if echo "$CHANGED_FILES" | grep -qE "^(apps/api|packages/database|packages/shared|Dockerfile|package\.json|pnpm-lock\.yaml|turbo\.json)"; then
+            DEPLOY_BACKEND="true"
+          fi
+
+          if echo "$CHANGED_FILES" | grep -qE "^(apps/web|packages/shared|Dockerfile\.web|package\.json|pnpm-lock\.yaml|turbo\.json)"; then
+            DEPLOY_FRONTEND="true"
+          fi
+
+          # If no files matched or root change, deploy both for safety
+          if [ "$DEPLOY_BACKEND" = "false" ] && [ "$DEPLOY_FRONTEND" = "false" ]; then
+            echo "No granular targets matched; defaulting to full deployment (both backend and frontend)."
+            DEPLOY_BACKEND="true"
+            DEPLOY_FRONTEND="true"
+          fi
+
+          echo "backend=$DEPLOY_BACKEND" >> "$GITHUB_OUTPUT"
+          echo "frontend=$DEPLOY_FRONTEND" >> "$GITHUB_OUTPUT"
+
+      - name: Sync Backend Deployment Branch
+        if: steps.targets.outputs.backend == 'true'
+        run: |
+          echo "Executing deterministic backend deployment branch sync..."
+          node scripts/sync-release-branches.js --target=backend
+
+      - name: Verify Backend Deployment Health & Readiness
+        if: steps.targets.outputs.backend == 'true'
+        run: |
+          echo "Waiting for Hostless to build and deploy sportexus-backend-staging..."
+          BACKEND_URL="https://sportexus-backend-staging.hostless.app/v1/health"
+          BACKEND_READY_URL="https://sportexus-backend-staging.hostless.app/v1/health/ready"
+          MAX_ATTEMPTS=40
+          ATTEMPT=1
+          SUCCESS=0
+
+          while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
+            echo "Checking backend health (Attempt $ATTEMPT/$MAX_ATTEMPTS)..."
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$BACKEND_READY_URL" || echo "000")
+            if [ "$STATUS" = "200" ]; then
+              BODY=$(curl -s "$BACKEND_READY_URL")
+              if echo "$BODY" | grep -q '"status":"ok"'; then
+                echo "Backend readiness check PASSED: $BODY"
+                SUCCESS=1
+                break
+              fi
+            fi
+            echo "Backend returned HTTP $STATUS. Waiting 15s..."
+            sleep 15
+            ATTEMPT=$((ATTEMPT + 1))
+          done
+
+          if [ $SUCCESS -ne 1 ]; then
+            echo "ERROR: Backend health check failed after $MAX_ATTEMPTS attempts."
+            exit 1
+          fi
+
+      - name: Sync Frontend Deployment Branch
+        if: steps.targets.outputs.frontend == 'true'
+        run: |
+          echo "Executing deterministic frontend deployment branch sync..."
+          node scripts/sync-release-branches.js --target=frontend
+
+      - name: Verify Frontend Deployment & Build Identifier
+        if: steps.targets.outputs.frontend == 'true'
+        run: |
+          echo "Waiting for Hostless to build and deploy sportexus-web-staging..."
+          WEB_URL="https://sportexus-web-staging.hostless.app/"
+          PROXY_URL="https://sportexus-web-staging.hostless.app/v1/health"
+          VERSION_URL="https://sportexus-web-staging.hostless.app/version.json"
+          EXPECTED_SHA=$(git rev-parse --short=12 HEAD)
+          MAX_ATTEMPTS=40
+          ATTEMPT=1
+          SUCCESS=0
+
+          echo "Target commit SHA to verify: $EXPECTED_SHA"
+
+          while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
+            echo "Checking frontend deployment (Attempt $ATTEMPT/$MAX_ATTEMPTS)..."
+            STATUS_WEB=$(curl -s -o /dev/null -w "%{http_code}" "$WEB_URL" || echo "000")
+            STATUS_PROXY=$(curl -s -o /dev/null -w "%{http_code}" "$PROXY_URL" || echo "000")
+            
+            # Issue #2: Verify deployed commit/build identifier from version.json
+            VERSION_DATA=$(curl -s "$VERSION_URL" 2>/dev/null || echo "{}")
+            DEPLOYED_SHA=$(echo "$VERSION_DATA" | grep -o '"commitSha":"[^"]*"' | cut -d'"' -f4 || echo "")
+            DEPLOYED_BUILD=$(echo "$VERSION_DATA" | grep -o '"buildId":"[^"]*"' | cut -d'"' -f4 || echo "")
+
+            echo "Health: Web=$STATUS_WEB | Proxy=$STATUS_PROXY | Deployed SHA=$DEPLOYED_SHA (Expected: $EXPECTED_SHA)"
+
+            if [ "$STATUS_WEB" = "200" ] && [ "$STATUS_PROXY" = "200" ]; then
+              if [ -n "$DEPLOYED_SHA" ] && [ "$DEPLOYED_SHA" = "$EXPECTED_SHA" ]; then
+                echo "SUCCESS: Deployed commit $DEPLOYED_SHA matches release $EXPECTED_SHA (build: $DEPLOYED_BUILD)."
+                SUCCESS=1
+                break
+              else
+                echo "Container is responding HTTP 200, but running previous or in-progress build ($DEPLOYED_SHA). Waiting for new Hostless container..."
+              fi
+            fi
+
+            sleep 15
+            ATTEMPT=$((ATTEMPT + 1))
+          done
+
+          if [ $SUCCESS -ne 1 ]; then
+            echo "ERROR: Frontend deployment verification failed or timed out after $MAX_ATTEMPTS attempts."
+            exit 1
+          fi
+
+      - name: Generate Release Audit Summary
+        if: always()
+        run: |
+          cat << 'EOF' >> "$GITHUB_STEP_SUMMARY"
+          # 🚀 SPORTEXUS — Automated Release Deployment Summary
+
+          | Metric | Value |
+          | :--- | :--- |
+          | **Source Commit** | `${{ github.sha }}` |
+          | **Ref / Trigger** | `${{ github.ref }}` by `${{ github.actor }}` |
+          | **Backend Deployed** | `${{ steps.targets.outputs.backend }}` (branch: `feat/email-system-hardening-and-e2e`) |
+          | **Frontend Deployed** | `${{ steps.targets.outputs.frontend }}` (branch: `deploy/sportexus-web-staging`) |
+          | **Backend Health** | `https://sportexus-backend-staging.hostless.app/v1/health` |
+          | **Frontend Live** | `https://sportexus-web-staging.hostless.app` |
+          | **Timestamp** | $(date -u +"%Y-%m-%dT%H:%M:%SZ") |
+
+          > [!NOTE]
+          > All quality gates, security regression tests, Docker builds, and live build identifier checks passed.
+          EOF

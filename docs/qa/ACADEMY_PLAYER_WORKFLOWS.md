@@ -3,14 +3,18 @@
 ## 1. Unified Academy Registration & Approval Architecture
 
 ### 1.1 Context & Problem Resolved
+
 Previously, Sportexus had ambiguous onboarding entry points:
+
 1. A quick "Demo Request" modal on the homepage that lacked direct tenant linkage.
 2. An unrestricted registration endpoint `/register` that immediately granted active workspace access without platform administrator oversight.
 
 This allowed unverified academies to consume infrastructure resources and bypass security screening.
 
 ### 1.2 Canonical Unified Flow
+
 The canonical onboarding architecture now adheres to strict platform gating:
+
 1. **Single Entry Point (`/register`):**
    - Homepage CTAs and links route exclusively to `/register`.
    - Collects verified academy details: `academyName`, `sport` (`FOOTBALL`, `BASKETBALL`, `SWIMMING`, `TENNIS`, `MARTIAL_ARTS`), `city`, `ownerName`, `email`, `phone`, and secure `password` (Argon2id).
@@ -34,6 +38,7 @@ The canonical onboarding architecture now adheres to strict platform gating:
 ---
 
 ## 2. Security & Anti-Leakage Controls
+
 1. **Elimination of Debug Tokens:**
    - `debugToken` has been completely stripped from all public API responses (`POST /auth/forgot-password`, `POST /auth/resend-verification`, `POST /auth/register`).
    - Verification and password-reset tokens are dispatched solely via verified transactional email (`EmailService`).

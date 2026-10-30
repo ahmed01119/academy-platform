@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { PlatformController } from './platform.controller';
-import { PlatformService } from './platform.service';
+import { type PlatformService } from './platform.service';
 
 describe('Platform Storage Routes & Contract Verification', () => {
   it('exposes getStorageMetrics on GET /platform/storage/metrics and GET /platform/storage/stats', async () => {

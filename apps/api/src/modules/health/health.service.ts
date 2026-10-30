@@ -13,10 +13,14 @@ export class HealthService {
   ) {}
 
   getLiveness(): HealthStatus {
+    const commitSha =
+      process.env.COMMIT_SHA || process.env.SOURCE_COMMIT || process.env.GITHUB_SHA || undefined;
+
     return {
       status: 'ok',
       service: 'academy-api',
       version: this.config.apiVersion,
+      commitSha: commitSha ? commitSha.slice(0, 12) : undefined,
       timestamp: new Date().toISOString(),
     };
   }
@@ -40,10 +44,14 @@ export class HealthService {
     }
     // redis === 'skipped' in development/test → status stays 'ok'
 
+    const commitSha =
+      process.env.COMMIT_SHA || process.env.SOURCE_COMMIT || process.env.GITHUB_SHA || undefined;
+
     return {
       status,
       service: 'academy-api',
       version: this.config.apiVersion,
+      commitSha: commitSha ? commitSha.slice(0, 12) : undefined,
       timestamp: new Date().toISOString(),
       checks: { postgres, redis },
     };
