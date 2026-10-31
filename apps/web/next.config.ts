@@ -2,13 +2,15 @@ import type { NextConfig } from 'next';
 import fs from 'fs';
 import path from 'path';
 
-// Read generated buildId from public/version.json if available
+// Read generated buildId and commitSha from public/version.json if available
 let initialBuildId = process.env.BUILD_ID || process.env.GITHUB_SHA || '';
+let initialCommitSha = process.env.COMMIT_SHA || process.env.GITHUB_SHA || '';
 try {
   const versionPath = path.resolve(__dirname, 'public/version.json');
   if (fs.existsSync(versionPath)) {
     const v = JSON.parse(fs.readFileSync(versionPath, 'utf8'));
     if (v.buildId) initialBuildId = v.buildId;
+    if (v.commitSha) initialCommitSha = v.commitSha;
   }
 } catch {
   // Ignore file read error in edge cases
@@ -23,6 +25,7 @@ const nextConfig: NextConfig = {
       : undefined,
   env: {
     NEXT_PUBLIC_BUILD_ID: initialBuildId,
+    NEXT_PUBLIC_COMMIT_SHA: initialCommitSha,
   },
   generateBuildId: async () => initialBuildId || `build-${Date.now().toString(36)}`,
   async headers() {

@@ -107,6 +107,30 @@ CMD ["node", "apps/web/server.js"]
     expect(containerDown.status).toBe('UNHEALTHY');
   });
 
+  it('reliably extracts commitSha and buildId from formatted multi-line version.json', () => {
+    const rawJson = `{\n  "name": "SPORTEXUS",\n  "version": "1.0.0",\n  "buildId": "6e2f9b0d1d3a-mvu8sufe",\n  "commitSha": "40e73a829f08",\n  "builtAt": "2026-10-30T11:00:00.000Z"\n}\n`;
+
+    function parseVersionData(jsonStr: string): { commitSha: string; buildId: string } {
+      try {
+        const d = JSON.parse(jsonStr);
+        return {
+          commitSha: d.commitSha || '',
+          buildId: d.buildId || '',
+        };
+      } catch {
+        return { commitSha: '', buildId: '' };
+      }
+    }
+
+    const parsed = parseVersionData(rawJson);
+    expect(parsed.commitSha).toBe('40e73a829f08');
+    expect(parsed.buildId).toBe('6e2f9b0d1d3a-mvu8sufe');
+
+    // Also handles empty or malformed strings gracefully
+    expect(parseVersionData('')).toEqual({ commitSha: '', buildId: '' });
+    expect(parseVersionData('{ invalid json }')).toEqual({ commitSha: '', buildId: '' });
+  });
+
   it('detects changes across multi-commit ranges accurately (Issue #7)', () => {
     function determineTargets(changedFiles: string[]): {
       deployBackend: boolean;
