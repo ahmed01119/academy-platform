@@ -24,7 +24,7 @@ if ($docker) {
 Write-Host '[*] Stopping web and API daemons...' -ForegroundColor Cyan
 Get-CimInstance Win32_Process | Where-Object {
     $_.CommandLine -like '*@academy/web*' -or
-    $_.CommandLine -like '*apps/api/dist/main.js*' -or
+    $_.CommandLine -like '*backend/dist/main.js*' -or
     $_.CommandLine -like '*next start*'
 } | ForEach-Object {
     Stop-Process -Id $_.ProcessId -Force

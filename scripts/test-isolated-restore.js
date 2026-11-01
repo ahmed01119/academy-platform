@@ -5,7 +5,7 @@ const prismaClientPath = require.resolve('@prisma/client', {
   paths: [
     __dirname,
     path.resolve(__dirname, '../packages/database'),
-    path.resolve(__dirname, '../apps/api'),
+    path.resolve(__dirname, '../backend'),
   ],
 });
 const { PrismaClient } = require(prismaClientPath);

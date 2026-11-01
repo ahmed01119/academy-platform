@@ -69,7 +69,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 11.13.0
+          version: 11.13.1
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -190,11 +190,11 @@ jobs:
           DEPLOY_BACKEND="false"
           DEPLOY_FRONTEND="false"
 
-          if echo "$CHANGED_FILES" | grep -qE "^(apps/api|packages/database|packages/shared|Dockerfile|package\.json|pnpm-lock\.yaml|turbo\.json)"; then
+          if echo "$CHANGED_FILES" | grep -qE "^(backend|packages/database|packages/shared|Dockerfile|package\.json|pnpm-lock\.yaml|turbo\.json)"; then
             DEPLOY_BACKEND="true"
           fi
 
-          if echo "$CHANGED_FILES" | grep -qE "^(apps/web|packages/shared|Dockerfile\.web|package\.json|pnpm-lock\.yaml|turbo\.json)"; then
+          if echo "$CHANGED_FILES" | grep -qE "^(frontend|packages/shared|Dockerfile\.web|package\.json|pnpm-lock\.yaml|turbo\.json)"; then
             DEPLOY_FRONTEND="true"
           fi
 

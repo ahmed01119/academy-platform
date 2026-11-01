@@ -6,13 +6,13 @@ FROM node:22-alpine AS builder
 WORKDIR /app
 
 # Enable Corepack and activate pnpm
-RUN corepack enable && corepack prepare pnpm@11.13.0 --activate
+RUN corepack enable && corepack prepare pnpm@11.13.1 --activate
 
 # Copy root manifest and workspace definition
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
 COPY packages ./packages
-COPY apps/api ./apps/api
-COPY apps/web/package.json ./apps/web/package.json
+COPY backend ./backend
+COPY frontend/package.json ./frontend/package.json
 
 # Install dependencies using frozen lockfile
 RUN pnpm install --frozen-lockfile
@@ -41,7 +41,7 @@ COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/pnpm-workspace.yaml ./pnpm-workspace.yaml
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/packages ./packages
-COPY --from=builder /app/apps/api ./apps/api
+COPY --from=builder /app/backend ./backend
 
 # Copy entrypoint script
 COPY docker-entrypoint.sh /docker-entrypoint.sh

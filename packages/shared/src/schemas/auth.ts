@@ -54,7 +54,7 @@ export const LoginRequestSchema = z.object({
   rememberMe: z.boolean().default(false),
 });
 
-export type LoginRequest = z.infer<typeof LoginRequestSchema>;
+export type LoginRequest = z.input<typeof LoginRequestSchema>;
 
 export const ForgotPasswordRequestSchema = z.object({
   email: EmailSchema,

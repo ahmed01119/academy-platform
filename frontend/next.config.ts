@@ -19,10 +19,7 @@ try {
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   transpilePackages: ['@academy/shared'],
-  output:
-    process.env.BUILD_STANDALONE === 'true' || process.env.NODE_ENV === 'production'
-      ? 'standalone'
-      : undefined,
+  output: process.env.BUILD_STANDALONE === 'true' ? 'standalone' : undefined,
   env: {
     NEXT_PUBLIC_BUILD_ID: initialBuildId,
     NEXT_PUBLIC_COMMIT_SHA: initialCommitSha,
@@ -61,7 +58,7 @@ const nextConfig: NextConfig = {
     ];
   },
   // Proxying to the backend API is handled dynamically at runtime by
-  // apps/web/src/app/v1/[...path]/route.ts. This ensures INTERNAL_API_URL is evaluated
+  // frontend/src/app/v1/[...path]/route.ts. This ensures INTERNAL_API_URL is evaluated
   // at runtime on every request without statically baking localhost into build artifacts.
   async rewrites() {
     return [];

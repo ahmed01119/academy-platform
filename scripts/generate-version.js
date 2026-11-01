@@ -13,7 +13,7 @@ const { execSync } = require('child_process');
 
 function getExistingManifest() {
   try {
-    const targetPath = path.resolve(__dirname, '../apps/web/public/version.json');
+    const targetPath = path.resolve(__dirname, '../frontend/public/version.json');
     if (fs.existsSync(targetPath)) {
       return JSON.parse(fs.readFileSync(targetPath, 'utf8'));
     }
@@ -68,7 +68,7 @@ function main() {
     builtAt,
   };
 
-  const targetDir = path.resolve(__dirname, '../apps/web/public');
+  const targetDir = path.resolve(__dirname, '../frontend/public');
   if (!fs.existsSync(targetDir)) {
     fs.mkdirSync(targetDir, { recursive: true });
   }

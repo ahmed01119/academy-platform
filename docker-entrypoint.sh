@@ -35,4 +35,4 @@ fi
 
 # Hand off to the NestJS production server using unprivileged runtime credentials in DATABASE_URL
 echo "[entrypoint] Starting NestJS API application..."
-exec node --max-old-space-size=384 /app/apps/api/dist/main.js
+exec node --max-old-space-size=384 /app/backend/dist/main.js

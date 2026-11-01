@@ -6,37 +6,37 @@ describe('CI/CD Release Safety & Verification Invariants', () => {
   const backendSample = `
 FROM node:22-alpine AS builder
 WORKDIR /app
-COPY apps/api ./apps/api
+COPY backend ./backend
 RUN pnpm --filter @academy/database run generate && \
     pnpm --filter @academy/shared build && \
     pnpm --filter @academy/database build && \
     pnpm --filter @academy/api build
 FROM node:22-alpine AS runner
 WORKDIR /app
-COPY --from=builder /app/apps/api ./apps/api
+COPY --from=builder /app/backend ./backend
 CMD ["node", "dist/main.js"]
 `;
 
   const frontendSample = `
 FROM node:22-alpine AS deps
 WORKDIR /app
-COPY apps/web/package.json ./apps/web/package.json
+COPY frontend/package.json ./frontend/package.json
 ENV BUILD_STANDALONE=true
 RUN pnpm --filter @academy/shared build && \
     pnpm --filter @academy/web build
 FROM node:22-alpine AS runner
 WORKDIR /app
-COPY --from=builder /app/apps/web/.next/standalone ./
-CMD ["node", "apps/web/server.js"]
+COPY --from=builder /app/frontend/.next/standalone ./
+CMD ["node", "frontend/server.js"]
 `;
 
   it('validates backend Dockerfile and rejects frontend container (Issue #3)', () => {
     function isBackendDockerfile(content: string): boolean {
       const isBackend =
-        content.includes('apps/api') ||
+        content.includes('backend') ||
         content.includes('NestJS') ||
         content.includes('dist/main.js');
-      const isFrontend = content.includes('apps/web') && content.includes('.next/standalone');
+      const isFrontend = content.includes('frontend') && content.includes('.next/standalone');
       return isBackend && !isFrontend;
     }
 
@@ -47,7 +47,7 @@ CMD ["node", "apps/web/server.js"]
   it('validates frontend Dockerfile and rejects backend container (Issue #3)', () => {
     function isFrontendDockerfile(content: string): boolean {
       return (
-        content.includes('apps/web') ||
+        content.includes('frontend') ||
         content.includes('.next/standalone') ||
         content.includes('BUILD_STANDALONE')
       );
@@ -142,14 +142,14 @@ CMD ["node", "apps/web/server.js"]
       const fileList = changedFiles.join('\n');
 
       if (
-        /^(apps\/api|packages\/database|packages\/shared|Dockerfile|package\.json|pnpm-lock\.yaml|turbo\.json)/m.test(
+        /^(backend|packages\/database|packages\/shared|Dockerfile|package\.json|pnpm-lock\.yaml|turbo\.json)/m.test(
           fileList,
         )
       ) {
         deployBackend = true;
       }
       if (
-        /^(apps\/web|packages\/shared|Dockerfile\.web|package\.json|pnpm-lock\.yaml|turbo\.json)/m.test(
+        /^(frontend|packages\/shared|Dockerfile\.web|package\.json|pnpm-lock\.yaml|turbo\.json)/m.test(
           fileList,
         )
       ) {
@@ -165,13 +165,13 @@ CMD ["node", "apps/web/server.js"]
     }
 
     // Only web changed
-    expect(determineTargets(['apps/web/src/page.tsx', 'apps/web/public/sw.js'])).toEqual({
+    expect(determineTargets(['frontend/src/page.tsx', 'frontend/public/sw.js'])).toEqual({
       deployBackend: false,
       deployFrontend: true,
     });
 
     // Only api changed
-    expect(determineTargets(['apps/api/src/auth.service.ts'])).toEqual({
+    expect(determineTargets(['backend/src/auth.service.ts'])).toEqual({
       deployBackend: true,
       deployFrontend: false,
     });
@@ -228,9 +228,9 @@ CMD ["node", "apps/web/server.js"]
     }
 
     const sampleStatus = [
-      'UU apps/api/src/main.ts',
+      'UU backend/src/main.ts',
       'AA packages/shared/src/index.ts',
-      'DD apps/web/src/page.tsx',
+      'DD frontend/src/page.tsx',
       'M  package.json',
       '?? new-file.txt',
     ].join('\n');
@@ -238,14 +238,14 @@ CMD ["node", "apps/web/server.js"]
     const conflicts = parseConflicts(sampleStatus);
     expect(conflicts).toHaveLength(3);
     expect(conflicts).toEqual([
-      { code: 'UU', file: 'apps/api/src/main.ts' },
+      { code: 'UU', file: 'backend/src/main.ts' },
       { code: 'AA', file: 'packages/shared/src/index.ts' },
-      { code: 'DD', file: 'apps/web/src/page.tsx' },
+      { code: 'DD', file: 'frontend/src/page.tsx' },
     ]);
   });
 
   it('verifies generated version manifest structure and presence of buildId (Issue #5)', () => {
-    const versionPath = path.resolve(__dirname, '../../../../apps/web/public/version.json');
+    const versionPath = path.resolve(__dirname, '../../public/version.json');
     if (fs.existsSync(versionPath)) {
       const content = JSON.parse(fs.readFileSync(versionPath, 'utf8'));
       expect(content).toHaveProperty('name', 'SPORTEXUS');
