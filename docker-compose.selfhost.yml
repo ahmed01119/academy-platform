@@ -44,7 +44,7 @@ services:
   api:
     build:
       context: .
-      dockerfile: apps/api/Dockerfile
+      dockerfile: backend/Dockerfile
     container_name: sportexus_api
     restart: unless-stopped
     environment:
@@ -75,7 +75,7 @@ services:
   web:
     build:
       context: .
-      dockerfile: apps/web/Dockerfile
+      dockerfile: frontend/Dockerfile
       args:
         NEXT_PUBLIC_APP_NAME: SPORTEXUS
     container_name: sportexus_web

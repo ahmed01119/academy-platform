@@ -1,0 +1,61 @@
+# =============================================================================
+# SPORTEXUS — Next.js Standalone Frontend Production Dockerfile
+# =============================================================================
+FROM node:22-alpine AS deps
+WORKDIR /app
+RUN apk add --no-cache libc6-compat
+RUN corepack enable && corepack prepare pnpm@11.13.1 --activate
+
+# Copy workspace manifests
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
+COPY packages ./packages
+COPY frontend/package.json ./frontend/package.json
+COPY backend/package.json ./backend/package.json
+
+RUN pnpm install --frozen-lockfile
+
+# =============================================================================
+# Build Stage
+# =============================================================================
+FROM deps AS builder
+WORKDIR /app
+COPY . .
+
+# Set build-time environment flags
+ENV BUILD_STANDALONE=true
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_ENV=production
+
+# Compile shared library and build standalone Next.js app
+RUN pnpm --filter @academy/shared build && \
+    pnpm --filter @academy/web build
+
+# =============================================================================
+# Production Runner (Ultra-minimal Node.js runtime, ~150MB image)
+# =============================================================================
+FROM node:22-alpine AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV HOSTNAME="0.0.0.0"
+ENV PORT=8000
+
+# Run as non-root user for container security
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
+
+# Copy standalone build output and static assets
+COPY --from=builder /app/frontend/public ./frontend/public
+COPY --from=builder --chown=nextjs:nodejs /app/frontend/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/frontend/.next/static ./frontend/.next/static
+
+USER nextjs
+
+EXPOSE 8000
+
+# Healthcheck targeting dynamic PORT
+HEALTHCHECK --interval=20s --timeout=5s --retries=5 \
+  CMD wget -qO- http://127.0.0.1:${PORT:-8000}/ || exit 1
+
+CMD ["node", "frontend/server.js"]

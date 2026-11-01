@@ -74,8 +74,8 @@ function verifyBackendDockerfile(filePath = 'Dockerfile') {
   }
   const content = fs.readFileSync(filePath, 'utf8');
   const isBackend =
-    content.includes('apps/api') || content.includes('NestJS') || content.includes('dist/main.js');
-  const isFrontend = content.includes('apps/web') && content.includes('.next/standalone');
+    content.includes('backend') || content.includes('NestJS') || content.includes('dist/main.js');
+  const isFrontend = content.includes('frontend') && content.includes('.next/standalone');
   if (!isBackend || isFrontend) {
     throw new Error(
       `[CRITICAL] File at ${filePath} is NOT a valid backend Dockerfile! Aborting sync.`,
@@ -89,7 +89,7 @@ function verifyFrontendDockerfile(filePath = 'Dockerfile') {
   }
   const content = fs.readFileSync(filePath, 'utf8');
   const isFrontend =
-    content.includes('apps/web') ||
+    content.includes('frontend') ||
     content.includes('.next/standalone') ||
     content.includes('BUILD_STANDALONE');
   if (!isFrontend) {
@@ -135,8 +135,8 @@ function checkDeploymentBranchHotfixes(branch, sourceSha) {
 
 function verifyVersionCompatibility() {
   const rootPkgPath = path.resolve(__dirname, '../package.json');
-  const webPkgPath = path.resolve(__dirname, '../apps/web/package.json');
-  const apiPkgPath = path.resolve(__dirname, '../apps/api/package.json');
+  const webPkgPath = path.resolve(__dirname, '../frontend/package.json');
+  const apiPkgPath = path.resolve(__dirname, '../backend/package.json');
 
   if (fs.existsSync(rootPkgPath) && fs.existsSync(webPkgPath) && fs.existsSync(apiPkgPath)) {
     const rootPkg = JSON.parse(fs.readFileSync(rootPkgPath, 'utf8'));
@@ -244,7 +244,7 @@ function syncFrontend({ dryRun, sourceSha }) {
     // Ensure root Dockerfile is the Next.js standalone Dockerfile
     const webDockerfileSource = fs.existsSync('Dockerfile.web')
       ? 'Dockerfile.web'
-      : 'apps/web/Dockerfile';
+      : 'frontend/Dockerfile';
     if (!fs.existsSync(webDockerfileSource)) {
       abortMergeIfConflicted();
       throw new Error(
@@ -261,7 +261,7 @@ function syncFrontend({ dryRun, sourceSha }) {
     process.env.COMMIT_SHA = sourceSha;
     run('node scripts/generate-version.js');
 
-    run('git add Dockerfile apps/web/public/version.json');
+    run('git add Dockerfile frontend/public/version.json frontend/public/sw.js');
 
     // Ensure all conflicts are cleanly resolved before committing
     const remainingConflicts = getUnresolvedConflicts();

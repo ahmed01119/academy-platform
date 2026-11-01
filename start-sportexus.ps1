@@ -44,7 +44,7 @@ try {
 
 if (-not $apiRunning) {
     Write-Host '      Starting production NestJS API daemon...' -ForegroundColor Yellow
-    Start-Process -FilePath 'node' -ArgumentList 'apps/api/dist/main.js' -WindowStyle Hidden
+    Start-Process -FilePath 'node' -ArgumentList 'backend/dist/main.js' -WindowStyle Hidden
     Start-Sleep -Seconds 5
     Write-Host '      [+] API backend is online.' -ForegroundColor Green
 } else {
