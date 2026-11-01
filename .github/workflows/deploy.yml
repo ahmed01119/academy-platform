@@ -190,11 +190,11 @@ jobs:
           DEPLOY_BACKEND="false"
           DEPLOY_FRONTEND="false"
 
-          if echo "$CHANGED_FILES" | grep -qE "^(apps/api|packages/database|packages/shared|Dockerfile|package\.json|pnpm-lock\.yaml|turbo\.json)"; then
+          if echo "$CHANGED_FILES" | grep -qE "^(backend|packages/database|packages/shared|Dockerfile|package\.json|pnpm-lock\.yaml|turbo\.json)"; then
             DEPLOY_BACKEND="true"
           fi
 
-          if echo "$CHANGED_FILES" | grep -qE "^(apps/web|packages/shared|Dockerfile\.web|package\.json|pnpm-lock\.yaml|turbo\.json)"; then
+          if echo "$CHANGED_FILES" | grep -qE "^(frontend|packages/shared|Dockerfile\.web|package\.json|pnpm-lock\.yaml|turbo\.json)"; then
             DEPLOY_FRONTEND="true"
           fi
 

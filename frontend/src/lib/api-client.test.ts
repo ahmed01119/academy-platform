@@ -132,7 +132,7 @@ describe('api-client', () => {
       expect.objectContaining({ method: 'GET' }),
     );
 
-    const newBranch = { name: 'فرع التجمع', city: 'القاهرة' };
+    const newBranch = { name: 'فرع التجمع', code: 'TAGAMMOA', city: 'القاهرة' };
     vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
       ok: true,
       headers: new Headers({ 'content-type': 'application/json' }),

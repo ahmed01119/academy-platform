@@ -10,6 +10,10 @@
   },
   "scripts": {
     "dev": "turbo run dev",
+    "dev:backend": "pnpm --filter @academy/api dev",
+    "dev:frontend": "pnpm --filter @academy/web dev",
+    "build:backend": "pnpm --filter @academy/api build",
+    "build:frontend": "pnpm --filter @academy/web build",
     "build": "turbo run build",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",

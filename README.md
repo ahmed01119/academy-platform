@@ -9,8 +9,8 @@ Sprint 1 establishes the production-hardened multi-tenant foundation, authentica
 ## Repository layout
 
 ```
-apps/web          Next.js UI (Arabic RTL default, English LTR ready, /auth-test suite)
-apps/api          NestJS modular monolith (/v1) with Argon2id, JWT rotation, Redis rate-limiting
+frontend          Next.js UI (Arabic RTL default, English LTR ready, /auth-test suite)
+backend          NestJS modular monolith (/v1) with Argon2id, JWT rotation, Redis rate-limiting
 packages/shared   Zod schemas, errors, shared constants, RBAC matrix
 packages/database Prisma schema, migrations, PostgreSQL runtime role privilege tests
 packages/*-config Shared TypeScript / ESLint
@@ -35,8 +35,8 @@ docker compose up -d
 # 3) Configure local env files
 cp .env.example .env
 cp packages/database/.env.example packages/database/.env
-cp apps/api/.env.example apps/api/.env
-cp apps/web/.env.example apps/web/.env
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env
 
 # 4) Deploy migrations and generate Prisma client
 pnpm db:generate

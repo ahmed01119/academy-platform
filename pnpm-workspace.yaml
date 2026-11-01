@@ -1,5 +1,6 @@
 packages:
-  - 'apps/*'
+  - 'backend'
+  - 'frontend'
   - 'packages/*'
 
 # Explicit allowlist for packages that may run install scripts (pnpm 11+).

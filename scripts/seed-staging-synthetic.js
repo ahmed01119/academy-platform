@@ -2,10 +2,10 @@ const path = require('path');
 const fs = require('fs');
 
 const prismaPath = require.resolve('@prisma/client', {
-  paths: [path.resolve(__dirname, '../packages/database'), path.resolve(__dirname, '../apps/api')],
+  paths: [path.resolve(__dirname, '../packages/database'), path.resolve(__dirname, '../backend')],
 });
 const { PrismaClient } = require(prismaPath);
-const argon2 = require(path.resolve(__dirname, '../apps/api/node_modules/argon2'));
+const argon2 = require(path.resolve(__dirname, '../backend/node_modules/argon2'));
 
 async function hashPassword(plain) {
   return argon2.hash(plain, {

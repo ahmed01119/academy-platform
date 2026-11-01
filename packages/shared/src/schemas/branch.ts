@@ -24,7 +24,7 @@ export const CreateBranchSchema = z.object({
   managerUserId: z.string().uuid().optional().nullable(),
 });
 
-export type CreateBranchRequest = z.infer<typeof CreateBranchSchema>;
+export type CreateBranchRequest = z.input<typeof CreateBranchSchema>;
 
 export const UpdateBranchSchema = CreateBranchSchema.partial().extend({
   status: BranchStatusSchema.optional(),

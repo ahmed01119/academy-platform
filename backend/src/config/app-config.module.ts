@@ -11,12 +11,12 @@ import { validateEnv } from './env.validation';
       cache: true,
       validate: validateEnv,
       // Search for .env in the api app directory and the monorepo root.
-      // __dirname at runtime = apps/api/dist/config/
-      // ../../.env  → apps/api/dist/.env          (does not exist — skipped gracefully)
-      // ../../../.env → apps/api/.env              ✅ primary
+      // __dirname at runtime = backend/dist/config/
+      // ../../.env  → backend/dist/.env          (does not exist — skipped gracefully)
+      // ../../../.env → backend/.env              ✅ primary
       // ../../../../.env → monorepo root .env      ✅ fallback
       envFilePath: [
-        `${__dirname}/../../../.env`, // apps/api/.env  (from dist/config → up 3 levels)
+        `${__dirname}/../../../.env`, // backend/.env  (from dist/config → up 3 levels)
         `${__dirname}/../../../../.env`, // monorepo root .env (fallback)
       ],
     }),

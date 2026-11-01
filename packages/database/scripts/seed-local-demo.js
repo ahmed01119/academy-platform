@@ -24,7 +24,7 @@ if (fs.existsSync(envPath)) {
 }
 
 const { PrismaClient } = require('@prisma/client');
-const argon2 = require(path.resolve(__dirname, '../../../apps/api/node_modules/argon2'));
+const argon2 = require(path.resolve(__dirname, '../../../backend/node_modules/argon2'));
 
 const prisma = new PrismaClient();
 

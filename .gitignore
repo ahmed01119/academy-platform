@@ -1,4 +1,4 @@
-# Dependencies
+ï»¿# Dependencies
 node_modules
 .pnpm-store
 
@@ -49,10 +49,10 @@ tools
 sportexus-live-url.txt
 sportexus-runtime-status.json
 
-# Local demo credentials — never commit
+# Local demo credentials ï¿½ never commit
 sportexus-accounts.local.txt
 .env
-apps/api/.env
-apps/web/.env
+backend/.env
+frontend/.env
 
 demo-credentials.local.txt
