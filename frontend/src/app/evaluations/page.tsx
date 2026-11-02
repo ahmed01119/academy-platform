@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { apiClient } from '../../lib/api-client';
 import { useAuth } from '../../lib/auth-context';
+import { useLocale } from '../../lib/locale-context';
+import { translateDataString } from '../../lib/data-translator';
 import { offlineEngine } from '../../lib/offline-engine';
 import { AppShell } from '../../components/layout/AppShell';
 import { PageHeader } from '../../components/ui/PageHeader';
@@ -21,6 +23,7 @@ import {
   Lock,
   HeartHandshake,
   ChevronLeft,
+  ChevronRight,
   RefreshCw,
 } from 'lucide-react';
 import type {
@@ -34,6 +37,8 @@ function EvaluationsCenterContent() {
   const searchParams = useSearchParams();
   const preselectedSessionId = searchParams.get('sessionId');
   const { user, activeTenant } = useAuth();
+  const { locale, isRtl, t } = useLocale();
+  const ar = locale === 'ar';
 
   const [activeTab, setActiveTab] = useState<'rankings' | 'new-eval' | 'templates'>('rankings');
   const [rankings, setRankings] = useState<PerformanceRankingsResponse | null>(null);
@@ -101,61 +106,54 @@ function EvaluationsCenterContent() {
   }, [loadData]);
 
   const handleSaveDraft = async () => {
-    if (!activeTenant?.tenantId || !user?.id || !formPlayerId) {
+    if (!formPlayerId) {
       setFormStatus({
         type: 'error',
-        text: 'يلزم اختيار لاعب وتسجيل الدخول لحفظ مسودة محلية',
+        text: ar ? 'يرجى اختيار اللاعب أولاً لحفظ المسودة' : 'Please select a player to save draft',
       });
       return;
     }
-    const draftId = `${activeTenant.tenantId}:${formPlayerId}:${preselectedSessionId ?? 'none'}`;
-    await offlineEngine.saveEvaluationDraft({
-      id: draftId,
-      tenantId: activeTenant.tenantId,
-      actorUserId: user.id,
-      playerId: formPlayerId,
-      sessionId: preselectedSessionId || undefined,
-      templateId: formTemplateId || undefined,
-      technicalScore: formTechnical,
-      tacticalScore: formTactical,
-      physicalScore: formPhysical,
-      behavioralScore: formBehavioral,
-      strengths: formStrengths.trim() || undefined,
-      areasForImprovement: formImprovements.trim() || undefined,
-      privateCoachNotes: formPrivateNotes.trim() || undefined,
-      guardianFeedback: formGuardianFeedback.trim() || undefined,
-      suggestedGoals: formGoals.trim() || undefined,
-      isPublished: false,
-      updatedAt: new Date().toISOString(),
-    });
-    setFormStatus({
-      type: 'success',
-      text: 'تم حفظ المسودة على هذا الجهاز. النشر يتطلب اتصالاً بالخادم.',
-    });
-  };
 
-  useEffect(() => {
-    if (!activeTenant?.tenantId || !formPlayerId) return;
-    const draftId = `${activeTenant.tenantId}:${formPlayerId}:${preselectedSessionId ?? 'none'}`;
-    void offlineEngine.getEvaluationDraft(activeTenant.tenantId, draftId).then((draft) => {
-      if (!draft) return;
-      setFormTechnical(draft.technicalScore);
-      setFormTactical(draft.tacticalScore);
-      setFormPhysical(draft.physicalScore);
-      setFormBehavioral(draft.behavioralScore);
-      setFormStrengths(draft.strengths ?? '');
-      setFormImprovements(draft.areasForImprovement ?? '');
-      setFormPrivateNotes(draft.privateCoachNotes ?? '');
-      setFormGuardianFeedback(draft.guardianFeedback ?? '');
-      setFormGoals(draft.suggestedGoals ?? '');
-      if (draft.templateId) setFormTemplateId(draft.templateId);
-    });
-  }, [activeTenant?.tenantId, formPlayerId, preselectedSessionId]);
+    try {
+      await offlineEngine.saveEvaluationDraft({
+        id: `draft-${Date.now()}`,
+        tenantId: activeTenant?.tenantId || '',
+        actorUserId: user?.id || '',
+        playerId: formPlayerId,
+        templateId: formTemplateId || undefined,
+        sessionId: preselectedSessionId || undefined,
+        technicalScore: formTechnical,
+        tacticalScore: formTactical,
+        physicalScore: formPhysical,
+        behavioralScore: formBehavioral,
+        strengths: formStrengths || undefined,
+        areasForImprovement: formImprovements || undefined,
+        privateCoachNotes: formPrivateNotes || undefined,
+        guardianFeedback: formGuardianFeedback || undefined,
+        suggestedGoals: formGoals || undefined,
+        isPublished: formIsPublished,
+        updatedAt: new Date().toISOString(),
+      });
+
+      setFormStatus({
+        type: 'success',
+        text: ar ? 'تم حفظ المسودة بنجاح محلياً' : 'Local draft saved successfully',
+      });
+    } catch {
+      setFormStatus({
+        type: 'error',
+        text: ar ? 'فشل حفظ المسودة محلياً' : 'Failed to save local draft',
+      });
+    }
+  };
 
   const handleSubmitEvaluation = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formPlayerId) {
-      setFormStatus({ type: 'error', text: 'يرجى اختيار اللاعب المراد تقييمه' });
+    if (!formPlayerId || !formTemplateId) {
+      setFormStatus({
+        type: 'error',
+        text: ar ? 'يرجى اختيار اللاعب ونموذج التقييم' : 'Please select both player and criteria template',
+      });
       return;
     }
 
@@ -164,8 +162,8 @@ function EvaluationsCenterContent() {
     try {
       await apiClient.evaluations.createEvaluation({
         playerId: formPlayerId,
+        templateId: formTemplateId,
         sessionId: preselectedSessionId || undefined,
-        templateId: formTemplateId || undefined,
         technicalScore: formTechnical,
         tacticalScore: formTactical,
         physicalScore: formPhysical,
@@ -180,22 +178,20 @@ function EvaluationsCenterContent() {
 
       setFormStatus({
         type: 'success',
-        text: 'تم حفظ واعتماد تقييم أداء اللاعب بنجاح! تم تحديث لوحة الترتيب وملف اللاعب.',
+        text: ar ? 'تم اعتماد ونشر التقييم بنجاح!' : 'Evaluation submitted and published successfully!',
       });
 
-      // Reset form
       setFormStrengths('');
       setFormImprovements('');
       setFormPrivateNotes('');
       setFormGuardianFeedback('');
       setFormGoals('');
 
-      // Reload rankings
       await loadData();
     } catch (err: unknown) {
       setFormStatus({
         type: 'error',
-        text: (err as Error)?.message || 'حدث خطأ أثناء حفظ التقييم',
+        text: (err as Error)?.message || (ar ? 'فشل إرسال التقييم' : 'Failed to submit evaluation'),
       });
     } finally {
       setIsSubmitting(false);
@@ -207,11 +203,14 @@ function EvaluationsCenterContent() {
       <div className="space-y-6">
         <PageHeader
           breadcrumbs={[
-            { label: 'الرئيسية', href: '/dashboard' },
-            { label: 'مركز التقييم والذكاء الرياضي' },
+            { label: t('common.home', 'الرئيسية'), href: '/dashboard' },
+            { label: t('evaluations.title', 'مركز التقييم والذكاء الرياضي') },
           ]}
-          title="مركز تقييم الأداء والذكاء الرياضي"
-          description="متابعة تطور اللاعبين الرباعي (فني، تكتيكي، بدني، سلوكي)، وتصنيف الفئات العمرية بشفافية وعدالة."
+          title={t('evaluations.title', 'مركز تقييم الأداء والذكاء الرياضي')}
+          description={t(
+            'evaluations.subtitle',
+            'متابعة تطور اللاعبين الرباعي (فني، تكتيكي، بدني، سلوكي)، وتصنيف الفئات العمرية بشفافية وعدالة.',
+          )}
           actions={
             <div className="flex items-center gap-2">
               <button
@@ -220,60 +219,60 @@ function EvaluationsCenterContent() {
                   void loadData();
                 }}
                 disabled={isLoading}
-                className="flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3.5 py-2 text-xs font-semibold text-[var(--text-muted)] hover:text-[var(--text-main)] hover:border-[var(--accent-primary)] transition-all"
-                title="تحديث البيانات"
+                className="flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3.5 py-2 text-xs font-semibold text-[var(--text-muted)] hover:text-[var(--text-main)] hover:border-[var(--accent-primary)] transition-all cursor-pointer"
+                title={ar ? 'تحديث البيانات' : 'Refresh data'}
               >
                 <RefreshCw
                   className={`h-4 w-4 ${isLoading ? 'animate-spin text-[var(--accent-primary)]' : ''}`}
                 />
-                <span className="hidden sm:inline">تحديث</span>
+                <span className="hidden sm:inline">{ar ? 'تحديث' : 'Refresh'}</span>
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTab('new-eval')}
-                className="flex items-center gap-1.5 rounded-xl bg-[var(--accent-primary)] px-4 py-2 text-xs font-semibold text-white shadow-sm hover:brightness-110 transition-all"
+                className="flex items-center gap-1.5 rounded-xl bg-[var(--accent-primary)] px-4 py-2 text-xs font-semibold text-white shadow-sm hover:brightness-110 transition-all cursor-pointer"
               >
                 <PlusCircle className="h-4 w-4" />
-                <span>تقييم لاعب جديد</span>
+                <span>{t('evaluations.newEvaluationButton', 'تقييم لاعب جديد')}</span>
               </button>
             </div>
           }
         />
 
         {/* Tab Navigation */}
-        <div className="border-b border-[var(--border-subtle)] flex items-center gap-6">
+        <div className="border-b border-[var(--border-subtle)] flex items-center gap-6 overflow-x-auto">
           <button
             type="button"
             onClick={() => setActiveTab('rankings')}
-            className={`pb-3 text-sm font-semibold transition-all relative ${
+            className={`pb-3 text-sm font-semibold transition-all relative cursor-pointer whitespace-nowrap ${
               activeTab === 'rankings'
                 ? 'text-[var(--accent-primary)] border-b-2 border-[var(--accent-primary)]'
                 : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
             }`}
           >
-            لوحة الترتيب والتصنيف العادل
+            {t('evaluations.tabRankings', 'لوحة الترتيب والتصنيف العادل')}
           </button>
           <button
             type="button"
             onClick={() => setActiveTab('new-eval')}
-            className={`pb-3 text-sm font-semibold transition-all relative ${
+            className={`pb-3 text-sm font-semibold transition-all relative cursor-pointer whitespace-nowrap ${
               activeTab === 'new-eval'
                 ? 'text-[var(--accent-primary)] border-b-2 border-[var(--accent-primary)]'
                 : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
             }`}
           >
-            إضافة تقييم أداء للاعب
+            {t('evaluations.tabForm', 'إضافة تقييم أداء للاعب')}
           </button>
           <button
             type="button"
             onClick={() => setActiveTab('templates')}
-            className={`pb-3 text-sm font-semibold transition-all relative ${
+            className={`pb-3 text-sm font-semibold transition-all relative cursor-pointer whitespace-nowrap ${
               activeTab === 'templates'
                 ? 'text-[var(--accent-primary)] border-b-2 border-[var(--accent-primary)]'
                 : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
             }`}
           >
-            نماذج ومعايير التقييم ({templates.length})
+            {t('evaluations.tabTemplates', 'نماذج ومعايير التقييم')} ({templates.length})
           </button>
         </div>
 
@@ -285,52 +284,49 @@ function EvaluationsCenterContent() {
               <HelpCircle className="h-5 w-5 text-emerald-400 flex-shrink-0 mt-0.5" />
               <div>
                 <h4 className="font-bold text-sm text-emerald-300">
-                  معيار ومعادلة التصنيف العادل للاعبين
+                  {ar ? 'معيار ومعادلة التصنيف العادل للاعبين' : 'Fair Evaluation Matrix & Formula'}
                 </h4>
                 <p className="text-xs text-emerald-200 mt-1 leading-relaxed">
-                  يتم الترتيب بناءً على:{' '}
-                  <span className="font-mono font-bold text-white">
-                    المعدل التراكمي = (المهارات الفنية + الوعي التكتيكي + الجاهزية البدنية +
-                    الانضباط والسلوك) / 4
-                  </span>{' '}
-                  بناءً على تقييمات المدربين الرسمية لكل فئة عمرية أو مجموعة تدريبية، لمنع مقارنة
-                  الفئات العمرية غير المتكافئة.
+                  {t(
+                    'evaluations.formulaNotice',
+                    'يتم الترتيب بناءً على: المعدل التراكمي = (المهارات الفنية + الوعي التكتيكي + الجاهزية البدنية + الانضباط والسلوك) / 4 بناءً على تقييمات المدربين الرسمية لكل فئة عمرية أو مجموعة تدريبية، لمنع مقارنة الفئات العمرية غير المتكافئة.',
+                  )}
                 </p>
               </div>
             </div>
 
             {/* Filter Bar */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-between items-center bg-[#12231c] p-4 rounded-xl border border-[#234235]">
+            <div className="flex flex-col sm:flex-row gap-4 justify-between items-center bg-[var(--bg-surface)] p-4 rounded-xl border border-[var(--border-subtle)]">
               <div className="flex items-center gap-3 w-full sm:w-auto">
-                <span className="text-xs text-[#9bb5a8] font-medium flex items-center gap-1">
-                  <Filter className="h-3.5 w-3.5 text-[#2f9e6b]" />
-                  الفئة العمرية:
+                <span className="text-xs text-[var(--text-muted)] font-medium flex items-center gap-1">
+                  <Filter className="h-3.5 w-3.5 text-[var(--accent-primary)]" />
+                  {t('evaluations.filterAge', 'الفئة العمرية:')}
                 </span>
                 <select
                   value={selectedAgeCategory}
                   onChange={(e) => setSelectedAgeCategory(e.target.value)}
-                  className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none"
+                  className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none cursor-pointer"
                 >
-                  <option value="">جميع الفئات العمرية</option>
-                  <option value="U-11">فئة البراعم (U-11)</option>
-                  <option value="U-14">فئة الناشئين (U-14)</option>
-                  <option value="U-17">فئة الشباب (U-17)</option>
+                  <option value="">{ar ? 'جميع الفئات العمرية' : 'All Age Groups'}</option>
+                  <option value="U-11">{ar ? 'فئة البراعم (U-11)' : 'Juniors (U-11)'}</option>
+                  <option value="U-14">{ar ? 'فئة الناشئين (U-14)' : 'Cadets (U-14)'}</option>
+                  <option value="U-17">{ar ? 'فئة الشباب (U-17)' : 'Youth (U-17)'}</option>
                 </select>
               </div>
 
               <div className="flex items-center gap-3 w-full sm:w-auto">
                 <span className="text-xs text-[var(--text-muted)] font-medium">
-                  المجموعة التدريبية:
+                  {t('evaluations.filterGroup', 'المجموعة التدريبية:')}
                 </span>
                 <select
                   value={selectedGroupId}
                   onChange={(e) => setSelectedGroupId(e.target.value)}
-                  className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none"
+                  className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none cursor-pointer"
                 >
-                  <option value="">جميع المجموعات</option>
+                  <option value="">{ar ? 'جميع المجموعات' : 'All Training Squads'}</option>
                   {groups.map((g) => (
                     <option key={g.id} value={g.id}>
-                      {g.name}
+                      {locale === 'en' ? translateDataString(g.name, 'en') : g.name}
                     </option>
                   ))}
                 </select>
@@ -339,24 +335,31 @@ function EvaluationsCenterContent() {
 
             {/* Rankings Table */}
             <div className="overflow-x-auto rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)]">
-              <table className="w-full text-right text-xs">
+              <table className="w-full text-start text-xs">
                 <thead className="bg-[var(--bg-surface-subtle)] text-[var(--text-muted)] border-b border-[var(--border-subtle)]">
                   <tr>
-                    <th className="p-3.5 text-center w-16">الترتيب</th>
-                    <th className="p-3.5">اللاعب</th>
-                    <th className="p-3.5">الفئة / المجموعة</th>
-                    <th className="p-3.5 text-center">عدد التقييمات</th>
-                    <th className="p-3.5 text-center">المعدل العام (10)</th>
-                    <th className="p-3.5 text-center">الاتجاه (Trend)</th>
-                    <th className="p-3.5 text-center">الملف التنموي</th>
+                    <th className="p-3.5 text-center w-16">{t('evaluations.rankCol', 'الترتيب')}</th>
+                    <th className="p-3.5 text-start">{t('evaluations.playerCol', 'اللاعب')}</th>
+                    <th className="p-3.5 text-start">{ar ? 'الفئة / المجموعة' : 'Squad / Category'}</th>
+                    <th className="p-3.5 text-center">
+                      {t('evaluations.evaluationsCountCol', 'عدد التقييمات')}
+                    </th>
+                    <th className="p-3.5 text-center">
+                      {t('evaluations.overallScoreCol', 'المعدل العام (10)')}
+                    </th>
+                    <th className="p-3.5 text-center">{t('evaluations.trendCol', 'الاتجاه (Trend)')}</th>
+                    <th className="p-3.5 text-center">
+                      {t('evaluations.viewProfileLink', 'الملف التنموي')}
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--border-subtle)]">
                   {!rankings || rankings.items.length === 0 ? (
                     <tr>
                       <td colSpan={7} className="p-8 text-center text-[var(--text-muted)]">
-                        لا توجد بيانات تقييم للاعبين ضمن الفئة المحددة حالياً. ابدأ بإضافة تقييم من
-                        تبويب "إضافة تقييم جديد".
+                        {ar
+                          ? 'لا توجد بيانات تقييم للاعبين ضمن الفئة المحددة حالياً. ابدأ بإضافة تقييم من تبويب "إضافة تقييم جديد".'
+                          : 'No player evaluations found in this category. Start adding ratings via the "New Evaluation" tab.'}
                       </td>
                     </tr>
                   ) : (
@@ -393,13 +396,13 @@ function EvaluationsCenterContent() {
                             {item.playerName}
                           </td>
                           <td className="p-3.5 text-[var(--text-muted)]">
-                            <span className="rounded bg-[var(--bg-surface-subtle)] px-2 py-0.5 text-[11px] text-[var(--accent-primary)] ml-2 border border-[var(--border-subtle)]">
+                            <span className="rounded bg-[var(--bg-surface-subtle)] px-2 py-0.5 text-[11px] text-[var(--accent-primary)] me-2 border border-[var(--border-subtle)]">
                               {item.ageCategory}
                             </span>
-                            <span>{item.groupName || '—'}</span>
+                            <span>{locale === 'en' ? translateDataString(item.groupName, 'en') : item.groupName || '—'}</span>
                           </td>
                           <td className="p-3.5 text-center text-[var(--text-main)] font-medium">
-                            {item.evaluationsCount} تقييم
+                            {item.evaluationsCount} {ar ? 'تقييم' : 'evals'}
                           </td>
                           <td className="p-3.5 text-center">
                             <span className="text-base font-extrabold text-[var(--accent-primary)]">
@@ -420,7 +423,7 @@ function EvaluationsCenterContent() {
                             ) : (
                               <span className="inline-flex items-center gap-1 text-[var(--text-muted)] text-xs">
                                 <Minus className="h-3.5 w-3.5" />
-                                مستقر
+                                {ar ? 'مستقر' : 'Stable'}
                               </span>
                             )}
                           </td>
@@ -429,8 +432,12 @@ function EvaluationsCenterContent() {
                               href={`/evaluations/player/${item.playerId}`}
                               className="inline-flex items-center gap-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3 py-1.5 text-xs font-semibold text-[var(--accent-primary)] hover:border-[var(--accent-primary)] transition-all"
                             >
-                              <span>استعراض الرادار</span>
-                              <ChevronLeft className="h-3.5 w-3.5" />
+                              <span>{ar ? 'استعراض الرادار' : 'View Profile'}</span>
+                              {isRtl ? (
+                                <ChevronLeft className="h-3.5 w-3.5" />
+                              ) : (
+                                <ChevronRight className="h-3.5 w-3.5" />
+                              )}
                             </Link>
                           </td>
                         </tr>
@@ -447,13 +454,14 @@ function EvaluationsCenterContent() {
         {activeTab === 'new-eval' && (
           <div className="max-w-3xl mx-auto rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 sm:p-8 space-y-6">
             <div>
-              <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                <Award className="h-5 w-5 text-[#2f9e6b]" />
-                <span>نموذج تقييم أداء اللاعب الرباعي</span>
+              <h2 className="text-xl font-bold text-[var(--text-main)] flex items-center gap-2">
+                <Award className="h-5 w-5 text-[var(--accent-primary)]" />
+                <span>{ar ? 'نموذج تقييم أداء اللاعب الرباعي' : '4-Pillar Player Evaluation Form'}</span>
               </h2>
-              <p className="text-xs text-[#9bb5a8] mt-1">
-                سجل درجات المهارات الرياضية، الملاحظات الخاصة بالمدرب، والتوجيهات الموجهة لولي الأمر
-                واللاعب.
+              <p className="text-xs text-[var(--text-muted)] mt-1">
+                {ar
+                  ? 'سجل درجات المهارات الرياضية، الملاحظات الخاصة بالمدرب، والتوجيهات الموجهة لولي الأمر واللاعب.'
+                  : 'Score athletic competencies, record confidential coach remarks, and draft guardian guidance.'}
               </p>
             </div>
 
@@ -474,20 +482,20 @@ function EvaluationsCenterContent() {
               </div>
             )}
 
-            <form onSubmit={handleSubmitEvaluation} className="space-y-6">
+            <form onSubmit={handleSubmitEvaluation} className="space-y-6 text-start">
               {/* Player Selector */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">
-                    اللاعب المراد تقييمه *
+                    {ar ? 'اللاعب المراد تقييمه *' : 'Selected Player *'}
                   </label>
                   <select
                     required
                     value={formPlayerId}
                     onChange={(e) => setFormPlayerId(e.target.value)}
-                    className="w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none"
+                    className="w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none cursor-pointer"
                   >
-                    <option value="">اختر لاعباً من الأكاديمية...</option>
+                    <option value="">{ar ? 'اختر لاعباً من الأكاديمية...' : 'Select academy player...'}</option>
                     {players.map((p) => (
                       <option key={p.id} value={p.id}>
                         {p.firstName} {p.lastName}
@@ -498,12 +506,12 @@ function EvaluationsCenterContent() {
 
                 <div>
                   <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">
-                    نموذج المعايير المعتمد
+                    {ar ? 'نموذج المعايير المعتمد' : 'Criteria Template'}
                   </label>
                   <select
                     value={formTemplateId}
                     onChange={(e) => setFormTemplateId(e.target.value)}
-                    className="w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none"
+                    className="w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none cursor-pointer"
                   >
                     {templates.map((t) => (
                       <option key={t.id} value={t.id}>
@@ -518,28 +526,28 @@ function EvaluationsCenterContent() {
               <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] p-4 flex items-center justify-between">
                 <div>
                   <span className="text-xs text-[var(--text-muted)]">
-                    المعدل العام التراكمي المحسوب تلقائياً
+                    {ar ? 'المعدل العام التراكمي المحسوب تلقائياً' : 'Calculated Cumulative Average'}
                   </span>
                   <div className="text-2xl font-extrabold text-[var(--accent-primary)] mt-0.5">
                     {calculatedOverall.toFixed(2)} / 10
                   </div>
                 </div>
-                <div className="text-left text-xs text-[var(--text-muted)]">
-                  متوسط (فني + تكتيكي + بدني + سلوكي) / 4
+                <div className="text-end text-xs text-[var(--text-muted)]">
+                  {ar ? 'متوسط (فني + تكتيكي + بدني + سلوكي) / 4' : '(Technical + Tactical + Physical + Behavioral) / 4'}
                 </div>
               </div>
 
               {/* 4 Pillars Sliders */}
               <div className="space-y-4 pt-2">
                 <h3 className="text-sm font-bold text-[var(--text-main)]">
-                  الدرجات الأساسية (من 1 إلى 10)
+                  {ar ? 'الدرجات الأساسية (من 1 إلى 10)' : 'Core Pillar Scores (Scale 1 - 10)'}
                 </h3>
 
                 {/* Technical Score */}
                 <div className="space-y-1">
                   <div className="flex justify-between text-xs">
                     <span className="font-semibold text-[var(--text-main)]">
-                      1. المهارات الفنية (Technical)
+                      1. {t('evaluations.technicalScore', 'المهارات الفنية')} (Technical)
                     </span>
                     <span className="font-bold text-[var(--accent-primary)]">
                       {formTechnical.toFixed(1)} / 10
@@ -555,7 +563,9 @@ function EvaluationsCenterContent() {
                     className="w-full accent-[var(--accent-primary)] cursor-pointer"
                   />
                   <span className="text-[10px] text-[var(--text-muted)]">
-                    التحكم بالكرة، دقة التمرير، المراوغة، التسديد واستقبال الكرات.
+                    {ar
+                      ? 'التحكم بالكرة، دقة التمرير، المراوغة، التسديد واستقبال الكرات.'
+                      : 'Ball control, passing accuracy, dribbling, shooting, and first touch.'}
                   </span>
                 </div>
 
@@ -563,7 +573,7 @@ function EvaluationsCenterContent() {
                 <div className="space-y-1">
                   <div className="flex justify-between text-xs">
                     <span className="font-semibold text-[var(--text-main)]">
-                      2. الوعي التكتيكي (Tactical)
+                      2. {t('evaluations.tacticalScore', 'الوعي التكتيكي')} (Tactical)
                     </span>
                     <span className="font-bold text-[var(--accent-primary)]">
                       {formTactical.toFixed(1)} / 10
@@ -579,7 +589,9 @@ function EvaluationsCenterContent() {
                     className="w-full accent-[var(--accent-primary)] cursor-pointer"
                   />
                   <span className="text-[10px] text-[var(--text-muted)]">
-                    التمركز الصحيح، اتخاذ القرار، رؤية الملعب، والتحرك بدون كرة.
+                    {ar
+                      ? 'التمركز الصحيح، اتخاذ القرار، رؤية الملعب، والتحرك بدون كرة.'
+                      : 'Positioning, pitch vision, decision speed, and off-the-ball movement.'}
                   </span>
                 </div>
 
@@ -587,7 +599,7 @@ function EvaluationsCenterContent() {
                 <div className="space-y-1">
                   <div className="flex justify-between text-xs">
                     <span className="font-semibold text-[var(--text-main)]">
-                      3. الجاهزية البدنية (Physical)
+                      3. {t('evaluations.physicalScore', 'الجاهزية البدنية')} (Physical)
                     </span>
                     <span className="font-bold text-[var(--accent-primary)]">
                       {formPhysical.toFixed(1)} / 10
@@ -603,7 +615,9 @@ function EvaluationsCenterContent() {
                     className="w-full accent-[var(--accent-primary)] cursor-pointer"
                   />
                   <span className="text-[10px] text-[var(--text-muted)]">
-                    السرعة بالكرة، الرشاقة، التوازن، القوة البدنية، والتحمل الهوائي.
+                    {ar
+                      ? 'السرعة بالكرة، الرشاقة، التوازن، القوة البدنية، والتحمل الهوائي.'
+                      : 'Speed, agility, balance, core strength, and aerobic stamina.'}
                   </span>
                 </div>
 
@@ -611,7 +625,7 @@ function EvaluationsCenterContent() {
                 <div className="space-y-1">
                   <div className="flex justify-between text-xs">
                     <span className="font-semibold text-[var(--text-main)]">
-                      4. الانضباط والسلوك (Behavioral)
+                      4. {t('evaluations.behavioralScore', 'الانضباط والسلوك')} (Behavioral)
                     </span>
                     <span className="font-bold text-[var(--accent-primary)]">
                       {formBehavioral.toFixed(1)} / 10
@@ -627,7 +641,9 @@ function EvaluationsCenterContent() {
                     className="w-full accent-[var(--accent-primary)] cursor-pointer"
                   />
                   <span className="text-[10px] text-[var(--text-muted)]">
-                    الالتزام بتوجيهات المدرب، الروح الرياضية، والتعاون الإيجابي مع الزملاء.
+                    {ar
+                      ? 'الالتزام بتوجيهات المدرب، الروح الرياضية، والتعاون الإيجابي مع الزملاء.'
+                      : 'Coachability, sportsmanship, discipline, and team camaraderie.'}
                   </span>
                 </div>
               </div>
@@ -636,11 +652,11 @@ function EvaluationsCenterContent() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
                 <div>
                   <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">
-                    أبرز نقاط القوة
+                    {t('evaluations.strengthsLabel', 'أبرز نقاط القوة')}
                   </label>
                   <textarea
                     rows={2}
-                    placeholder="مثال: دقة متناهية في التمرير القصير وهدوء تحت الضغط..."
+                    placeholder={ar ? 'مثال: دقة متناهية في التمرير القصير وهدوء تحت الضغط...' : 'e.g. Exceptional precision in short passes, composure under press...'}
                     value={formStrengths}
                     onChange={(e) => setFormStrengths(e.target.value)}
                     className="w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-base)] p-2.5 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:outline-none"
@@ -649,11 +665,11 @@ function EvaluationsCenterContent() {
 
                 <div>
                   <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">
-                    مجالات بحاجة إلى تطوير
+                    {t('evaluations.improvementsLabel', 'مجالات بحاجة إلى تطوير')}
                   </label>
                   <textarea
                     rows={2}
-                    placeholder="مثال: التغطية العكسية عند فقدان الكرة، التسديد بالقدم اليسرى..."
+                    placeholder={ar ? 'مثال: التغطية العكسية عند فقدان الكرة، التسديد بالقدم اليسرى...' : 'e.g. Defensive recovery on turnovers, weaker-foot shooting...'}
                     value={formImprovements}
                     onChange={(e) => setFormImprovements(e.target.value)}
                     className="w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-base)] p-2.5 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:outline-none"
@@ -667,12 +683,14 @@ function EvaluationsCenterContent() {
                   <div className="flex items-center gap-1.5 mb-1">
                     <Lock className="h-3.5 w-3.5 text-amber-500" />
                     <label className="text-xs font-bold text-amber-600 dark:text-amber-400">
-                      ملاحظات المدرب الداخلية الخاصة (سرية تماماً — لا تظهر لولي الأمر أو اللاعب)
+                      {ar
+                        ? 'ملاحظات المدرب الداخلية الخاصة (سرية تماماً — لا تظهر لولي الأمر أو اللاعب)'
+                        : 'Confidential Internal Staff Notes (Hidden from player and guardian)'}
                     </label>
                   </div>
                   <textarea
                     rows={2}
-                    placeholder="ملاحظات فنية خاصة بالجهاز التدريبي، خطط تصعيد اللاعب، مؤشرات بدنية داخلية..."
+                    placeholder={ar ? 'ملاحظات فنية خاصة بالجهاز التدريبي، خطط تصعيد اللاعب...' : 'Private observations, promotion plans, physical health flags...'}
                     value={formPrivateNotes}
                     onChange={(e) => setFormPrivateNotes(e.target.value)}
                     className="w-full rounded-lg border border-amber-500/30 bg-[var(--bg-base)] p-2.5 text-xs text-[var(--text-main)] placeholder-amber-500/50 focus:border-amber-500 focus:outline-none"
@@ -683,12 +701,14 @@ function EvaluationsCenterContent() {
                   <div className="flex items-center gap-1.5 mb-1">
                     <HeartHandshake className="h-3.5 w-3.5 text-[var(--accent-primary)]" />
                     <label className="text-xs font-bold text-[var(--accent-primary)]">
-                      رسالة وتوجيهات لولي الأمر (تظهر في بوابة ولي الأمر)
+                      {ar
+                        ? 'رسالة وتوجيهات لولي الأمر (تظهر في بوابة ولي الأمر)'
+                        : 'Guidance Note for Guardian (Visible on Guardian Portal)'}
                     </label>
                   </div>
                   <textarea
                     rows={2}
-                    placeholder="كلمة تشجيعية لولي الأمر، توجيهات غذائية ونوم، وتوصيات للتدريب المنزلي..."
+                    placeholder={ar ? 'كلمة تشجيعية لولي الأمر، توجيهات غذائية ونوم، وتوصيات للتدريب المنزلي...' : 'Encouraging message, nutrition recommendations, home drills...'}
                     value={formGuardianFeedback}
                     onChange={(e) => setFormGuardianFeedback(e.target.value)}
                     className="w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-base)] p-2.5 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:outline-none"
@@ -697,11 +717,11 @@ function EvaluationsCenterContent() {
 
                 <div>
                   <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">
-                    الأهداف المقترحة للمرحلة القادمة
+                    {t('evaluations.goalsLabel', 'الأهداف المقترحة للمرحلة القادمة')}
                   </label>
                   <input
                     type="text"
-                    placeholder="مثال: إتقان الكرات الثابتة، رفع معدل التحمل إلى 90 دقيقة..."
+                    placeholder={ar ? 'مثال: إتقان الكرات الثابتة، رفع معدل التحمل إلى 90 دقيقة...' : 'e.g. Master set-piece delivery, build 90-minute stamina...'}
                     value={formGoals}
                     onChange={(e) => setFormGoals(e.target.value)}
                     className="w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-base)] p-2.5 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:outline-none"
@@ -719,7 +739,10 @@ function EvaluationsCenterContent() {
                     className="h-4 w-4 rounded border-[var(--border-subtle)] bg-[var(--bg-base)] text-[var(--accent-primary)] focus:ring-0"
                   />
                   <span className="text-xs text-[var(--text-main)] font-medium">
-                    نشر التقييم فوراً ليظهر في بوابة اللاعب وبوابة ولي الأمر
+                    {t(
+                      'evaluations.publishCheckbox',
+                      'نشر التقييم فوراً ليظهر في بوابة اللاعب وبوابة ولي الأمر',
+                    )}
                   </span>
                 </label>
 
@@ -727,24 +750,24 @@ function EvaluationsCenterContent() {
                   <button
                     type="button"
                     onClick={() => void handleSaveDraft()}
-                    className="rounded-xl border border-[var(--border-subtle)] px-4 py-2.5 text-sm font-semibold text-[var(--text-main)]"
+                    className="rounded-xl border border-[var(--border-subtle)] px-4 py-2.5 text-sm font-semibold text-[var(--text-main)] hover:bg-[var(--bg-surface-subtle)] transition-colors cursor-pointer"
                   >
-                    حفظ مسودة محلية
+                    {ar ? 'حفظ مسودة محلية' : 'Save Local Draft'}
                   </button>
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="rounded-xl bg-[var(--accent-primary)] px-6 py-2.5 text-sm font-bold text-white shadow-sm hover:brightness-110 transition-all flex items-center justify-center gap-2"
+                    className="rounded-xl bg-[var(--accent-primary)] px-6 py-2.5 text-sm font-bold text-white shadow-sm hover:brightness-110 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                   >
                     {isSubmitting ? (
                       <>
                         <RefreshCw className="h-4 w-4 animate-spin" />
-                        <span>جارٍ الحفظ...</span>
+                        <span>{ar ? 'جارٍ الحفظ...' : 'Submitting...'}</span>
                       </>
                     ) : (
                       <>
                         <CheckCircle2 className="h-4 w-4" />
-                        <span>اعتماد وحفظ التقييم</span>
+                        <span>{t('evaluations.saveEvaluationBtn', 'اعتماد وحفظ التقييم')}</span>
                       </>
                     )}
                   </button>
@@ -766,17 +789,17 @@ function EvaluationsCenterContent() {
                   <h3 className="font-bold text-base text-[var(--text-main)]">{template.name}</h3>
                   {template.isDefault && (
                     <span className="rounded-full bg-[var(--accent-primary)]/15 px-2 py-0.5 text-xs font-semibold text-[var(--accent-primary)] border border-[var(--accent-primary)]/30">
-                      النموذج الافتراضي
+                      {ar ? 'النموذج الافتراضي' : 'Default Template'}
                     </span>
                   )}
                 </div>
                 <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                  {template.description || 'معايير تقييم متقدمة'}
+                  {template.description || (ar ? 'معايير تقييم متقدمة' : 'Advanced Evaluation Criteria')}
                 </p>
 
                 <div className="space-y-2 pt-2 border-t border-[var(--border-subtle)]">
                   <h4 className="text-xs font-semibold text-[var(--text-main)]">
-                    المعايير المحددة:
+                    {ar ? 'المعايير المحددة:' : 'Configured Criteria:'}
                   </h4>
                   <div className="space-y-1.5">
                     {template.criteria.map((c) => (

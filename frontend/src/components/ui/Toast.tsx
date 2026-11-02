@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
 import { CheckCircle2, AlertCircle, AlertTriangle, Info, X } from 'lucide-react';
+import { useLocale } from '../../lib/locale-context';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
 
@@ -45,21 +46,11 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const addToast = useCallback(
     (message: string, type: ToastType = 'info', title?: string, duration = 4000) => {
       const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-      let isDuplicate = false;
+      const item: ToastItem = { id, type, title, message, duration };
 
-      setToasts((prev) => {
-        // Prevent duplicate toast spam if an identical toast message & type is already active
-        if (prev.some((t) => t.message === message && t.type === type)) {
-          isDuplicate = true;
-          return prev;
-        }
-        const newToast: ToastItem = { id, type, title, message, duration };
-        const updated = [...prev, newToast];
-        // Keep at most 3 visible toasts to avoid clutter on mobile screens
-        return updated.length > 3 ? updated.slice(updated.length - 3) : updated;
-      });
+      setToasts((prev) => [...prev.slice(-4), item]);
 
-      if (duration > 0 && !isDuplicate) {
+      if (duration > 0) {
         setTimeout(() => {
           removeToast(id);
         }, duration);
@@ -70,43 +61,47 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     [removeToast],
   );
 
-  const toastMethods = useMemo(
+  const toast = useMemo(
     () => ({
-      success: (message: string, title?: string) => addToast(message, 'success', title),
-      error: (message: string, title?: string) => addToast(message, 'error', title),
-      warning: (message: string, title?: string) => addToast(message, 'warning', title),
-      info: (message: string, title?: string) => addToast(message, 'info', title),
+      success: (msg: string, title?: string) => addToast(msg, 'success', title),
+      error: (msg: string, title?: string) => addToast(msg, 'error', title, 5000),
+      warning: (msg: string, title?: string) => addToast(msg, 'warning', title),
+      info: (msg: string, title?: string) => addToast(msg, 'info', title),
     }),
     [addToast],
   );
 
-  const value = useMemo(
-    () => ({
-      toasts,
-      addToast,
-      removeToast,
-      toast: toastMethods,
-    }),
-    [toasts, addToast, removeToast, toastMethods],
-  );
-
   return (
-    <ToastContext.Provider value={value}>
+    <ToastContext.Provider value={{ toasts, addToast, removeToast, toast }}>
       {children}
-      {/* Toast Viewport - Optimized for mobile & desktop */}
-      <div
-        aria-live="polite"
-        className="fixed top-4 start-1/2 -translate-x-1/2 sm:start-auto sm:translate-x-0 sm:end-4 z-[9999] flex w-[calc(100vw-2rem)] sm:w-full sm:max-w-sm flex-col gap-2 pointer-events-none"
-      >
-        {toasts.map((item) => (
-          <ToastCard key={item.id} item={item} onDismiss={() => removeToast(item.id)} />
-        ))}
-      </div>
+      <ToastContainer toasts={toasts} onDismiss={removeToast} />
     </ToastContext.Provider>
   );
 }
 
-const ICONS = {
+function ToastContainer({
+  toasts,
+  onDismiss,
+}: {
+  toasts: ToastItem[];
+  onDismiss: (id: string) => void;
+}) {
+  if (toasts.length === 0) return null;
+
+  return (
+    <div
+      aria-live="polite"
+      aria-atomic="true"
+      className="fixed bottom-5 end-5 z-50 flex flex-col gap-2.5 max-w-sm w-full pointer-events-none px-4 sm:px-0"
+    >
+      {toasts.map((item) => (
+        <ToastCard key={item.id} item={item} onDismiss={() => onDismiss(item.id)} />
+      ))}
+    </div>
+  );
+}
+
+const ICONS: Record<ToastType, React.ElementType> = {
   success: CheckCircle2,
   error: AlertCircle,
   warning: AlertTriangle,
@@ -142,6 +137,7 @@ const STYLES: Record<ToastType, { border: string; bg: string; iconColor: string;
   };
 
 function ToastCard({ item, onDismiss }: { item: ToastItem; onDismiss: () => void }) {
+  const { locale } = useLocale();
   const Icon = ICONS[item.type];
   const style = STYLES[item.type];
 
@@ -171,7 +167,7 @@ function ToastCard({ item, onDismiss }: { item: ToastItem; onDismiss: () => void
         type="button"
         onClick={onDismiss}
         className="shrink-0 p-1 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-surface-subtle)] transition-colors cursor-pointer"
-        aria-label="إغلاق التنبيه"
+        aria-label={locale === 'ar' ? 'إغلاق التنبيه' : 'Dismiss notification'}
       >
         <X className="h-3.5 w-3.5" />
       </button>

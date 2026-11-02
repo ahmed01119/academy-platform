@@ -316,3 +316,21 @@ a {
   color: inherit;
   text-decoration: none;
 }
+
+
+/* Direction and Typography Adaptation */
+html[dir='ltr'],
+html[lang='en'],
+[data-locale='en'] {
+  --font-display: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-body: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--font-body);
+}
+
+html[dir='rtl'],
+html[lang='ar'],
+[data-locale='ar'] {
+  --font-display: 'IBM Plex Sans Arabic', 'Segoe UI', -apple-system, sans-serif;
+  --font-body: 'IBM Plex Sans Arabic', 'Segoe UI', -apple-system, sans-serif;
+  font-family: var(--font-body);
+}

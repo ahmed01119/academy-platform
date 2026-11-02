@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { DEFAULT_LOCALE, LOCALE_DIRECTION, type SupportedLocale } from '@academy/shared';
 import { translations } from './i18n/translations';
+import { ARABIC_DATA_FALLBACKS } from './data-translator';
 
 interface LocaleContextValue {
   locale: SupportedLocale;
@@ -33,6 +34,18 @@ const CURRENCY_ARABIC_SYMBOLS: Record<string, string> = {
   OMR: 'ر.ع',
 };
 
+export const localeInitScript = `
+(function() {
+  try {
+    var stored = localStorage.getItem('${LOCALE_STORAGE_KEY}') || 'ar';
+    var dir = stored === 'en' ? 'ltr' : 'rtl';
+    document.documentElement.lang = stored;
+    document.documentElement.dir = dir;
+    document.documentElement.setAttribute('data-locale', stored);
+  } catch (e) {}
+})();
+`;
+
 export function LocaleProvider({ children }: { children: React.ReactNode }) {
   const [locale, setLocaleState] = useState<SupportedLocale>(DEFAULT_LOCALE);
 
@@ -41,6 +54,7 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
     if (typeof document !== 'undefined') {
       document.documentElement.lang = newLocale;
       document.documentElement.dir = dir;
+      document.documentElement.setAttribute('data-locale', newLocale);
       // Also update cookies for SSR compatibility
       document.cookie = `NEXT_LOCALE=${newLocale}; path=/; max-age=31536000; SameSite=Lax`;
     }
@@ -104,13 +118,22 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
         if (commonMatch) return commonMatch;
       }
 
-      // 3. Fallback to alternative locale (ar <-> en)
-      const altLocale: SupportedLocale = locale === 'ar' ? 'en' : 'ar';
-      const altMatch = resolveKey(altLocale, path);
-      if (altMatch) return altMatch;
+      // 3. Fallback to English when in Arabic, but NEVER fallback to Arabic when in English!
+      if (locale === 'ar') {
+        const altMatch = resolveKey('en', path);
+        if (altMatch) return altMatch;
+      }
 
       // 4. Provided explicit fallback
-      if (fallback) return fallback;
+      if (fallback) {
+        if (locale === 'en' && /[\u0600-\u06FF]/.test(fallback)) {
+          if (ARABIC_DATA_FALLBACKS[fallback]) {
+            return ARABIC_DATA_FALLBACKS[fallback];
+          }
+        } else {
+          return fallback;
+        }
+      }
 
       // 5. Safe humanized string (never display raw internal key identifiers)
       const lastSegment = path.split('.').pop() || path;
@@ -165,7 +188,7 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
   );
 
   const formatCurrency = useCallback(
-    (amount: number, currencyCode = 'SAR'): string => {
+    (amount: number, currencyCode = 'EGP'): string => {
       try {
         const code = currencyCode.toUpperCase();
         if (locale === 'ar') {

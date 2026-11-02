@@ -1,9 +1,17 @@
 'use client';
 
 import React from 'react';
+import { useLocale } from '../../lib/locale-context';
+import { translateStatus, translateDataString } from '../../lib/data-translator';
 
 export type BadgeVariant =
-  'success' | 'warning' | 'danger' | 'info' | 'neutral' | 'emerald' | 'purple';
+  | 'success'
+  | 'warning'
+  | 'danger'
+  | 'info'
+  | 'neutral'
+  | 'emerald'
+  | 'purple';
 
 interface StatusBadgeProps {
   label?: string;
@@ -13,26 +21,6 @@ interface StatusBadgeProps {
   size?: 'sm' | 'md';
 }
 
-const DEFAULT_STATUS_LABELS: Record<string, string> = {
-  ACTIVE: 'نشط',
-  INACTIVE: 'غير نشط',
-  PENDING: 'قيد الاعتماد',
-  SUSPENDED: 'معلق',
-  PRESENT: 'حاضر',
-  ABSENT: 'غائب',
-  LATE: 'متأخر',
-  EXCUSED: 'معذور',
-  MAINTENANCE: 'صيانة',
-  SCHEDULED: 'مجدول',
-  IN_PROGRESS: 'جارية الآن',
-  COMPLETED: 'معتمد / مكتمل',
-  CANCELLED: 'ملغاة',
-  REJECTED: 'مرفوض',
-  REVERSED: 'معكوس',
-  OVERDUE: 'متأخر سداده',
-  PARTIAL: 'سداد جزئي',
-};
-
 export function StatusBadge({
   label,
   variant,
@@ -40,14 +28,41 @@ export function StatusBadge({
   pulse = false,
   size = 'sm',
 }: StatusBadgeProps) {
+  const { locale } = useLocale();
+
   // Determine variant from standard status strings if not explicitly supplied
   let computedVariant: BadgeVariant = variant || 'neutral';
 
   if (!variant && status) {
     const s = status.toUpperCase();
-    if (['ACTIVE', 'PRESENT', 'CONFIRMED', 'PUBLISHED', 'ACCEPTED', 'COMPLETED'].includes(s)) {
+    if (
+      [
+        'ACTIVE',
+        'PRESENT',
+        'CONFIRMED',
+        'PUBLISHED',
+        'ACCEPTED',
+        'APPROVED',
+        'COMPLETED',
+        'PAID',
+        'HEALTHY',
+        'OK',
+      ].includes(s)
+    ) {
       computedVariant = 'success';
-    } else if (['LATE', 'PROVISIONING', 'PENDING', 'SCHEDULED', 'PARTIAL'].includes(s)) {
+    } else if (
+      [
+        'LATE',
+        'PROVISIONING',
+        'PENDING',
+        'PENDING_REVIEW',
+        'SCHEDULED',
+        'PARTIAL',
+        'TRIAL',
+        'MORE_INFO_REQUESTED',
+        'DEGRADED',
+      ].includes(s)
+    ) {
       computedVariant = 'warning';
     } else if (
       [
@@ -60,18 +75,26 @@ export function StatusBadge({
         'INACTIVE',
         'REJECTED',
         'OVERDUE',
+        'CRITICAL',
+        'DOWN',
+        'VOID',
       ].includes(s)
     ) {
       computedVariant = 'danger';
-    } else if (['IN_PROGRESS', 'INVITED'].includes(s)) {
+    } else if (['IN_PROGRESS', 'INVITED', 'UNMARKED', 'CONNECTED'].includes(s)) {
       computedVariant = 'info';
-    } else if (['EXCUSED', 'CLOSED', 'REVERSED'].includes(s)) {
+    } else if (['EXCUSED', 'CLOSED', 'REVERSED', 'PAUSED', 'EXEMPT'].includes(s)) {
       computedVariant = 'purple';
     }
   }
 
-  const displayLabel =
-    label || (status ? DEFAULT_STATUS_LABELS[status.toUpperCase()] || status : '');
+  // Derive localized display label
+  let displayLabel = '';
+  if (label) {
+    displayLabel = locale === 'en' ? translateDataString(label, 'en') : label;
+  } else if (status) {
+    displayLabel = translateStatus(status, locale);
+  }
 
   const variantStyles: Record<BadgeVariant, string> = {
     success: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',

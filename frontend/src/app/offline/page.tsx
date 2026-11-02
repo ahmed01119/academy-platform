@@ -3,8 +3,11 @@
 import React from 'react';
 import { WifiOff, RefreshCw } from 'lucide-react';
 import { SportexusLogo } from '../../components/brand/SportexusLogo';
+import { useLocale } from '../../lib/locale-context';
 
 export default function OfflinePage() {
+  const { locale } = useLocale();
+
   return (
     <div className="min-h-screen bg-[var(--bg-base)] text-[var(--text-main)] flex flex-col items-center justify-center p-4 relative overflow-hidden animate-fade-in">
       {/* Background ambient decorative glow */}
@@ -19,20 +22,23 @@ export default function OfflinePage() {
           </div>
 
           <h1 className="text-2xl font-bold tracking-tight text-[var(--text-main)] mb-3">
-            أنت غير متصل بالإنترنت
+            {locale === 'en' ? 'You are currently offline' : 'أنت غير متصل بالإنترنت'}
           </h1>
           <p className="text-sm font-semibold text-[var(--accent-primary)] mb-4">
-            You are currently offline
+            {locale === 'en'
+              ? 'Check your connection or work offline'
+              : 'تحقق من اتصالك أو تابع العمل دون اتصال'}
           </p>
 
           <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] p-4 text-xs text-[var(--text-muted)] space-y-2 mb-6 text-start">
             <p className="leading-relaxed">
-              ⚡ <strong className="text-[var(--text-main)]">العمليات دون اتصال:</strong> يمكنك
-              تسجيل الحضور ومسودات التقييم محلياً وسيتم المزامنة تلقائياً عند عودة الاتصال.
-            </p>
-            <p className="leading-relaxed text-[11px] opacity-80">
-              Offline Mode: Quick attendance & evaluation drafts remain cached locally and sync when
-              reconnected.
+              ⚡{' '}
+              <strong className="text-[var(--text-main)]">
+                {locale === 'en' ? 'Offline Operations:' : 'العمليات دون اتصال:'}
+              </strong>{' '}
+              {locale === 'en'
+                ? 'Quick attendance & evaluation drafts remain cached locally and sync automatically when reconnected.'
+                : 'يمكنك تسجيل الحضور ومسودات التقييم محلياً وسيتم المزامنة تلقائياً عند عودة الاتصال.'}
             </p>
           </div>
 
@@ -42,7 +48,7 @@ export default function OfflinePage() {
             onClick={() => window.location.reload()}
           >
             <RefreshCw className="h-4 w-4" />
-            <span>إعادة المحاولة / Retry</span>
+            <span>{locale === 'en' ? 'Retry Connection' : 'إعادة المحاولة'}</span>
           </button>
         </div>
       </main>

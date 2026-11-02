@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useLocale } from '../../lib/locale-context';
 import { EmptyState } from './EmptyState';
 import { TableRowSkeleton } from './Skeleton';
 
@@ -32,13 +33,32 @@ export function DataTable<T>({
   keyExtractor,
   loading = false,
   isLoading = false,
-  emptyTitle = 'لا توجد بيانات متاحة',
-  emptyDescription = 'لم يتم العثور على أي سجلات في الوقت الحالي.',
+  emptyTitle,
+  emptyDescription,
   emptyState,
   onRowClick,
 }: DataTableProps<T>) {
+  const { locale } = useLocale();
   const isDataLoading = loading || isLoading;
   const getColKey = (c: Column<T>, idx: number) => c.key || c.accessorKey || c.id || `col-${idx}`;
+
+  const defaultEmptyTitle = locale === 'ar' ? 'لا توجد بيانات متاحة' : 'No Data Available';
+  const defaultEmptyDesc =
+    locale === 'ar'
+      ? 'لم يتم العثور على أي سجلات في الوقت الحالي.'
+      : 'No matching records found at this time.';
+
+  // If a caller passed the default Arabic string explicitly, translate it if in English mode
+  const resolvedEmptyTitle =
+    locale === 'en' && (!emptyTitle || emptyTitle === 'لا توجد بيانات متاحة')
+      ? 'No Data Available'
+      : emptyTitle || defaultEmptyTitle;
+
+  const resolvedEmptyDesc =
+    locale === 'en' &&
+    (!emptyDescription || emptyDescription === 'لم يتم العثور على أي سجلات في الوقت الحالي.')
+      ? 'No matching records found at this time.'
+      : emptyDescription || defaultEmptyDesc;
 
   if (isDataLoading) {
     return (
@@ -72,7 +92,7 @@ export function DataTable<T>({
 
   if (data.length === 0) {
     if (emptyState) return <>{emptyState}</>;
-    return <EmptyState title={emptyTitle} description={emptyDescription} />;
+    return <EmptyState title={resolvedEmptyTitle} description={resolvedEmptyDesc} />;
   }
 
   return (

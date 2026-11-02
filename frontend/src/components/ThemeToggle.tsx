@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { useTheme, type ThemeMode } from '../lib/theme-context';
+import { useLocale } from '../lib/locale-context';
 import { Sun, Moon, Monitor, ChevronDown } from 'lucide-react';
 
 interface ThemeToggleProps {
@@ -10,6 +11,7 @@ interface ThemeToggleProps {
 
 export function ThemeToggle({ compact = false }: ThemeToggleProps) {
   const { theme, resolvedTheme, setTheme } = useTheme();
+  const { locale } = useLocale();
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -25,26 +27,22 @@ export function ThemeToggle({ compact = false }: ThemeToggleProps) {
 
   const options: Array<{
     mode: ThemeMode;
-    labelAr: string;
-    labelEn: string;
+    label: string;
     icon: React.ReactNode;
   }> = [
     {
       mode: 'light',
-      labelAr: 'نهاري',
-      labelEn: 'Light',
+      label: locale === 'ar' ? 'نهاري' : 'Light Mode',
       icon: <Sun className="h-4 w-4 text-amber-500" />,
     },
     {
       mode: 'dark',
-      labelAr: 'ليلي',
-      labelEn: 'Dark',
+      label: locale === 'ar' ? 'ليلي' : 'Dark Mode',
       icon: <Moon className="h-4 w-4 text-emerald-400" />,
     },
     {
       mode: 'system',
-      labelAr: 'تلقائي (النظام)',
-      labelEn: 'System',
+      label: locale === 'ar' ? 'تلقائي (النظام)' : 'System Mode',
       icon: <Monitor className="h-4 w-4 text-sky-400" />,
     },
   ];
@@ -58,25 +56,35 @@ export function ThemeToggle({ compact = false }: ThemeToggleProps) {
       <Sun className="h-4 w-4 text-amber-500" />
     );
 
-  const getLabel = (opt: (typeof options)[0]) => {
-    return opt.labelAr; // or opt.labelEn based on locale
-  };
+  const currentLabel =
+    theme === 'system'
+      ? locale === 'ar'
+        ? 'النظام'
+        : 'System'
+      : theme === 'dark'
+        ? locale === 'ar'
+          ? 'ليلي'
+          : 'Dark'
+        : locale === 'ar'
+          ? 'نهاري'
+          : 'Light';
 
   return (
-    <div className="relative inline-block text-right" ref={menuRef}>
+    <div className="relative inline-block text-start" ref={menuRef}>
       <button
         type="button"
         id="theme-toggle-button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="flex items-center gap-1.5 rounded-xl border border-border-app bg-bg-surface px-2.5 py-1.5 text-xs font-medium text-text-main hover:bg-bg-surface-subtle transition-colors shadow-sm"
-        aria-label="تبديل مظهر العرض (Theme)"
+        className="flex items-center gap-1.5 rounded-xl border border-border-app bg-bg-surface px-2.5 py-1.5 text-xs font-medium text-text-main hover:bg-bg-surface-subtle transition-colors shadow-sm cursor-pointer"
+        aria-label={locale === 'ar' ? 'تبديل مظهر العرض (المود)' : 'Toggle Theme Mode'}
+        title={locale === 'ar' ? 'مظهر العرض (المود)' : 'Theme Mode'}
         aria-haspopup="true"
         aria-expanded={isOpen}
       >
         {currentIcon}
         {!compact && (
-          <span className="hidden sm:inline-block">
-            {theme === 'system' ? 'النظام' : theme === 'dark' ? 'ليلي' : 'نهاري'}
+          <span className="hidden sm:inline-block font-medium">
+            {currentLabel}
           </span>
         )}
         <ChevronDown className="h-3 w-3 opacity-60" />
@@ -86,7 +94,7 @@ export function ThemeToggle({ compact = false }: ThemeToggleProps) {
         <div
           role="menu"
           aria-orientation="vertical"
-          className="absolute left-0 mt-1.5 w-36 origin-top-left rounded-xl border border-border-app bg-bg-surface p-1 shadow-xl z-50 animate-in fade-in zoom-in-95 duration-100"
+          className="absolute end-0 mt-1.5 w-40 origin-top-right rounded-xl border border-border-app bg-bg-surface p-1 shadow-xl z-50 animate-in fade-in zoom-in-95 duration-100"
         >
           {options.map((opt) => (
             <button
@@ -97,18 +105,18 @@ export function ThemeToggle({ compact = false }: ThemeToggleProps) {
                 setTheme(opt.mode);
                 setIsOpen(false);
               }}
-              className={`flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors ${
+              className={`flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors cursor-pointer ${
                 theme === opt.mode
-                  ? 'bg-accent-primary/15 text-accent-primary font-bold'
+                  ? 'bg-accent-primary/10 text-accent-primary font-bold'
                   : 'text-text-main hover:bg-bg-surface-subtle'
               }`}
             >
               <div className="flex items-center gap-2">
                 {opt.icon}
-                <span>{getLabel(opt)}</span>
+                <span>{opt.label}</span>
               </div>
               {theme === opt.mode && (
-                <span className="h-1.5 w-1.5 rounded-full bg-accent-primary" />
+                <span className="h-1.5 w-1.5 rounded-full bg-accent-primary shrink-0" />
               )}
             </button>
           ))}
@@ -117,3 +125,4 @@ export function ThemeToggle({ compact = false }: ThemeToggleProps) {
     </div>
   );
 }
+export default ThemeToggle;

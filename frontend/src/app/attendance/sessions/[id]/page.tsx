@@ -4,6 +4,12 @@ import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '../../../../lib/auth-context';
+import { useLocale } from '../../../../lib/locale-context';
+import {
+  translateDataString,
+  translateStatus,
+  translatePaymentMethod,
+} from '../../../../lib/data-translator';
 import { AppShell } from '../../../../components/layout/AppShell';
 import { PageHeader } from '../../../../components/ui/PageHeader';
 import { ErrorState } from '../../../../components/ui/ErrorState';
@@ -50,6 +56,7 @@ export default function SessionAttendancePage() {
   const params = useParams();
   const sessionId = params.id as string;
   const { user, activeTenant, isLoading } = useAuth();
+  const { locale, t } = useLocale();
   const { toast } = useToast();
 
   const [session, setSession] = useState<SessionDetails | null>(null);
@@ -149,11 +156,17 @@ export default function SessionAttendancePage() {
       setSession(data);
       void loadCashierSummary();
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : 'فشل تحميل كشف الحضور للحصة');
+      setErrorMsg(
+        err instanceof Error
+          ? err.message
+          : locale === 'en'
+            ? 'Failed to load session attendance roster'
+            : 'فشل تحميل كشف الحضور للحصة',
+      );
     } finally {
       setIsFetching(false);
     }
-  }, [sessionId, loadCashierSummary]);
+  }, [sessionId, loadCashierSummary, locale]);
 
   useEffect(() => {
     if (user && activeTenant && sessionId) {
@@ -193,10 +206,20 @@ export default function SessionAttendancePage() {
         notes: paymentNotes.trim() || undefined,
       });
       setIsPaymentModalOpen(false);
-      toast.success('تم تسجيل الدفعة المالية بنجاح وتحديث كشف الحساب');
+      toast.success(
+        locale === 'en'
+          ? 'Payment recorded successfully and account updated'
+          : 'تم تسجيل الدفعة المالية بنجاح وتحديث كشف الحساب',
+      );
       await Promise.all([loadSessionDetails(), loadCashierSummary()]);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'فشل تسجيل الدفعة');
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : locale === 'en'
+            ? 'Failed to record payment'
+            : 'فشل تسجيل الدفعة',
+      );
     } finally {
       setIsSubmittingPayment(false);
     }
@@ -217,13 +240,27 @@ export default function SessionAttendancePage() {
       setExpenseAmount(0);
       setExpenseNotes('');
       if (userRole === 'COACH') {
-        toast.info('تم تقديم المصروف بنجاح وهو الآن قيد مراجعة واعتماد الإدارة');
+        toast.info(
+          locale === 'en'
+            ? 'Expense submitted successfully and pending management approval'
+            : 'تم تقديم المصروف بنجاح وهو الآن قيد مراجعة واعتماد الإدارة',
+        );
       } else {
-        toast.success('تم تسجيل المصروف واعتماده بنجاح وتحديث الصندوق');
+        toast.success(
+          locale === 'en'
+            ? 'Expense recorded and approved successfully'
+            : 'تم تسجيل المصروف واعتماده بنجاح وتحديث الصندوق',
+        );
       }
       await loadCashierSummary();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'فشل تسجيل المصروف');
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : locale === 'en'
+            ? 'Failed to record expense'
+            : 'فشل تسجيل المصروف',
+      );
     } finally {
       setIsSubmittingExpense(false);
     }
@@ -233,10 +270,20 @@ export default function SessionAttendancePage() {
     setApprovingExpenseId(expenseId);
     try {
       await api.finance.approveSessionExpense(expenseId);
-      toast.success('تم اعتماد المصروف بنجاح وتحديث رصيد الصندوق');
+      toast.success(
+        locale === 'en'
+          ? 'Expense approved successfully and cash drawer updated'
+          : 'تم اعتماد المصروف بنجاح وتحديث رصيد الصندوق',
+      );
       await loadCashierSummary();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'فشل اعتماد المصروف');
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : locale === 'en'
+            ? 'Failed to approve expense'
+            : 'فشل اعتماد المصروف',
+      );
     } finally {
       setApprovingExpenseId(null);
     }
@@ -249,12 +296,22 @@ export default function SessionAttendancePage() {
       await api.finance.rejectSessionExpense(rejectingExpenseId, {
         reason: rejectionReason.trim(),
       });
-      toast.success('تم رفض المصروف وتوثيق السبب في سجل التدقيق');
+      toast.success(
+        locale === 'en'
+          ? 'Expense rejected and reason logged'
+          : 'تم رفض المصروف وتوثيق السبب في سجل التدقيق',
+      );
       setRejectingExpenseId(null);
       setRejectionReason('');
       await loadCashierSummary();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'فشل رفض المصروف');
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : locale === 'en'
+            ? 'Failed to reject expense'
+            : 'فشل رفض المصروف',
+      );
     } finally {
       setIsSubmittingRejectExpense(false);
     }
@@ -269,10 +326,20 @@ export default function SessionAttendancePage() {
       });
       setIsCloseCashierModalOpen(false);
       setCloseCashierNotes('');
-      toast.success('تمت مطابقة وإغلاق الصندوق المالي بنجاح');
+      toast.success(
+        locale === 'en'
+          ? 'Cash drawer reconciled and closed successfully'
+          : 'تمت مطابقة وإغلاق الصندوق المالي بنجاح',
+      );
       await loadCashierSummary();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'فشل إغلاق الصندوق المالي');
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : locale === 'en'
+            ? 'Failed to close cash drawer'
+            : 'فشل إغلاق الصندوق المالي',
+      );
     } finally {
       setIsSubmittingCloseCashier(false);
     }
@@ -307,7 +374,13 @@ export default function SessionAttendancePage() {
         setQrCheckInPlayerId(firstRosterItem.playerId);
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'فشل توليد رمز QR');
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : locale === 'en'
+            ? 'Failed to generate QR code'
+            : 'فشل توليد رمز QR',
+      );
     } finally {
       setIsGeneratingQr(false);
     }
@@ -321,11 +394,25 @@ export default function SessionAttendancePage() {
         token: qrData.token,
         playerId: qrCheckInPlayerId,
       });
-      toast.success('تم تسجيل الحضور عبر رمز QR بنجاح!');
-      setQrSimSuccess('تم تسجيل الحضور عبر QR بنجاح!');
+      toast.success(
+        locale === 'en'
+          ? 'Attendance recorded via QR code successfully!'
+          : 'تم تسجيل الحضور عبر رمز QR بنجاح!',
+      );
+      setQrSimSuccess(
+        locale === 'en'
+          ? 'Attendance recorded via QR successfully!'
+          : 'تم تسجيل الحضور عبر QR بنجاح!',
+      );
       await loadSessionDetails();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'فشل التحضير بالرمز');
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : locale === 'en'
+            ? 'Failed to check in via QR'
+            : 'فشل التحضير بالرمز',
+      );
     }
   };
 
@@ -345,13 +432,27 @@ export default function SessionAttendancePage() {
 
   // Close Session
   const handleCloseSession = async () => {
-    if (!confirm('هل أنت متأكد من إغلاق الحصة التدريبية؟ سيتم قفل التحضير.')) return;
+    const confirmationMsg =
+      locale === 'en'
+        ? 'Are you sure you want to close this training session? Attendance will be locked.'
+        : 'هل أنت متأكد من إغلاق الحصة التدريبية؟ سيتم قفل التحضير.';
+    if (!confirm(confirmationMsg)) return;
     try {
       await api.attendance.closeSession(sessionId);
-      toast.success('تم إغلاق الحصة التدريبية بنجاح');
+      toast.success(
+        locale === 'en'
+          ? 'Training session closed successfully'
+          : 'تم إغلاق الحصة التدريبية بنجاح',
+      );
       await loadSessionDetails();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'فشل إغلاق الحصة');
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : locale === 'en'
+            ? 'Failed to close session'
+            : 'فشل إغلاق الحصة',
+      );
     }
   };
 
@@ -425,7 +526,10 @@ export default function SessionAttendancePage() {
                   ...r,
                   ...serverItem,
                   recordId: serverItem.id || serverItem.recordId || r.recordId,
-                  playerName: serverItem.playerName || r.playerName || 'لاعب غير معروف',
+                  playerName:
+                    serverItem.playerName ||
+                    r.playerName ||
+                    (locale === 'en' ? 'Unknown Player' : 'لاعب غير معروف'),
                   photoUrl: serverItem.photoUrl !== undefined ? serverItem.photoUrl : r.photoUrl,
                   status: serverItem.status || newStatus,
                   version: serverItem.version || r.version + 1,
@@ -438,7 +542,13 @@ export default function SessionAttendancePage() {
       console.error('Failed to mark attendance, rolling back:', err);
       // Rollback on error
       setSession((curr) => (curr ? { ...curr, roster: previousRoster } : null));
-      toast.error(err instanceof Error ? err.message : 'فشل تسجيل حالة الحضور');
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : locale === 'en'
+            ? 'Failed to record attendance status'
+            : 'فشل تسجيل حالة الحضور',
+      );
     } finally {
       setPendingPlayerIds((prev) => {
         const next = new Set(prev);
@@ -453,15 +563,20 @@ export default function SessionAttendancePage() {
     if (!session || session.status === 'CLOSED') return;
     const unmarkedPlayers = session.roster.filter((r) => r.status === 'UNMARKED');
     if (unmarkedPlayers.length === 0) {
-      toast.info('جميع اللاعبين تم تسجيل حضورهم بالفعل');
+      toast.info(
+        locale === 'en'
+          ? 'All players are already marked'
+          : 'جميع اللاعبين تم تسجيل حضورهم بالفعل',
+      );
       return;
     }
 
-    if (
-      !confirm(
-        `هل تريد تحضير جميع اللاعبين غير المحددين (${unmarkedPlayers.length} لاعب) كـ "حاضر" دفعة واحدة؟`,
-      )
-    ) {
+    const confirmMsg =
+      locale === 'en'
+        ? `Do you want to mark all unmarked players (${unmarkedPlayers.length}) as "Present" at once?`
+        : `هل تريد تحضير جميع اللاعبين غير المحددين (${unmarkedPlayers.length} لاعب) كـ "حاضر" دفعة واحدة؟`;
+
+    if (!confirm(confirmMsg)) {
       return;
     }
 
@@ -477,10 +592,20 @@ export default function SessionAttendancePage() {
           expectedVersion: p.version,
         })),
       });
-      toast.success(`تم تحضير ${unmarkedPlayers.length} لاعب بنجاح`);
+      toast.success(
+        locale === 'en'
+          ? `Marked ${unmarkedPlayers.length} players successfully`
+          : `تم تحضير ${unmarkedPlayers.length} لاعب بنجاح`,
+      );
       await loadSessionDetails();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'فشل التحضير الجماعي');
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : locale === 'en'
+            ? 'Failed bulk attendance'
+            : 'فشل التحضير الجماعي',
+      );
     } finally {
       setIsBulkMarking(false);
     }
@@ -493,7 +618,9 @@ export default function SessionAttendancePage() {
           <div className="flex flex-col items-center gap-3">
             <RefreshCw className="h-8 w-8 animate-spin text-[var(--accent-primary)]" />
             <p className="text-sm font-medium text-[var(--text-muted)]">
-              جارٍ تحميل كشف الحضور للحصة التدريبية...
+              {locale === 'en'
+                ? 'Loading session attendance roster...'
+                : 'جارٍ تحميل كشف الحضور للحصة التدريبية...'}
             </p>
           </div>
         </div>
@@ -505,8 +632,10 @@ export default function SessionAttendancePage() {
     return (
       <AppShell>
         <ErrorState
-          title="تعذر الوصول للحصة التدريبية"
-          message={errorMsg || 'الحصة غير موجودة'}
+          title={
+            locale === 'en' ? 'Unable to access training session' : 'تعذر الوصول للحصة التدريبية'
+          }
+          message={errorMsg || (locale === 'en' ? 'Session not found' : 'الحصة غير موجودة')}
           onRetry={loadSessionDetails}
         />
       </AppShell>
@@ -517,24 +646,44 @@ export default function SessionAttendancePage() {
   const totalRoster = session.roster?.length || 0;
   const filteredRoster = (session.roster || []).filter((item) => {
     const rawName = typeof item?.playerName === 'string' ? item.playerName : '';
+    const translatedName = translateDataString(rawName, locale);
     const query = searchTerm.trim().toLowerCase();
-    const matchesSearch = !query || rawName.toLowerCase().includes(query);
+    const matchesSearch =
+      !query ||
+      rawName.toLowerCase().includes(query) ||
+      translatedName.toLowerCase().includes(query);
     const matchesStatus = statusFilter === 'ALL' || item?.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
+
+  const translatedGroupName = translateDataString(session.groupName, locale);
+  const translatedBranchName = translateDataString(session.branchName, locale);
+  const translatedCoachName = session.coachName
+    ? translateDataString(session.coachName, locale)
+    : undefined;
 
   return (
     <AppShell>
       <div className="space-y-6">
         <PageHeader
           breadcrumbs={[
-            { label: 'الرئيسية', href: '/dashboard' },
-            { label: 'الحصص التدريبية', href: '/sessions' },
-            { label: session.groupName },
-            { label: 'كشف الحضور المباشر' },
+            { label: t('nav.home', 'الرئيسية'), href: '/dashboard' },
+            { label: locale === 'en' ? 'Sessions' : 'الحصص التدريبية', href: '/sessions' },
+            { label: translatedGroupName },
+            { label: locale === 'en' ? 'Live Attendance Roster' : 'كشف الحضور المباشر' },
           ]}
-          title={`كشف حضور: ${session.groupName}`}
-          description={session.coachName ? `المدرب المشرف: ${session.coachName}` : undefined}
+          title={
+            locale === 'en'
+              ? `Attendance Roster: ${translatedGroupName}`
+              : `كشف حضور: ${translatedGroupName}`
+          }
+          description={
+            translatedCoachName
+              ? locale === 'en'
+                ? `Coach: ${translatedCoachName}`
+                : `المدرب المشرف: ${translatedCoachName}`
+              : undefined
+          }
           actions={
             <div className="flex flex-wrap items-center gap-2.5">
               {!isClosed && (
@@ -544,7 +693,7 @@ export default function SessionAttendancePage() {
                   className="flex items-center gap-2 rounded-xl bg-[var(--accent-primary)] px-4 py-2 text-xs font-bold text-white shadow-sm hover:brightness-110 transition-all cursor-pointer"
                 >
                   <QrCode className="h-4 w-4" />
-                  <span>ماسح الحضور بالكاميرا</span>
+                  <span>{locale === 'en' ? 'Camera Scanner' : 'ماسح الحضور بالكاميرا'}</span>
                 </Link>
               )}
 
@@ -556,7 +705,7 @@ export default function SessionAttendancePage() {
                   className="flex items-center gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-2 text-xs font-semibold text-[var(--accent-primary)] hover:border-[var(--accent-primary)] transition-all cursor-pointer"
                 >
                   <QrCode className="h-4 w-4" />
-                  <span>رمز QR للحصة</span>
+                  <span>{locale === 'en' ? 'Session QR Code' : 'رمز QR للحصة'}</span>
                 </button>
               )}
 
@@ -567,7 +716,7 @@ export default function SessionAttendancePage() {
                 className="flex items-center gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-2 text-xs font-semibold text-[var(--text-muted)] hover:text-[var(--text-main)] hover:border-[var(--accent-primary)] transition-all cursor-pointer"
               >
                 <History className="h-4 w-4" />
-                <span>سجل العمليات (Audit)</span>
+                <span>{locale === 'en' ? 'Audit Log' : 'سجل العمليات (Audit)'}</span>
               </button>
 
               {!isClosed && (
@@ -578,7 +727,9 @@ export default function SessionAttendancePage() {
                   className="flex items-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-2 text-xs font-semibold text-rose-500 hover:bg-rose-500/20 transition-all cursor-pointer"
                 >
                   <Lock className="h-4 w-4" />
-                  <span>إغلاق الحصة وتثبيت الكشف</span>
+                  <span>
+                    {locale === 'en' ? 'Close & Lock Session' : 'إغلاق الحصة وتثبيت الكشف'}
+                  </span>
                 </button>
               )}
             </div>
@@ -598,15 +749,21 @@ export default function SessionAttendancePage() {
               }`}
             >
               {session.status === 'IN_PROGRESS'
-                ? '• الحصة جارية الآن'
+                ? locale === 'en'
+                  ? '• Session In Progress'
+                  : '• الحصة جارية الآن'
                 : session.status === 'SCHEDULED'
-                  ? 'حصة مجدولة'
-                  : 'حصة مغلقة ومؤكدة'}
+                  ? locale === 'en'
+                    ? 'Scheduled Session'
+                    : 'حصة مجدولة'
+                  : locale === 'en'
+                    ? 'Closed Session'
+                    : 'حصة مغلقة ومؤكدة'}
             </span>
 
             <span className="flex items-center gap-1.5 text-xs text-[var(--text-muted)]">
               <Building2 className="h-3.5 w-3.5 text-[var(--accent-primary)]" />
-              <span>{session.branchName}</span>
+              <span>{translatedBranchName}</span>
             </span>
 
             <span className="flex items-center gap-1.5 text-xs text-[var(--text-muted)]">
@@ -625,13 +782,15 @@ export default function SessionAttendancePage() {
           {/* Live KPI Counters */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 pt-4 border-t border-[var(--border-subtle)]">
             <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] p-3 text-center">
-              <span className="text-[11px] text-[var(--text-muted)] block mb-1">إجمالي الكشف</span>
+              <span className="text-[11px] text-[var(--text-muted)] block mb-1">
+                {locale === 'en' ? 'Total Roster' : 'إجمالي الكشف'}
+              </span>
               <span className="text-xl font-extrabold text-[var(--text-main)]">{totalRoster}</span>
             </div>
 
             <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3 text-center">
               <span className="text-[11px] text-emerald-600 dark:text-emerald-400 block mb-1 font-semibold">
-                حاضر (Present)
+                {locale === 'en' ? 'Present' : 'حاضر (Present)'}
               </span>
               <span className="text-xl font-extrabold text-emerald-600 dark:text-emerald-400">
                 {session.totalPresent}
@@ -640,7 +799,7 @@ export default function SessionAttendancePage() {
 
             <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-center">
               <span className="text-[11px] text-amber-600 dark:text-amber-400 block mb-1 font-semibold">
-                متأخر (Late)
+                {locale === 'en' ? 'Late' : 'متأخر (Late)'}
               </span>
               <span className="text-xl font-extrabold text-amber-600 dark:text-amber-400">
                 {session.totalLate}
@@ -649,7 +808,7 @@ export default function SessionAttendancePage() {
 
             <div className="rounded-xl border border-rose-500/20 bg-rose-500/5 p-3 text-center">
               <span className="text-[11px] text-rose-600 dark:text-rose-400 block mb-1 font-semibold">
-                غائب (Absent)
+                {locale === 'en' ? 'Absent' : 'غائب (Absent)'}
               </span>
               <span className="text-xl font-extrabold text-rose-600 dark:text-rose-400">
                 {session.totalAbsent}
@@ -658,7 +817,7 @@ export default function SessionAttendancePage() {
 
             <div className="rounded-xl border border-sky-500/20 bg-sky-500/5 p-3 text-center">
               <span className="text-[11px] text-sky-600 dark:text-sky-400 block mb-1 font-semibold">
-                معذور (Excused)
+                {locale === 'en' ? 'Excused' : 'معذور (Excused)'}
               </span>
               <span className="text-xl font-extrabold text-sky-600 dark:text-sky-400">
                 {session.totalExcused}
@@ -667,7 +826,7 @@ export default function SessionAttendancePage() {
 
             <div className="rounded-xl border border-slate-500/20 bg-slate-500/5 p-3 text-center">
               <span className="text-[11px] text-slate-500 dark:text-slate-400 block mb-1 font-semibold">
-                غير محدد (Unmarked)
+                {locale === 'en' ? 'Unmarked' : 'غير محدد (Unmarked)'}
               </span>
               <span className="text-xl font-extrabold text-slate-600 dark:text-slate-300">
                 {session.totalUnmarked}
@@ -685,10 +844,14 @@ export default function SessionAttendancePage() {
               </div>
               <div>
                 <h3 className="text-sm font-bold text-[var(--text-main)]">
-                  صندوق الحصة التدريبية والإغلاق المالي (Session Cashier & Reconciliation)
+                  {locale === 'en'
+                    ? 'Session Cashier & Reconciliation'
+                    : 'صندوق الحصة التدريبية والإغلاق المالي (Session Cashier & Reconciliation)'}
                 </h3>
                 <p className="text-xs text-[var(--text-muted)]">
-                  متابعة التحصيلات الميدانية النقدية والإلكترونية ومصروفات الحصة والتسوية المحاسبية.
+                  {locale === 'en'
+                    ? 'Track on-pitch cash & electronic collections, session expenses, and accounting settlement.'
+                    : 'متابعة التحصيلات الميدانية النقدية والإلكترونية ومصروفات الحصة والتسوية المحاسبية.'}
                 </p>
               </div>
             </div>
@@ -698,16 +861,19 @@ export default function SessionAttendancePage() {
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
                   <CheckCircle2 className="h-3.5 w-3.5" />
                   <span>
-                    تمت المطابقة والإغلاق{' '}
-                    {cashierSummary.closedByUserName
-                      ? `بواسطة ${cashierSummary.closedByUserName}`
-                      : ''}
+                    {locale === 'en'
+                      ? `Reconciled & Closed ${cashierSummary.closedByUserName ? `by ${cashierSummary.closedByUserName}` : ''}`
+                      : `تمت المطابقة والإغلاق ${cashierSummary.closedByUserName ? `بواسطة ${cashierSummary.closedByUserName}` : ''}`}
                   </span>
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/15 px-3 py-1 text-xs font-bold text-blue-600 dark:text-blue-400 border border-blue-500/30">
                   <Clock className="h-3.5 w-3.5" />
-                  <span>الصندوق مفتوح وجارٍ التحصيل</span>
+                  <span>
+                    {locale === 'en'
+                      ? 'Drawer Open & Active'
+                      : 'الصندوق مفتوح وجارٍ التحصيل'}
+                  </span>
                 </span>
               )}
 
@@ -731,41 +897,51 @@ export default function SessionAttendancePage() {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3">
                   <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold block mb-0.5">
-                    التحصيل النقدي (كاش)
+                    {locale === 'en' ? 'Cash Collected' : 'التحصيل النقدي (كاش)'}
                   </span>
                   <span className="text-lg font-extrabold text-[var(--text-main)]">
                     {cashierSummary?.totalCashCollected ?? 0}{' '}
-                    <span className="text-xs font-normal">ر.س</span>
+                    <span className="text-xs font-normal">
+                      {locale === 'en' ? 'SAR' : 'ر.س'}
+                    </span>
                   </span>
                 </div>
 
                 <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-3">
                   <span className="text-[11px] text-blue-600 dark:text-blue-400 font-semibold block mb-0.5">
-                    التحصيل الإلكتروني (مدى/بطاقة)
+                    {locale === 'en'
+                      ? 'Electronic Collected (POS/Card)'
+                      : 'التحصيل الإلكتروني (مدى/بطاقة)'}
                   </span>
                   <span className="text-lg font-extrabold text-[var(--text-main)]">
                     {cashierSummary?.totalElectronicCollected ?? 0}{' '}
-                    <span className="text-xs font-normal">ر.س</span>
+                    <span className="text-xs font-normal">
+                      {locale === 'en' ? 'SAR' : 'ر.س'}
+                    </span>
                   </span>
                 </div>
 
                 <div className="rounded-xl border border-rose-500/20 bg-rose-500/5 p-3">
                   <span className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold block mb-0.5">
-                    مصروفات الحصة (ماء/تجهيز)
+                    {locale === 'en' ? 'Session Expenses' : 'مصروفات الحصة (ماء/تجهيز)'}
                   </span>
                   <span className="text-lg font-extrabold text-[var(--text-main)]">
                     {cashierSummary?.totalExpenses ?? 0}{' '}
-                    <span className="text-xs font-normal">ر.س</span>
+                    <span className="text-xs font-normal">
+                      {locale === 'en' ? 'SAR' : 'ر.س'}
+                    </span>
                   </span>
                 </div>
 
                 <div className="rounded-xl border border-violet-500/20 bg-violet-500/5 p-3">
                   <span className="text-[11px] text-violet-600 dark:text-violet-400 font-semibold block mb-0.5">
-                    صافي الحركة النقدية
+                    {locale === 'en' ? 'Net Cash Movement' : 'صافي الحركة النقدية'}
                   </span>
                   <span className="text-lg font-extrabold text-[var(--text-main)]">
                     {cashierSummary?.netCashMovement ?? 0}{' '}
-                    <span className="text-xs font-normal">ر.س</span>
+                    <span className="text-xs font-normal">
+                      {locale === 'en' ? 'SAR' : 'ر.س'}
+                    </span>
                   </span>
                 </div>
               </div>
@@ -780,7 +956,9 @@ export default function SessionAttendancePage() {
                     className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2 text-xs font-bold text-[var(--text-main)] hover:border-[var(--accent-primary)] disabled:opacity-50 transition-all cursor-pointer"
                   >
                     <PlusCircle className="h-4 w-4 text-rose-500" />
-                    <span>تسجيل مصروف للحصة</span>
+                    <span>
+                      {locale === 'en' ? 'Record Session Expense' : 'تسجيل مصروف للحصة'}
+                    </span>
                   </button>
                 </div>
 
@@ -791,7 +969,11 @@ export default function SessionAttendancePage() {
                     className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow hover:brightness-110 transition-all cursor-pointer"
                   >
                     <Receipt className="h-4 w-4" />
-                    <span>مطابقة وإغلاق الصندوق المالي</span>
+                    <span>
+                      {locale === 'en'
+                        ? 'Reconcile & Close Cash Drawer'
+                        : 'مطابقة وإغلاق الصندوق المالي'}
+                    </span>
                   </button>
                 )}
               </div>
@@ -801,10 +983,14 @@ export default function SessionAttendancePage() {
                 <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] overflow-hidden text-xs">
                   <div className="px-3.5 py-2 font-bold text-[var(--text-main)] border-b border-[var(--border-subtle)] flex items-center justify-between">
                     <span>
-                      حركات الصندوق المسجلة في هذه الحصة ({cashierSummary.transactions.length})
+                      {locale === 'en'
+                        ? `Session Transactions (${cashierSummary.transactions.length})`
+                        : `حركات الصندوق المسجلة في هذه الحصة (${cashierSummary.transactions.length})`}
                     </span>
                     <span className="text-[10px] text-[var(--text-muted)] font-normal">
-                      تتطلب مصروفات المدربين اعتماد الإدارة لتسويتها في الصندوق
+                      {locale === 'en'
+                        ? 'Coach expenses require management approval to settle in drawer'
+                        : 'تتطلب مصروفات المدربين اعتماد الإدارة لتسويتها في الصندوق'}
                     </span>
                   </div>
                   <div className="divide-y divide-[var(--border-subtle)] max-h-72 overflow-y-auto">
@@ -817,29 +1003,52 @@ export default function SessionAttendancePage() {
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-bold text-[var(--text-main)]">
                               {tx.type === 'SESSION_EXPENSE'
-                                ? 'مصروف حصة'
-                                : tx.playerName || 'سداد اشتراك'}
+                                ? locale === 'en'
+                                  ? 'Session Expense'
+                                  : 'مصروف حصة'
+                                : translateDataString(tx.playerName, locale) ||
+                                  (locale === 'en' ? 'Subscription Payment' : 'سداد اشتراك')}
                             </span>
                             <StatusBadge status={tx.status} size="sm" />
                             {tx.type === 'SESSION_EXPENSE' && tx.status === 'PENDING' && (
                               <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">
-                                (قيد الاعتماد - لا يخصم من الصندوق حتى يعتمد)
+                                {locale === 'en'
+                                  ? '(Pending Approval - Not deducted until approved)'
+                                  : '(قيد الاعتماد - لا يخصم من الصندوق حتى يعتمد)'}
                               </span>
                             )}
                           </div>
                           <div className="text-[10px] text-[var(--text-muted)] flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
-                            <span>رقم الإيصال: {tx.receiptNumber || tx.id.slice(0, 8)}</span>
-                            <span>• طريقة الدفع: {tx.paymentMethod}</span>
-                            {tx.recordedByName && <span>• المسجل: {tx.recordedByName}</span>}
-                            {tx.notes && <span>• ملاحظة: {tx.notes}</span>}
+                            <span>
+                              {locale === 'en' ? 'Receipt #' : 'رقم الإيصال:'}{' '}
+                              {tx.receiptNumber || tx.id.slice(0, 8)}
+                            </span>
+                            <span>
+                              • {locale === 'en' ? 'Method:' : 'طريقة الدفع:'}{' '}
+                              {translatePaymentMethod(tx.paymentMethod, locale)}
+                            </span>
+                            {tx.recordedByName && (
+                              <span>
+                                • {locale === 'en' ? 'Recorded by:' : 'المسجل:'}{' '}
+                                {translateDataString(tx.recordedByName, locale)}
+                              </span>
+                            )}
+                            {tx.notes && (
+                              <span>
+                                • {locale === 'en' ? 'Note:' : 'ملاحظة:'}{' '}
+                                {translateDataString(tx.notes, locale)}
+                              </span>
+                            )}
                             {tx.status === 'COMPLETED' && tx.approvedByName && (
                               <span className="text-emerald-600 dark:text-emerald-400 font-medium">
-                                • معتمد بواسطة: {tx.approvedByName}
+                                • {locale === 'en' ? 'Approved by:' : 'معتمد بواسطة:'}{' '}
+                                {translateDataString(tx.approvedByName, locale)}
                               </span>
                             )}
                             {tx.status === 'REJECTED' && tx.rejectionReason && (
                               <span className="text-rose-600 dark:text-rose-400 font-medium">
-                                • سبب الرفض: {tx.rejectionReason}
+                                • {locale === 'en' ? 'Rejection Reason:' : 'سبب الرفض:'}{' '}
+                                {translateDataString(tx.rejectionReason, locale)}
                               </span>
                             )}
                           </div>
@@ -853,7 +1062,9 @@ export default function SessionAttendancePage() {
                               <div className="flex items-center gap-1.5">
                                 {user?.id === tx.recordedByUserId && userRole !== 'OWNER' ? (
                                   <span className="text-[10px] text-[var(--text-muted)] italic bg-[var(--bg-surface)] px-2 py-0.5 rounded-md border border-[var(--border-subtle)]">
-                                    فصل الصلاحيات (بانتظار مسؤول آخر)
+                                    {locale === 'en'
+                                      ? 'Awaiting another admin'
+                                      : 'فصل الصلاحيات (بانتظار مسؤول آخر)'}
                                   </span>
                                 ) : (
                                   <>
@@ -862,14 +1073,18 @@ export default function SessionAttendancePage() {
                                       disabled={approvingExpenseId === tx.id}
                                       onClick={() => handleApproveExpense(tx.id)}
                                       className="flex items-center gap-1 rounded-lg bg-emerald-600/10 hover:bg-emerald-600 text-emerald-700 dark:text-emerald-300 hover:text-white px-2.5 py-1 text-[11px] font-bold border border-emerald-500/30 transition-all cursor-pointer disabled:opacity-50"
-                                      title="اعتماد المصروف وإدراجه في حسابات الصندوق"
+                                      title={
+                                        locale === 'en'
+                                          ? 'Approve expense and include in drawer'
+                                          : 'اعتماد المصروف وإدراجه في حسابات الصندوق'
+                                      }
                                     >
                                       {approvingExpenseId === tx.id ? (
                                         <RefreshCw className="h-3 w-3 animate-spin" />
                                       ) : (
                                         <Check className="h-3 w-3" />
                                       )}
-                                      <span>اعتماد</span>
+                                      <span>{locale === 'en' ? 'Approve' : 'اعتماد'}</span>
                                     </button>
                                     <button
                                       type="button"
@@ -878,17 +1093,21 @@ export default function SessionAttendancePage() {
                                         setRejectionReason('');
                                       }}
                                       className="flex items-center gap-1 rounded-lg bg-rose-600/10 hover:bg-rose-600 text-rose-700 dark:text-rose-300 hover:text-white px-2.5 py-1 text-[11px] font-bold border border-rose-500/30 transition-all cursor-pointer"
-                                      title="رفض المصروف مع توثيق السبب"
+                                      title={
+                                        locale === 'en'
+                                          ? 'Reject expense with reason'
+                                          : 'رفض المصروف مع توثيق السبب'
+                                      }
                                     >
                                       <X className="h-3 w-3" />
-                                      <span>رفض</span>
+                                      <span>{locale === 'en' ? 'Reject' : 'رفض'}</span>
                                     </button>
                                   </>
                                 )}
                               </div>
                             )}
 
-                          <div className="text-right min-w-[70px]">
+                          <div className="text-end min-w-[70px]">
                             <span
                               className={`font-mono font-bold block ${
                                 tx.type === 'SESSION_EXPENSE'
@@ -899,14 +1118,17 @@ export default function SessionAttendancePage() {
                               }`}
                             >
                               {tx.type === 'SESSION_EXPENSE' ? '-' : '+'}
-                              {tx.amount} ر.س
+                              {tx.amount} {locale === 'en' ? 'SAR' : 'ر.س'}
                             </span>
                             <div className="text-[10px] text-[var(--text-muted)]">
                               {tx.createdAt
-                                ? new Date(tx.createdAt).toLocaleTimeString('ar-EG', {
-                                    hour: '2-digit',
-                                    minute: '2-digit',
-                                  })
+                                ? new Date(tx.createdAt).toLocaleTimeString(
+                                    locale === 'en' ? 'en-US' : 'ar-EG',
+                                    {
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                    },
+                                  )
                                 : ''}
                             </div>
                           </div>
@@ -932,7 +1154,7 @@ export default function SessionAttendancePage() {
                   : 'bg-[var(--bg-surface)] text-[var(--text-muted)] border border-[var(--border-subtle)] hover:text-[var(--text-main)]'
               }`}
             >
-              الكل ({session.roster.length})
+              {locale === 'en' ? `All (${session.roster.length})` : `الكل (${session.roster.length})`}
             </button>
             <button
               type="button"
@@ -943,7 +1165,9 @@ export default function SessionAttendancePage() {
                   : 'bg-[var(--bg-surface)] text-[var(--text-muted)] border border-[var(--border-subtle)] hover:text-[var(--text-main)]'
               }`}
             >
-              غير محدد ({session.totalUnmarked})
+              {locale === 'en'
+                ? `Unmarked (${session.totalUnmarked})`
+                : `غير محدد (${session.totalUnmarked})`}
             </button>
             <button
               type="button"
@@ -954,7 +1178,9 @@ export default function SessionAttendancePage() {
                   : 'bg-[var(--bg-surface)] text-emerald-600 dark:text-emerald-400 border border-[var(--border-subtle)] hover:bg-emerald-500/10'
               }`}
             >
-              حاضر ({session.totalPresent})
+              {locale === 'en'
+                ? `Present (${session.totalPresent})`
+                : `حاضر (${session.totalPresent})`}
             </button>
             <button
               type="button"
@@ -965,7 +1191,9 @@ export default function SessionAttendancePage() {
                   : 'bg-[var(--bg-surface)] text-amber-600 dark:text-amber-400 border border-[var(--border-subtle)] hover:bg-amber-500/10'
               }`}
             >
-              متأخر ({session.totalLate})
+              {locale === 'en'
+                ? `Late (${session.totalLate})`
+                : `متأخر (${session.totalLate})`}
             </button>
             <button
               type="button"
@@ -976,7 +1204,9 @@ export default function SessionAttendancePage() {
                   : 'bg-[var(--bg-surface)] text-rose-600 dark:text-rose-400 border border-[var(--border-subtle)] hover:bg-rose-500/10'
               }`}
             >
-              غائب ({session.totalAbsent})
+              {locale === 'en'
+                ? `Absent (${session.totalAbsent})`
+                : `غائب (${session.totalAbsent})`}
             </button>
             <button
               type="button"
@@ -987,21 +1217,25 @@ export default function SessionAttendancePage() {
                   : 'bg-[var(--bg-surface)] text-sky-600 dark:text-sky-400 border border-[var(--border-subtle)] hover:bg-sky-500/10'
               }`}
             >
-              معذور ({session.totalExcused})
+              {locale === 'en'
+                ? `Excused (${session.totalExcused})`
+                : `معذور (${session.totalExcused})`}
             </button>
           </div>
 
           <div className="flex items-center gap-3">
             {/* Search Input */}
             <div className="relative flex-1 md:w-64">
-              <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--text-muted)]" />
+              <Search className="absolute start-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--text-muted)]" />
               <input
                 type="text"
                 id="input-search-roster"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="البحث باسم اللاعب..."
-                className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] pr-10 pl-3 py-2 text-xs text-[var(--text-main)] placeholder:text-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:outline-none"
+                placeholder={
+                  locale === 'en' ? 'Search by player name...' : 'البحث باسم اللاعب...'
+                }
+                className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] ps-10 pe-3 py-2 text-xs text-[var(--text-main)] placeholder:text-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:outline-none"
               />
             </div>
 
@@ -1015,7 +1249,11 @@ export default function SessionAttendancePage() {
                 className="flex items-center gap-1.5 rounded-xl bg-[var(--accent-primary)] px-4 py-2 text-xs font-bold text-white shadow hover:brightness-110 disabled:opacity-50 transition-all cursor-pointer whitespace-nowrap"
               >
                 <CheckCircle2 className="h-4 w-4" />
-                <span>تحضير الكل كحاضر ({session.totalUnmarked})</span>
+                <span>
+                  {locale === 'en'
+                    ? `Mark All Present (${session.totalUnmarked})`
+                    : `تحضير الكل كحاضر (${session.totalUnmarked})`}
+                </span>
               </button>
             )}
           </div>
@@ -1026,8 +1264,9 @@ export default function SessionAttendancePage() {
           <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 flex items-center gap-3 text-xs text-amber-700 dark:text-amber-300">
             <Lock className="h-5 w-5 text-amber-500 shrink-0" />
             <span>
-              تم إغلاق هذه الحصة التدريبية رسمياً وتثبيت الكشف. جميع السجلات مقفلة ضد التعديل
-              المباشر إلا عبر طلب تصحيح رسمي.
+              {locale === 'en'
+                ? 'This training session is officially closed and the roster is locked. Direct modifications are restricted unless requested via formal correction.'
+                : 'تم إغلاق هذه الحصة التدريبية رسمياً وتثبيت الكشف. جميع السجلات مقفلة ضد التعديل المباشر إلا عبر طلب تصحيح رسمي.'}
             </span>
           </div>
         )}
@@ -1037,13 +1276,16 @@ export default function SessionAttendancePage() {
           <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-12 text-center text-[var(--text-muted)] space-y-2">
             <Users className="h-8 w-8 mx-auto text-[var(--accent-primary)]" />
             <p className="text-sm font-semibold text-[var(--text-main)]">
-              لا يوجد لاعبين مطابقين للبحث أو الفلتر
+              {locale === 'en'
+                ? 'No players match the search or filter criteria'
+                : 'لا يوجد لاعبين مطابقين للبحث أو الفلتر'}
             </p>
           </div>
         ) : (
           <div className="space-y-3">
             {filteredRoster.map((item) => {
               const isPending = pendingPlayerIds.has(item.playerId);
+              const pName = translateDataString(item.playerName, locale);
 
               return (
                 <div
@@ -1076,13 +1318,13 @@ export default function SessionAttendancePage() {
                                 : 'bg-[var(--bg-surface-subtle)] text-[var(--text-muted)]'
                       }`}
                     >
-                      {item.playerName.slice(0, 2)}
+                      {pName.slice(0, 2)}
                     </div>
 
                     <div>
                       <div className="flex items-center gap-2">
                         <h3 className="text-base font-bold text-[var(--text-main)]">
-                          {item.playerName}
+                          {pName}
                         </h3>
                         {item.jerseyNumber && (
                           <span className="rounded-full bg-[var(--bg-surface-subtle)] px-2 py-0.5 text-[10px] font-bold text-[var(--accent-primary)] border border-[var(--border-subtle)]">
@@ -1095,32 +1337,38 @@ export default function SessionAttendancePage() {
                         {item.status === 'PRESENT' && (
                           <span className="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
                             <CheckCircle2 className="h-3.5 w-3.5" />
-                            حاضر {item.checkInTime ? `(${item.checkInTime.slice(11, 16)})` : ''}
+                            {locale === 'en' ? 'Present' : 'حاضر'}{' '}
+                            {item.checkInTime ? `(${item.checkInTime.slice(11, 16)})` : ''}
                           </span>
                         )}
                         {item.status === 'LATE' && (
                           <span className="text-amber-600 dark:text-amber-400 font-semibold flex items-center gap-1">
                             <Clock4 className="h-3.5 w-3.5" />
-                            متأخر {item.checkInTime ? `(${item.checkInTime.slice(11, 16)})` : ''}
+                            {locale === 'en' ? 'Late' : 'متأخر'}{' '}
+                            {item.checkInTime ? `(${item.checkInTime.slice(11, 16)})` : ''}
                           </span>
                         )}
                         {item.status === 'ABSENT' && (
                           <span className="text-rose-600 dark:text-rose-400 font-semibold flex items-center gap-1">
                             <XCircle className="h-3.5 w-3.5" />
-                            غائب
+                            {locale === 'en' ? 'Absent' : 'غائب'}
                           </span>
                         )}
                         {item.status === 'EXCUSED' && (
                           <span className="text-sky-600 dark:text-sky-400 font-semibold flex items-center gap-1">
                             <HelpCircle className="h-3.5 w-3.5" />
-                            غياب بعذر
+                            {locale === 'en' ? 'Excused' : 'غياب بعذر'}
                           </span>
                         )}
                         {item.status === 'UNMARKED' && (
-                          <span className="text-[var(--text-muted)] italic">لم يسجل بعد</span>
+                          <span className="text-[var(--text-muted)] italic">
+                            {locale === 'en' ? 'Not recorded yet' : 'لم يسجل بعد'}
+                          </span>
                         )}
                         {item.remarks && (
-                          <span className="text-[var(--text-muted)]">• {item.remarks}</span>
+                          <span className="text-[var(--text-muted)]">
+                            • {translateDataString(item.remarks, locale)}
+                          </span>
                         )}
                       </div>
 
@@ -1129,19 +1377,31 @@ export default function SessionAttendancePage() {
                         {item.subscriptionStatus === 'ACTIVE' && (
                           <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
                             <CheckCircle2 className="h-3 w-3" />
-                            <span>اشتراك ساري (مسدد)</span>
+                            <span>
+                              {locale === 'en'
+                                ? 'Active Subscription (Paid)'
+                                : 'اشتراك ساري (مسدد)'}
+                            </span>
                           </span>
                         )}
                         {item.subscriptionStatus === 'PARTIAL' && (
                           <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2.5 py-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400 border border-amber-500/30">
                             <AlertTriangle className="h-3 w-3" />
-                            <span>متبقي: {item.outstandingBalance ?? 0} ر.س</span>
+                            <span>
+                              {locale === 'en'
+                                ? `Remaining: ${item.outstandingBalance ?? 0} SAR`
+                                : `متبقي: ${item.outstandingBalance ?? 0} ر.س`}
+                            </span>
                           </span>
                         )}
                         {item.subscriptionStatus === 'OVERDUE' && (
                           <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/15 px-2.5 py-0.5 text-[10px] font-bold text-rose-600 dark:text-rose-400 border border-rose-500/30">
                             <XCircle className="h-3 w-3" />
-                            <span>متأخر: {item.outstandingBalance || item.amountDue || 0} ر.س</span>
+                            <span>
+                              {locale === 'en'
+                                ? `Overdue: ${item.outstandingBalance || item.amountDue || 0} SAR`
+                                : `متأخر: ${item.outstandingBalance || item.amountDue || 0} ر.س`}
+                            </span>
                           </span>
                         )}
                         {(!item.subscriptionStatus ||
@@ -1151,12 +1411,20 @@ export default function SessionAttendancePage() {
                           <span className="inline-flex items-center gap-1 rounded-full bg-slate-500/15 px-2.5 py-0.5 text-[10px] font-bold text-slate-500 dark:text-slate-400 border border-slate-500/30">
                             <span>
                               {item.subscriptionStatus === 'EXEMPT'
-                                ? 'معفى من الرسوم'
+                                ? locale === 'en'
+                                  ? 'Fee Exempt'
+                                  : 'معفى من الرسوم'
                                 : item.subscriptionStatus === 'PAUSED'
-                                  ? 'موقوف مؤقتاً'
+                                  ? locale === 'en'
+                                    ? 'Paused'
+                                    : 'موقوف مؤقتاً'
                                   : item.subscriptionStatus === 'EXPIRED'
-                                    ? 'منتهي'
-                                    : 'غير مسدد'}
+                                    ? locale === 'en'
+                                      ? 'Expired'
+                                      : 'منتهي'
+                                    : locale === 'en'
+                                      ? 'Unpaid'
+                                      : 'غير مسدد'}
                             </span>
                           </span>
                         )}
@@ -1166,10 +1434,14 @@ export default function SessionAttendancePage() {
                           id={`btn-collect-payment-${item.playerId}`}
                           onClick={() => handleOpenPaymentModal(item)}
                           className="inline-flex items-center gap-1 rounded-lg bg-[var(--bg-surface-subtle)] hover:bg-[var(--brand-surface)] px-2 py-0.5 text-[10px] font-semibold text-[var(--accent-primary)] border border-[var(--border-subtle)] hover:border-[var(--accent-primary)]/40 transition-colors cursor-pointer"
-                          title="تسجيل دفعة نقدية أو إلكترونية للاعب"
+                          title={
+                            locale === 'en'
+                              ? 'Record cash or electronic payment for player'
+                              : 'تسجيل دفعة نقدية أو إلكترونية للاعب'
+                          }
                         >
                           <CreditCard className="h-3 w-3" />
-                          <span>تحصيل دفعة</span>
+                          <span>{locale === 'en' ? 'Collect Fee' : 'تحصيل دفعة'}</span>
                         </button>
                       </div>
                     </div>
@@ -1190,7 +1462,7 @@ export default function SessionAttendancePage() {
                       }`}
                     >
                       <Check className="h-4 w-4" />
-                      <span>حاضر</span>
+                      <span>{locale === 'en' ? 'Present' : 'حاضر'}</span>
                     </button>
 
                     {/* 2. LATE */}
@@ -1206,7 +1478,7 @@ export default function SessionAttendancePage() {
                       }`}
                     >
                       <Clock4 className="h-3.5 w-3.5" />
-                      <span>متأخر</span>
+                      <span>{locale === 'en' ? 'Late' : 'متأخر'}</span>
                     </button>
 
                     {/* 3. ABSENT */}
@@ -1222,7 +1494,7 @@ export default function SessionAttendancePage() {
                       }`}
                     >
                       <XCircle className="h-3.5 w-3.5" />
-                      <span>غائب</span>
+                      <span>{locale === 'en' ? 'Absent' : 'غائب'}</span>
                     </button>
 
                     {/* 4. EXCUSED */}
@@ -1238,7 +1510,7 @@ export default function SessionAttendancePage() {
                       }`}
                     >
                       <HelpCircle className="h-3.5 w-3.5" />
-                      <span>بعذر</span>
+                      <span>{locale === 'en' ? 'Excused' : 'بعذر'}</span>
                     </button>
                   </div>
                 </div>
@@ -1258,7 +1530,7 @@ export default function SessionAttendancePage() {
                   <QrCode className="h-5 w-5" />
                 </div>
                 <h3 className="text-base font-bold text-[var(--text-main)]">
-                  رمز QR المؤقت للتحضير
+                  {locale === 'en' ? 'Temporary Check-in QR Code' : 'رمز QR المؤقت للتحضير'}
                 </h3>
               </div>
               <button
@@ -1274,12 +1546,12 @@ export default function SessionAttendancePage() {
             <div className="flex items-center justify-between rounded-xl bg-[var(--bg-surface-subtle)] border border-[var(--border-subtle)] px-4 py-2.5 text-xs">
               <span className="text-[var(--text-muted)] flex items-center gap-1.5">
                 <Timer className="h-4 w-4 text-amber-500" />
-                صلاحية الرمز تنتهي خلال:
+                {locale === 'en' ? 'Code expires in:' : 'صلاحية الرمز تنتهي خلال:'}
               </span>
               <span
                 className={`font-mono font-bold text-sm ${qrSecondsLeft < 15 ? 'text-rose-500 animate-pulse' : 'text-[var(--accent-primary)]'}`}
               >
-                {qrSecondsLeft} ثانية
+                {qrSecondsLeft} {locale === 'en' ? 'seconds' : 'ثانية'}
               </span>
             </div>
 
@@ -1324,7 +1596,7 @@ export default function SessionAttendancePage() {
                 className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] py-2 text-xs font-semibold text-[var(--accent-primary)] hover:border-[var(--accent-primary)] transition-colors"
               >
                 <RefreshCw className="h-3.5 w-3.5" />
-                <span>تجديد الرمز فوراً</span>
+                <span>{locale === 'en' ? 'Refresh Code' : 'تجديد الرمز فوراً'}</span>
               </button>
             </div>
 
@@ -1332,10 +1604,16 @@ export default function SessionAttendancePage() {
             <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] p-4 space-y-3">
               <div className="flex items-center gap-1.5 text-xs font-bold text-[var(--text-main)]">
                 <UserCheck className="h-4 w-4 text-[var(--accent-primary)]" />
-                <span>محاكي المسح للاعب (Quick QR Scanner)</span>
+                <span>
+                  {locale === 'en'
+                    ? 'Player Check-in Simulator (Quick QR)'
+                    : 'محاكي المسح للاعب (Quick QR Scanner)'}
+                </span>
               </div>
               <p className="text-[11px] text-[var(--text-muted)]">
-                للاختبار دون ماسح ضوئي كاميرا، اختر لاعباً وانقر لتسجيل حضوره بالرمز الحالي:
+                {locale === 'en'
+                  ? 'For testing without a camera, select a player and simulate scan with current token:'
+                  : 'للاختبار دون ماسح ضوئي كاميرا، اختر لاعباً وانقر لتسجيل حضوره بالرمز الحالي:'}
               </p>
 
               {qrSimSuccess && (
@@ -1353,7 +1631,7 @@ export default function SessionAttendancePage() {
                 >
                   {session.roster.map((r) => (
                     <option key={r.playerId} value={r.playerId}>
-                      {r.playerName} ({r.status})
+                      {translateDataString(r.playerName, locale)} ({translateStatus(r.status, locale)})
                     </option>
                   ))}
                 </select>
@@ -1365,7 +1643,7 @@ export default function SessionAttendancePage() {
                   onClick={handleSimulateQrCheckIn}
                   className="rounded-xl bg-[var(--accent-primary)] px-3.5 py-2 text-xs font-bold text-white hover:brightness-110 disabled:opacity-50"
                 >
-                  تسجيل بالرمز
+                  {locale === 'en' ? 'Check In' : 'تسجيل بالرمز'}
                 </button>
               </div>
             </div>
@@ -1384,10 +1662,14 @@ export default function SessionAttendancePage() {
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-[var(--text-main)]">
-                    سجل العمليات والتدقيق التراكمي
+                    {locale === 'en'
+                      ? 'Audit Log & Event Stream'
+                      : 'سجل العمليات والتدقيق التراكمي'}
                   </h3>
                   <p className="text-xs text-[var(--text-muted)]">
-                    سجل غير قابل للتعديل (Append-Only Event Stream) لجميع حركات التحضير والتصحيح.
+                    {locale === 'en'
+                      ? 'Immutable append-only event stream for all attendance records and corrections.'
+                      : 'سجل غير قابل للتعديل (Append-Only Event Stream) لجميع حركات التحضير والتصحيح.'}
                   </p>
                 </div>
               </div>
@@ -1403,14 +1685,20 @@ export default function SessionAttendancePage() {
             {isLoadingEvents ? (
               <div className="p-8 text-center text-[var(--text-muted)]">
                 <RefreshCw className="h-8 w-8 animate-spin mx-auto text-[var(--accent-primary)] mb-2" />
-                <p className="text-xs">جارٍ جلب سجل الأحداث...</p>
+                <p className="text-xs">
+                  {locale === 'en' ? 'Loading events log...' : 'جارٍ جلب سجل الأحداث...'}
+                </p>
               </div>
             ) : events.length === 0 ? (
               <div className="p-8 text-center text-[var(--text-muted)]">
-                <p className="text-xs">لا توجد حركات مسجلة في هذه الحصة حتى الآن.</p>
+                <p className="text-xs">
+                  {locale === 'en'
+                    ? 'No recorded events in this session yet.'
+                    : 'لا توجد حركات مسجلة في هذه الحصة حتى الآن.'}
+                </p>
               </div>
             ) : (
-              <div className="max-h-96 overflow-y-auto space-y-2.5 pr-1">
+              <div className="max-h-96 overflow-y-auto space-y-2.5 pe-1">
                 {events.map((ev) => (
                   <div
                     key={ev.id}
@@ -1418,8 +1706,10 @@ export default function SessionAttendancePage() {
                   >
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-[var(--text-main)]">{ev.playerName}</span>
-                        <span className="text-[var(--text-muted)]">←</span>
+                        <span className="font-bold text-[var(--text-main)]">
+                          {translateDataString(ev.playerName, locale)}
+                        </span>
+                        <span className="text-[var(--text-muted)]">→</span>
                         <span
                           className={`font-bold px-2 py-0.5 rounded text-[10px] ${
                             ev.newStatus === 'PRESENT'
@@ -1431,18 +1721,21 @@ export default function SessionAttendancePage() {
                                   : 'bg-sky-500/15 text-sky-600 dark:text-sky-400'
                           }`}
                         >
-                          {ev.newStatus}
+                          {translateStatus(ev.newStatus, locale)}
                         </span>
                         <span className="text-[10px] text-[var(--text-muted)]">
-                          (المصدر: {ev.source})
+                          ({locale === 'en' ? 'Source:' : 'المصدر:'} {ev.source})
                         </span>
                       </div>
                       {ev.reason && (
-                        <p className="text-[11px] text-[var(--text-muted)]">السبب: {ev.reason}</p>
+                        <p className="text-[11px] text-[var(--text-muted)]">
+                          {locale === 'en' ? 'Reason:' : 'السبب:'}{' '}
+                          {translateDataString(ev.reason, locale)}
+                        </p>
                       )}
                     </div>
 
-                    <div className="text-left text-[10px] text-[var(--text-muted)]">
+                    <div className="text-end text-[10px] text-[var(--text-muted)]">
                       <div>{ev.eventAt.slice(0, 10)}</div>
                       <div className="font-mono text-[var(--text-muted)]">
                         {ev.eventAt.slice(11, 19)}
@@ -1467,10 +1760,10 @@ export default function SessionAttendancePage() {
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-[var(--text-main)]">
-                    تحصيل دفعة مالية للاعب
+                    {locale === 'en' ? 'Collect Player Payment' : 'تحصيل دفعة مالية للاعب'}
                   </h3>
                   <p className="text-xs text-[var(--text-muted)]">
-                    {selectedPlayerForPayment.playerName}
+                    {translateDataString(selectedPlayerForPayment.playerName, locale)}
                   </p>
                 </div>
               </div>
@@ -1485,18 +1778,22 @@ export default function SessionAttendancePage() {
 
             <form onSubmit={handleSubmitPayment} className="space-y-4">
               <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] p-3 text-xs flex justify-between items-center">
-                <span className="text-[var(--text-muted)]">المتبقي على الاشتراك:</span>
+                <span className="text-[var(--text-muted)]">
+                  {locale === 'en' ? 'Outstanding Balance:' : 'المتبقي على الاشتراك:'}
+                </span>
                 <span className="font-extrabold text-[var(--accent-primary)]">
                   {selectedPlayerForPayment.outstandingBalance ??
                     selectedPlayerForPayment.amountDue ??
                     0}{' '}
-                  ر.س
+                  {locale === 'en' ? 'SAR' : 'ر.س'}
                 </span>
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-[var(--text-main)] mb-1.5">
-                  المبلغ المحصل (ر.س) *
+                  {locale === 'en'
+                    ? 'Amount Collected (SAR) *'
+                    : 'المبلغ المحصل (ر.س) *'}
                 </label>
                 <input
                   type="number"
@@ -1511,7 +1808,7 @@ export default function SessionAttendancePage() {
 
               <div>
                 <label className="block text-xs font-semibold text-[var(--text-main)] mb-1.5">
-                  طريقة التحصيل *
+                  {locale === 'en' ? 'Payment Method *' : 'طريقة التحصيل *'}
                 </label>
                 <select
                   value={paymentMethod}
@@ -1520,20 +1817,36 @@ export default function SessionAttendancePage() {
                   }
                   className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs font-semibold text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none cursor-pointer"
                 >
-                  <option value="CASH">نقدي (كاش بالملعب)</option>
-                  <option value="POS">جهاز نقاط البيع (شبكة / POS)</option>
-                  <option value="CARD">بطاقة بنكية / مدى (Online / Card)</option>
-                  <option value="BANK_TRANSFER">تحويل بنكي مباشر</option>
+                  <option value="CASH">
+                    {locale === 'en' ? 'Cash (On-pitch)' : 'نقدي (كاش بالملعب)'}
+                  </option>
+                  <option value="POS">
+                    {locale === 'en' ? 'POS Terminal / Network' : 'جهاز نقاط البيع (شبكة / POS)'}
+                  </option>
+                  <option value="CARD">
+                    {locale === 'en'
+                      ? 'Bank Card / Mada (Online)'
+                      : 'بطاقة بنكية / مدى (Online / Card)'}
+                  </option>
+                  <option value="BANK_TRANSFER">
+                    {locale === 'en' ? 'Direct Bank Transfer' : 'تحويل بنكي مباشر'}
+                  </option>
                 </select>
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-[var(--text-main)] mb-1.5">
-                  رقم الإيصال أو المرجع (اختياري)
+                  {locale === 'en'
+                    ? 'Receipt / Reference Number (Optional)'
+                    : 'رقم الإيصال أو المرجع (اختياري)'}
                 </label>
                 <input
                   type="text"
-                  placeholder="مثال: POS-99881 أو رقم الحوالة"
+                  placeholder={
+                    locale === 'en'
+                      ? 'e.g. POS-99881 or transfer ref'
+                      : 'مثال: POS-99881 أو رقم الحوالة'
+                  }
                   value={paymentRefNumber}
                   onChange={(e) => setPaymentRefNumber(e.target.value)}
                   className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:outline-none"
@@ -1542,11 +1855,17 @@ export default function SessionAttendancePage() {
 
               <div>
                 <label className="block text-xs font-semibold text-[var(--text-main)] mb-1.5">
-                  ملاحظات الدفعة (اختياري)
+                  {locale === 'en'
+                    ? 'Payment Notes (Optional)'
+                    : 'ملاحظات الدفعة (اختياري)'}
                 </label>
                 <input
                   type="text"
-                  placeholder="ملاحظات توثيقية إضافية..."
+                  placeholder={
+                    locale === 'en'
+                      ? 'Additional documentation notes...'
+                      : 'ملاحظات توثيقية إضافية...'
+                  }
                   value={paymentNotes}
                   onChange={(e) => setPaymentNotes(e.target.value)}
                   className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:outline-none"
@@ -1559,7 +1878,7 @@ export default function SessionAttendancePage() {
                   onClick={() => setIsPaymentModalOpen(false)}
                   className="rounded-xl border border-[var(--border-subtle)] px-4 py-2 text-xs font-semibold text-[var(--text-muted)] hover:bg-[var(--bg-surface-subtle)] transition-colors cursor-pointer"
                 >
-                  إلغاء
+                  {locale === 'en' ? 'Cancel' : 'إلغاء'}
                 </button>
                 <button
                   type="submit"
@@ -1567,7 +1886,7 @@ export default function SessionAttendancePage() {
                   className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-5 py-2 text-xs font-bold text-white shadow hover:brightness-110 disabled:opacity-50 transition-all cursor-pointer"
                 >
                   {isSubmittingPayment && <RefreshCw className="h-3.5 w-3.5 animate-spin" />}
-                  <span>تأكيد استلام الدفعة</span>
+                  <span>{locale === 'en' ? 'Confirm Payment' : 'تأكيد استلام الدفعة'}</span>
                 </button>
               </div>
             </form>
@@ -1586,10 +1905,14 @@ export default function SessionAttendancePage() {
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-[var(--text-main)]">
-                    تسجيل مصروف للحصة التدريبية
+                    {locale === 'en'
+                      ? 'Record Session Expense'
+                      : 'تسجيل مصروف للحصة التدريبية'}
                   </h3>
                   <p className="text-xs text-[var(--text-muted)]">
-                    يتم خصم هذا المبلغ من كاش الصندوق الميداني للحصة
+                    {locale === 'en'
+                      ? 'Deducted from the on-pitch session cash drawer'
+                      : 'يتم خصم هذا المبلغ من كاش الصندوق الميداني للحصة'}
                   </p>
                 </div>
               </div>
@@ -1605,7 +1928,9 @@ export default function SessionAttendancePage() {
             <form onSubmit={handleSubmitExpense} className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-[var(--text-main)] mb-1.5">
-                  قيمة المصروف (ر.س) *
+                  {locale === 'en'
+                    ? 'Expense Amount (SAR) *'
+                    : 'قيمة المصروف (ر.س) *'}
                 </label>
                 <input
                   type="number"
@@ -1614,21 +1939,27 @@ export default function SessionAttendancePage() {
                   required
                   value={expenseAmount || ''}
                   onChange={(e) => setExpenseAmount(parseFloat(e.target.value) || 0)}
-                  placeholder="مثال: 50"
+                  placeholder="50"
                   className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-sm font-bold text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none"
                 />
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-[var(--text-main)] mb-1.5">
-                  بيان وسبب المصروف *
+                  {locale === 'en'
+                    ? 'Expense Reason & Item *'
+                    : 'بيان وسبب المصروف *'}
                 </label>
                 <textarea
                   required
                   rows={3}
                   value={expenseNotes}
                   onChange={(e) => setExpenseNotes(e.target.value)}
-                  placeholder="مثال: شراء مياه معدنية وعصيرات للاعبين، أو أدوات تدريب طارئة..."
+                  placeholder={
+                    locale === 'en'
+                      ? 'e.g. Bottled water for players, first aid supplies...'
+                      : 'مثال: شراء مياه معدنية وعصيرات للاعبين، أو أدوات تدريب طارئة...'
+                  }
                   className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] p-3 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:outline-none resize-none"
                 />
               </div>
@@ -1639,7 +1970,7 @@ export default function SessionAttendancePage() {
                   onClick={() => setIsExpenseModalOpen(false)}
                   className="rounded-xl border border-[var(--border-subtle)] px-4 py-2 text-xs font-semibold text-[var(--text-muted)] hover:bg-[var(--bg-surface-subtle)] transition-colors cursor-pointer"
                 >
-                  إلغاء
+                  {locale === 'en' ? 'Cancel' : 'إلغاء'}
                 </button>
                 <button
                   type="submit"
@@ -1647,7 +1978,7 @@ export default function SessionAttendancePage() {
                   className="flex items-center gap-1.5 rounded-xl bg-rose-600 px-5 py-2 text-xs font-bold text-white shadow hover:brightness-110 disabled:opacity-50 transition-all cursor-pointer"
                 >
                   {isSubmittingExpense && <RefreshCw className="h-3.5 w-3.5 animate-spin" />}
-                  <span>حفظ المصروف</span>
+                  <span>{locale === 'en' ? 'Save Expense' : 'حفظ المصروف'}</span>
                 </button>
               </div>
             </form>
@@ -1666,10 +1997,14 @@ export default function SessionAttendancePage() {
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-[var(--text-main)]">
-                    مطابقة وإغلاق الصندوق المالي
+                    {locale === 'en'
+                      ? 'Reconcile & Close Cash Drawer'
+                      : 'مطابقة وإغلاق الصندوق المالي'}
                   </h3>
                   <p className="text-xs text-[var(--text-muted)]">
-                    إغلاق الصندوق وتثبيت الحركة المحاسبية للحصة
+                    {locale === 'en'
+                      ? 'Close drawer and confirm session financial transactions'
+                      : 'إغلاق الصندوق وتثبيت الحركة المحاسبية للحصة'}
                   </p>
                 </div>
               </div>
@@ -1685,38 +2020,54 @@ export default function SessionAttendancePage() {
             <div className="space-y-3">
               <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] p-4 space-y-2 text-xs">
                 <div className="flex justify-between">
-                  <span className="text-[var(--text-muted)]">الكاش المحصل:</span>
+                  <span className="text-[var(--text-muted)]">
+                    {locale === 'en' ? 'Cash Collected:' : 'الكاش المحصل:'}
+                  </span>
                   <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                    +{cashierSummary?.totalCashCollected ?? 0} ر.س
+                    +{cashierSummary?.totalCashCollected ?? 0} {locale === 'en' ? 'SAR' : 'ر.س'}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-[var(--text-muted)]">المصروفات:</span>
+                  <span className="text-[var(--text-muted)]">
+                    {locale === 'en' ? 'Expenses:' : 'المصروفات:'}
+                  </span>
                   <span className="font-bold text-rose-600 dark:text-rose-400">
-                    -{cashierSummary?.totalExpenses ?? 0} ر.س
+                    -{cashierSummary?.totalExpenses ?? 0} {locale === 'en' ? 'SAR' : 'ر.س'}
                   </span>
                 </div>
                 <div className="flex justify-between border-t border-[var(--border-subtle)] pt-2 font-bold text-[var(--text-main)]">
-                  <span>صافي النقد المطلوب تسليمه:</span>
-                  <span>{cashierSummary?.netCashMovement ?? 0} ر.س</span>
+                  <span>
+                    {locale === 'en' ? 'Net Cash to Hand Over:' : 'صافي النقد المطلوب تسليمه:'}
+                  </span>
+                  <span>
+                    {cashierSummary?.netCashMovement ?? 0} {locale === 'en' ? 'SAR' : 'ر.س'}
+                  </span>
                 </div>
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-[var(--text-main)] mb-1.5">
-                  ملاحظات التسوية الختامية (اختياري)
+                  {locale === 'en'
+                    ? 'Settlement Notes (Optional)'
+                    : 'ملاحظات التسوية الختامية (اختياري)'}
                 </label>
                 <textarea
                   rows={2}
                   value={closeCashierNotes}
                   onChange={(e) => setCloseCashierNotes(e.target.value)}
-                  placeholder="ملاحظات حول عهدة الكاش أو التسليم للمحاسب..."
+                  placeholder={
+                    locale === 'en'
+                      ? 'Notes on cash custody or handover to accountant...'
+                      : 'ملاحظات حول عهدة الكاش أو التسليم للمحاسب...'
+                  }
                   className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] p-3 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:outline-none resize-none"
                 />
               </div>
 
               <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-300">
-                سيتم توثيق إغلاق الصندوق باسمك وتاريخ اليوم في سجل التدقيق المالي.
+                {locale === 'en'
+                  ? 'Closing the cash drawer will be logged with your user identity and timestamp in the audit records.'
+                  : 'سيتم توثيق إغلاق الصندوق باسمك وتاريخ اليوم في سجل التدقيق المالي.'}
               </div>
             </div>
 
@@ -1726,7 +2077,7 @@ export default function SessionAttendancePage() {
                 onClick={() => setIsCloseCashierModalOpen(false)}
                 className="rounded-xl border border-[var(--border-subtle)] px-4 py-2 text-xs font-semibold text-[var(--text-muted)] hover:bg-[var(--bg-surface-subtle)] transition-colors cursor-pointer"
               >
-                تراجع
+                {locale === 'en' ? 'Cancel' : 'تراجع'}
               </button>
               <button
                 type="button"
@@ -1735,7 +2086,11 @@ export default function SessionAttendancePage() {
                 className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-5 py-2 text-xs font-bold text-white shadow hover:brightness-110 disabled:opacity-50 transition-all cursor-pointer"
               >
                 {isSubmittingCloseCashier && <RefreshCw className="h-3.5 w-3.5 animate-spin" />}
-                <span>تأكيد المطابقة وإغلاق الصندوق</span>
+                <span>
+                  {locale === 'en'
+                    ? 'Confirm & Close Drawer'
+                    : 'تأكيد المطابقة وإغلاق الصندوق'}
+                </span>
               </button>
             </div>
           </div>
@@ -1753,10 +2108,12 @@ export default function SessionAttendancePage() {
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-[var(--text-main)]">
-                    رفض المصروف الميداني
+                    {locale === 'en' ? 'Reject Field Expense' : 'رفض المصروف الميداني'}
                   </h3>
                   <p className="text-xs text-[var(--text-muted)]">
-                    توثيق سبب الرفض في سجل التدقيق المالي
+                    {locale === 'en'
+                      ? 'Document rejection reason in financial audit log'
+                      : 'توثيق سبب الرفض في سجل التدقيق المالي'}
                   </p>
                 </div>
               </div>
@@ -1771,19 +2128,34 @@ export default function SessionAttendancePage() {
 
             <div className="space-y-3">
               <p className="text-xs text-[var(--text-muted)]">
-                سيتم وضع المصروف في حالة <strong className="text-rose-600">مرفوض</strong> ولن يتم
-                خصمه نهائياً من الصندوق المالي أو كشف الحساب.
+                {locale === 'en' ? (
+                  <>
+                    The expense will be marked as{' '}
+                    <strong className="text-rose-600">REJECTED</strong> and will not be deducted
+                    from the cash drawer.
+                  </>
+                ) : (
+                  <>
+                    سيتم وضع المصروف في حالة <strong className="text-rose-600">مرفوض</strong> ولن
+                    يتم خصمه نهائياً من الصندوق المالي أو كشف الحساب.
+                  </>
+                )}
               </p>
 
               <div>
                 <label className="block text-xs font-semibold text-[var(--text-main)] mb-1.5">
-                  سبب الرفض <span className="text-rose-500">*</span>
+                  {locale === 'en' ? 'Rejection Reason ' : 'سبب الرفض '}
+                  <span className="text-rose-500">*</span>
                 </label>
                 <textarea
                   rows={3}
                   value={rejectionReason}
                   onChange={(e) => setRejectionReason(e.target.value)}
-                  placeholder="مثال: المصروف غير مشمول بسياسة الأكاديمية، أو لم يتم إرفاق فاتورة رسمية..."
+                  placeholder={
+                    locale === 'en'
+                      ? 'e.g. Not permitted under academy policy, missing invoice...'
+                      : 'مثال: المصروف غير مشمول بسياسة الأكاديمية، أو لم يتم إرفاق فاتورة رسمية...'
+                  }
                   className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] p-3 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-rose-500 focus:outline-none resize-none"
                 />
               </div>
@@ -1795,7 +2167,7 @@ export default function SessionAttendancePage() {
                 onClick={() => setRejectingExpenseId(null)}
                 className="rounded-xl border border-[var(--border-subtle)] px-4 py-2 text-xs font-semibold text-[var(--text-muted)] hover:bg-[var(--bg-surface-subtle)] transition-colors cursor-pointer"
               >
-                إلغاء
+                {locale === 'en' ? 'Cancel' : 'إلغاء'}
               </button>
               <button
                 type="button"
@@ -1804,7 +2176,7 @@ export default function SessionAttendancePage() {
                 className="flex items-center gap-1.5 rounded-xl bg-rose-600 px-5 py-2 text-xs font-bold text-white shadow hover:brightness-110 disabled:opacity-50 transition-all cursor-pointer"
               >
                 {isSubmittingRejectExpense && <RefreshCw className="h-3.5 w-3.5 animate-spin" />}
-                <span>تأكيد الرفض</span>
+                <span>{locale === 'en' ? 'Confirm Rejection' : 'تأكيد الرفض'}</span>
               </button>
             </div>
           </div>
