@@ -248,7 +248,7 @@ export default function MobileAttendanceScannerPage() {
     } finally {
       setIsSyncingOffline(false);
     }
-  }, [selectedSessionId, isSyncingOffline, refreshPendingCount]);
+  }, [selectedSessionId, isSyncingOffline, refreshPendingCount, locale]);
 
   // Prepare for Offline Use (caches rosters & upcoming sessions into IndexedDB)
   const handlePrepareOffline = useCallback(async () => {
@@ -266,7 +266,7 @@ export default function MobileAttendanceScannerPage() {
     } finally {
       setIsPreparingOffline(false);
     }
-  }, [activeTenant?.tenantId, selectedSessionId, sessions, toast]);
+  }, [activeTenant?.tenantId, selectedSessionId, sessions, toast, locale]);
 
   // Online / Offline Listeners
   useEffect(() => {
@@ -301,7 +301,7 @@ export default function MobileAttendanceScannerPage() {
         router.push('/attendance');
       }
     }
-  }, [authLoading, user, activeTenant, router, toast]);
+  }, [authLoading, user, activeTenant, router, toast, locale]);
 
   // Load Sessions
   useEffect(() => {
@@ -378,7 +378,7 @@ export default function MobileAttendanceScannerPage() {
       );
       setIsCameraActive(false);
     }
-  }, [facingMode]);
+  }, [facingMode, locale]);
 
   // Stop Camera Stream
   const stopCamera = useCallback(() => {
@@ -517,7 +517,7 @@ export default function MobileAttendanceScannerPage() {
         }
       }
     },
-    [selectedSessionId, playFeedbackSound, triggerHaptic, refreshPendingCount],
+    [selectedSessionId, playFeedbackSound, triggerHaptic, refreshPendingCount, locale],
   );
 
   // Continuous Camera Frame Scanner Loop
