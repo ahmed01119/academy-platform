@@ -797,13 +797,12 @@ export default function SettingsPage() {
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-()">
-                    {t('settings.languageSection', 'لغة العرض والاتجاه')}
+                    {ar ? 'لغة العرض والاتجاه' : 'Display Language & Layout'}
                   </h3>
                   <p className="text-xs text-() mt-0.5">
-                    {t(
-                      'settings.languageDesc',
-                      'التبديل بين اللغتين العربية (من اليمين لليسار) والإنجليزية (من اليسار لليمين).',
-                    )}
+                    {ar
+                      ? 'التبديل بين اللغتين العربية (من اليمين لليسار) والإنجليزية (من اليسار لليمين).'
+                      : 'Toggle between Arabic (Right-to-Left) and English (Left-to-Right).'}
                   </p>
                 </div>
               </div>
@@ -820,10 +819,12 @@ export default function SettingsPage() {
                 >
                   <div>
                     <span className="font-bold text-sm text-() block">
-                      العربية (Arabic)
+                      {ar ? 'العربية (Arabic)' : 'Arabic (العربية)'}
                     </span>
                     <span className="text-xs text-()">
-                      محاذاة من اليمين لليسار (RTL) مع خط IBM Plex Sans Arabic
+                      {ar
+                        ? 'محاذاة من اليمين لليسار (RTL) مع خط IBM Plex Sans Arabic'
+                        : 'Right-to-Left layout (RTL) with Arabic typography'}
                     </span>
                   </div>
                   {locale === 'ar' && (
@@ -845,7 +846,9 @@ export default function SettingsPage() {
                       English
                     </span>
                     <span className="text-xs text-()">
-                      Left-to-Right layout (LTR) with Latin typography
+                      {ar
+                        ? 'محاذاة من اليسار لليمين (LTR) مع خطوط لاتينية'
+                        : 'Left-to-Right layout (LTR) with Latin typography'}
                     </span>
                   </div>
                   {locale === 'en' && (
@@ -863,13 +866,12 @@ export default function SettingsPage() {
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-()">
-                    {t('settings.appearanceSection', 'مظهر واجهة المنصة (المود)')}
+                    {ar ? 'مظهر واجهة المنصة (المود)' : 'Platform Appearance (Theme Mode)'}
                   </h3>
                   <p className="text-xs text-() mt-0.5">
-                    {t(
-                      'settings.appearanceDesc',
-                      'اختر المظهر الملائم لطبيعة استخدامك (نهاري أو ليلي عالي التباين).',
-                    )}
+                    {ar
+                      ? 'اختر المظهر الملائم لطبيعة استخدامك (نهاري أو ليلي عالي التباين).'
+                      : 'Choose the theme suited for your workflow (Daylight or High-Contrast Dark).'}
                   </p>
                 </div>
               </div>

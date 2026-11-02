@@ -34,6 +34,7 @@ import {
   ShieldAlert,
 } from 'lucide-react';
 import { PlayerQrCard } from '../../../components/player-qr-card';
+import { translateDataString } from '../../../lib/data-translator';
 
 export default function PlayerProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
@@ -41,7 +42,8 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
 
   const router = useRouter();
   const { user, activeTenant, isLoading } = useAuth();
-  const { t } = useLocale();
+  const { t, locale, isRtl } = useLocale();
+  const isAr = locale === 'ar';
 
   const canViewSensitive =
     activeTenant?.role === 'OWNER' ||
@@ -84,7 +86,7 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
       setQrCard(cardData);
       setIsQrModalOpen(true);
     } catch (err: unknown) {
-      setErrorMessage((err as Error)?.message || 'فشل تحميل بطاقة العضوية');
+      setErrorMessage((err as Error)?.message || (isAr ? 'فشل تحميل بطاقة العضوية' : 'Failed to load membership QR card'));
     } finally {
       setIsLoadingQrCard(false);
     }
@@ -106,7 +108,7 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
       setDeletionImpact(impact);
       setIsDeleteModalOpen(true);
     } catch (err: unknown) {
-      setErrorMessage((err as Error)?.message || 'فشل في احتساب تقرير أرشفة اللاعب');
+      setErrorMessage((err as Error)?.message || (isAr ? 'فشل في احتساب تقرير أرشفة اللاعب' : 'Failed to compute archive impact report'));
     } finally {
       setIsFetchingImpact(false);
     }
@@ -121,7 +123,7 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
       setIsDeleteModalOpen(false);
       await loadPlayerData();
     } catch (err: unknown) {
-      setErrorMessage((err as Error)?.message || 'فشل في أرشفة اللاعب');
+      setErrorMessage((err as Error)?.message || (isAr ? 'فشل في أرشفة اللاعب' : 'Failed to archive athlete'));
     } finally {
       setIsDeletingPlayer(false);
     }
@@ -152,7 +154,7 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
       setEditMedicalNotes(playerData.medicalNotes || '');
       setEditStatus(playerData.status);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'فشل تحميل بيانات اللاعب';
+      const msg = err instanceof Error ? err.message : (isAr ? 'فشل تحميل بيانات اللاعب' : 'Failed to load athlete profile');
       setErrorMessage(msg);
     } finally {
       setIsFetching(false);
@@ -170,17 +172,17 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
 
     const activeEnrollment = player?.enrollments.find((en) => en.status === 'ACTIVE');
     if (!activeEnrollment) {
-      setErrorMessage('لا يوجد اشتراك نشط حالياً لنقله');
+      setErrorMessage(isAr ? 'لا يوجد اشتراك نشط حالياً لنقله' : 'No active branch enrollment to transfer');
       return;
     }
 
     if (!targetBranchId) {
-      setErrorMessage('يرجى اختيار الفرع المستهدف');
+      setErrorMessage(isAr ? 'يرجى اختيار الفرع المستهدف' : 'Please select target branch');
       return;
     }
 
     if (targetBranchId === activeEnrollment.branchId) {
-      setErrorMessage('اللاعب مسجل بالفعل في هذا الفرع');
+      setErrorMessage(isAr ? 'اللاعب مسجل بالفعل في هذا الفرع' : 'Athlete is already enrolled in this branch');
       return;
     }
 
@@ -192,12 +194,12 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
         notes: transferNotes.trim() || undefined,
       });
 
-      setSuccessMessage('تم نقل اللاعب إلى الفرع الجديد بنجاح');
+      setSuccessMessage(isAr ? 'تم نقل اللاعب إلى الفرع الجديد بنجاح' : 'Athlete transferred to new branch successfully');
       setIsTransferModalOpen(false);
       setTransferNotes('');
       await loadPlayerData();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'فشل في نقل اللاعب';
+      const msg = err instanceof Error ? err.message : (isAr ? 'فشل في نقل اللاعب' : 'Failed to transfer athlete');
       setErrorMessage(msg);
     } finally {
       setIsTransferring(false);
@@ -221,11 +223,11 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
       };
 
       await api.players.update(playerId, updatePayload);
-      setSuccessMessage('تم تحديث بيانات اللاعب بنجاح');
+      setSuccessMessage(isAr ? 'تم تحديث بيانات اللاعب بنجاح' : 'Athlete profile updated successfully');
       setIsEditModalOpen(false);
       await loadPlayerData();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'فشل في تحديث بيانات اللاعب';
+      const msg = err instanceof Error ? err.message : (isAr ? 'فشل في تحديث بيانات اللاعب' : 'Failed to update athlete profile');
       setErrorMessage(msg);
     } finally {
       setIsUpdating(false);
@@ -247,7 +249,7 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
       <AppShell>
         <div className="py-20 text-center">
           <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-3" />
-          <p className="text-[var(--text-main)] font-bold">اللاعب غير موجود أو تم حذفه</p>
+          <p className="text-[var(--text-main)] font-bold">{isAr ? 'اللاعب غير موجود أو تم حذفه' : 'Athlete does not exist or has been removed'}</p>
           <Link
             href="/players"
             className="mt-4 inline-block text-xs text-[var(--accent-primary)] hover:underline"
@@ -355,7 +357,7 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
                 ) : (
                   <QrCode className="h-4 w-4 text-[var(--accent-primary)]" />
                 )}
-                <span>بطاقة العضوية (QR Card)</span>
+                <span>{isAr ? 'بطاقة العضوية (QR Card)' : 'Membership QR Card'}</span>
               </button>
 
               <button
@@ -365,7 +367,7 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
                 className="inline-flex items-center gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-4 py-2.5 text-xs font-medium text-[var(--text-main)] hover:border-[var(--accent-primary)] transition-colors cursor-pointer"
               >
                 <Edit3 className="h-4 w-4 text-[var(--accent-primary)]" />
-                <span>تعديل البيانات</span>
+                <span>{isAr ? 'تعديل البيانات' : 'Edit Profile'}</span>
               </button>
 
               <button
@@ -375,7 +377,7 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
                 className="inline-flex items-center gap-2 rounded-xl bg-[var(--accent-primary)] text-white px-4 py-2.5 text-xs font-semibold shadow-sm hover:brightness-110 transition-all cursor-pointer"
               >
                 <ArrowRightLeft className="h-4 w-4" />
-                <span>نقل لفرع آخر</span>
+                <span>{isAr ? 'نقل لفرع آخر' : 'Transfer Branch'}</span>
               </button>
 
               {canDeletePlayer && player.status !== 'INACTIVE' && (
@@ -391,7 +393,7 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
                   ) : (
                     <Archive className="h-4 w-4 text-rose-500" />
                   )}
-                  <span>أرشفة اللاعب</span>
+                  <span>{isAr ? 'أرشفة اللاعب' : 'Archive Athlete'}</span>
                 </button>
               )}
             </div>
@@ -427,7 +429,7 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
                       </h3>
                       {activeEnrollment.branch.code && (
                         <span className="text-[10px] font-mono text-[var(--text-muted)]">
-                          كود الفرع: {activeEnrollment.branch.code}
+                          {isAr ? 'كود الفرع: ' : 'Branch Code: '}{activeEnrollment.branch.code}
                         </span>
                       )}
                     </div>
@@ -437,13 +439,13 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
                       className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--accent-primary)] hover:underline cursor-pointer"
                     >
                       <ArrowRightLeft className="h-3.5 w-3.5" />
-                      <span>نقل إلى فرع آخر</span>
+                      <span>{isAr ? 'نقل إلى فرع آخر' : 'Transfer to Another Branch'}</span>
                     </button>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4 text-xs pt-2 border-t border-[var(--border-subtle)] text-[var(--text-muted)]">
                     <div>
-                      <span className="block text-[11px]">تاريخ بدء القيد:</span>
+                      <span className="block text-[11px]">{isAr ? 'تاريخ بدء القيد:' : 'Enrollment Start Date:'}</span>
                       <span className="font-mono text-[var(--text-main)] font-medium">
                         {activeEnrollment.startDate.slice(0, 10)}
                       </span>
@@ -458,7 +460,7 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
                 </div>
               ) : (
                 <div className="py-6 text-center text-xs text-[var(--text-muted)]">
-                  اللاعب ليس لديه أي اشتراك نشط حالياً بأي فرع.
+                  {isAr ? 'اللاعب ليس لديه أي اشتراك نشط حالياً بأي فرع.' : 'Athlete does not have an active enrollment in any branch.'}
                 </div>
               )}
             </div>
@@ -468,13 +470,13 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
               <div className="flex items-center gap-2 border-b border-[var(--border-subtle)] pb-3">
                 <Calendar className="h-5 w-5 text-[var(--accent-primary)]" />
                 <h2 className="text-base font-bold text-[var(--text-main)]">
-                  سجل التنقلات والاشتراكات السابقة ({pastEnrollments.length})
+                  {isAr ? `سجل التنقلات والاشتراكات السابقة (${pastEnrollments.length})` : `Transfer & Enrollment History (${pastEnrollments.length})`}
                 </h2>
               </div>
 
               {pastEnrollments.length === 0 ? (
                 <p className="text-xs text-[var(--text-muted)] py-4 text-center">
-                  لا توجد تنقلات سابقة مسجلة للاعب.
+                  {isAr ? 'لا توجد تنقلات سابقة مسجلة للاعب.' : 'No previous branch transfers recorded for this athlete.'}
                 </p>
               ) : (
                 <div className="space-y-3">
@@ -486,8 +488,8 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
                       <div>
                         <div className="font-bold text-[var(--text-main)]">{en.branch.name}</div>
                         <div className="text-[11px] text-[var(--text-muted)] mt-0.5">
-                          من: {en.startDate.slice(0, 10)}{' '}
-                          {en.endDate ? `إلى: ${en.endDate.slice(0, 10)}` : ''}
+                          {isAr ? 'من: ' : 'From: '}{en.startDate.slice(0, 10)}{' '}
+                          {en.endDate ? `${isAr ? 'إلى: ' : 'To: '}${en.endDate.slice(0, 10)}` : ''}
                         </div>
                         {en.notes && (
                           <div className="text-[11px] text-[var(--text-muted)] mt-1">
@@ -515,7 +517,7 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
             <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-sm space-y-4">
               <div className="flex items-center gap-2 border-b border-[var(--border-subtle)] pb-3">
                 <Users className="h-5 w-5 text-[var(--accent-primary)]" />
-                <h2 className="text-base font-bold text-[var(--text-main)]">أولياء الأمور</h2>
+                <h2 className="text-base font-bold text-[var(--text-main)]">{isAr ? 'أولياء الأمور' : 'Guardians & Family'}</h2>
               </div>
 
               <div className="space-y-3">
@@ -550,13 +552,13 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
             <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-sm space-y-4">
               <div className="flex items-center gap-2 border-b border-[var(--border-subtle)] pb-3">
                 <Heart className="h-5 w-5 text-red-500" />
-                <h2 className="text-base font-bold text-[var(--text-main)]">الطوارئ والصحة</h2>
+                <h2 className="text-base font-bold text-[var(--text-main)]">{isAr ? 'الطوارئ والصحة' : 'Emergency & Health'}</h2>
               </div>
 
               <div className="space-y-3 text-xs">
                 <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] p-3.5">
                   <span className="text-[11px] text-[var(--text-muted)] block mb-1">
-                    جهة اتصال الطوارئ:
+                    {isAr ? 'جهة اتصال الطوارئ:' : 'Emergency Contact:'}
                   </span>
                   <div className="font-bold text-[var(--text-main)]">
                     {player.emergencyContactName}
@@ -568,7 +570,7 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
 
                 <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] p-3.5">
                   <span className="text-[11px] text-[var(--text-muted)] block mb-1">
-                    الملاحظات الطبية:
+                    {isAr ? 'الملاحظات الطبية:' : 'Medical Notes:'}
                   </span>
                   <div className="text-[var(--text-main)]">
                     {canViewSensitive
@@ -611,7 +613,7 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
                     onChange={(e) => setTargetBranchId(e.target.value)}
                     className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none transition-colors"
                   >
-                    <option value="">اختر الفرع الجديد...</option>
+                    <option value="">{isAr ? 'اختر الفرع الجديد...' : 'Select target branch...'}</option>
                     {branches
                       .filter((b) => b.id !== activeEnrollment?.branchId)
                       .map((b) => (
@@ -644,7 +646,7 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
                     id="textarea-transfer-notes"
                     value={transferNotes}
                     onChange={(e) => setTransferNotes(e.target.value)}
-                    placeholder="مثال: بناءً على طلب ولي الأمر بسبب تغيير مكان السكن"
+                    placeholder={isAr ? 'مثال: بناءً على طلب ولي الأمر بسبب تغيير مكان السكن' : 'e.g. Relocation requested by guardian'}
                     className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none transition-colors"
                   />
                 </div>
@@ -663,7 +665,7 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
                     disabled={isTransferring}
                     className="rounded-xl bg-[var(--accent-primary)] text-white px-5 py-2 text-xs font-semibold shadow hover:brightness-110 disabled:opacity-50 cursor-pointer"
                   >
-                    {isTransferring ? 'جارٍ النقل...' : 'تأكيد النقل'}
+                    {isTransferring ? (isAr ? 'جارٍ النقل...' : 'Transferring...') : (isAr ? 'تأكيد النقل' : 'Confirm Transfer')}
                   </button>
                 </div>
               </form>
@@ -753,9 +755,9 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
                     onChange={(e) => setEditStatus(e.target.value as PlayerStatus)}
                     className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none transition-colors"
                   >
-                    <option value="ACTIVE">نشط (Active)</option>
-                    <option value="INACTIVE">غير نشط (Inactive)</option>
-                    <option value="SUSPENDED">موقوف (Suspended)</option>
+                    <option value="ACTIVE">{isAr ? 'نشط (Active)' : 'Active'}</option>
+                    <option value="INACTIVE">{isAr ? 'غير نشط (Inactive)' : 'Inactive'}</option>
+                    <option value="SUSPENDED">{isAr ? 'موقوف (Suspended)' : 'Suspended'}</option>
                   </select>
                 </div>
 
@@ -773,7 +775,7 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
                   </div>
                 ) : (
                   <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] p-3 text-[11px] text-[var(--text-muted)]">
-                    الملاحظات الطبية محجوبة ولا يمكن تعديلها إلا من قِبل مديري الأكاديمية أو الفروع.
+                    {isAr ? 'الملاحظات الطبية محجوبة ولا يمكن تعديلها إلا من قِبل مديري الأكاديمية أو الفروع.' : 'Medical notes are restricted and can only be updated by academy or branch managers.'}
                   </div>
                 )}
 
@@ -792,7 +794,7 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
                     className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--accent-primary)] text-white px-5 py-2 text-xs font-semibold shadow hover:brightness-110 disabled:opacity-50 cursor-pointer"
                   >
                     <Save className="h-4 w-4" />
-                    <span>{isUpdating ? 'جارٍ الحفظ...' : 'حفظ التعديلات'}</span>
+                    <span>{isUpdating ? (isAr ? 'جارٍ الحفظ...' : 'Saving...') : (isAr ? 'حفظ التعديلات' : 'Save Changes')}</span>
                   </button>
                 </div>
               </form>
@@ -821,7 +823,7 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
               <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-4">
                 <div className="flex items-center gap-2.5 text-rose-500 font-bold text-base">
                   <ShieldAlert className="h-5 w-5" />
-                  <span>تأكيد أرشفة اللاعب (Safe Player Archive)</span>
+                  <span>{isAr ? 'تأكيد أرشفة اللاعب (Safe Player Archive)' : 'Confirm Athlete Safe Archive'}</span>
                 </div>
                 <button
                   type="button"
@@ -843,7 +845,7 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
                 {/* Impact Summary Badges */}
                 <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] p-4 space-y-3">
                   <h4 className="font-bold text-[var(--text-main)]">
-                    تقرير الأثر والبيانات المرتبطة:
+                    {isAr ? 'تقرير الأثر والبيانات المرتبطة:' : 'Impact Report & Linked Records:'}
                   </h4>
                   <div className="grid grid-cols-2 gap-2 text-[11px]">
                     <div className="rounded-lg bg-[var(--bg-surface)] p-2.5 border border-[var(--border-subtle)]">
@@ -866,10 +868,10 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
                     </div>
                     <div className="rounded-lg bg-[var(--bg-surface)] p-2.5 border border-[var(--border-subtle)]">
                       <span className="text-[var(--text-muted)] block">
-                        المعاملات المالية المحفوظة:
+                        {isAr ? 'المعاملات المالية المحفوظة:' : 'Preserved Financial Ledgers:'}
                       </span>
                       <strong className="text-emerald-500 text-sm">
-                        {deletionImpact.financialTransactionsCount} معاملة
+                        {deletionImpact.financialTransactionsCount} {isAr ? 'معاملة' : 'transactions'}
                       </strong>
                     </div>
                   </div>
@@ -877,7 +879,7 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
 
                 {deletionImpact.warnings.length > 0 && (
                   <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 space-y-1">
-                    <span className="font-bold text-amber-500 block">ملاحظات الأمان:</span>
+                    <span className="font-bold text-amber-500 block">{isAr ? 'ملاحظات الأمان:' : 'Safety Notes:'}</span>
                     <ul className="list-disc list-inside space-y-0.5 text-amber-600 dark:text-amber-400 text-[11px]">
                       {deletionImpact.warnings.map((w, idx) => (
                         <li key={idx}>{w}</li>
@@ -908,7 +910,7 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
                   ) : (
                     <Trash2 className="h-4 w-4" />
                   )}
-                  <span>{isDeletingPlayer ? 'جارٍ الأرشفة...' : 'تأكيد الأرشفة الآمنة'}</span>
+                  <span>{isDeletingPlayer ? (isAr ? 'جارٍ الأرشفة...' : 'Archiving...') : (isAr ? 'تأكيد الأرشفة الآمنة' : 'Confirm Safe Archive')}</span>
                 </button>
               </div>
             </div>

@@ -151,7 +151,15 @@ export default function LoginPage() {
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute left-3 top-3 text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors"
-                    title={showPassword ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'}
+                    title={
+                      showPassword
+                        ? locale === 'ar'
+                          ? 'إخفاء كلمة المرور'
+                          : 'Hide password'
+                        : locale === 'ar'
+                          ? 'إظهار كلمة المرور'
+                          : 'Show password'
+                    }
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>

@@ -11,7 +11,7 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'SPORTEXUS | سبورتكسس — One Platform. Every Academy.',
   description:
-    'Sportexus: One Platform. Every Academy. منصة سحابية متكاملة لإدارة الأكاديميات الرياضية، الفروع، الاشتراكات، الحضور الذكي وتقييمات الأداء.',
+    'Sportexus: One Platform. Every Academy. A cloud-based sports academy management platform for branches, subscriptions, smart attendance, and performance evaluations.',
   applicationName: 'SPORTEXUS',
   manifest: '/manifest.webmanifest',
   icons: {

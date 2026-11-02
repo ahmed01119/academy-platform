@@ -7,6 +7,7 @@ import { useLocale } from '../../lib/locale-context';
 import { AppShell } from '../../components/layout/AppShell';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { useToast } from '../../components/ui/Toast';
+import { translateDataString } from '../../lib/data-translator';
 import { apiClient } from '../../lib/api-client';
 import type {
   AcademyFinancialDashboardMetrics,
@@ -39,7 +40,8 @@ import {
 export default function FinanceDashboardPage() {
   const router = useRouter();
   const { user, activeTenant, isLoading: authLoading } = useAuth();
-  const { t } = useLocale();
+  const { t, locale, isRtl } = useLocale();
+  const isAr = locale === 'ar';
   const { toast } = useToast();
 
   // Active Tab
@@ -211,10 +213,10 @@ export default function FinanceDashboardPage() {
         notes: paymentNotes.trim() || undefined,
       });
       setIsCollectPaymentOpen(false);
-      toast.success('تم تسجيل الدفعة بنجاح وتحديث الحساب');
+      toast.success(isAr ? 'تم تسجيل الدفعة بنجاح وتحديث الحساب' : 'Payment recorded and account updated successfully');
       await loadFinancialData();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'فشل تسجيل الدفعة');
+      toast.error(err instanceof Error ? err.message : (isAr ? 'فشل تسجيل الدفعة' : 'Failed to record payment'));
     } finally {
       setIsSubmittingPayment(false);
     }
@@ -234,10 +236,10 @@ export default function FinanceDashboardPage() {
         reason: reversalReason.trim(),
       });
       setReversalTx(null);
-      toast.success('تم عكس المعاملة المالية وتوثيق السبب في سجل التدقيق');
+      toast.success(isAr ? 'تم عكس المعاملة المالية وتوثيق السبب في سجل التدقيق' : 'Transaction reversed and audited successfully');
       await loadFinancialData();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'فشل عكس المعاملة');
+      toast.error(err instanceof Error ? err.message : (isAr ? 'فشل عكس المعاملة' : 'Failed to reverse transaction'));
     } finally {
       setIsSubmittingReversal(false);
     }
@@ -258,10 +260,10 @@ export default function FinanceDashboardPage() {
         notes: subNotes.trim() || undefined,
       });
       setIsCreateSubOpen(false);
-      toast.success('تم إنشاء اشتراك اللاعب بنجاح');
+      toast.success(isAr ? 'تم إنشاء اشتراك اللاعب بنجاح' : 'Athlete subscription created successfully');
       await loadFinancialData();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'فشل إنشاء الاشتراك');
+      toast.error(err instanceof Error ? err.message : (isAr ? 'فشل إنشاء الاشتراك' : 'Failed to create subscription'));
     } finally {
       setIsSubmittingNewSub(false);
     }
@@ -284,10 +286,10 @@ export default function FinanceDashboardPage() {
       setPlanName('');
       setPlanPrice(650);
       setPlanDescription('');
-      toast.success('تم إنشاء الباقة التدريبية بنجاح');
+      toast.success(isAr ? 'تم إنشاء الباقة التدريبية بنجاح' : 'Training plan created successfully');
       await loadFinancialData();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'فشل إنشاء الباقة التدريبية');
+      toast.error(err instanceof Error ? err.message : (isAr ? 'فشل إنشاء الباقة التدريبية' : 'Failed to create training plan'));
     } finally {
       setIsSubmittingPlan(false);
     }
@@ -295,17 +297,9 @@ export default function FinanceDashboardPage() {
 
   const handleExportCsv = () => {
     if (!filteredTransactions.length) return;
-    const headers = [
-      'رقم الإيصال',
-      'التاريخ',
-      'المستفيد / اللاعب',
-      'الفرع',
-      'النوع',
-      'المبلغ (ر.س)',
-      'طريقة الدفع',
-      'الحالة',
-      'ملاحظات',
-    ];
+    const headers = isAr
+      ? ['رقم الإيصال', 'التاريخ', 'المستفيد / اللاعب', 'الفرع', 'النوع', 'المبلغ (ر.س)', 'طريقة الدفع', 'الحالة', 'ملاحظات']
+      : ['Receipt No', 'Date', 'Beneficiary / Athlete', 'Branch', 'Type', 'Amount', 'Payment Method', 'Status', 'Notes'];
     const rows = filteredTransactions.map((tx) => [
       tx.receiptNumber || tx.id.slice(0, 8),
       new Date(tx.createdAt).toLocaleDateString('ar-EG'),
@@ -344,7 +338,7 @@ export default function FinanceDashboardPage() {
           <div className="flex flex-col items-center gap-3">
             <RefreshCw className="h-8 w-8 animate-spin text-[var(--accent-primary)]" />
             <p className="text-sm font-medium text-[var(--text-muted)]">
-              {t('finance.loading', 'جارٍ تحميل بيانات العمليات المالية والاشتراكات...')}
+              {isAr ? 'جارٍ تحميل بيانات العمليات المالية والاشتراكات...' : 'Loading financial records and subscriptions...'}
             </p>
           </div>
         </div>
@@ -362,12 +356,12 @@ export default function FinanceDashboardPage() {
           </div>
           <div className="space-y-2 max-w-sm">
             <h2 className="text-xl font-bold text-[var(--text-main)]">
-              {t('finance.platform_admin_title', 'لوحة الإدارة المركزية')}
+              {isAr ? 'لوحة الإدارة المركزية' : 'Central Platform Administration'}
             </h2>
             <p className="text-sm text-[var(--text-muted)] leading-relaxed">
               {t(
                 'finance.platform_admin_desc',
-                'صفحة العمليات المالية مخصصة للأكاديميات. كمدير المنصة، يمكنك مراجعة التقارير المالية الإجمالية من لوحة تحكم المنصة.',
+                isAr ? 'صفحة العمليات المالية مخصصة للأكاديميات. كمدير المنصة، يمكنك مراجعة التقارير المالية الإجمالية من لوحة تحكم المنصة.' : 'Financial operations are dedicated to tenant academies. As platform super-admin, you can audit overall financial metrics from Platform Hub.',
               )}
             </p>
           </div>
@@ -376,7 +370,7 @@ export default function FinanceDashboardPage() {
             className="mt-2 flex items-center gap-2 rounded-xl bg-[var(--accent-primary)] px-5 py-2.5 text-sm font-semibold text-white hover:brightness-110 transition-all"
           >
             <Layers className="h-4 w-4" />
-            {t('finance.go_to_platform', 'الذهاب إلى لوحة إدارة المنصة')}
+            {isAr ? 'الذهاب إلى لوحة إدارة المنصة' : 'Go to Platform Admin'}
           </a>
         </div>
       </AppShell>
@@ -391,15 +385,15 @@ export default function FinanceDashboardPage() {
           <div className="flex justify-between items-center">
             <div>
               <h1 className="text-xl font-extrabold text-black">
-                {activeTenant?.tenantName || 'الأكاديمية الرياضية'}
+                {translateDataString(activeTenant?.tenantName || (isAr ? 'الأكاديمية الرياضية' : 'Sports Academy'), locale)}
               </h1>
               <p className="text-xs text-gray-700">
-                التقرير المالي وكشف الحساب الرسمي — منصة سبورتكسس
+                {isAr ? 'التقرير المالي وكشف الحساب الرسمي — منصة سبورتكسس' : 'Official Financial Statement & Ledger — Sportexus'}
               </p>
             </div>
             <div className="text-left rtl:text-left text-xs text-gray-700">
-              <p>تاريخ الطباعة: {new Date().toLocaleDateString('ar-EG')}</p>
-              <p>الوقت: {new Date().toLocaleTimeString('ar-EG')}</p>
+              <p>{isAr ? 'تاريخ الطباعة: ' : 'Print Date: '}{new Date().toLocaleDateString(isAr ? 'ar-EG' : 'en-US')}</p>
+              <p>{isAr ? 'الوقت: ' : 'Time: '}{new Date().toLocaleTimeString(isAr ? 'ar-EG' : 'en-US')}</p>
             </div>
           </div>
         </div>
@@ -423,7 +417,7 @@ export default function FinanceDashboardPage() {
                 className="flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-2 text-xs font-semibold text-[var(--text-main)] hover:border-[var(--accent-primary)] transition-all cursor-pointer"
               >
                 <Printer className="h-4 w-4 text-[var(--accent-primary)]" />
-                <span>طباعة تقرير مالي (PDF)</span>
+                <span>{isAr ? 'طباعة تقرير مالي (PDF)' : 'Print Report (PDF)'}</span>
               </button>
 
               <button
@@ -432,7 +426,7 @@ export default function FinanceDashboardPage() {
                 className="flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-2 text-xs font-semibold text-[var(--text-main)] hover:border-[var(--accent-primary)] transition-all cursor-pointer"
               >
                 <Download className="h-4 w-4 text-[var(--accent-primary)]" />
-                <span>{t('finance.exportStatement', 'تصدير كشف الحساب')}</span>
+                <span>{isAr ? 'تصدير كشف الحساب' : 'Export Statement'}</span>
               </button>
 
               <button
@@ -441,7 +435,7 @@ export default function FinanceDashboardPage() {
                 className="flex items-center gap-1.5 rounded-xl bg-[var(--accent-primary)] px-4 py-2 text-xs font-bold text-white shadow hover:brightness-110 transition-all cursor-pointer"
               >
                 <PlusCircle className="h-4 w-4" />
-                <span>إضافة اشتراك لاعب</span>
+                <span>{isAr ? 'إضافة اشتراك لاعب' : 'New Subscription'}</span>
               </button>
             </div>
           }
@@ -453,76 +447,76 @@ export default function FinanceDashboardPage() {
             <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 shadow-sm">
               <div className="flex items-center justify-between text-[var(--text-muted)] mb-1">
                 <span className="text-[11px] font-semibold">
-                  {t('finance.todayCollections', 'تحصيلات اليوم')}
+                  {isAr ? 'تحصيلات اليوم' : "Today's Collections"}
                 </span>
                 <Clock className="h-4 w-4 text-emerald-500" />
               </div>
               <div className="text-xl font-extrabold text-emerald-600 dark:text-emerald-400">
                 {metrics.todayCollections.toLocaleString()}{' '}
-                <span className="text-xs font-normal">ر.س</span>
+                <span className="text-xs font-normal">{isAr ? 'ر.س' : 'SAR'}</span>
               </div>
             </div>
 
             <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 shadow-sm">
               <div className="flex items-center justify-between text-[var(--text-muted)] mb-1">
-                <span className="text-[11px] font-semibold">تحصيلات الحصص</span>
+                <span className="text-[11px] font-semibold">{isAr ? 'تحصيلات الحصص' : 'Session Fees'}</span>
                 <Wallet className="h-4 w-4 text-blue-500" />
               </div>
               <div className="text-xl font-extrabold text-blue-600 dark:text-blue-400">
                 {metrics.sessionCollections.toLocaleString()}{' '}
-                <span className="text-xs font-normal">ر.س</span>
+                <span className="text-xs font-normal">{isAr ? 'ر.س' : 'SAR'}</span>
               </div>
             </div>
 
             <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 shadow-sm">
               <div className="flex items-center justify-between text-[var(--text-muted)] mb-1">
                 <span className="text-[11px] font-semibold">
-                  {t('finance.monthlyRevenue', 'إيرادات الشهر')}
+                  {isAr ? 'إيرادات الشهر' : 'Monthly Revenue'}
                 </span>
                 <TrendingUp className="h-4 w-4 text-[var(--accent-primary)]" />
               </div>
               <div className="text-xl font-extrabold text-[var(--text-main)]">
                 {metrics.monthlyRevenue.toLocaleString()}{' '}
-                <span className="text-xs font-normal">ر.س</span>
+                <span className="text-xs font-normal">{isAr ? 'ر.س' : 'SAR'}</span>
               </div>
             </div>
 
             <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 shadow-sm">
               <div className="flex items-center justify-between text-[var(--text-muted)] mb-1">
                 <span className="text-[11px] font-semibold">
-                  {t('finance.outstandingBalances', 'الأرصدة المستحقة')}
+                  {isAr ? 'الأرصدة المستحقة' : 'Outstanding Receivables'}
                 </span>
                 <AlertCircle className="h-4 w-4 text-amber-500" />
               </div>
               <div className="text-xl font-extrabold text-amber-600 dark:text-amber-400">
                 {metrics.outstandingPlayerBalances.toLocaleString()}{' '}
-                <span className="text-xs font-normal">ر.س</span>
+                <span className="text-xs font-normal">{isAr ? 'ر.س' : 'SAR'}</span>
               </div>
             </div>
 
             <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 shadow-sm">
               <div className="flex items-center justify-between text-[var(--text-muted)] mb-1">
                 <span className="text-[11px] font-semibold">
-                  {t('finance.overdueCount', 'اشتراكات متأخرة')}
+                  {isAr ? 'اشتراكات متأخرة' : 'Overdue Subscriptions'}
                 </span>
                 <XCircle className="h-4 w-4 text-rose-500" />
               </div>
               <div className="text-xl font-extrabold text-rose-600 dark:text-rose-400">
                 {metrics.overdueSubscriptionsCount}{' '}
-                <span className="text-xs font-normal">لاعب</span>
+                <span className="text-xs font-normal">{isAr ? 'لاعب' : 'athletes'}</span>
               </div>
             </div>
 
             <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 shadow-sm">
               <div className="flex items-center justify-between text-[var(--text-muted)] mb-1">
                 <span className="text-[11px] font-semibold">
-                  {t('finance.netCashMovement', 'صافي الحركة النقدية')}
+                  {isAr ? 'صافي الحركة النقدية' : 'Net Cash Movement'}
                 </span>
                 <Receipt className="h-4 w-4 text-violet-500" />
               </div>
               <div className="text-xl font-extrabold text-violet-600 dark:text-violet-400">
                 {metrics.netCashMovement.toLocaleString()}{' '}
-                <span className="text-xs font-normal">ر.س</span>
+                <span className="text-xs font-normal">{isAr ? 'ر.س' : 'SAR'}</span>
               </div>
             </div>
           </div>
@@ -540,7 +534,7 @@ export default function FinanceDashboardPage() {
             }`}
           >
             <Receipt className="h-4 w-4" />
-            <span>سجل العمليات والتحصيلات</span>
+            <span>{isAr ? 'سجل العمليات والتحصيلات' : 'Transactions & Ledger'}</span>
           </button>
 
           <button
@@ -553,7 +547,7 @@ export default function FinanceDashboardPage() {
             }`}
           >
             <Users className="h-4 w-4" />
-            <span>عضويات واشتراكات اللاعبين ({subscriptions.length})</span>
+            <span>{isAr ? `عضويات واشتراكات اللاعبين (${subscriptions.length})` : `Athlete Subscriptions (${subscriptions.length})`}</span>
           </button>
 
           <button
@@ -566,7 +560,7 @@ export default function FinanceDashboardPage() {
             }`}
           >
             <Layers className="h-4 w-4" />
-            <span>باقات التدريب وعقد الأكاديمية</span>
+            <span>{isAr ? 'باقات التدريب وعقد الأكاديمية' : 'Training Plans & SaaS Tier'}</span>
           </button>
         </div>
 
@@ -580,7 +574,7 @@ export default function FinanceDashboardPage() {
                 <div className="flex items-center gap-2">
                   <CreditCard className="h-4 w-4 text-[var(--accent-primary)]" />
                   <h3 className="text-sm font-bold text-[var(--text-main)]">
-                    {t('finance.paymentMethods', 'طرق الدفع المعتمدة')}
+                    {isAr ? 'طرق الدفع المعتمدة' : 'Payment Methods Breakdown'}
                   </h3>
                 </div>
 
@@ -607,7 +601,7 @@ export default function FinanceDashboardPage() {
                                       : method}
                             </span>
                             <span className="font-mono text-[var(--text-muted)]">
-                              {amount.toLocaleString()} ر.س ({percentage}%)
+                              {amount.toLocaleString()} {isAr ? 'ر.س' : 'SAR'} ({percentage}%)
                             </span>
                           </div>
                           <div className="h-2 w-full rounded-full bg-[var(--bg-surface-subtle)] overflow-hidden">
@@ -627,14 +621,14 @@ export default function FinanceDashboardPage() {
                 <div className="flex items-center gap-2">
                   <Building2 className="h-4 w-4 text-[var(--accent-primary)]" />
                   <h3 className="text-sm font-bold text-[var(--text-main)]">
-                    إيرادات الفروع والملاعب
+                    {isAr ? 'إيرادات الفروع والملاعب' : 'Revenue by Branch & Ground'}
                   </h3>
                 </div>
 
                 <div className="space-y-3">
                   {metrics && Object.keys(metrics.branchRevenue).length === 0 ? (
                     <p className="text-xs text-[var(--text-muted)] py-4 text-center">
-                      لا توجد إيرادات مسجلة بالفروع حتى الآن.
+                      {isAr ? 'لا توجد إيرادات مسجلة بالفروع حتى الآن.' : 'No revenue recorded by branches yet.'}
                     </p>
                   ) : (
                     metrics &&
@@ -645,7 +639,7 @@ export default function FinanceDashboardPage() {
                       >
                         <span className="font-semibold text-[var(--text-main)]">{branchName}</span>
                         <span className="font-extrabold text-emerald-600 dark:text-emerald-400">
-                          {amount.toLocaleString()} ر.س
+                          {amount.toLocaleString()} {isAr ? 'ر.س' : 'SAR'}
                         </span>
                       </div>
                     ))
@@ -671,7 +665,7 @@ export default function FinanceDashboardPage() {
                     <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[var(--text-muted)]" />
                     <input
                       type="text"
-                      placeholder="بحث برقم الإيصال أو اللاعب..."
+                      placeholder={isAr ? 'بحث برقم الإيصال أو اللاعب...' : 'Search receipt number or athlete...'}
                       value={txSearch}
                       onChange={(e) => setTxSearch(e.target.value)}
                       className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] pr-9 pl-3 py-1.5 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:outline-none"
@@ -693,7 +687,7 @@ export default function FinanceDashboardPage() {
 
               {filteredTransactions.length === 0 ? (
                 <div className="py-12 text-center text-[var(--text-muted)] text-xs">
-                  لا توجد حركات مالية مطابقة للبحث أو الفلتر.
+                  {isAr ? 'لا توجد حركات مالية مطابقة للبحث أو الفلتر.' : 'No financial transactions match search or filter.'}
                 </div>
               ) : (
                 <div className="overflow-x-auto">
@@ -729,7 +723,7 @@ export default function FinanceDashboardPage() {
                             })}
                           </td>
                           <td className="py-3 px-3 font-bold text-[var(--text-main)]">
-                            {tx.playerName || 'مصروف تشغيلي للحصة'}
+                            {tx.playerName || (isAr ? 'مصروف تشغيلي للحصة' : 'Session Expense')}
                           </td>
                           <td className="py-3 px-3">
                             <span
@@ -741,11 +735,9 @@ export default function FinanceDashboardPage() {
                                     : 'bg-blue-500/15 text-blue-600 dark:text-blue-400'
                               }`}
                             >
-                              {tx.type === 'MEMBERSHIP_FEE'
-                                ? 'سداد اشتراك'
-                                : tx.type === 'SESSION_EXPENSE'
-                                  ? 'مصروف حصة'
-                                  : tx.type}
+                              {isAr
+                                ? (tx.type === 'MEMBERSHIP_FEE' ? 'سداد اشتراك' : tx.type === 'SESSION_EXPENSE' ? 'مصروف حصة' : tx.type)
+                                : (tx.type === 'MEMBERSHIP_FEE' ? 'Subscription' : tx.type === 'SESSION_EXPENSE' ? 'Expense' : tx.type)}
                             </span>
                           </td>
                           <td className="py-3 px-3 font-mono font-extrabold">
@@ -757,12 +749,12 @@ export default function FinanceDashboardPage() {
                               }
                             >
                               {tx.type === 'SESSION_EXPENSE' ? '-' : '+'}
-                              {tx.amount.toLocaleString()} ر.س
+                              {tx.amount.toLocaleString()} {isAr ? 'ر.س' : 'SAR'}
                             </span>
                           </td>
                           <td className="py-3 px-3 text-[var(--text-muted)]">{tx.paymentMethod}</td>
                           <td className="py-3 px-3 text-[var(--text-muted)]">
-                            {tx.recordedByName || 'النظام'}
+                            {tx.recordedByName || (isAr ? 'النظام' : 'System')}
                           </td>
                           <td className="py-3 px-3">
                             <span
@@ -772,7 +764,7 @@ export default function FinanceDashboardPage() {
                                   : 'bg-rose-500/15 text-rose-600 dark:text-rose-400'
                               }`}
                             >
-                              {tx.status === 'COMPLETED' ? 'مكتمل' : 'معكوس / ملغي'}
+                              {tx.status === 'COMPLETED' ? (isAr ? 'مكتمل' : 'Completed') : (isAr ? 'معكوس / ملغي' : 'Reversed')}
                             </span>
                           </td>
                           <td className="py-3 px-3 text-left">
@@ -781,10 +773,10 @@ export default function FinanceDashboardPage() {
                                 type="button"
                                 onClick={() => handleOpenReversalModal(tx)}
                                 className="inline-flex items-center gap-1 rounded-lg border border-rose-500/30 bg-rose-500/10 px-2 py-1 text-[10px] font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 transition-all cursor-pointer"
-                                title="إلغاء المعاملة وعكس القيد المحاسبي"
+                                title={isAr ? 'إلغاء المعاملة وعكس القيد المحاسبي' : 'Reverse transaction and cancel ledger'}
                               >
                                 <RotateCcw className="h-3 w-3" />
-                                <span>عكس القيد</span>
+                                <span>{isAr ? 'عكس القيد' : 'Reverse'}</span>
                               </button>
                             )}
                           </td>
@@ -804,10 +796,10 @@ export default function FinanceDashboardPage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h3 className="text-sm font-bold text-[var(--text-main)]">
-                  {t('subscriptions.playerTitle', 'اشتراكات وعضويات اللاعبين')}
+                  {isAr ? 'اشتراكات وعضويات اللاعبين' : 'Athlete Subscriptions & Memberships'}
                 </h3>
                 <p className="text-xs text-[var(--text-muted)]">
-                  إدارة خطط اشتراكات اللاعبين، متابعة الأرصدة المتبقية، وتحصيل الرسوم.
+                  {isAr ? 'إدارة خطط اشتراكات اللاعبين، متابعة الأرصدة المتبقية، وتحصيل الرسوم.' : 'Manage athlete membership plans, track receivables, and collect dues.'}
                 </p>
               </div>
 
@@ -816,7 +808,7 @@ export default function FinanceDashboardPage() {
                   <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[var(--text-muted)]" />
                   <input
                     type="text"
-                    placeholder="بحث باسم اللاعب..."
+                    placeholder={isAr ? 'بحث باسم اللاعب...' : 'Search by athlete name...'}
                     value={subSearch}
                     onChange={(e) => setSubSearch(e.target.value)}
                     className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] pr-9 pl-3 py-1.5 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:outline-none"
@@ -828,18 +820,18 @@ export default function FinanceDashboardPage() {
                   onChange={(e) => setSubStatusFilter(e.target.value)}
                   className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3 py-1.5 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none cursor-pointer"
                 >
-                  <option value="ALL">جميع الحالات</option>
-                  <option value="ACTIVE">نشط ومسدد</option>
-                  <option value="PARTIAL">مسدد جزئياً</option>
-                  <option value="OVERDUE">متأخر عن السداد</option>
-                  <option value="EXPIRED">منتهي الصلاحية</option>
+                  <option value="ALL">{isAr ? 'جميع الحالات' : 'All Statuses'}</option>
+                  <option value="ACTIVE">{isAr ? 'نشط ومسدد' : 'Active & Paid'}</option>
+                  <option value="PARTIAL">{isAr ? 'مسدد جزئياً' : 'Partially Paid'}</option>
+                  <option value="OVERDUE">{isAr ? 'متأخر عن السداد' : 'Overdue'}</option>
+                  <option value="EXPIRED">{isAr ? 'منتهي الصلاحية' : 'Expired'}</option>
                 </select>
               </div>
             </div>
 
             {filteredSubscriptions.length === 0 ? (
               <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-12 text-center text-[var(--text-muted)] text-xs">
-                لا يوجد اشتراكات مطابقة للبحث أو الفلتر.
+                {isAr ? 'لا يوجد اشتراكات مطابقة للبحث أو الفلتر.' : 'No subscriptions match search or filter.'}
               </div>
             ) : (
               <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] overflow-hidden shadow-sm">
@@ -868,7 +860,7 @@ export default function FinanceDashboardPage() {
                             {sub.playerName}
                           </td>
                           <td className="py-3 px-4 text-[var(--text-muted)]">
-                            {sub.planName || 'باقة مخصصة'}
+                            {translateDataString(sub.planName || (isAr ? 'باقة مخصصة' : 'Custom Plan'), locale)}
                           </td>
                           <td className="py-3 px-4 font-mono text-[var(--text-muted)]">
                             {String(sub.startDate).slice(0, 10)}
@@ -877,10 +869,10 @@ export default function FinanceDashboardPage() {
                             {String(sub.dueDate).slice(0, 10)}
                           </td>
                           <td className="py-3 px-4 font-mono font-bold text-[var(--text-main)]">
-                            {sub.feeAmount.toLocaleString()} ر.س
+                            {sub.feeAmount.toLocaleString()} {isAr ? 'ر.س' : 'SAR'}
                           </td>
                           <td className="py-3 px-4 font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                            {sub.paidAmount.toLocaleString()} ر.س
+                            {sub.paidAmount.toLocaleString()} {isAr ? 'ر.س' : 'SAR'}
                           </td>
                           <td className="py-3 px-4 font-mono font-bold">
                             <span
@@ -890,7 +882,7 @@ export default function FinanceDashboardPage() {
                                   : 'text-[var(--text-muted)]'
                               }
                             >
-                              {sub.outstandingBalance.toLocaleString()} ر.س
+                              {sub.outstandingBalance.toLocaleString()} {isAr ? 'ر.س' : 'SAR'}
                             </span>
                           </td>
                           <td className="py-3 px-4">
@@ -919,7 +911,7 @@ export default function FinanceDashboardPage() {
                               className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--accent-primary)] px-3 py-1.5 text-xs font-bold text-white shadow hover:brightness-110 transition-all cursor-pointer"
                             >
                               <CreditCard className="h-3.5 w-3.5" />
-                              <span>تحصيل دفعة</span>
+                              <span>{isAr ? 'تحصيل دفعة' : 'Collect Payment'}</span>
                             </button>
                           </td>
                         </tr>
@@ -946,22 +938,22 @@ export default function FinanceDashboardPage() {
                     <div>
                       <div className="flex items-center gap-2">
                         <h3 className="text-base font-bold text-[var(--text-main)]">
-                          عقد اشتراك الأكاديمية بالمنصة ({tenantSub.planName})
+                          {isAr ? `عقد اشتراك الأكاديمية بالمنصة (${tenantSub.planName})` : `Academy Platform Subscription (${tenantSub.planName})`}
                         </h3>
                         <span className="rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 px-2.5 py-0.5 text-xs font-bold border border-emerald-500/30">
                           {tenantSub.status}
                         </span>
                       </div>
                       <p className="text-xs text-[var(--text-muted)] mt-0.5">
-                        الباقة المفعلة تشمل حتى {tenantSub.maxBranches} فروع و{' '}
-                        {tenantSub.maxPlayers} لاعب نشط.
+                        الباقة المفعلة تشمل حتى {tenantSub.maxBranches} {isAr ? 'فروع' : 'branches'} و{' '}
+                        {tenantSub.maxPlayers} {isAr ? 'لاعب' : 'athletes'} نشط.
                       </p>
                     </div>
                   </div>
 
                   <div className="text-left font-mono">
                     <span className="text-xs text-[var(--text-muted)] block">
-                      قيمة الاشتراك الشهري (MRR)
+                      {isAr ? 'قيمة الاشتراك الشهري (MRR)' : 'Monthly SaaS Tier (MRR)'}
                     </span>
                     <span className="text-xl font-black text-[var(--accent-primary)]">
                       {tenantSub.currentPrice.toLocaleString()} {tenantSub.currency || 'ر.س'}
@@ -971,14 +963,14 @@ export default function FinanceDashboardPage() {
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 border-t border-[var(--border-subtle)] text-xs">
                   <div>
-                    <span className="text-[var(--text-muted)] block mb-0.5">تاريخ بدء العقد:</span>
+                    <span className="text-[var(--text-muted)] block mb-0.5">{isAr ? 'تاريخ بدء العقد:' : 'Contract Start Date:'}</span>
                     <span className="font-mono font-bold text-[var(--text-main)]">
                       {String(tenantSub.startDate).slice(0, 10)}
                     </span>
                   </div>
                   <div>
                     <span className="text-[var(--text-muted)] block mb-0.5">
-                      تاريخ التجديد القادم:
+                      {isAr ? 'تاريخ التجديد القادم:' : 'Next Renewal Date:'}
                     </span>
                     <span className="font-mono font-bold text-[var(--text-main)]">
                       {String(tenantSub.renewalDate).slice(0, 10)}
@@ -986,7 +978,7 @@ export default function FinanceDashboardPage() {
                   </div>
                   <div>
                     <span className="text-[var(--text-muted)] block mb-0.5">
-                      الحد الأقصى للفروع:
+                      {isAr ? 'الحد الأقصى للفروع:' : 'Max Branches:'}
                     </span>
                     <span className="font-bold text-[var(--text-main)]">
                       {tenantSub.maxBranches} فروع
@@ -994,7 +986,7 @@ export default function FinanceDashboardPage() {
                   </div>
                   <div>
                     <span className="text-[var(--text-muted)] block mb-0.5">
-                      الحد الأقصى للاعبين:
+                      {isAr ? 'الحد الأقصى للاعبين:' : 'Max Athletes:'}
                     </span>
                     <span className="font-bold text-[var(--text-main)]">
                       {tenantSub.maxPlayers} لاعب
@@ -1009,10 +1001,10 @@ export default function FinanceDashboardPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-sm font-bold text-[var(--text-main)]">
-                    باقات العضويات والتدريب للأكاديمية
+                    {isAr ? 'باقات العضويات والتدريب للأكاديمية' : 'Academy Membership & Training Plans'}
                   </h3>
                   <p className="text-xs text-[var(--text-muted)]">
-                    الباقات المتاحة لتسجيل اللاعبين والاشتراكات الدورية.
+                    {isAr ? 'الباقات المتاحة لتسجيل اللاعبين والاشتراكات الدورية.' : 'Available recurring membership plans for enrolling athletes.'}
                   </p>
                 </div>
 
@@ -1022,7 +1014,7 @@ export default function FinanceDashboardPage() {
                   className="flex items-center gap-1.5 rounded-xl bg-[var(--accent-primary)] px-4 py-2 text-xs font-bold text-white shadow hover:brightness-110 transition-all cursor-pointer"
                 >
                   <PlusCircle className="h-4 w-4" />
-                  <span>إنشاء باقة جديدة</span>
+                  <span>{isAr ? 'إنشاء باقة جديدة' : 'New Training Plan'}</span>
                 </button>
               </div>
 
@@ -1036,11 +1028,11 @@ export default function FinanceDashboardPage() {
                       <div className="flex justify-between items-start">
                         <h4 className="text-base font-bold text-[var(--text-main)]">{p.name}</h4>
                         <span className="rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 text-[10px] font-bold">
-                          {p.billingPeriod === 'MONTHLY' ? 'شهري' : p.billingPeriod}
+                          {p.billingPeriod === 'MONTHLY' ? (isAr ? 'شهري' : 'Monthly') : p.billingPeriod}
                         </span>
                       </div>
                       <p className="text-xs text-[var(--text-muted)] mt-1">
-                        {p.description || 'باقة تدريب رسمية'}
+                        {p.description || (isAr ? 'باقة تدريب رسمية' : 'Official training package')}
                       </p>
                     </div>
 
@@ -1050,7 +1042,7 @@ export default function FinanceDashboardPage() {
                           {p.feeAmount.toLocaleString()}
                         </span>
                         <span className="text-xs text-[var(--text-muted)] font-semibold mr-1">
-                          ر.س / دورة
+                          {isAr ? 'ر.س / دورة' : 'SAR / cycle'}
                         </span>
                       </div>
                       <span className="text-xs text-[var(--accent-primary)] font-bold">
@@ -1098,15 +1090,15 @@ export default function FinanceDashboardPage() {
 
             <form onSubmit={handleSubmitPayment} className="space-y-4">
               <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] p-3 text-xs flex justify-between items-center">
-                <span className="text-[var(--text-muted)]">المتبقي على الاشتراك:</span>
+                <span className="text-[var(--text-muted)]">{isAr ? 'المتبقي على الاشتراك:' : 'Remaining Outstanding:'}</span>
                 <span className="font-extrabold text-[var(--accent-primary)]">
-                  {selectedSubForPayment.outstandingBalance} ر.س
+                  {selectedSubForPayment.outstandingBalance} {isAr ? 'ر.س' : 'SAR'}
                 </span>
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-[var(--text-main)] mb-1">
-                  المبلغ المحصل (ر.س) *
+                  {isAr ? 'المبلغ المحصل (ر.س) *' : 'Collected Amount (SAR) *'}
                 </label>
                 <input
                   type="number"
@@ -1121,7 +1113,7 @@ export default function FinanceDashboardPage() {
 
               <div>
                 <label className="block text-xs font-semibold text-[var(--text-main)] mb-1">
-                  طريقة التحصيل *
+                  {isAr ? 'طريقة التحصيل *' : 'Payment Method *'}
                 </label>
                 <select
                   value={paymentMethod}
@@ -1130,20 +1122,20 @@ export default function FinanceDashboardPage() {
                   }
                   className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs font-semibold text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none cursor-pointer"
                 >
-                  <option value="CASH">نقدي (كاش بالملعب)</option>
-                  <option value="POS">جهاز نقاط البيع (POS / شبكة)</option>
-                  <option value="CARD">بطاقة مدى / ائتمانية</option>
-                  <option value="BANK_TRANSFER">تحويل بنكي</option>
+                  <option value="CASH">{isAr ? 'نقدي (كاش بالملعب)' : 'Cash (Pitchside)'}</option>
+                  <option value="POS">{isAr ? 'جهاز نقاط البيع (POS / شبكة)' : 'POS Terminal / Mada'}</option>
+                  <option value="CARD">{isAr ? 'بطاقة مدى / ائتمانية' : 'Credit / Debit Card'}</option>
+                  <option value="BANK_TRANSFER">{isAr ? 'تحويل بنكي' : 'Bank Transfer'}</option>
                 </select>
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-[var(--text-main)] mb-1">
-                  رقم الإيصال / المرجع
+                  {isAr ? 'رقم الإيصال / المرجع' : 'Receipt / Reference No.'}
                 </label>
                 <input
                   type="text"
-                  placeholder="رقم الإيصال أو الحوالة..."
+                  placeholder={isAr ? 'رقم الإيصال أو الحوالة...' : 'Receipt or transfer reference...'}
                   value={paymentRefNumber}
                   onChange={(e) => setPaymentRefNumber(e.target.value)}
                   className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:outline-none"
@@ -1156,7 +1148,7 @@ export default function FinanceDashboardPage() {
                 </label>
                 <input
                   type="text"
-                  placeholder="ملاحظات توثيقية إضافية..."
+                  placeholder={isAr ? 'ملاحظات توثيقية إضافية...' : 'Optional audit notes...'}
                   value={paymentNotes}
                   onChange={(e) => setPaymentNotes(e.target.value)}
                   className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:outline-none"
@@ -1177,7 +1169,7 @@ export default function FinanceDashboardPage() {
                   className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-5 py-2 text-xs font-bold text-white shadow hover:brightness-110 disabled:opacity-50 transition-all cursor-pointer"
                 >
                   {isSubmittingPayment && <RefreshCw className="h-3.5 w-3.5 animate-spin" />}
-                  <span>تأكيد استلام المبلغ</span>
+                  <span>{isAr ? 'تأكيد استلام المبلغ' : 'Confirm Payment'}</span>
                 </button>
               </div>
             </form>
@@ -1214,20 +1206,21 @@ export default function FinanceDashboardPage() {
 
             <form onSubmit={handleSubmitReversal} className="space-y-4">
               <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-700 dark:text-rose-300">
-                سيتم إلغاء هذه المعاملة ({reversalTx.amount} ر.س) وعكس أثرها المالي على رصيد اللاعب
-                وسجل الأكاديمية فوراً مع توثيق سبب الإلغاء في سجل التدقيق.
+                {isAr
+                  ? <>سيتم إلغاء هذه المعاملة ({reversalTx.amount} ر.س) وعكس أثرها المالي على رصيد اللاعب وسجل الأكاديمية فوراً مع توثيق سبب الإلغاء في سجل التدقيق.</>
+                  : <>This transaction ({reversalTx.amount} SAR) will be voided and reversed immediately on athlete ledger and audited in security logs.</>}
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-[var(--text-main)] mb-1">
-                  سبب الإلغاء وعكس القيد (إلزامي) *
+                  {isAr ? 'سبب الإلغاء وعكس القيد (إلزامي) *' : 'Reversal Reason (Mandatory) *'}
                 </label>
                 <textarea
                   required
                   rows={3}
                   value={reversalReason}
                   onChange={(e) => setReversalReason(e.target.value)}
-                  placeholder="يرجى كتابة سبب الإلغاء بالتفصيل (مثل: خطأ في إدخال المبلغ، دفع مكرر، طلب ولي الأمر...)"
+                  placeholder={isAr ? 'يرجى كتابة سبب الإلغاء بالتفصيل (مثل: خطأ في إدخال المبلغ، دفع مكرر، طلب ولي الأمر...)' : 'Please describe reason (e.g., duplicate charge, clerk error, refund request)...'}
                   className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] p-3 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:outline-none resize-none"
                 />
               </div>
@@ -1246,7 +1239,7 @@ export default function FinanceDashboardPage() {
                   className="flex items-center gap-1.5 rounded-xl bg-rose-600 px-5 py-2 text-xs font-bold text-white shadow hover:brightness-110 disabled:opacity-50 transition-all cursor-pointer"
                 >
                   {isSubmittingReversal && <RefreshCw className="h-3.5 w-3.5 animate-spin" />}
-                  <span>تأكيد عكس القيد</span>
+                  <span>{isAr ? 'تأكيد عكس القيد' : 'Confirm Reversal'}</span>
                 </button>
               </div>
             </form>
@@ -1284,7 +1277,7 @@ export default function FinanceDashboardPage() {
             <form onSubmit={handleSubmitNewSubscription} className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-[var(--text-main)] mb-1">
-                  اختيار اللاعب *
+                  {isAr ? 'اختيار اللاعب *' : 'Select Athlete *'}
                 </label>
                 <select
                   required
@@ -1302,7 +1295,7 @@ export default function FinanceDashboardPage() {
 
               <div>
                 <label className="block text-xs font-semibold text-[var(--text-main)] mb-1">
-                  الباقة التدريبية (اختياري)
+                  {isAr ? 'الباقة التدريبية (اختياري)' : 'Training Plan (Optional)'}
                 </label>
                 <select
                   value={selectedPlanId}
@@ -1314,10 +1307,10 @@ export default function FinanceDashboardPage() {
                   }}
                   className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs font-semibold text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none cursor-pointer"
                 >
-                  <option value="">بدون باقة محددة (مبلغ مخصص)</option>
+                  <option value="">{isAr ? 'بدون باقة محددة (مبلغ مخصص)' : 'Custom Fee (No pre-set plan)'}</option>
                   {plans.map((p) => (
                     <option key={p.id} value={p.id}>
-                      {p.name} ({p.feeAmount} ر.س)
+                      {p.name} ({p.feeAmount} {isAr ? 'ر.س' : 'SAR'})
                     </option>
                   ))}
                 </select>
@@ -1326,7 +1319,7 @@ export default function FinanceDashboardPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-[var(--text-main)] mb-1">
-                    قيمة الاشتراك (ر.س) *
+                    {isAr ? 'قيمة الاشتراك (ر.س) *' : 'Subscription Fee (SAR) *'}
                   </label>
                   <input
                     type="number"
@@ -1341,7 +1334,7 @@ export default function FinanceDashboardPage() {
 
                 <div>
                   <label className="block text-xs font-semibold text-[var(--text-main)] mb-1">
-                    خصم ممنوح (ر.س)
+                    {isAr ? 'خصم ممنوح (ر.س)' : 'Discount (SAR)'}
                   </label>
                   <input
                     type="number"
@@ -1357,11 +1350,11 @@ export default function FinanceDashboardPage() {
               {subDiscountAmount > 0 && (
                 <div>
                   <label className="block text-xs font-semibold text-[var(--text-main)] mb-1">
-                    سبب الخصم الممنوح
+                    {isAr ? 'سبب الخصم الممنوح' : 'Discount Reason'}
                   </label>
                   <input
                     type="text"
-                    placeholder="مثال: خصم إخوة، منحة تفوق رياضي..."
+                    placeholder={isAr ? 'مثال: خصم إخوة، منحة تفوق رياضي...' : 'e.g. Sibling discount, athletic scholarship...'}
                     value={subDiscountReason}
                     onChange={(e) => setSubDiscountReason(e.target.value)}
                     className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none"
@@ -1371,7 +1364,7 @@ export default function FinanceDashboardPage() {
 
               <div>
                 <label className="block text-xs font-semibold text-[var(--text-main)] mb-1">
-                  تاريخ استحقاق التجديد *
+                  {isAr ? 'تاريخ استحقاق التجديد *' : 'Renewal Due Date *'}
                 </label>
                 <input
                   type="date"
@@ -1384,13 +1377,13 @@ export default function FinanceDashboardPage() {
 
               <div>
                 <label className="block text-xs font-semibold text-[var(--text-main)] mb-1">
-                  ملاحظات الاشتراك
+                  {isAr ? 'ملاحظات الاشتراك' : 'Subscription Notes'}
                 </label>
                 <textarea
                   rows={2}
                   value={subNotes}
                   onChange={(e) => setSubNotes(e.target.value)}
-                  placeholder="ملاحظات العضوية والاشتراك..."
+                  placeholder={isAr ? 'ملاحظات العضوية والاشتراك...' : 'Membership notes...'}
                   className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] p-3 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:outline-none resize-none"
                 />
               </div>
@@ -1409,7 +1402,7 @@ export default function FinanceDashboardPage() {
                   className="flex items-center gap-1.5 rounded-xl bg-[var(--accent-primary)] px-5 py-2 text-xs font-bold text-white shadow hover:brightness-110 disabled:opacity-50 transition-all cursor-pointer"
                 >
                   {isSubmittingNewSub && <RefreshCw className="h-3.5 w-3.5 animate-spin" />}
-                  <span>حفظ الاشتراك</span>
+                  <span>{isAr ? 'حفظ الاشتراك' : 'Save Subscription'}</span>
                 </button>
               </div>
             </form>
@@ -1447,12 +1440,12 @@ export default function FinanceDashboardPage() {
             <form onSubmit={handleSubmitNewPlan} className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-[var(--text-main)] mb-1">
-                  اسم الباقة التدريبية *
+                  {isAr ? 'اسم الباقة التدريبية *' : 'Plan Name *'}
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="مثال: باقة النخبة الشهرية (3 حصص أسبوعياً)"
+                  placeholder={isAr ? 'مثال: باقة النخبة الشهرية (3 حصص أسبوعياً)' : 'e.g. Monthly Elite Plan (3 sessions/week)'}
                   value={planName}
                   onChange={(e) => setPlanName(e.target.value)}
                   className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none"
@@ -1462,7 +1455,7 @@ export default function FinanceDashboardPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-[var(--text-main)] mb-1">
-                    السعر (ر.س) *
+                    {isAr ? 'السعر (ر.س) *' : 'Price (SAR) *'}
                   </label>
                   <input
                     type="number"
@@ -1477,7 +1470,7 @@ export default function FinanceDashboardPage() {
 
                 <div>
                   <label className="block text-xs font-semibold text-[var(--text-main)] mb-1">
-                    دورة الفوترة *
+                    {isAr ? 'دورة الفوترة *' : 'Billing Cycle *'}
                   </label>
                   <select
                     value={planPeriod}
@@ -1498,13 +1491,13 @@ export default function FinanceDashboardPage() {
 
               <div>
                 <label className="block text-xs font-semibold text-[var(--text-main)] mb-1">
-                  وصف ومميزات الباقة
+                  {isAr ? 'وصف ومميزات الباقة' : 'Plan Description & Perks'}
                 </label>
                 <textarea
                   rows={2}
                   value={planDescription}
                   onChange={(e) => setPlanDescription(e.target.value)}
-                  placeholder="تفاصيل التمارين والمميزات المرفقة..."
+                  placeholder={isAr ? 'تفاصيل التمارين والمميزات المرفقة...' : 'Included perks, drills, and hours...'}
                   className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] p-3 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:outline-none resize-none"
                 />
               </div>
@@ -1523,7 +1516,7 @@ export default function FinanceDashboardPage() {
                   className="flex items-center gap-1.5 rounded-xl bg-[var(--accent-primary)] px-5 py-2 text-xs font-bold text-white shadow hover:brightness-110 disabled:opacity-50 transition-all cursor-pointer"
                 >
                   {isSubmittingPlan && <RefreshCw className="h-3.5 w-3.5 animate-spin" />}
-                  <span>إنشاء الباقة</span>
+                  <span>{isAr ? 'إنشاء الباقة' : 'Create Plan'}</span>
                 </button>
               </div>
             </form>

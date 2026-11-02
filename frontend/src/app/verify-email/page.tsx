@@ -303,6 +303,11 @@ function VerifyEmailContent() {
   );
 }
 
+function VerifyEmailLoadingFallback() {
+  const { locale } = useLocale();
+  return <span>{locale === 'ar' ? 'جارٍ تحميل الصفحة...' : 'Loading page...'}</span>;
+}
+
 export default function VerifyEmailPage() {
   return (
     <div className="min-h-screen bg-[var(--bg-base)] text-[var(--text-main)] flex flex-col overflow-x-hidden animate-fade-in">
@@ -312,7 +317,7 @@ export default function VerifyEmailPage() {
           fallback={
             <div className="flex items-center gap-2 text-sm text-slate-400">
               <Loader2 className="h-5 w-5 animate-spin text-[var(--accent-primary)]" />
-              <span>جارٍ تحميل الصفحة...</span>
+              <VerifyEmailLoadingFallback />
             </div>
           }
         >

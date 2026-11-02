@@ -154,7 +154,7 @@ export default function GroupsPage() {
       await loadGroups(1);
       router.push(`/groups/${created.id}`);
     } catch (err) {
-      setCreateError(err instanceof Error ? err.message : 'فشل إنشاء المجموعة التدريبية');
+      setCreateError(err instanceof Error ? err.message : locale === 'ar' ? 'فشل إنشاء المجموعة التدريبية' : 'Failed to create training group');
     } finally {
       setIsSubmitting(false);
     }

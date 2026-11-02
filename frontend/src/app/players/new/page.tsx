@@ -19,7 +19,7 @@ import { UserPlus, AlertCircle, Save, User, Heart, Users, GitBranch } from 'luci
 export default function NewPlayerPage() {
   const router = useRouter();
   const { user, activeTenant, isLoading } = useAuth();
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
 
   const [branches, setBranches] = useState<BranchSummary[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -82,9 +82,13 @@ export default function NewPlayerPage() {
 
     if (!firstName.trim() || !lastName.trim() || !effectiveDob) {
       setErrorMessage(
-        useBirthYearOnly
-          ? 'يرجى ملء بيانات الاسم الأول واسم العائلة وسنة الميلاد'
-          : 'يرجى ملء بيانات الاسم الأول واسم العائلة وتاريخ الميلاد',
+        locale === 'ar'
+          ? (useBirthYearOnly
+              ? 'يرجى ملء بيانات الاسم الأول واسم العائلة وسنة الميلاد'
+              : 'يرجى ملء بيانات الاسم الأول واسم العائلة وتاريخ الميلاد')
+          : (useBirthYearOnly
+              ? 'Please fill in first name, last name, and birth year'
+              : 'Please fill in first name, last name, and date of birth'),
       );
       return;
     }
@@ -93,29 +97,29 @@ export default function NewPlayerPage() {
       const parsedYear = parseInt(birthYear.trim(), 10);
       const currentYear = new Date().getFullYear();
       if (isNaN(parsedYear) || parsedYear < 1950 || parsedYear > currentYear) {
-        setErrorMessage(`يرجى إدخال سنة ميلاد صحيحة بين 1950 و ${currentYear}`);
+        setErrorMessage(locale === 'ar' ? `يرجى إدخال سنة ميلاد صحيحة بين 1950 و ${currentYear}` : `Please enter a valid birth year between 1950 and ${currentYear}`);
         return;
       }
     }
 
     if (!emergencyContactName.trim() || !emergencyContactPhone.trim()) {
-      setErrorMessage('يرجى ملء اسم ورقم هاتف الطوارئ');
+      setErrorMessage(locale === 'ar' ? 'يرجى ملء اسم ورقم هاتف الطوارئ' : 'Please fill in emergency contact name and phone');
       return;
     }
 
     if (!guardianName.trim() || !guardianPhone.trim()) {
-      setErrorMessage('يرجى ملء اسم ورقم هاتف ولي الأمر');
+      setErrorMessage(locale === 'ar' ? 'يرجى ملء اسم ورقم هاتف ولي الأمر' : 'Please fill in guardian name and phone number');
       return;
     }
 
     if (!branchId) {
-      setErrorMessage('يرجى اختيار الفرع المراد قيد اللاعب به');
+      setErrorMessage(locale === 'ar' ? 'يرجى اختيار الفرع المراد قيد اللاعب به' : 'Please select a branch to enroll the player in');
       return;
     }
 
     const guardianParts = guardianName.trim().split(/\s+/);
-    const guardianFirstName = guardianParts[0] || 'ولي';
-    const guardianLastName = guardianParts.slice(1).join(' ') || 'أمر';
+    const guardianFirstName = guardianParts[0] || (locale === 'ar' ? 'ولي' : 'Guardian');
+    const guardianLastName = guardianParts.slice(1).join(' ') || (locale === 'ar' ? 'أمر' : 'Contact');
 
     setIsSubmitting(true);
     try {
@@ -145,7 +149,7 @@ export default function NewPlayerPage() {
       const created = await api.players.create(payload);
       router.push(`/players/${created.id}`);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'فشل في تسجيل اللاعب';
+      const msg = err instanceof Error ? err.message : (locale === 'ar' ? 'فشل في تسجيل اللاعب' : 'Failed to enroll player');
       setErrorMessage(msg);
     } finally {
       setIsSubmitting(false);
@@ -159,14 +163,14 @@ export default function NewPlayerPage() {
   return (
     <AppShell
       breadcrumbs={[
-        { label: t('nav.players'), href: '/players' },
-        { label: t('players.new') || 'تسجيل لاعب جديد' },
+        { label: locale === 'ar' ? 'اللاعبين' : 'Athletes', href: '/players' },
+        { label: locale === 'ar' ? 'تسجيل لاعب جديد' : 'Enroll New Player' },
       ]}
     >
       <div className="max-w-4xl mx-auto space-y-6">
         <PageHeader
-          title={t('players.new') || 'استمارة تسجيل لاعب جديد'}
-          description="تسجيل بيانات اللاعب الرياضية وتعيين ولي الأمر وقيده بالفرع المستهدف فوراً."
+          title={locale === 'ar' ? 'استمارة تسجيل لاعب جديد' : 'New Athlete Enrollment Form'}
+          description={locale === 'ar' ? 'تسجيل بيانات اللاعب الرياضية وتعيين ولي الأمر وقيده بالفرع المستهدف فوراً.' : 'Register athlete athletic profile, assign primary guardian, and enroll in target branch.'}
           icon={UserPlus}
         />
 
@@ -183,13 +187,13 @@ export default function NewPlayerPage() {
           <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-sm space-y-4">
             <div className="flex items-center gap-2 border-b border-[var(--border-subtle)] pb-3 text-sm font-bold text-[var(--text-main)]">
               <User className="h-4 w-4 text-[var(--accent-primary)]" />
-              <span>1. البيانات الشخصية للاعب</span>
+              <span>{locale === 'ar' ? '1. البيانات الشخصية للاعب' : '1. Athlete Personal Information'}</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">
-                  الاسم الأول *
+                  {locale === 'ar' ? 'الاسم الأول *' : 'First Name *'}
                 </label>
                 <input
                   type="text"
@@ -197,14 +201,14 @@ export default function NewPlayerPage() {
                   id="input-first-name"
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
-                  placeholder="مثال: يوسف"
+                  placeholder={locale === 'ar' ? 'مثال: يوسف' : 'e.g. Youssef'}
                   className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none transition-colors"
                 />
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">
-                  اسم العائلة *
+                  {locale === 'ar' ? 'اسم العائلة *' : 'Last Name *'}
                 </label>
                 <input
                   type="text"
@@ -212,14 +216,14 @@ export default function NewPlayerPage() {
                   id="input-last-name"
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
-                  placeholder="مثال: الشريف"
+                  placeholder={locale === 'ar' ? 'مثال: الشريف' : 'e.g. El-Sharif'}
                   className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none transition-colors"
                 />
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">
-                  الجنس *
+                  {locale === 'ar' ? 'الجنس *' : 'Gender *'}
                 </label>
                 <select
                   id="select-gender"
@@ -227,22 +231,22 @@ export default function NewPlayerPage() {
                   onChange={(e) => setGender(e.target.value as PlayerGender)}
                   className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none transition-colors"
                 >
-                  <option value="MALE">ذكر</option>
-                  <option value="FEMALE">أنثى</option>
+                  <option value="MALE">{locale === 'ar' ? 'ذكر' : 'Male'}</option>
+                  <option value="FEMALE">{locale === 'ar' ? 'أنثى' : 'Female'}</option>
                 </select>
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="block text-xs font-semibold text-[var(--text-muted)]">
-                    {useBirthYearOnly ? 'سنة الميلاد *' : 'تاريخ الميلاد *'}
+                    {useBirthYearOnly ? (locale === 'ar' ? 'سنة الميلاد *' : 'Birth Year *') : (locale === 'ar' ? 'تاريخ الميلاد *' : 'Date of Birth *')}
                   </label>
                   <button
                     type="button"
                     onClick={() => setUseBirthYearOnly(!useBirthYearOnly)}
                     className="text-[11px] text-[var(--accent-primary)] hover:underline font-medium"
                   >
-                    {useBirthYearOnly ? 'استخدام تاريخ كامل' : 'سنة الميلاد فقط'}
+                    {useBirthYearOnly ? (locale === 'ar' ? 'استخدام تاريخ كامل' : 'Use Full Date') : (locale === 'ar' ? 'سنة الميلاد فقط' : 'Year Only')}
                   </button>
                 </div>
                 {useBirthYearOnly ? (
@@ -254,7 +258,7 @@ export default function NewPlayerPage() {
                     max={new Date().getFullYear()}
                     value={birthYear}
                     onChange={(e) => setBirthYear(e.target.value)}
-                    placeholder="مثال: 2015"
+                    placeholder={locale === 'ar' ? 'مثال: 2015' : 'e.g. 2015'}
                     className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none transition-colors"
                   />
                 ) : (
@@ -271,7 +275,7 @@ export default function NewPlayerPage() {
 
               <div>
                 <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">
-                  رقم القميص (اختياري)
+                  {locale === 'ar' ? 'رقم القميص (اختياري)' : 'Jersey Number (Optional)'}
                 </label>
                 <input
                   type="number"
@@ -280,21 +284,21 @@ export default function NewPlayerPage() {
                   max="99"
                   value={jerseyNumber}
                   onChange={(e) => setJerseyNumber(e.target.value)}
-                  placeholder="مثال: 10"
+                  placeholder={locale === 'ar' ? 'مثال: 10' : 'e.g. 10'}
                   className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none transition-colors"
                 />
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">
-                  الرقم القومي / جواز السفر (اختياري)
+                  {locale === 'ar' ? 'الرقم القومي / جواز السفر (اختياري)' : 'National ID / Passport (Optional)'}
                 </label>
                 <input
                   type="text"
                   id="input-national-id"
                   value={nationalId}
                   onChange={(e) => setNationalId(e.target.value)}
-                  placeholder="14 رقم للرقم القومي"
+                  placeholder={locale === 'ar' ? '14 رقم للرقم القومي' : 'National ID or Passport number'}
                   className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none transition-colors font-mono"
                 />
               </div>
@@ -305,13 +309,13 @@ export default function NewPlayerPage() {
           <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-sm space-y-4">
             <div className="flex items-center gap-2 border-b border-[var(--border-subtle)] pb-3 text-sm font-bold text-[var(--text-main)]">
               <Heart className="h-4 w-4 text-red-500" />
-              <span>2. بيانات الطوارئ والملاحظات الطبية</span>
+              <span>{locale === 'ar' ? '2. بيانات الطوارئ والملاحظات الطبية' : '2. Emergency & Medical Information'}</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">
-                  اسم جهة الاتصال للطوارئ *
+                  {locale === 'ar' ? 'اسم جهة الاتصال للطوارئ *' : 'Emergency Contact Name *'}
                 </label>
                 <input
                   type="text"
@@ -319,14 +323,14 @@ export default function NewPlayerPage() {
                   id="input-emergency-name"
                   value={emergencyContactName}
                   onChange={(e) => setEmergencyContactName(e.target.value)}
-                  placeholder="مثال: أحمد الشريف (الأب)"
+                  placeholder={locale === 'ar' ? 'مثال: أحمد الشريف (الأب)' : 'e.g. Ahmed El-Sharif (Father)'}
                   className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none transition-colors"
                 />
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">
-                  هاتف الطوارئ *
+                  {locale === 'ar' ? 'هاتف الطوارئ *' : 'Emergency Phone *'}
                 </label>
                 <input
                   type="tel"
@@ -341,14 +345,14 @@ export default function NewPlayerPage() {
 
               <div className="sm:col-span-2">
                 <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">
-                  ملاحظات طبية أو حساسية (اختياري)
+                  {locale === 'ar' ? 'ملاحظات طبية أو حساسية (اختياري)' : 'Medical Notes or Allergies (Optional)'}
                 </label>
                 <textarea
                   rows={2}
                   id="textarea-medical-notes"
                   value={medicalNotes}
                   onChange={(e) => setMedicalNotes(e.target.value)}
-                  placeholder="أي حساسيات أو حالات صحية ينبغي للمدربين مراعاتها..."
+                  placeholder={locale === 'ar' ? 'أي حساسيات أو حالات صحية ينبغي للمدربين مراعاتها...' : 'Any medical conditions, allergies, or notes for coaches...'}
                   className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none transition-colors"
                 />
               </div>
@@ -359,13 +363,13 @@ export default function NewPlayerPage() {
           <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-sm space-y-4">
             <div className="flex items-center gap-2 border-b border-[var(--border-subtle)] pb-3 text-sm font-bold text-[var(--text-main)]">
               <Users className="h-4 w-4 text-[var(--accent-primary)]" />
-              <span>3. بيانات ولي الأمر الأساسي</span>
+              <span>{locale === 'ar' ? '3. بيانات ولي الأمر الأساسي' : '3. Primary Guardian Information'}</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">
-                  الاسم الكامل لولي الأمر *
+                  {locale === 'ar' ? 'الاسم الكامل لولي الأمر *' : 'Guardian Full Name *'}
                 </label>
                 <input
                   type="text"
@@ -373,14 +377,14 @@ export default function NewPlayerPage() {
                   id="input-guardian-name"
                   value={guardianName}
                   onChange={(e) => setGuardianName(e.target.value)}
-                  placeholder="الاسم الثلاثي لولي الأمر"
+                  placeholder={locale === 'ar' ? 'الاسم الثلاثي لولي الأمر' : 'Guardian full name'}
                   className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none transition-colors"
                 />
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">
-                  صلة القرابة *
+                  {locale === 'ar' ? 'صلة القرابة *' : 'Relationship *'}
                 </label>
                 <select
                   id="select-guardian-relationship"
@@ -388,17 +392,17 @@ export default function NewPlayerPage() {
                   onChange={(e) => setGuardianRelationship(e.target.value as GuardianRelationship)}
                   className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none transition-colors"
                 >
-                  <option value="FATHER">الأب</option>
-                  <option value="MOTHER">الأم</option>
-                  <option value="GUARDIAN">وصي قانوني</option>
-                  <option value="RELATIVE">أقارب (أخ / أخت / عم / خال)</option>
-                  <option value="OTHER">أخرى</option>
+                  <option value="FATHER">{locale === 'ar' ? 'الأب' : 'Father'}</option>
+                  <option value="MOTHER">{locale === 'ar' ? 'الأم' : 'Mother'}</option>
+                  <option value="GUARDIAN">{locale === 'ar' ? 'وصي قانوني' : 'Legal Guardian'}</option>
+                  <option value="RELATIVE">{locale === 'ar' ? 'أقارب' : 'Relative'}</option>
+                  <option value="OTHER">{locale === 'ar' ? 'أخرى' : 'Other'}</option>
                 </select>
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">
-                  رقم الهاتف *
+                  {locale === 'ar' ? 'رقم الهاتف *' : 'Phone Number *'}
                 </label>
                 <input
                   type="tel"
@@ -406,14 +410,14 @@ export default function NewPlayerPage() {
                   id="input-guardian-phone"
                   value={guardianPhone}
                   onChange={(e) => setGuardianPhone(e.target.value)}
-                  placeholder="رقم الهاتف المحمول لولي الأمر"
+                  placeholder={locale === 'ar' ? 'رقم الهاتف المحمول لولي الأمر' : 'Guardian mobile number'}
                   className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none transition-colors font-mono"
                 />
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">
-                  البريد الإلكتروني (اختياري)
+                  {locale === 'ar' ? 'البريد الإلكتروني (اختياري)' : 'Email Address (Optional)'}
                 </label>
                 <input
                   type="email"
@@ -431,13 +435,13 @@ export default function NewPlayerPage() {
           <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-sm space-y-4">
             <div className="flex items-center gap-2 border-b border-[var(--border-subtle)] pb-3 text-sm font-bold text-[var(--text-main)]">
               <GitBranch className="h-4 w-4 text-[var(--accent-primary)]" />
-              <span>4. القيد بفرع الأكاديمية</span>
+              <span>{locale === 'ar' ? '4. القيد بفرع الأكاديمية' : '4. Branch Enrollment'}</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">
-                  الفرع المخصص *
+                  {locale === 'ar' ? 'الفرع المخصص *' : 'Assigned Branch *'}
                 </label>
                 <select
                   required
@@ -446,7 +450,7 @@ export default function NewPlayerPage() {
                   onChange={(e) => setBranchId(e.target.value)}
                   className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none transition-colors"
                 >
-                  <option value="">اختر الفرع...</option>
+                  <option value="">{locale === 'ar' ? 'اختر الفرع...' : 'Select branch...'}</option>
                   {branches.map((b) => (
                     <option key={b.id} value={b.id}>
                       {b.name} {b.city ? `(${b.city})` : ''}
@@ -457,7 +461,7 @@ export default function NewPlayerPage() {
 
               <div>
                 <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">
-                  تاريخ بدء القيد
+                  {locale === 'ar' ? 'تاريخ بدء القيد' : 'Enrollment Start Date'}
                 </label>
                 <input
                   type="date"
@@ -486,7 +490,7 @@ export default function NewPlayerPage() {
               className="inline-flex items-center gap-2 rounded-xl bg-[var(--accent-primary)] text-white px-6 py-2.5 text-xs font-semibold shadow-sm hover:brightness-110 transition-all disabled:opacity-50 cursor-pointer"
             >
               <Save className="h-4 w-4" />
-              <span>{isSubmitting ? 'جارٍ الحفظ...' : 'تسجيل وقيد اللاعب'}</span>
+              <span>{isSubmitting ? (locale === 'ar' ? 'جارٍ الحفظ...' : 'Saving...') : (locale === 'ar' ? 'تسجيل وقيد اللاعب' : 'Enroll Athlete')}</span>
             </button>
           </div>
         </form>

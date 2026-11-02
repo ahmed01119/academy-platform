@@ -214,8 +214,8 @@ export default function PlayerPortalPage() {
       <div className="space-y-8">
         <PageHeader
           breadcrumbs={[
-            { label: t('common.home', 'الرئيسية'), href: '/dashboard' },
-            { label: t('nav.playerPortal', 'بوابة اللاعب') },
+            { label: ar ? 'الرئيسية' : 'Home', href: '/dashboard' },
+            { label: ar ? 'بوابة اللاعب' : 'Player Portal' },
           ]}
           title={
             ar

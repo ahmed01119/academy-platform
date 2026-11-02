@@ -115,9 +115,9 @@ export default function AttendanceReportsPage() {
       <div className="space-y-6">
         <PageHeader
           breadcrumbs={[
-            { label: t('common.home', 'الرئيسية'), href: '/dashboard' },
-            { label: t('nav.sessions', 'الحصص التدريبية'), href: '/sessions' },
-            { label: t('nav.reports', 'تقارير الحضور') },
+            { label: ar ? 'الرئيسية' : 'Home', href: '/dashboard' },
+            { label: ar ? 'الحصص التدريبية' : 'Sessions', href: '/sessions' },
+            { label: ar ? 'تقارير الحضور' : 'Attendance Reports' },
           ]}
           title={ar ? 'تقارير الحضور والانضباط الرياضي' : 'Attendance & Discipline Reports'}
           description={

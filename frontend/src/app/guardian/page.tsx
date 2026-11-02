@@ -201,8 +201,8 @@ export default function GuardianPortalPage() {
       <div className="space-y-8">
         <PageHeader
           breadcrumbs={[
-            { label: t('common.home', 'الرئيسية'), href: '/dashboard' },
-            { label: t('nav.guardianPortal', 'بوابة ولي الأمر') },
+            { label: ar ? 'الرئيسية' : 'Home', href: '/dashboard' },
+            { label: ar ? 'بوابة ولي الأمر' : 'Guardian Portal' },
           ]}
           title={ar ? `أهلاً بك، ${guardianData.name} 👨‍👩‍👧‍👦` : `Welcome, ${guardianData.name} 👨‍👩‍👧‍👦`}
           description={

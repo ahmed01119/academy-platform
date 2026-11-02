@@ -105,8 +105,8 @@ export default function PlayerDevelopmentProfilePage() {
       <div className="space-y-6">
         <PageHeader
           breadcrumbs={[
-            { label: t('nav.home', 'الرئيسية'), href: '/dashboard' },
-            { label: t('nav.evaluations', 'مركز التقييمات'), href: '/evaluations' },
+            { label: locale === 'ar' ? 'الرئيسية' : 'Home', href: '/dashboard' },
+            { label: locale === 'ar' ? 'مركز التقييمات' : 'Evaluations Center', href: '/evaluations' },
             { label: translatedPlayerName },
           ]}
           title={translatedPlayerName}

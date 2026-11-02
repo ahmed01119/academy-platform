@@ -555,21 +555,23 @@ export default function HomePage() {
                           {locale === 'ar' ? 'تحصيلات كاش' : 'Cash Collected'}
                         </div>
                         <div className="text-sm font-extrabold text-[var(--accent-primary)] mt-1">
-                          1,800 ج.م
+                          {locale === 'ar' ? '1,800 ج.م' : '1,800 EGP'}
                         </div>
                       </div>
                       <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3 text-center">
                         <div className="text-[10px] text-[var(--text-muted)]">
                           {locale === 'ar' ? 'تحويل إلكتروني' : 'Electronic'}
                         </div>
-                        <div className="text-sm font-extrabold text-blue-500 mt-1">2,400 ج.م</div>
+                        <div className="text-sm font-extrabold text-blue-500 mt-1">
+                          {locale === 'ar' ? '2,400 ج.م' : '2,400 EGP'}
+                        </div>
                       </div>
                       <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3 text-center">
                         <div className="text-[10px] text-[var(--text-muted)]">
                           {locale === 'ar' ? 'صافي الحصة' : 'Net Cash'}
                         </div>
                         <div className="text-sm font-extrabold text-emerald-500 mt-1">
-                          4,200 ج.م
+                          {locale === 'ar' ? '4,200 ج.م' : '4,200 EGP'}
                         </div>
                       </div>
                     </div>

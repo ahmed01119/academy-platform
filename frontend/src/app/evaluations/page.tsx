@@ -203,14 +203,15 @@ function EvaluationsCenterContent() {
       <div className="space-y-6">
         <PageHeader
           breadcrumbs={[
-            { label: t('common.home', 'الرئيسية'), href: '/dashboard' },
-            { label: t('evaluations.title', 'مركز التقييم والذكاء الرياضي') },
+            { label: ar ? 'الرئيسية' : 'Home', href: '/dashboard' },
+            { label: ar ? 'مركز التقييم والذكاء الرياضي' : 'Evaluation Center' },
           ]}
-          title={t('evaluations.title', 'مركز تقييم الأداء والذكاء الرياضي')}
-          description={t(
-            'evaluations.subtitle',
-            'متابعة تطور اللاعبين الرباعي (فني، تكتيكي، بدني، سلوكي)، وتصنيف الفئات العمرية بشفافية وعدالة.',
-          )}
+          title={ar ? 'مركز تقييم الأداء والذكاء الرياضي' : 'Performance Evaluation & Athletic Intelligence'}
+          description={
+            ar
+              ? 'متابعة تطور اللاعبين الرباعي (فني، تكتيكي، بدني، سلوكي)، وتصنيف الفئات العمرية بشفافية وعدالة.'
+              : 'Track player performance across technical, tactical, physical, and behavioral pillars with fair age-group grading.'
+          }
           actions={
             <div className="flex items-center gap-2">
               <button
@@ -233,7 +234,7 @@ function EvaluationsCenterContent() {
                 className="flex items-center gap-1.5 rounded-xl bg-[var(--accent-primary)] px-4 py-2 text-xs font-semibold text-white shadow-sm hover:brightness-110 transition-all cursor-pointer"
               >
                 <PlusCircle className="h-4 w-4" />
-                <span>{t('evaluations.newEvaluationButton', 'تقييم لاعب جديد')}</span>
+                <span>{ar ? 'تقييم لاعب جديد' : 'New Evaluation'}</span>
               </button>
             </div>
           }
@@ -250,7 +251,7 @@ function EvaluationsCenterContent() {
                 : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
             }`}
           >
-            {t('evaluations.tabRankings', 'لوحة الترتيب والتصنيف العادل')}
+            {ar ? 'لوحة الترتيب والتصنيف العادل' : 'Fair Leaderboard & Rankings'}
           </button>
           <button
             type="button"
@@ -261,7 +262,7 @@ function EvaluationsCenterContent() {
                 : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
             }`}
           >
-            {t('evaluations.tabForm', 'إضافة تقييم أداء للاعب')}
+            {ar ? 'إضافة تقييم أداء للاعب' : 'New Player Evaluation'}
           </button>
           <button
             type="button"
@@ -272,7 +273,7 @@ function EvaluationsCenterContent() {
                 : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
             }`}
           >
-            {t('evaluations.tabTemplates', 'نماذج ومعايير التقييم')} ({templates.length})
+            {ar ? 'نماذج ومعايير التقييم' : 'Evaluation Templates'} ({templates.length})
           </button>
         </div>
 
@@ -287,10 +288,9 @@ function EvaluationsCenterContent() {
                   {ar ? 'معيار ومعادلة التصنيف العادل للاعبين' : 'Fair Evaluation Matrix & Formula'}
                 </h4>
                 <p className="text-xs text-emerald-200 mt-1 leading-relaxed">
-                  {t(
-                    'evaluations.formulaNotice',
-                    'يتم الترتيب بناءً على: المعدل التراكمي = (المهارات الفنية + الوعي التكتيكي + الجاهزية البدنية + الانضباط والسلوك) / 4 بناءً على تقييمات المدربين الرسمية لكل فئة عمرية أو مجموعة تدريبية، لمنع مقارنة الفئات العمرية غير المتكافئة.',
-                  )}
+                  {ar
+                    ? 'يتم الترتيب بناءً على: المعدل التراكمي = (المهارات الفنية + الوعي التكتيكي + الجاهزية البدنية + الانضباط والسلوك) / 4 بناءً على تقييمات المدربين الرسمية لكل فئة عمرية أو مجموعة تدريبية، لمنع مقارنة الفئات العمرية غير المتكافئة.'
+                    : 'Rankings are computed as: Cumulative GPA = (Technical + Tactical + Physical + Behavioral) / 4 across age groups to prevent unbalanced comparisons.'}
                 </p>
               </div>
             </div>
@@ -300,7 +300,7 @@ function EvaluationsCenterContent() {
               <div className="flex items-center gap-3 w-full sm:w-auto">
                 <span className="text-xs text-[var(--text-muted)] font-medium flex items-center gap-1">
                   <Filter className="h-3.5 w-3.5 text-[var(--accent-primary)]" />
-                  {t('evaluations.filterAge', 'الفئة العمرية:')}
+                  {ar ? 'الفئة العمرية:' : 'Age Category:'}
                 </span>
                 <select
                   value={selectedAgeCategory}
@@ -316,7 +316,7 @@ function EvaluationsCenterContent() {
 
               <div className="flex items-center gap-3 w-full sm:w-auto">
                 <span className="text-xs text-[var(--text-muted)] font-medium">
-                  {t('evaluations.filterGroup', 'المجموعة التدريبية:')}
+                  {ar ? 'المجموعة التدريبية:' : 'Training Squad:'}
                 </span>
                 <select
                   value={selectedGroupId}
@@ -547,7 +547,7 @@ function EvaluationsCenterContent() {
                 <div className="space-y-1">
                   <div className="flex justify-between text-xs">
                     <span className="font-semibold text-[var(--text-main)]">
-                      1. {t('evaluations.technicalScore', 'المهارات الفنية')} (Technical)
+                      1. {ar ? 'المهارات الفنية' : 'Technical Skills'} (Technical)
                     </span>
                     <span className="font-bold text-[var(--accent-primary)]">
                       {formTechnical.toFixed(1)} / 10
@@ -573,7 +573,7 @@ function EvaluationsCenterContent() {
                 <div className="space-y-1">
                   <div className="flex justify-between text-xs">
                     <span className="font-semibold text-[var(--text-main)]">
-                      2. {t('evaluations.tacticalScore', 'الوعي التكتيكي')} (Tactical)
+                      2. {ar ? 'الوعي التكتيكي' : 'Tactical Awareness'} (Tactical)
                     </span>
                     <span className="font-bold text-[var(--accent-primary)]">
                       {formTactical.toFixed(1)} / 10
@@ -599,7 +599,7 @@ function EvaluationsCenterContent() {
                 <div className="space-y-1">
                   <div className="flex justify-between text-xs">
                     <span className="font-semibold text-[var(--text-main)]">
-                      3. {t('evaluations.physicalScore', 'الجاهزية البدنية')} (Physical)
+                      3. {ar ? 'الجاهزية البدنية' : 'Physical Fitness'} (Physical)
                     </span>
                     <span className="font-bold text-[var(--accent-primary)]">
                       {formPhysical.toFixed(1)} / 10
@@ -625,7 +625,7 @@ function EvaluationsCenterContent() {
                 <div className="space-y-1">
                   <div className="flex justify-between text-xs">
                     <span className="font-semibold text-[var(--text-main)]">
-                      4. {t('evaluations.behavioralScore', 'الانضباط والسلوك')} (Behavioral)
+                      4. {ar ? 'الانضباط والسلوك' : 'Discipline & Behavior'} (Behavioral)
                     </span>
                     <span className="font-bold text-[var(--accent-primary)]">
                       {formBehavioral.toFixed(1)} / 10
@@ -652,7 +652,7 @@ function EvaluationsCenterContent() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
                 <div>
                   <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">
-                    {t('evaluations.strengthsLabel', 'أبرز نقاط القوة')}
+                    {ar ? 'أبرز نقاط القوة' : 'Key Strengths'}
                   </label>
                   <textarea
                     rows={2}
@@ -665,7 +665,7 @@ function EvaluationsCenterContent() {
 
                 <div>
                   <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">
-                    {t('evaluations.improvementsLabel', 'مجالات بحاجة إلى تطوير')}
+                    {ar ? 'مجالات بحاجة إلى تطوير' : 'Areas for Improvement'}
                   </label>
                   <textarea
                     rows={2}
@@ -717,7 +717,7 @@ function EvaluationsCenterContent() {
 
                 <div>
                   <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">
-                    {t('evaluations.goalsLabel', 'الأهداف المقترحة للمرحلة القادمة')}
+                    {ar ? 'الأهداف المقترحة للمرحلة القادمة' : 'Next Milestone Goals'}
                   </label>
                   <input
                     type="text"
@@ -739,10 +739,9 @@ function EvaluationsCenterContent() {
                     className="h-4 w-4 rounded border-[var(--border-subtle)] bg-[var(--bg-base)] text-[var(--accent-primary)] focus:ring-0"
                   />
                   <span className="text-xs text-[var(--text-main)] font-medium">
-                    {t(
-                      'evaluations.publishCheckbox',
-                      'نشر التقييم فوراً ليظهر في بوابة اللاعب وبوابة ولي الأمر',
-                    )}
+                    {ar
+                      ? 'نشر التقييم فوراً ليظهر في بوابة اللاعب وبوابة ولي الأمر'
+                      : 'Publish evaluation immediately to Player & Guardian portals'}
                   </span>
                 </label>
 
@@ -767,7 +766,7 @@ function EvaluationsCenterContent() {
                     ) : (
                       <>
                         <CheckCircle2 className="h-4 w-4" />
-                        <span>{t('evaluations.saveEvaluationBtn', 'اعتماد وحفظ التقييم')}</span>
+                        <span>{ar ? 'اعتماد وحفظ التقييم' : 'Submit & Publish Evaluation'}</span>
                       </>
                     )}
                   </button>
