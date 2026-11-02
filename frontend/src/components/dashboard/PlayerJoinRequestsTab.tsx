@@ -5,6 +5,7 @@ import { useLocale } from '../../lib/locale-context';
 import { useAuth } from '../../lib/auth-context';
 import { apiClient } from '../../lib/api-client';
 import { useToast } from '../ui/Toast';
+import { translateDataString } from '../../lib/data-translator';
 import {
   UserPlus,
   Clock,
@@ -398,7 +399,7 @@ export function PlayerJoinRequestsTab() {
                         </option>
                         {branches.map((b) => (
                           <option key={b.id} value={b.id}>
-                            {b.name} ({b.city || 'الفرع'})
+                            {translateDataString(b.name, locale)} ({translateDataString(b.city, locale) || (ar ? 'الفرع' : 'Branch')})
                           </option>
                         ))}
                       </select>

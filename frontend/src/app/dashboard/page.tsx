@@ -9,6 +9,7 @@ import { canAccessAdminRoutes, getRoleHomeRoute } from '../../lib/role-routing';
 import { AppShell } from '../../components/layout/AppShell';
 import { StatCard, StatusBadge } from '../../components/ui';
 import { api } from '../../lib/api-client';
+import { translateDataString } from '../../lib/data-translator';
 import { PlayerJoinRequestsTab } from '../../components/dashboard/PlayerJoinRequestsTab';
 import type { BranchSummary, PlayerSummary } from '@academy/shared';
 import {
@@ -112,7 +113,7 @@ export default function DashboardPage() {
                   {locale === 'ar' ? 'لوحة تحكم العمليات المركزية' : 'Academy Operations Hub'}
                 </span>
                 <span className="text-xs text-[var(--text-muted)] font-medium">
-                  {activeTenant?.tenantName}
+                  {translateDataString(activeTenant?.tenantName, locale)}
                 </span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[var(--text-main)]">
@@ -181,7 +182,7 @@ export default function DashboardPage() {
             className="block card-hover-interactive rounded-2xl"
           >
             <StatCard
-              title={t('nav.players', 'اللاعبين والناشئين')}
+              title={locale === 'ar' ? 'اللاعبين والناشئين' : 'Players & Youth'}
               value={totalPlayers}
               subtitle={locale === 'ar' ? 'عرض السجلات والملفات' : 'View roster records'}
               icon={Users}
@@ -192,7 +193,7 @@ export default function DashboardPage() {
 
           <Link href="/groups" id="kpi-groups" className="block card-hover-interactive rounded-2xl">
             <StatCard
-              title={t('nav.groups', 'المجموعات التدريبية')}
+              title={locale === 'ar' ? 'المجموعات التدريبية' : 'Training Groups'}
               value={groupCount}
               subtitle={locale === 'ar' ? 'إدارة الفرق والجدول' : 'Manage squads and rosters'}
               icon={Layers}
@@ -205,7 +206,7 @@ export default function DashboardPage() {
             className="block card-hover-interactive rounded-2xl"
           >
             <StatCard
-              title={t('nav.sessions', 'الحصص التدريبية')}
+              title={locale === 'ar' ? 'الحصص التدريبية' : 'Training Sessions'}
               value={sessionCount}
               subtitle={locale === 'ar' ? 'كشوف الحضور والتحضير' : 'Live attendance logs'}
               icon={CalendarCheck}
@@ -218,7 +219,7 @@ export default function DashboardPage() {
             className="block card-hover-interactive rounded-2xl"
           >
             <StatCard
-              title={t('nav.reports', 'تقارير الحضور')}
+              title={locale === 'ar' ? 'تقارير الحضور' : 'Attendance Reports'}
               value={locale === 'ar' ? 'التحليلات' : 'Analytics'}
               subtitle={locale === 'ar' ? 'معدلات الانضباط والغياب' : 'Attendance rate analytics'}
               icon={BarChart3}
@@ -231,7 +232,7 @@ export default function DashboardPage() {
             className="block card-hover-interactive rounded-2xl"
           >
             <StatCard
-              title={t('nav.branches', 'الفروع والملاعب')}
+              title={locale === 'ar' ? 'الفروع والملاعب' : 'Branches & Pitches'}
               value={branches.length}
               subtitle={locale === 'ar' ? 'المقرات التشغيلية' : 'Operating pitch sites'}
               icon={GitBranch}
@@ -290,13 +291,13 @@ export default function DashboardPage() {
                 <table className="w-full text-start text-xs">
                   <thead className="bg-[var(--bg-surface-subtle)] text-[var(--text-muted)] border-b border-[var(--border-subtle)]">
                     <tr>
-                      <th className="py-2.5 px-3 font-semibold text-start">{t('common.player')}</th>
-                      <th className="py-2.5 px-3 font-semibold text-start">{t('common.branch')}</th>
+                      <th className="py-2.5 px-3 font-semibold text-start">{locale === 'ar' ? 'اللاعب' : 'Player'}</th>
+                      <th className="py-2.5 px-3 font-semibold text-start">{locale === 'ar' ? 'الفرع' : 'Branch'}</th>
                       <th className="py-2.5 px-3 font-semibold text-start">
-                        {t('common.guardian')}
+                        {locale === 'ar' ? 'ولي الأمر' : 'Parent / Guardian'}
                       </th>
-                      <th className="py-2.5 px-3 font-semibold text-start">{t('common.status')}</th>
-                      <th className="py-2.5 px-3 font-semibold text-end">{t('common.actions')}</th>
+                      <th className="py-2.5 px-3 font-semibold text-start">{locale === 'ar' ? 'الحالة' : 'Status'}</th>
+                      <th className="py-2.5 px-3 font-semibold text-end">{locale === 'ar' ? 'الإجراءات' : 'Actions'}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[var(--border-subtle)]">
@@ -333,7 +334,7 @@ export default function DashboardPage() {
                           </td>
                           <td className="py-3 px-3">
                             <span className="text-[var(--text-main)] font-medium">
-                              {currentBranch?.name || '-'}
+                              {translateDataString(currentBranch?.name, locale) || '-'}
                             </span>
                           </td>
                           <td className="py-3 px-3">
@@ -379,14 +380,14 @@ export default function DashboardPage() {
               <div className="flex items-center gap-2">
                 <GitBranch className="h-5 w-5 text-[var(--accent-primary)]" />
                 <h2 className="text-base font-bold text-[var(--text-main)]">
-                  {t('nav.branches', 'الفروع')}
+                  {locale === 'ar' ? 'الفروع والملاعب' : 'Branches & Pitches'}
                 </h2>
               </div>
               <Link
                 href="/branches"
                 className="text-xs font-semibold text-[var(--accent-primary)] hover:underline"
               >
-                {t('common.edit', 'إدارة')}
+                {locale === 'ar' ? 'إدارة' : 'Manage'}
               </Link>
             </div>
 
@@ -412,7 +413,7 @@ export default function DashboardPage() {
                       )}
                     </div>
                     <div className="text-[11px] text-[var(--text-muted)] flex items-center justify-between">
-                      <span>{b.city || (locale === 'ar' ? 'المدينة' : 'Site')}</span>
+                      <span>{translateDataString(b.city, locale) || (locale === 'ar' ? 'المدينة' : 'Site')}</span>
                       <span className="text-[var(--accent-primary)] font-bold">
                         {b.activePlayersCount || 0} {locale === 'ar' ? 'لاعب' : 'players'}
                       </span>
