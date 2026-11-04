@@ -4,8 +4,8 @@ import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Navbar } from '../../components/Navbar';
-import { useLocale } from '../../lib/locale-context';
-import { api } from '../../lib/api-client';
+import { useLocale } from '@/contexts/locale-context';
+import { api } from '@/api/client';
 import {
   Mail,
   CheckCircle2,

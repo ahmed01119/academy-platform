@@ -3,7 +3,7 @@
 import React from 'react';
 import { WifiOff, RefreshCw } from 'lucide-react';
 import { SportexusLogo } from '../../components/brand/SportexusLogo';
-import { useLocale } from '../../lib/locale-context';
+import { useLocale } from '@/contexts/locale-context';
 
 export default function OfflinePage() {
   const { locale } = useLocale();

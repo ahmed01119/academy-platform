@@ -23,15 +23,15 @@ import {
   CreditCard,
   X,
 } from 'lucide-react';
-import { useAuth } from '../../../lib/auth-context';
-import { useLocale } from '../../../lib/locale-context';
-import { translateDataString } from '../../../lib/data-translator';
+import { useAuth } from '@/contexts/auth-context';
+import { useLocale } from '@/contexts/locale-context';
+import { translateDataString } from '@/utils/data-translator';
 import { AppShell } from '../../../components/layout/AppShell';
 import { PageHeader } from '../../../components/ui/PageHeader';
 import { useToast } from '../../../components/ui/Toast';
-import { apiClient } from '../../../lib/api-client';
-import { offlineStore } from '../../../lib/offline-attendance-store';
-import { prepareForOfflineUse } from '../../../lib/offline-engine';
+import { apiClient } from '@/api/client';
+import { offlineStore } from '@/utils/offline-attendance-store';
+import { prepareForOfflineUse } from '@/utils/offline-engine';
 import type { ScanPlayerQrResponse, SessionSummary } from '@academy/shared';
 
 interface ScanFeedback {

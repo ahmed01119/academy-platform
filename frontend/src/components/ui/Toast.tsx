@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
 import { CheckCircle2, AlertCircle, AlertTriangle, Info, X } from 'lucide-react';
-import { useLocale } from '../../lib/locale-context';
+import { useLocale } from '@/contexts/locale-context';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
 

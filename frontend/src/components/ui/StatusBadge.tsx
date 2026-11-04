@@ -1,8 +1,8 @@
 'use client';
 
 import React from 'react';
-import { useLocale } from '../../lib/locale-context';
-import { translateStatus, translateDataString } from '../../lib/data-translator';
+import { useLocale } from '@/contexts/locale-context';
+import { translateStatus, translateDataString } from '@/utils/data-translator';
 
 export type BadgeVariant =
   | 'success'

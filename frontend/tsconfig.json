@@ -3,10 +3,50 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": [
+        "./src/*"
+      ],
+      "@/api": [
+        "./src/api/index"
+      ],
+      "@/api/*": [
+        "./src/api/*"
+      ],
+      "@/contexts": [
+        "./src/contexts/index"
+      ],
+      "@/contexts/*": [
+        "./src/contexts/*"
+      ],
+      "@/utils": [
+        "./src/utils/index"
+      ],
+      "@/utils/*": [
+        "./src/utils/*"
+      ],
+      "@/locales": [
+        "./src/locales/index"
+      ],
+      "@/locales/*": [
+        "./src/locales/*"
+      ]
     },
-    "plugins": [{ "name": "next" }]
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ]
   },
-  "include": ["next-env.d.ts", "src/**/*.ts", "src/**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules", ".next", "**/*.test.ts", "**/*.test.tsx"]
+  "include": [
+    "next-env.d.ts",
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    ".next",
+    "**/*.test.ts",
+    "**/*.test.tsx"
+  ]
 }

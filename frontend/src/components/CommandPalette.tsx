@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect, useRef, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '../lib/auth-context';
-import { useLocale } from '../lib/locale-context';
-import api from '../lib/api-client';
+import { useAuth } from '@/contexts/auth-context';
+import { useLocale } from '@/contexts/locale-context';
+import api from '@/api/client';
 import {
   Search,
   Users,

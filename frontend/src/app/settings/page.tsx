@@ -2,14 +2,14 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '../../lib/auth-context';
-import { useLocale } from '../../lib/locale-context';
-import { useTheme, type ThemeMode } from '../../lib/theme-context';
-import { translateRole } from '../../lib/data-translator';
-import { canAccessAdminRoutes, getRoleHomeRoute } from '../../lib/role-routing';
+import { useAuth } from '@/contexts/auth-context';
+import { useLocale } from '@/contexts/locale-context';
+import { useTheme, type ThemeMode } from '@/contexts/theme-context';
+import { translateRole } from '@/utils/data-translator';
+import { canAccessAdminRoutes, getRoleHomeRoute } from '@/utils/role-routing';
 import { AppShell } from '../../components/layout/AppShell';
 import { PageHeader } from '../../components/ui/PageHeader';
-import { api, apiClient } from '../../lib/api-client';
+import { api, apiClient } from '@/api/client';
 import type { AcademyProfile, UpdateAcademySettings } from '@academy/shared';
 import {
   Building2,

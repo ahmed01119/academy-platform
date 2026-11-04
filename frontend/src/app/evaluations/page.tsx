@@ -3,11 +3,11 @@
 import React, { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { apiClient } from '../../lib/api-client';
-import { useAuth } from '../../lib/auth-context';
-import { useLocale } from '../../lib/locale-context';
-import { translateDataString } from '../../lib/data-translator';
-import { offlineEngine } from '../../lib/offline-engine';
+import { apiClient } from '@/api/client';
+import { useAuth } from '@/contexts/auth-context';
+import { useLocale } from '@/contexts/locale-context';
+import { translateDataString } from '@/utils/data-translator';
+import { offlineEngine } from '@/utils/offline-engine';
 import { AppShell } from '../../components/layout/AppShell';
 import { PageHeader } from '../../components/ui/PageHeader';
 import {

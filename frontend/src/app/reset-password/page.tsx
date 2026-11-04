@@ -4,8 +4,8 @@ import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Navbar } from '../../components/Navbar';
-import { useLocale } from '../../lib/locale-context';
-import { api } from '../../lib/api-client';
+import { useLocale } from '@/contexts/locale-context';
+import { api } from '@/api/client';
 import {
   KeyRound,
   Eye,
@@ -14,26 +14,40 @@ import {
   CheckCircle2,
   ArrowRight,
   Loader2,
+  Lock,
+  Mail,
 } from 'lucide-react';
 
 function ResetPasswordForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { locale } = useLocale();
+  const { locale, isRtl } = useLocale();
 
   const [token, setToken] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    const queryToken = searchParams.get('token');
+    // Handle token, otp, or code query params
+    const queryToken =
+      searchParams.get('token') ||
+      searchParams.get('otp') ||
+      searchParams.get('code');
     if (queryToken) {
-      setToken(queryToken);
+      setToken(queryToken.replace(/\D/g, '').slice(0, 6));
+    }
+
+    // Handle optional email query param
+    const queryEmail = searchParams.get('email');
+    if (queryEmail) {
+      setEmail(queryEmail.trim());
     }
   }, [searchParams]);
 
@@ -41,11 +55,12 @@ function ResetPasswordForm() {
     e.preventDefault();
     setError(null);
 
-    if (password !== confirmPassword) {
+    const cleanToken = token.trim();
+    if (!cleanToken || cleanToken.length !== 6 || !/^\d{6}$/.test(cleanToken)) {
       setError(
         locale === 'ar'
-          ? 'كلمة المرور وتأكيد كلمة المرور غير متطابقين.'
-          : 'Passwords do not match.',
+          ? 'يرجى إدخال رمز التحقق المكوّن من 6 أرقام.'
+          : 'Please enter the 6-digit verification code.',
       );
       return;
     }
@@ -59,11 +74,20 @@ function ResetPasswordForm() {
       return;
     }
 
+    if (password !== confirmPassword) {
+      setError(
+        locale === 'ar'
+          ? 'كلمة المرور وتأكيد كلمة المرور غير متطابقين.'
+          : 'Passwords do not match.',
+      );
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
       await api.auth.resetPassword({
-        token: token.trim(),
+        token: cleanToken,
         newPassword: password,
       });
       setSuccess(true);
@@ -75,8 +99,8 @@ function ResetPasswordForm() {
         err instanceof Error
           ? err.message
           : locale === 'ar'
-            ? 'فشل إعادة ضبط كلمة المرور. قد يكون الرمز منتهي الصلاحية أو مستخدماً بالفعل.'
-            : 'Failed to reset password. The token may be expired or already used.',
+            ? 'فشل إعادة ضبط كلمة المرور. قد يكون الرمز غير صحيح أو منتهي الصلاحية.'
+            : 'Failed to reset password. The token may be invalid or expired.',
       );
     } finally {
       setIsSubmitting(false);
@@ -90,7 +114,7 @@ function ResetPasswordForm() {
         <div className="absolute -top-16 -right-16 h-40 w-40 rounded-full bg-[var(--accent-blue)]/20 blur-3xl pointer-events-none" />
         <div className="absolute -bottom-16 -left-16 h-40 w-40 rounded-full bg-[var(--accent-primary)]/10 blur-3xl pointer-events-none" />
 
-        <div className="text-center mb-8 relative z-10">
+        <div className="text-center mb-8 relative z-10 flex flex-col items-center">
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-[#0A3BFF] to-[#00D6FF] shadow-lg shadow-blue-600/25">
             <KeyRound className="h-6 w-6 text-white" />
           </div>
@@ -99,9 +123,15 @@ function ResetPasswordForm() {
           </h1>
           <p className="mt-2 text-sm text-[var(--text-muted)]">
             {locale === 'ar'
-              ? 'أدخل رمز الاستعادة وكلمة المرور الجديدة لحسابك'
-              : 'Enter your recovery code and new password'}
+              ? 'أدخل رمز التحقق (OTP) المكوّن من 6 أرقام وكلمة المرور الجديدة'
+              : 'Enter your 6-digit verification code (OTP) and new password'}
           </p>
+          {email && (
+            <div className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--bg-surface-subtle)] border border-[var(--border-subtle)] text-xs text-[var(--text-muted)] font-mono">
+              <Mail className="h-3 w-3 text-[var(--accent-primary)]" />
+              <span>{email}</span>
+            </div>
+          )}
         </div>
 
         {error && (
@@ -124,27 +154,30 @@ function ResetPasswordForm() {
 
         {!success && (
           <form onSubmit={handleSubmit} className="space-y-5 relative z-10">
+            {/* OTP Code */}
             <div>
               <label
                 className="block text-xs font-semibold text-[var(--text-sub)] mb-1.5"
                 htmlFor="token"
               >
-                {locale === 'ar' ? 'رمز الاستعادة *' : 'Recovery Code *'}
+                {locale === 'ar' ? 'رمز التحقق (6 أرقام) *' : 'Verification Code (6 digits) *'}
               </label>
               <input
                 id="token"
                 type="text"
+                inputMode="numeric"
+                pattern="[0-9]{6}"
+                maxLength={6}
                 required
                 value={token}
-                onChange={(e) => setToken(e.target.value)}
-                placeholder={
-                  locale === 'ar' ? 'أدخل الرمز المرسل...' : 'Enter the recovery token...'
-                }
+                onChange={(e) => setToken(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="000000"
                 dir="ltr"
-                className="w-full rounded-xl border border-[var(--border-app)] bg-[var(--bg-surface-subtle)] py-2.5 px-3 text-xs font-mono text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:ring-1 focus:ring-[var(--accent-primary)] outline-none transition-all"
+                className="w-full rounded-xl border border-[var(--border-app)] bg-[var(--bg-surface-subtle)] py-3 px-4 text-center text-xl font-mono font-bold tracking-[0.5em] text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:ring-1 focus:ring-[var(--accent-primary)] outline-none transition-all"
               />
             </div>
 
+            {/* New Password */}
             <div>
               <label
                 className="block text-xs font-semibold text-[var(--text-sub)] mb-1.5"
@@ -157,22 +190,25 @@ function ResetPasswordForm() {
                   id="password"
                   type={showPassword ? 'text' : 'password'}
                   required
+                  minLength={8}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••••••"
+                  placeholder={locale === 'ar' ? 'كلمة مرور قوية (8+ أحرف)' : 'Strong password (8+ chars)'}
                   dir="ltr"
-                  className="w-full rounded-xl border border-[var(--border-app)] bg-[var(--bg-surface-subtle)] py-2.5 pr-4 pl-10 text-sm text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:ring-1 focus:ring-[var(--accent-primary)] outline-none transition-all"
+                  className="w-full rounded-xl border border-[var(--border-app)] bg-[var(--bg-surface-subtle)] py-2.5 px-4 ps-10 text-sm text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:ring-1 focus:ring-[var(--accent-primary)] outline-none transition-all"
                 />
+                <Lock className="absolute start-3 top-3 h-4 w-4 text-slate-500" />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute left-3 top-3 text-slate-500 hover:text-slate-300"
+                  className="absolute end-3 top-3 text-slate-400 hover:text-[var(--text-main)]"
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
             </div>
 
+            {/* Confirm Password */}
             <div>
               <label
                 className="block text-xs font-semibold text-[var(--text-sub)] mb-1.5"
@@ -180,16 +216,26 @@ function ResetPasswordForm() {
               >
                 {locale === 'ar' ? 'تأكيد كلمة المرور الجديدة *' : 'Confirm New Password *'}
               </label>
-              <input
-                id="confirmPassword"
-                type={showPassword ? 'text' : 'password'}
-                required
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="••••••••••••"
-                dir="ltr"
-                className="w-full rounded-xl border border-[var(--border-app)] bg-[var(--bg-surface-subtle)] py-2.5 px-3 text-sm text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:ring-1 focus:ring-[var(--accent-primary)] outline-none transition-all"
-              />
+              <div className="relative">
+                <input
+                  id="confirmPassword"
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  required
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder={locale === 'ar' ? 'أعد كتابة كلمة المرور' : 'Re-enter password'}
+                  dir="ltr"
+                  className="w-full rounded-xl border border-[var(--border-app)] bg-[var(--bg-surface-subtle)] py-2.5 px-4 ps-10 text-sm text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:ring-1 focus:ring-[var(--accent-primary)] outline-none transition-all"
+                />
+                <Lock className="absolute start-3 top-3 h-4 w-4 text-slate-500" />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute end-3 top-3 text-slate-400 hover:text-[var(--text-main)]"
+                >
+                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
 
             <button
@@ -207,7 +253,7 @@ function ResetPasswordForm() {
                   <span>
                     {locale === 'ar' ? 'تأكيد كلمة المرور الجديدة' : 'Confirm New Password'}
                   </span>
-                  <ArrowRight className="h-4 w-4 rotate-180" />
+                  <ArrowRight className={`h-4 w-4 ${isRtl ? 'rotate-180' : ''}`} />
                 </>
               )}
             </button>
@@ -233,8 +279,12 @@ function ResetPasswordLoadingFallback() {
 }
 
 export default function ResetPasswordPage() {
+  const { locale } = useLocale();
   return (
-    <div className="min-h-screen bg-[var(--bg-base)] text-[var(--text-main)] flex flex-col overflow-x-hidden animate-fade-in">
+    <div
+      className="min-h-screen bg-[var(--bg-base)] text-[var(--text-main)] flex flex-col overflow-x-hidden animate-fade-in"
+      dir={locale === 'ar' ? 'rtl' : 'ltr'}
+    >
       <Navbar />
       <main className="flex-1 flex items-center justify-center p-3 sm:p-6 lg:p-8">
         <Suspense

@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { useLocale } from '../../lib/locale-context';
-import { offlineEngine } from '../../lib/offline-engine';
+import { useLocale } from '@/contexts/locale-context';
+import { offlineEngine } from '@/utils/offline-engine';
 
 const RUNNING_BUILD_ID = process.env.NEXT_PUBLIC_BUILD_ID || '';
 

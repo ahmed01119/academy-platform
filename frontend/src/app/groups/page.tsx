@@ -3,16 +3,16 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '../../lib/auth-context';
-import { useLocale } from '../../lib/locale-context';
+import { useAuth } from '@/contexts/auth-context';
+import { useLocale } from '@/contexts/locale-context';
 import {
   canAccessAdminRoutes,
   canAccessCoachRoutes,
   getRoleHomeRoute,
-} from '../../lib/role-routing';
+} from '@/utils/role-routing';
 import { AppShell } from '../../components/layout/AppShell';
 import { PageHeader, StatusBadge } from '../../components/ui';
-import { api } from '../../lib/api-client';
+import { api } from '@/api/client';
 import type { BranchSummary, GroupStatus, TrainingGroupSummary } from '@academy/shared';
 import {
   Layers,

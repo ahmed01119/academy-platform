@@ -1,8 +1,8 @@
 import type { Metadata, Viewport } from 'next';
 import { DEFAULT_LOCALE, LOCALE_DIRECTION } from '@academy/shared';
-import { AuthProvider } from '../lib/auth-context';
-import { ThemeProvider, themeInitScript } from '../lib/theme-context';
-import { LocaleProvider, localeInitScript } from '../lib/locale-context';
+import { AuthProvider } from '@/contexts/auth-context';
+import { ThemeProvider, themeInitScript } from '@/contexts/theme-context';
+import { LocaleProvider, localeInitScript } from '@/contexts/locale-context';
 import { ToastProvider } from '../components/ui/Toast';
 import { ServiceWorkerRegistrar } from '../components/pwa/ServiceWorkerRegistrar';
 import { SyncStatus } from '../components/pwa/SyncStatus';

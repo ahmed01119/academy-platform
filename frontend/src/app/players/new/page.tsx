@@ -3,11 +3,11 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '../../../lib/auth-context';
-import { useLocale } from '../../../lib/locale-context';
+import { useAuth } from '@/contexts/auth-context';
+import { useLocale } from '@/contexts/locale-context';
 import { AppShell } from '../../../components/layout/AppShell';
 import { PageHeader } from '../../../components/ui/PageHeader';
-import { api } from '../../../lib/api-client';
+import { api } from '@/api/client';
 import type {
   BranchSummary,
   CreatePlayerRequest,
@@ -19,7 +19,7 @@ import { UserPlus, AlertCircle, Save, User, Heart, Users, GitBranch } from 'luci
 export default function NewPlayerPage() {
   const router = useRouter();
   const { user, activeTenant, isLoading } = useAuth();
-  const { t, locale } = useLocale();
+  const { locale } = useLocale();
 
   const [branches, setBranches] = useState<BranchSummary[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);

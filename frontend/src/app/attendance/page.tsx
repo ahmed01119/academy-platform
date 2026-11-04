@@ -3,10 +3,10 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '../../lib/auth-context';
+import { useAuth } from '@/contexts/auth-context';
 import { AppShell } from '../../components/layout/AppShell';
 import { PageHeader } from '../../components/ui/PageHeader';
-import { api } from '../../lib/api-client';
+import { api } from '@/api/client';
 import type { SessionSummary } from '@academy/shared';
 import {
   QrCode,
@@ -19,7 +19,7 @@ import {
   ArrowLeft,
   Zap,
 } from 'lucide-react';
-import { useLocale } from '../../lib/locale-context';
+import { useLocale } from '@/contexts/locale-context';
 
 export default function AttendanceHubPage() {
   const router = useRouter();

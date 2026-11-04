@@ -3,10 +3,10 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '../../lib/auth-context';
-import { useLocale } from '../../lib/locale-context';
-import { translateDataString } from '../../lib/data-translator';
-import { apiClient } from '../../lib/api-client';
+import { useAuth } from '@/contexts/auth-context';
+import { useLocale } from '@/contexts/locale-context';
+import { translateDataString } from '@/utils/data-translator';
+import { apiClient } from '@/api/client';
 import { AppShell } from '../../components/layout/AppShell';
 import { PageHeader } from '../../components/ui/PageHeader';
 import {
@@ -24,7 +24,7 @@ import type { GuardianPortalData, PlayerEvaluation } from '@academy/shared';
 
 export default function GuardianPortalPage() {
   const { user, isLoading: authLoading } = useAuth();
-  const { locale, isRtl, t } = useLocale();
+  const { locale, isRtl } = useLocale();
   const router = useRouter();
   const ar = locale === 'ar';
 

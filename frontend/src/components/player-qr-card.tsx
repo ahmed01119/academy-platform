@@ -14,8 +14,8 @@ import {
   ShieldAlert,
 } from 'lucide-react';
 import type { PlayerQrCardResponse } from '@academy/shared';
-import { apiClient } from '../lib/api-client';
-import { useLocale } from '../lib/locale-context';
+import { apiClient } from '@/api/client';
+import { useLocale } from '@/contexts/locale-context';
 
 interface PlayerQrCardProps {
   card: PlayerQrCardResponse;

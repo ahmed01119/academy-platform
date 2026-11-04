@@ -4,8 +4,8 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { Navbar } from '../components/Navbar';
 import { SportexusLogo } from '../components/brand/SportexusLogo';
-import { useAuth } from '../lib/auth-context';
-import { useLocale } from '../lib/locale-context';
+import { useAuth } from '@/contexts/auth-context';
+import { useLocale } from '@/contexts/locale-context';
 import {
   Building2,
   Trophy,
@@ -27,7 +27,7 @@ import {
   UserPlus,
   X,
 } from 'lucide-react';
-import apiClient from '../lib/api-client';
+import apiClient from '@/api/client';
 
 export default function HomePage() {
   const { user, activeTenant } = useAuth();

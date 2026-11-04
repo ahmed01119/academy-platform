@@ -3,9 +3,9 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { apiClient } from '../../../../lib/api-client';
-import { useLocale } from '../../../../lib/locale-context';
-import { translateDataString } from '../../../../lib/data-translator';
+import { apiClient } from '@/api/client';
+import { useLocale } from '@/contexts/locale-context';
+import { translateDataString } from '@/utils/data-translator';
 import { AppShell } from '../../../../components/layout/AppShell';
 import { PageHeader } from '../../../../components/ui/PageHeader';
 import {
@@ -24,7 +24,7 @@ import type { PlayerDevelopmentProfile } from '@academy/shared';
 export default function PlayerDevelopmentProfilePage() {
   const params = useParams();
   const playerId = params.id as string;
-  const { locale, t } = useLocale();
+  const { locale } = useLocale();
 
   const [profile, setProfile] = useState<PlayerDevelopmentProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);

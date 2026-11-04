@@ -3,12 +3,12 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useAuth } from '../../../lib/auth-context';
+import { useAuth } from '@/contexts/auth-context';
 import { AppShell } from '../../../components/layout/AppShell';
 import { PageHeader } from '../../../components/ui/PageHeader';
 import { useToast } from '../../../components/ui/Toast';
-import { api } from '../../../lib/api-client';
-import { offlineStore } from '../../../lib/offline-attendance-store';
+import { api } from '@/api/client';
+import { offlineStore } from '@/utils/offline-attendance-store';
 import type { AttendanceStatus, SessionDetails, SessionSummary } from '@academy/shared';
 import {
   CheckCircle2,
@@ -24,7 +24,7 @@ import {
   ArrowLeft,
   WifiOff,
 } from 'lucide-react';
-import { useLocale } from '../../../lib/locale-context';
+import { useLocale } from '@/contexts/locale-context';
 
 function QuickAttendanceContent() {
   const router = useRouter();

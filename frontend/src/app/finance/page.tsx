@@ -2,13 +2,13 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '../../lib/auth-context';
-import { useLocale } from '../../lib/locale-context';
+import { useAuth } from '@/contexts/auth-context';
+import { useLocale } from '@/contexts/locale-context';
 import { AppShell } from '../../components/layout/AppShell';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { useToast } from '../../components/ui/Toast';
-import { translateDataString } from '../../lib/data-translator';
-import { apiClient } from '../../lib/api-client';
+import { translateDataString } from '@/utils/data-translator';
+import { apiClient } from '@/api/client';
 import type {
   AcademyFinancialDashboardMetrics,
   FinancialTransactionItem,
@@ -40,7 +40,7 @@ import {
 export default function FinanceDashboardPage() {
   const router = useRouter();
   const { user, activeTenant, isLoading: authLoading } = useAuth();
-  const { t, locale, isRtl } = useLocale();
+  const { t, locale } = useLocale();
   const isAr = locale === 'ar';
   const { toast } = useToast();
 

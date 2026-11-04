@@ -3,10 +3,10 @@
 import React, { useCallback, useEffect, useState, use } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '../../../lib/auth-context';
-import { useLocale } from '../../../lib/locale-context';
+import { useAuth } from '@/contexts/auth-context';
+import { useLocale } from '@/contexts/locale-context';
 import { AppShell } from '../../../components/layout/AppShell';
-import { api } from '../../../lib/api-client';
+import { api } from '@/api/client';
 import type {
   BranchSummary,
   PlayerDetails,
@@ -34,7 +34,6 @@ import {
   ShieldAlert,
 } from 'lucide-react';
 import { PlayerQrCard } from '../../../components/player-qr-card';
-import { translateDataString } from '../../../lib/data-translator';
 
 export default function PlayerProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
@@ -42,7 +41,7 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
 
   const router = useRouter();
   const { user, activeTenant, isLoading } = useAuth();
-  const { t, locale, isRtl } = useLocale();
+  const { t, locale } = useLocale();
   const isAr = locale === 'ar';
 
   const canViewSensitive =
@@ -159,7 +158,7 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
     } finally {
       setIsFetching(false);
     }
-  }, [user, activeTenant, playerId]);
+  }, [user, activeTenant, playerId, isAr]);
 
   useEffect(() => {
     void loadPlayerData();

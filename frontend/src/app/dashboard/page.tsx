@@ -3,13 +3,13 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '../../lib/auth-context';
-import { useLocale } from '../../lib/locale-context';
-import { canAccessAdminRoutes, getRoleHomeRoute } from '../../lib/role-routing';
+import { useAuth } from '@/contexts/auth-context';
+import { useLocale } from '@/contexts/locale-context';
+import { canAccessAdminRoutes, getRoleHomeRoute } from '@/utils/role-routing';
 import { AppShell } from '../../components/layout/AppShell';
 import { StatCard, StatusBadge } from '../../components/ui';
-import { api } from '../../lib/api-client';
-import { translateDataString } from '../../lib/data-translator';
+import { api } from '@/api/client';
+import { translateDataString } from '@/utils/data-translator';
 import { PlayerJoinRequestsTab } from '../../components/dashboard/PlayerJoinRequestsTab';
 import type { BranchSummary, PlayerSummary } from '@academy/shared';
 import {

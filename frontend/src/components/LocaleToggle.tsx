@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { useLocale } from '../lib/locale-context';
+import { useLocale } from '@/contexts/locale-context';
 import { Languages, ChevronDown } from 'lucide-react';
 
 interface LocaleToggleProps {

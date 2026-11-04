@@ -3,9 +3,9 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '../../lib/auth-context';
-import { useLocale } from '../../lib/locale-context';
-import { apiClient } from '../../lib/api-client';
+import { useAuth } from '@/contexts/auth-context';
+import { useLocale } from '@/contexts/locale-context';
+import { apiClient } from '@/api/client';
 import { AppShell } from '../../components/layout/AppShell';
 import { PageHeader, StatCard, EmptyState, StatusBadge } from '../../components/ui';
 import {
@@ -26,7 +26,7 @@ import type { SessionSummary, TrainingGroupSummary } from '@academy/shared';
 
 export default function CoachWorkspacePage() {
   const { user, activeTenant, isLoading: authLoading } = useAuth();
-  const { t, locale, isRtl } = useLocale();
+  const { locale, isRtl } = useLocale();
   const router = useRouter();
 
   const [todaySessions, setTodaySessions] = useState<SessionSummary[]>([]);

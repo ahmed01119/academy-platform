@@ -3,13 +3,13 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { useAuth } from '../../../lib/auth-context';
-import { useLocale } from '../../../lib/locale-context';
+import { useAuth } from '@/contexts/auth-context';
+import { useLocale } from '@/contexts/locale-context';
 import { AppShell } from '../../../components/layout/AppShell';
 import { useToast } from '../../../components/ui/Toast';
-import { api } from '../../../lib/api-client';
+import { api } from '@/api/client';
 import type { PlayerSummary, TrainingGroupDetails } from '@academy/shared';
-import { translateDataString } from '../../../lib/data-translator';
+import { translateDataString } from '@/utils/data-translator';
 import {
   Users,
   CalendarCheck,
@@ -34,7 +34,7 @@ export default function GroupDetailsPage() {
   const params = useParams();
   const groupId = params.id as string;
   const { user, activeTenant, isLoading } = useAuth();
-  const { t, locale, isRtl } = useLocale();
+  const { t, locale } = useLocale();
   const isAr = locale === 'ar';
   const DAYS_OF_WEEK = isAr ? DAYS_OF_WEEK_AR : DAYS_OF_WEEK_EN;
   const { toast } = useToast();
@@ -86,7 +86,7 @@ export default function GroupDetailsPage() {
     } finally {
       setIsFetching(false);
     }
-  }, [groupId]);
+  }, [groupId, isAr]);
 
   useEffect(() => {
     if (user && activeTenant && groupId) {

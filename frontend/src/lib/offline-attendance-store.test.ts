@@ -1,10 +1,10 @@
 import 'fake-indexeddb/auto';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { offlineStore } from './offline-attendance-store';
-import { apiClient } from './api-client';
+import { offlineStore } from '@/utils/offline-attendance-store';
+import { apiClient } from '@/api/client';
 import type { SessionDetails } from '@academy/shared';
 
-vi.mock('./api-client', () => ({
+vi.mock('@/api/client', () => ({
   apiClient: {
     attendance: {
       syncOfflineBatch: vi.fn(),

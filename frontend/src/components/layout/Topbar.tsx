@@ -3,12 +3,12 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useAuth } from '../../lib/auth-context';
-import { useLocale } from '../../lib/locale-context';
+import { useAuth } from '@/contexts/auth-context';
+import { useLocale } from '@/contexts/locale-context';
 import { ThemeToggle } from '../ThemeToggle';
 import { LocaleToggle } from '../LocaleToggle';
 import { CommandPalette } from '../CommandPalette';
-import api from '../../lib/api-client';
+import api from '@/api/client';
 import type { AppNotificationItem } from '@academy/shared';
 import {
   Menu,

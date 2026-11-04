@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { AlertCircle, RotateCcw } from 'lucide-react';
-import { useLocale } from '../../lib/locale-context';
+import { useLocale } from '@/contexts/locale-context';
 
 interface ErrorStateProps {
   title?: string;

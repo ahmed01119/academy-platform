@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { useTheme, type ThemeMode } from '../lib/theme-context';
-import { useLocale } from '../lib/locale-context';
+import { useTheme, type ThemeMode } from '@/contexts/theme-context';
+import { useLocale } from '@/contexts/locale-context';
 import { Sun, Moon, Monitor, ChevronDown } from 'lucide-react';
 
 interface ThemeToggleProps {

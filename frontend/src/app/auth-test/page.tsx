@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Navbar } from '../../components/Navbar';
-import { useAuth } from '../../lib/auth-context';
-import { api, ApiError } from '../../lib/api-client';
+import { useAuth } from '@/contexts/auth-context';
+import { api, ApiError } from '@/api/client';
 import {
   ShieldCheck,
   ShieldAlert,

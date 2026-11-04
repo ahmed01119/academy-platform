@@ -2,10 +2,10 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '../../lib/auth-context';
-import { useLocale } from '../../lib/locale-context';
-import { translateDataString } from '../../lib/data-translator';
-import { apiClient } from '../../lib/api-client';
+import { useAuth } from '@/contexts/auth-context';
+import { useLocale } from '@/contexts/locale-context';
+import { translateDataString } from '@/utils/data-translator';
+import { apiClient } from '@/api/client';
 import { AppShell } from '../../components/layout/AppShell';
 import { PageHeader } from '../../components/ui/PageHeader';
 import {
@@ -27,7 +27,7 @@ import type {
 
 export default function PlayerPortalPage() {
   const { user, isLoading: authLoading } = useAuth();
-  const { locale, t } = useLocale();
+  const { locale } = useLocale();
   const router = useRouter();
   const ar = locale === 'ar';
 

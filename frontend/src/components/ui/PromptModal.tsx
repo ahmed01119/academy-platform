@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useLocale } from '../../lib/locale-context';
+import { useLocale } from '@/contexts/locale-context';
 import { AlertCircle, X, Loader2 } from 'lucide-react';
 
 export interface PromptModalConfig {

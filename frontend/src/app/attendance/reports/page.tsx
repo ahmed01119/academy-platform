@@ -2,13 +2,13 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '../../../lib/auth-context';
-import { useLocale } from '../../../lib/locale-context';
-import { translateDataString } from '../../../lib/data-translator';
-import { canAccessAdminRoutes, getRoleHomeRoute } from '../../../lib/role-routing';
+import { useAuth } from '@/contexts/auth-context';
+import { useLocale } from '@/contexts/locale-context';
+import { translateDataString } from '@/utils/data-translator';
+import { canAccessAdminRoutes, getRoleHomeRoute } from '@/utils/role-routing';
 import { AppShell } from '../../../components/layout/AppShell';
 import { PageHeader } from '../../../components/ui/PageHeader';
-import { api } from '../../../lib/api-client';
+import { api } from '@/api/client';
 import type { AttendanceReportSummary, BranchSummary, TrainingGroupSummary } from '@academy/shared';
 import {
   BarChart3,
@@ -27,7 +27,7 @@ import {
 export default function AttendanceReportsPage() {
   const router = useRouter();
   const { user, activeTenant, isLoading } = useAuth();
-  const { locale, t } = useLocale();
+  const { locale } = useLocale();
   const ar = locale === 'ar';
 
   const [report, setReport] = useState<AttendanceReportSummary | null>(null);

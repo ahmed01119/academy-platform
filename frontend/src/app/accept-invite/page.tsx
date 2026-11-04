@@ -4,9 +4,9 @@ import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Navbar } from '../../components/Navbar';
-import { useLocale } from '../../lib/locale-context';
-import { useAuth } from '../../lib/auth-context';
-import { api } from '../../lib/api-client';
+import { useLocale } from '@/contexts/locale-context';
+import { useAuth } from '@/contexts/auth-context';
+import { api } from '@/api/client';
 import {
   Users,
   CheckCircle2,

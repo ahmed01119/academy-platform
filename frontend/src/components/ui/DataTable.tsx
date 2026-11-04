@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { useLocale } from '../../lib/locale-context';
+import { useLocale } from '@/contexts/locale-context';
 import { EmptyState } from './EmptyState';
 import { TableRowSkeleton } from './Skeleton';
 
