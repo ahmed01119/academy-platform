@@ -1077,7 +1077,7 @@ export class PlayersService {
     requestId: string,
     dto: ReviewPlayerJoinRequest,
   ): Promise<PlayerJoinRequestItem> {
-    return this.prisma.withTenantTransaction(tenantContext, async (tx) => {
+    const result = await this.prisma.withTenantTransaction(tenantContext, async (tx) => {
       // Coach authorization and scoping check
       if (tenantContext.role === 'COACH') {
         const coachMembership = await tx.tenantMembership.findUnique({
@@ -1324,8 +1324,74 @@ export class PlayersService {
         reviewedByUserId: updated.reviewedByUserId,
         reviewedAt: updated.reviewedAt?.toISOString() || null,
         createdAt: updated.createdAt.toISOString(),
+        _meta: { email: updated.contactEmail, tenantId: updated.tenantId, playerName: updated.playerName, status: dto.status, reviewNotes: dto.reviewNotes },
       };
     });
+
+    // Dispatch email outside transaction (fire-and-forget)
+    if (result._meta.email && (result._meta.status === 'APPROVED' || result._meta.status === 'REJECTED')) {
+      const tenant = await this.prisma.withTenantTransaction(
+        { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
+        (tx) => tx.tenant.findUnique({ where: { id: tenantContext.tenantId }, select: { name: true } }),
+      ).catch(() => ({ name: 'Academy' }));
+      void this.dispatchPlayerReviewEmail(
+        result._meta.email,
+        result._meta.playerName,
+        result._meta.status,
+        tenant?.name ?? 'Academy',
+        result._meta.reviewNotes ?? null,
+      );
+    }
+
+    // Strip internal _meta before returning
+    const { _meta: _m, ...publicResult } = result as any;
+    return publicResult as PlayerJoinRequestItem;
+  }
+
+  /**
+   * Dispatch approval/rejection email to the player applicant (outside the transaction for safety).
+   */
+  private async dispatchPlayerReviewEmail(
+    email: string,
+    playerName: string,
+    status: string,
+    academyName: string,
+    reviewNotes?: string | null,
+  ): Promise<void> {
+    if (!this.emailService) return;
+    try {
+      if (status === 'APPROVED') {
+        // Reuse sendPlayerEnrollmentWelcome or similar — here we send a generic approval note
+        await this.emailService.sendEmailDetailed({
+          to: email,
+          subject: `تمت الموافقة على طلب الانضمام — ${academyName} | Join Request Approved`,
+          html: `<div dir='rtl' style='font-family:Arial;padding:20px;'>
+            <h2 style='color:#0A3BFF;'>تمت الموافقة على طلب الانضمام 🎉</h2>
+            <p>مرحباً، تمت الموافقة على طلب الانضمام لـ <strong>${playerName}</strong> في أكاديمية <strong>${academyName}</strong>.</p>
+            <p>يمكنك الآن تسجيل الدخول لمتابعة تفاصيل الاشتراك والحصص التدريبية.</p>
+            <hr style='border-color:#334155;margin:20px 0;'/>
+            <p dir='ltr' style='color:#64748b;'>Your join request for <strong>${playerName}</strong> at <strong>${academyName}</strong> has been <strong>approved</strong>. You can now log in to access training details.</p>
+          </div>`,
+          text: `تمت الموافقة على طلب انضمام ${playerName} في ${academyName}. | Join request for ${playerName} at ${academyName} has been approved.`,
+        });
+      } else if (status === 'REJECTED') {
+        await this.emailService.sendEmailDetailed({
+          to: email,
+          subject: `تحديث طلب الانضمام — ${academyName} | Join Request Update`,
+          html: `<div dir='rtl' style='font-family:Arial;padding:20px;'>
+            <h2 style='color:#ef4444;'>تحديث طلب الانضمام</h2>
+            <p>نأسف لإبلاغك بأنه تم رفض طلب الانضمام لـ <strong>${playerName}</strong> في أكاديمية <strong>${academyName}</strong>.</p>
+            ${reviewNotes ? `<p><strong>السبب:</strong> ${reviewNotes}</p>` : ''}
+            <p>للمزيد من التفاصيل، يرجى التواصل مع إدارة الأكاديمية.</p>
+            <hr style='border-color:#334155;margin:20px 0;'/>
+            <p dir='ltr' style='color:#64748b;'>The join request for <strong>${playerName}</strong> at <strong>${academyName}</strong> was <strong>not accepted</strong>. ${reviewNotes ? 'Reason: ' + reviewNotes : ''}</p>
+          </div>`,
+          text: `تم رفض طلب انضمام ${playerName} في ${academyName}. | Join request for ${playerName} at ${academyName} was rejected.`,
+        });
+      }
+    } catch (err: any) {
+      this.logger.warn(`Failed to dispatch player review email: ${err?.message}`);
+    }
   }
 
   /**

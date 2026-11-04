@@ -1,3 +1,4 @@
+import * as crypto from 'crypto';
 import {
   BadRequestException,
   ConflictException,
@@ -97,15 +98,20 @@ export class AuthService {
         },
       });
 
+      const rawSport = (dto.sport as string) || 'FOOTBALL';
+      const applicationSport = rawSport === 'FOOTBALL' ? 'FOOTBALL' : 'FOOTBALL';
+      const initialNotes = rawSport !== 'FOOTBALL' ? `Sport: ${rawSport}` : null;
+
       const application = await tx.academyApplication.create({
         data: {
           applicantUserId: user.id,
           academyName: dto.academyName.trim(),
           academySlug: finalSlug,
-          sport: (dto.sport as any) || 'FOOTBALL',
+          sport: applicationSport as any,
           city: dto.city?.trim() ?? null,
           contactEmail: email,
           contactPhone: dto.phone?.trim() ?? null,
+          notes: initialNotes,
           status: 'PENDING_REVIEW',
         },
       });
@@ -230,6 +236,13 @@ export class AuthService {
     // Reset rate limit counter upon successful credentials verification
     await this.redisService.resetRateLimit(rateLimitKey);
 
+    if (user.isSuspended) {
+      throw new UnauthorizedException({
+        code: ErrorCode.FORBIDDEN,
+        message: 'تم تعليق هذا الحساب. يرجى التواصل مع الدعم الفني (Account suspended).',
+      });
+    }
+
     // Only discover tenant memberships AFTER successful password verification.
     // Actor-bound, transaction-local context keeps unrelated tenants invisible.
     const userMemberships = await this.prisma.withAuthLookupTransaction(
@@ -240,6 +253,46 @@ export class AuthService {
           include: { tenant: true, branch: true },
         }),
     );
+
+    // Enforce approval & tenant status gating
+    if (!user.isPlatformSuperAdmin && !user.isPlatformOwner && userMemberships.length === 0) {
+      const application = await this.prisma.academyApplication.findFirst({
+        where: { applicantUserId: user.id },
+        orderBy: { createdAt: 'desc' },
+      });
+      if (application) {
+        if (application.status === 'PENDING_REVIEW' || application.status === 'MORE_INFO_REQUESTED') {
+          throw new UnauthorizedException({
+            code: 'ACADEMY_PENDING_APPROVAL',
+            message: 'طلب تسجيل الأكاديمية قيد المراجعة حالياً من قبل إدارة المنصة. ستصلك رسالة تأكيد عبر البريد الإلكتروني فور الموافقة.',
+          });
+        }
+        if (application.status === 'REJECTED') {
+          throw new UnauthorizedException({
+            code: 'ACADEMY_REJECTED',
+            message: 'تم رفض طلب تسجيل الأكاديمية. يرجى مراجعة إدارة المنصة للمزيد من التفاصيل.',
+          });
+        }
+      }
+      const joinRequest = await this.prisma.playerRegistrationRequest.findFirst({
+        where: { applicantUserId: user.id },
+        orderBy: { createdAt: 'desc' },
+      });
+      if (joinRequest) {
+        if (joinRequest.status === 'PENDING_REVIEW') {
+          throw new UnauthorizedException({
+            code: 'PLAYER_PENDING_APPROVAL',
+            message: 'طلب انضمام اللاعب قيد المراجعة حالياً من قبل إدارة الأكاديمية.',
+          });
+        }
+        if (joinRequest.status === 'REJECTED') {
+          throw new UnauthorizedException({
+            code: 'PLAYER_REJECTED',
+            message: 'تم رفض طلب انضمام اللاعب من إدارة الأكاديمية.',
+          });
+        }
+      }
+    }
 
     // Map memberships
     const memberships: TenantMembershipSummary[] = userMemberships
@@ -414,8 +467,19 @@ export class AuthService {
     dto: ForgotPasswordRequest,
     ipAddress?: string,
     userAgent?: string,
-  ): Promise<{ message: string }> {
+  ): Promise<{ message: string; debugOtp?: string }> {
     const normalizedEmail = dto.email.toLowerCase().trim();
+
+    // 60-second cooldown per target email
+    const cooldownKey = `ratelimit:forgot-password-cooldown:${normalizedEmail}`;
+    const cooldownCheck = await this.redisService.incrementRateLimit(cooldownKey, 60);
+    if (cooldownCheck.count > 1) {
+      throw new BadRequestException({
+        code: ErrorCode.RATE_LIMIT_EXCEEDED,
+        message: `يرجى الانتظار ${cooldownCheck.remainingTime} ثانية قبل طلب رمز جديد (Please wait ${cooldownCheck.remainingTime}s before requesting a new code).`,
+      });
+    }
+
     const rateLimitKey = `ratelimit:forgot-password:${ipAddress || 'unknown'}:${normalizedEmail}`;
     const { count, remainingTime } = await this.redisService.incrementRateLimit(
       rateLimitKey,
@@ -435,10 +499,14 @@ export class AuthService {
       where: { email: normalizedEmail },
     });
 
+    let debugOtp: string | undefined;
+
     if (user) {
-      const rawToken = this.tokenService.generateSecureRandomString(32);
-      const tokenHash = this.tokenService.hashToken(rawToken);
-      const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+      // Cryptographically secure 6-digit numeric OTP code
+      const otp = crypto.randomInt(100000, 1000000).toString();
+      const tokenHash = this.tokenService.hashToken(otp);
+      // 5-minute expiry per Phase 6 specification
+      const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
       await this.prisma.$executeRaw`
         SELECT public.request_password_reset(
@@ -447,6 +515,10 @@ export class AuthService {
           ${expiresAt}
         )
       `;
+
+      // Reset attempt counter for new OTP
+      const attemptsKey = `ratelimit:reset-attempts:${normalizedEmail}`;
+      await this.redisService.resetRateLimit(attemptsKey);
 
       await this.auditService.logEvent({
         actorUserId: user.id,
@@ -460,29 +532,51 @@ export class AuthService {
       try {
         const appUrl =
           process.env.APP_PUBLIC_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-        const resetUrl = `${appUrl}/reset-password?token=${rawToken}`;
-        await this.emailService.sendPasswordReset(user.email, user.name, resetUrl, 'ar');
+        const resetUrl = `${appUrl}/reset-password?token=${otp}&email=${encodeURIComponent(normalizedEmail)}`;
+        await this.emailService.sendPasswordReset(user.email, user.name, resetUrl, 'ar', otp);
       } catch (e) {
         this.logger.warn(`Failed to dispatch password reset email: ${(e as Error)?.message}`);
+      }
+
+      if (this.config.nodeEnv === 'development') {
+        debugOtp = otp;
       }
     }
 
     return {
       message:
-        'If that email address is registered, instructions have been sent to reset your password.',
+        'If that email address is registered, instructions have been sent to reset your password with a 6-digit verification code.',
+      ...(debugOtp ? { debugOtp } : {}),
     };
   }
 
   /**
-   * Resets password with single-use expiring token.
+   * Resets password with single-use expiring 6-digit OTP code or token.
    */
   async resetPassword(
     dto: ResetPasswordRequest,
     ipAddress?: string,
     userAgent?: string,
   ): Promise<{ message: string }> {
-    const tokenHash = this.tokenService.hashToken(dto.token);
+    const trimmedToken = dto.token.trim();
+    const tokenHash = this.tokenService.hashToken(trimmedToken);
     const passwordHash = await this.passwordService.hash(dto.newPassword);
+
+    // Max 5 verification attempts check per token hash
+    const attemptKey = `ratelimit:reset-password-attempts:${tokenHash}`;
+    const { count: attemptCount } = await this.redisService.incrementRateLimit(attemptKey, 15 * 60);
+    if (attemptCount > 5) {
+      // Invalidate code upon 5 failed attempts
+      await this.prisma.$executeRaw`
+        UPDATE public.users
+        SET password_reset_token = NULL, password_reset_expires_at = NULL
+        WHERE password_reset_token = ${tokenHash}
+      `;
+      throw new BadRequestException({
+        code: ErrorCode.TOKEN_INVALID,
+        message: 'تم تجاوز الحد الأقصى للمحاولات (5 محاولات). تم إلغاء صلاحية هذا الرمز، يرجى طلب رمز جديد (Too many failed attempts. Code has been invalidated).',
+      });
+    }
 
     try {
       const rows = await this.prisma.$queryRaw<Array<{ complete_password_reset: string }>>`
@@ -496,7 +590,7 @@ export class AuthService {
       if (!userId) {
         throw new BadRequestException({
           code: ErrorCode.TOKEN_INVALID,
-          message: 'Invalid or expired password reset token',
+          message: 'رمز التحقق غير صحيح أو منتهي الصلاحية (Invalid or expired verification code)',
         });
       }
 
@@ -534,10 +628,11 @@ export class AuthService {
       return {
         message: 'Password has been successfully reset. You may now log in with your new password.',
       };
-    } catch {
+    } catch (err: any) {
+      if (err instanceof BadRequestException) throw err;
       throw new BadRequestException({
         code: ErrorCode.TOKEN_INVALID,
-        message: 'Invalid or expired password reset token',
+        message: 'رمز التحقق غير صحيح أو منتهي الصلاحية (Invalid or expired verification code)',
       });
     }
   }
