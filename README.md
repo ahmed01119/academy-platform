@@ -91,3 +91,6 @@ Sprint 1 enforces strict defense-in-depth security invariants:
 3. **Actor-Scoped Multi-Tenancy**: Discovery of memberships is bound to authenticated actor identity; cross-tenant operations are blocked by PostgreSQL Row-Level Security (FORCE RLS).
 4. **Append-Only Auditing**: Tampering or deletion of `audit_logs` and `attendance_corrections` is prevented at the database trigger and role privilege levels.
 5. **Fail-Closed Rate Limiting**: In production (`NODE_ENV === 'production'`), authentication rate limiting fails closed if Redis is unavailable.
+
+6. **Time-Limited 6-Digit OTP Recovery**: Account password recovery issues cryptographically secure 6-digit numeric OTP codes with 5-minute strict expiry, 60s request cooldowns, 5-attempt rate-limiting, and development-only debug isolation.
+7. **Automated Onboarding & Transactional Notifications**: Player join request reviews automatically provision Player, Guardian, Enrollment, and Group memberships atomically with safe asynchronous transactional email dispatch.
