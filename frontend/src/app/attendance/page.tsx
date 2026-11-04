@@ -3,10 +3,10 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '../../lib/auth-context';
+import { useAuth } from '@/contexts/auth-context';
 import { AppShell } from '../../components/layout/AppShell';
 import { PageHeader } from '../../components/ui/PageHeader';
-import { api } from '../../lib/api-client';
+import { api } from '@/api/client';
 import type { SessionSummary } from '@academy/shared';
 import {
   QrCode,
@@ -19,12 +19,12 @@ import {
   ArrowLeft,
   Zap,
 } from 'lucide-react';
-import { useLocale } from '../../lib/locale-context';
+import { useLocale } from '@/contexts/locale-context';
 
 export default function AttendanceHubPage() {
   const router = useRouter();
   const { user, activeTenant, isLoading } = useAuth();
-  const { isRtl } = useLocale();
+  const { locale, isRtl } = useLocale();
 
   const [todaySessions, setTodaySessions] = useState<SessionSummary[]>([]);
   const [isFetching, setIsFetching] = useState(true);
@@ -59,11 +59,11 @@ export default function AttendanceHubPage() {
       <div className="space-y-6">
         <PageHeader
           breadcrumbs={[
-            { label: 'الرئيسية', href: '/dashboard' },
-            { label: 'إدارة الحضور والغياب' },
+            { label: locale === 'ar' ? 'الرئيسية' : 'Home', href: '/dashboard' },
+            { label: locale === 'ar' ? 'إدارة الحضور والغياب' : 'Attendance Management' },
           ]}
-          title="منظومة الحضور والغياب الميداني"
-          description="تسجيل الحضور السريع، المسح الذكي لبطاقات QR، ومطابقة التحصيلات المالية الميدانية."
+          title={locale === 'ar' ? 'منظومة الحضور والغياب الميداني' : 'Field Attendance System'}
+          description={locale === 'ar' ? 'تسجيل الحضور السريع، المسح الذكي لبطاقات QR، ومطابقة التحصيلات المالية الميدانية.' : 'Quick attendance recording, smart QR card scanning, and on-site fee reconciliation.'}
         />
 
         {/* Feature Grid Cards */}
@@ -79,18 +79,19 @@ export default function AttendanceHubPage() {
                 <Zap className="h-6 w-6" />
               </div>
               <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                فوري وبنقرة واحدة
+                {locale === 'ar' ? 'فوري وبنقرة واحدة' : 'One-tap instant'}
               </span>
             </div>
             <h3 className="text-lg font-bold text-[var(--text-main)] mb-2 group-hover:text-emerald-600 transition-colors">
-              التحضير السريع (Quick Attendance)
+              {locale === 'ar' ? 'التحضير السريع (Quick Attendance)' : 'Quick Attendance'}
             </h3>
             <p className="text-xs text-[var(--text-muted)] leading-relaxed mb-4">
-              تسجيل كشف الحضور بنقرة واحدة لجميع اللاعبين، تبديل الحالة فورياً، وحفظ أوفلاين مع
-              المزامنة التلقائية.
+              {locale === 'ar'
+                ? 'تسجيل كشف الحضور بنقرة واحدة لجميع اللاعبين، تبديل الحالة فورياً، وحفظ أوفلاين مع المزامنة التلقائية.'
+                : 'One-tap attendance marking for all players, instant status toggle, offline-first with auto-sync.'}
             </p>
             <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">
-              <span>بدء التحضير الفوري</span>
+              <span>{locale === 'ar' ? 'بدء التحضير الفوري' : 'Start Quick Attendance'}</span>
               <ArrowIcon className="h-4 w-4 transform group-hover:translate-x-1 rtl:group-hover:-translate-x-1 transition-transform" />
             </div>
           </Link>
@@ -106,18 +107,19 @@ export default function AttendanceHubPage() {
                 <QrCode className="h-6 w-6" />
               </div>
               <span className="rounded-full bg-blue-500/15 px-3 py-1 text-xs font-bold text-blue-600 dark:text-blue-400 border border-blue-500/20">
-                كاميرا الهاتف
+                {locale === 'ar' ? 'كاميرا الهاتف' : 'Phone Camera'}
               </span>
             </div>
             <h3 className="text-lg font-bold text-[var(--text-main)] mb-2 group-hover:text-blue-600 transition-colors">
-              ماسح باركود QR الذكي
+              {locale === 'ar' ? 'ماسح باركود QR الذكي' : 'Smart QR Scanner'}
             </h3>
             <p className="text-xs text-[var(--text-muted)] leading-relaxed mb-4">
-              مسح فوري لبطاقات وهوية اللاعبين، التحقق من سريان الاشتراك والرسوم المتأخرة، مع مؤشرات
-              صوتية وتنبيهات.
+              {locale === 'ar'
+                ? 'مسح فوري لبطاقات وهوية اللاعبين، التحقق من سريان الاشتراك والرسوم المتأخرة، مع مؤشرات صوتية وتنبيهات.'
+                : 'Instant scan of player ID cards, subscription & fee verification, with audio cues and alerts.'}
             </p>
             <div className="flex items-center gap-1.5 text-xs font-bold text-blue-600 dark:text-blue-400">
-              <span>تشغيل ماسح الكاميرا</span>
+              <span>{locale === 'ar' ? 'تشغيل ماسح الكاميرا' : 'Open Camera Scanner'}</span>
               <ArrowIcon className="h-4 w-4 transform group-hover:translate-x-1 rtl:group-hover:-translate-x-1 transition-transform" />
             </div>
           </Link>
@@ -133,18 +135,19 @@ export default function AttendanceHubPage() {
                 <BarChart3 className="h-6 w-6" />
               </div>
               <span className="rounded-full bg-purple-500/15 px-3 py-1 text-xs font-bold text-purple-600 dark:text-purple-400 border border-purple-500/20">
-                تقارير وإحصائيات
+                {locale === 'ar' ? 'تقارير وإحصائيات' : 'Reports & Analytics'}
               </span>
             </div>
             <h3 className="text-lg font-bold text-[var(--text-main)] mb-2 group-hover:text-purple-600 transition-colors">
-              تقارير الحضور والالتزام
+              {locale === 'ar' ? 'تقارير الحضور والالتزام' : 'Attendance & Commitment Reports'}
             </h3>
             <p className="text-xs text-[var(--text-muted)] leading-relaxed mb-4">
-              تحليلات نسب الحضور والغياب، مقارنة الفروع والمجموعات، وسجل تفصيلي قابل للطباعة
-              والتصدير.
+              {locale === 'ar'
+                ? 'تحليلات نسب الحضور والغياب، مقارنة الفروع والمجموعات، وسجل تفصيلي قابل للطباعة والتصدير.'
+                : 'Attendance rate analytics by branch and group, with detailed printable and exportable records.'}
             </p>
             <div className="flex items-center gap-1.5 text-xs font-bold text-purple-600 dark:text-purple-400">
-              <span>عرض تقارير الحضور</span>
+              <span>{locale === 'ar' ? 'عرض تقارير الحضور' : 'View Attendance Reports'}</span>
               <ArrowIcon className="h-4 w-4 transform group-hover:translate-x-1 rtl:group-hover:-translate-x-1 transition-transform" />
             </div>
           </Link>
@@ -155,28 +158,30 @@ export default function AttendanceHubPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <Calendar className="h-5 w-5 text-[var(--accent-primary)]" />
-              <h3 className="text-base font-bold text-[var(--text-main)]">حصص اليوم التدريبية</h3>
+              <h3 className="text-base font-bold text-[var(--text-main)]">
+                {locale === 'ar' ? 'حصص اليوم التدريبية' : "Today's Training Sessions"}
+              </h3>
             </div>
             <Link
               href="/sessions"
               className="text-xs font-bold text-[var(--accent-primary)] hover:underline"
             >
-              عرض جدول الحصص الكامل
+              {locale === 'ar' ? 'عرض جدول الحصص الكامل' : 'View Full Session Schedule'}
             </Link>
           </div>
 
           {isFetching ? (
             <div className="py-12 text-center text-xs text-[var(--text-muted)]">
-              جارٍ تحميل جدول الحصص...
+              {locale === 'ar' ? 'جارٍ تحميل جدول الحصص...' : 'Loading sessions...'}
             </div>
           ) : todaySessions.length === 0 ? (
             <div className="py-12 text-center text-xs text-[var(--text-muted)] space-y-3">
-              <p>لا توجد حصص مجدولة لهذا اليوم.</p>
+              <p>{locale === 'ar' ? 'لا توجد حصص مجدولة لهذا اليوم.' : 'No sessions scheduled for today.'}</p>
               <Link
                 href="/sessions"
                 className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--accent-primary)] px-4 py-2 text-xs font-bold text-white shadow-sm"
               >
-                <span>جدولة حصة جديدة</span>
+                <span>{locale === 'ar' ? 'جدولة حصة جديدة' : 'Schedule New Session'}</span>
               </Link>
             </div>
           ) : (
@@ -198,10 +203,10 @@ export default function AttendanceHubPage() {
                       }`}
                     >
                       {s.status === 'IN_PROGRESS'
-                        ? 'جارية'
+                        ? locale === 'ar' ? 'جارية' : 'In Progress'
                         : s.status === 'SCHEDULED'
-                          ? 'مجدولة'
-                          : 'مغلقة'}
+                          ? locale === 'ar' ? 'مجدولة' : 'Scheduled'
+                          : locale === 'ar' ? 'مغلقة' : 'Closed'}
                     </span>
                   </div>
 
@@ -219,20 +224,20 @@ export default function AttendanceHubPage() {
                     {s.coachName && (
                       <div className="flex items-center gap-1.5">
                         <Users className="h-3.5 w-3.5 text-[var(--accent-primary)]" />
-                        <span>المدرب: {s.coachName}</span>
+                        <span>{locale === 'ar' ? 'المدرب: ' : 'Coach: '}{s.coachName}</span>
                       </div>
                     )}
                   </div>
 
                   <div className="pt-2 border-t border-[var(--border-subtle)] flex items-center justify-between">
                     <span className="text-[11px] text-[var(--text-muted)]">
-                      حاضر: {s.totalPresent} / {s.totalExpected}
+                      {locale === 'ar' ? 'حاضر: ' : 'Present: '}{s.totalPresent} / {s.totalExpected}
                     </span>
                     <Link
                       href={`/attendance/sessions/${s.id}`}
                       className="inline-flex items-center gap-1 rounded-lg bg-[var(--accent-primary)]/10 px-3 py-1.5 text-xs font-bold text-[var(--accent-primary)] hover:bg-[var(--accent-primary)] hover:text-white transition-all"
                     >
-                      <span>فتح الكشف</span>
+                      <span>{locale === 'ar' ? 'فتح الكشف' : 'Open Roster'}</span>
                       <ArrowIcon className="h-3.5 w-3.5" />
                     </Link>
                   </div>

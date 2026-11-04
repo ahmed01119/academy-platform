@@ -3,8 +3,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '../../lib/auth-context';
-import { useLocale } from '../../lib/locale-context';
+import { useAuth } from '@/contexts/auth-context';
+import { useLocale } from '@/contexts/locale-context';
 import { Navbar } from '../../components/Navbar';
 import { SportexusLogo } from '../../components/brand/SportexusLogo';
 import {
@@ -28,13 +28,13 @@ import {
 } from 'lucide-react';
 
 const SPORTS_OPTIONS = [
-  { value: 'FOOTBALL', label: 'كرة قدم (Football)', icon: '⚽' },
-  { value: 'PADEL', label: 'بادل (Padel)', icon: '🎾' },
-  { value: 'SWIMMING', label: 'سباحة (Swimming)', icon: '🏊' },
-  { value: 'BASKETBALL', label: 'كرة سلة (Basketball)', icon: '🏀' },
-  { value: 'TENNIS', label: 'تنس أرضي (Tennis)', icon: '🎾' },
-  { value: 'MARTIAL_ARTS', label: 'فنون قتالية (Martial Arts)', icon: '🥋' },
-  { value: 'OTHER', label: 'رياضة أخرى (Other)', icon: '🏆' },
+  { value: 'FOOTBALL', labelAr: 'كرة قدم', labelEn: 'Football', icon: '⚽' },
+  { value: 'PADEL', labelAr: 'بادل', labelEn: 'Padel', icon: '🎾' },
+  { value: 'SWIMMING', labelAr: 'سباحة', labelEn: 'Swimming', icon: '🏊' },
+  { value: 'BASKETBALL', labelAr: 'كرة سلة', labelEn: 'Basketball', icon: '🏀' },
+  { value: 'TENNIS', labelAr: 'تنس أرضي', labelEn: 'Tennis', icon: '🎾' },
+  { value: 'MARTIAL_ARTS', labelAr: 'فنون قتالية', labelEn: 'Martial Arts', icon: '🥋' },
+  { value: 'OTHER', labelAr: 'رياضة أخرى', labelEn: 'Other', icon: '🏆' },
 ];
 
 export default function RegisterPage() {
@@ -297,8 +297,10 @@ export default function RegisterPage() {
                       {locale === 'ar' ? 'الرياضة الأساسية' : 'Sport'}
                     </span>
                     <span className="text-slate-200">
-                      {SPORTS_OPTIONS.find((s) => s.value === submittedData.sport)?.label ||
-                        submittedData.sport}
+                      {(() => {
+                        const opt = SPORTS_OPTIONS.find((s) => s.value === submittedData.sport);
+                        return opt ? (locale === 'ar' ? opt.labelAr : opt.labelEn) : submittedData.sport;
+                      })()}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
@@ -420,7 +422,7 @@ export default function RegisterPage() {
                         >
                           {SPORTS_OPTIONS.map((opt) => (
                             <option key={opt.value} value={opt.value} className="bg-slate-900">
-                              {opt.icon} {opt.label}
+                              {opt.icon} {locale === 'ar' ? opt.labelAr : opt.labelEn}
                             </option>
                           ))}
                         </select>

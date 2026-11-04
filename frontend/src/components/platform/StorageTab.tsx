@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useLocale } from '../../lib/locale-context';
-import apiClient from '../../lib/api-client';
+import { useLocale } from '@/contexts/locale-context';
+import apiClient from '@/api/client';
 import { useToast } from '../ui/Toast';
 import { Database, HardDrive, ShieldCheck, RefreshCw, Play, Eye, Layers } from 'lucide-react';
 import type { StorageMetrics, StorageMaintenanceDryRunResponse } from '@academy/shared';

@@ -2,9 +2,9 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useAuth } from '../../lib/auth-context';
-import { useLocale } from '../../lib/locale-context';
-import { apiClient } from '../../lib/api-client';
+import { useAuth } from '@/contexts/auth-context';
+import { useLocale } from '@/contexts/locale-context';
+import { apiClient } from '@/api/client';
 import { AppShell } from '../../components/layout/AppShell';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { StatCard } from '../../components/ui/StatCard';
@@ -188,12 +188,12 @@ function PlatformSuperAdminContent() {
     const newStatus = academy.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE';
     const actionName =
       newStatus === 'SUSPENDED'
-        ? t('platform.suspendAction', 'إيقاف وتجميد')
-        : t('platform.activateAction', 'إعادة تفعيل');
+        ? (locale === 'ar' ? 'إيقاف وتجميد' : 'Suspend')
+        : (locale === 'ar' ? 'إعادة تفعيل' : 'Reactivate');
 
     setPromptConfig({
       isOpen: true,
-      title: `${actionName} الأكاديمية: ${academy.name}`,
+      title: locale === 'ar' ? `${actionName} الأكاديمية: ${academy.name}` : `${actionName} Academy: ${academy.name}`,
       description:
         newStatus === 'SUSPENDED'
           ? locale === 'ar'
@@ -432,7 +432,7 @@ function PlatformSuperAdminContent() {
 
   const academyColumns: Column<PlatformAcademyItem>[] = [
     {
-      header: t('platform.academyName', 'الأكاديمية'),
+      header: locale === 'ar' ? 'الأكاديمية' : 'Academy',
       accessorKey: 'name',
       cell: (item) => (
         <div>
@@ -442,7 +442,7 @@ function PlatformSuperAdminContent() {
       ),
     },
     {
-      header: t('subscriptions.plan', 'خطة الاشتراك'),
+      header: locale === 'ar' ? 'خطة الاشتراك' : 'Subscription Plan',
       id: 'plan',
       cell: (item) => {
         const plan = item.planCode || 'PRO';
@@ -464,12 +464,12 @@ function PlatformSuperAdminContent() {
       },
     },
     {
-      header: t('platform.status', 'الحالة'),
+      header: locale === 'ar' ? 'الحالة' : 'Status',
       accessorKey: 'status',
       cell: (item) => <StatusBadge status={item.status} />,
     },
     {
-      header: t('platform.branchesCount', 'الفروع'),
+      header: locale === 'ar' ? 'الفروع' : 'Branches',
       accessorKey: 'branchesCount',
       cell: (item) => {
         const plan = plans.find((p) => p.code === item.planCode);
@@ -483,7 +483,7 @@ function PlatformSuperAdminContent() {
       },
     },
     {
-      header: t('platform.playersCount', 'اللاعبين والقدرة الاستيعابية'),
+      header: locale === 'ar' ? 'اللاعبين والقدرة الاستيعابية' : 'Athletes & Capacity',
       accessorKey: 'playersCount',
       cell: (item) => {
         const plan = plans.find((p) => p.code === item.planCode);
@@ -501,11 +501,11 @@ function PlatformSuperAdminContent() {
               </span>
               {isExceeded ? (
                 <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-500/15 text-rose-600 border border-rose-500/30">
-                  مكتمل (100%)
+                  {locale === 'ar' ? 'مكتمل (100%)' : 'Full (100%)'}
                 </span>
               ) : isNearLimit ? (
                 <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-600 border border-amber-500/30">
-                  {pct}% تنبيه
+                  {pct}% {locale === 'ar' ? 'تنبيه' : 'Alert'}
                 </span>
               ) : (
                 <span className="text-[10px] text-[var(--text-muted)] font-mono">({pct}%)</span>
@@ -524,7 +524,7 @@ function PlatformSuperAdminContent() {
       },
     },
     {
-      header: t('common.actions', 'الإجراءات'),
+      header: locale === 'ar' ? 'الإجراءات' : 'Actions',
       id: 'actions',
       cell: (item) => (
         <div className="flex items-center gap-1.5 flex-wrap">
@@ -538,8 +538,8 @@ function PlatformSuperAdminContent() {
             }`}
           >
             {item.status === 'ACTIVE'
-              ? t('platform.suspendAction', 'تجميد')
-              : t('platform.activateAction', 'تنشيط')}
+              ? (locale === 'ar' ? 'تجميد' : 'Suspend')
+              : (locale === 'ar' ? 'تنشيط' : 'Activate')}
           </button>
           <button
             onClick={() => {
@@ -548,14 +548,14 @@ function PlatformSuperAdminContent() {
             }}
             className="px-2.5 py-1 text-xs font-medium rounded bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-200"
           >
-            {t('platform.changePlan', 'تعديل الباقة')}
+            {locale === 'ar' ? 'تعديل الباقة' : 'Change Plan'}
           </button>
           <button
             onClick={() => handleSupportAccess(item)}
             disabled={actionLoading === item.id}
             className="px-2.5 py-1 text-xs font-medium rounded bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:text-indigo-300"
           >
-            {t('platform.supportAccessAction', 'دعم فني')}
+            {locale === 'ar' ? 'دعم فني' : 'Support Access'}
           </button>
         </div>
       ),
@@ -563,14 +563,15 @@ function PlatformSuperAdminContent() {
   ];
 
   return (
-    <AppShell breadcrumbs={[{ label: t('nav.platform', 'وحدة المنصة'), href: '/platform' }]}>
+    <AppShell breadcrumbs={[{ label: locale === 'ar' ? 'وحدة المنصة' : 'Platform Operations', href: '/platform' }]}>
       <div className="space-y-6">
         <PageHeader
-          title={t('platform.title', 'وحدة المشرف العام للمنصة')}
-          description={t(
-            'platform.subtitle',
-            'مراقبة الأكاديميات المشتركة عبر المنظومة المركزية، إدارة باقات الـ SaaS، ومتابعة الأمان والتحصيلات.',
-          )}
+          title={locale === 'ar' ? 'وحدة المشرف العام للمنصة' : 'Platform Super Admin Hub'}
+          description={
+            locale === 'ar'
+              ? 'مراقبة الأكاديميات المشتركة عبر المنظومة المركزية، إدارة باقات الـ SaaS، ومتابعة الأمان والتحصيلات.'
+              : 'Monitor tenant academies across the centralized platform, manage SaaS subscription tiers, and audit security events.'
+          }
           badge={
             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
               {locale === 'ar' ? 'تحكم مركزي' : 'Super Admin Core'}
@@ -585,7 +586,7 @@ function PlatformSuperAdminContent() {
               <RefreshCw
                 className={`w-4 h-4 ${isLoading ? 'animate-spin text-[var(--accent-primary)]' : ''}`}
               />
-              {t('common.refresh', 'تحديث')}
+              {locale === 'ar' ? 'تحديث' : 'Refresh'}
             </button>
           }
         />
@@ -611,16 +612,16 @@ function PlatformSuperAdminContent() {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
           <StatCard
             loading={isLoading}
-            label={t('platform.kpiTotalAcademies', 'إجمالي الأكاديميات')}
+            label={locale === 'ar' ? 'إجمالي الأكاديميات' : 'Total Academies'}
             value={metrics ? metrics.totalAcademies : locale === 'ar' ? 'غير متوفر' : 'Unavailable'}
             icon={Building2}
             trend={
-              metrics ? { value: `${metrics.activeAcademies} نشطة`, isPositive: true } : undefined
+              metrics ? { value: locale === 'ar' ? `${metrics.activeAcademies} نشطة` : `${metrics.activeAcademies} Active`, isPositive: true } : undefined
             }
           />
           <StatCard
             loading={isLoading}
-            label={t('platform.kpiMrr', 'الإيراد الشهري (MRR)')}
+            label={locale === 'ar' ? 'الإيراد الشهري (MRR)' : 'Monthly Recurring Revenue (MRR)'}
             value={
               metrics
                 ? `${metrics.mrr.toLocaleString()} ${locale === 'ar' ? 'ر.س' : 'SAR'}`
@@ -637,7 +638,7 @@ function PlatformSuperAdminContent() {
           />
           <StatCard
             loading={isLoading}
-            label={t('platform.kpiRevenue', 'المتحصلات الكلية')}
+            label={locale === 'ar' ? 'المتحصلات الكلية' : 'Total Revenue'}
             value={
               metrics
                 ? `${metrics.collectedRevenue.toLocaleString()} ${locale === 'ar' ? 'ر.س' : 'SAR'}`
@@ -649,19 +650,19 @@ function PlatformSuperAdminContent() {
           />
           <StatCard
             loading={isLoading}
-            label={t('platform.kpiTotalPlayers', 'إجمالي اللاعبين')}
+            label={locale === 'ar' ? 'إجمالي اللاعبين' : 'Total Players'}
             value={metrics ? metrics.totalPlayers : locale === 'ar' ? 'غير متوفر' : 'Unavailable'}
             icon={Users}
           />
           <StatCard
             loading={isLoading}
-            label={t('platform.kpiTotalCoaches', 'المدربين')}
+            label={locale === 'ar' ? 'المدربين' : 'Coaches'}
             value={metrics ? metrics.totalCoaches : locale === 'ar' ? 'غير متوفر' : 'Unavailable'}
             icon={ShieldCheck}
           />
           <StatCard
             loading={isLoading}
-            label={t('platform.kpiSystemHealth', 'حالة النظام')}
+            label={locale === 'ar' ? 'حالة النظام' : 'System Health'}
             value={metrics?.systemHealth ?? '—'}
             icon={Activity}
             trend={{
@@ -694,7 +695,7 @@ function PlatformSuperAdminContent() {
               }`}
             >
               <Building2 className="w-4 h-4" />
-              {t('platform.tabAcademies', 'سجل الأكاديميات')}
+              {locale === 'ar' ? 'سجل الأكاديميات' : 'Academies Registry'}
               <span className="px-1.5 py-0.2 rounded-full text-xs bg-[var(--bg-card-hover)] font-mono">
                 {academies.length}
               </span>
@@ -726,7 +727,7 @@ function PlatformSuperAdminContent() {
               }`}
             >
               <Users className="w-4 h-4" />
-              {t('platform.tabUsers', 'إدارة المستخدمين والجلسات')}
+              {locale === 'ar' ? 'إدارة المستخدمين والجلسات' : 'Users & Sessions'}
               <span className="px-1.5 py-0.2 rounded-full text-xs bg-[var(--bg-card-hover)] font-mono">
                 {usersList.length}
               </span>
@@ -741,7 +742,7 @@ function PlatformSuperAdminContent() {
               }`}
             >
               <Layers className="w-4 h-4" />
-              {t('platform.tabPlans', 'باقات الـ SaaS')}
+              {locale === 'ar' ? 'باقات الـ SaaS' : 'SaaS Plans'}
             </button>
 
             <button
@@ -790,7 +791,7 @@ function PlatformSuperAdminContent() {
               }`}
             >
               <ShieldAlert className="w-4 h-4" />
-              {t('platform.tabSecurity', 'عمليات الأمان والحماية')}
+              {locale === 'ar' ? 'عمليات الأمان والحماية' : 'Security Operations'}
               {securityEvents.length > 0 && (
                 <span className="px-1.5 py-0.2 rounded-full text-xs bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-200 font-mono">
                   {securityEvents.length}
@@ -807,7 +808,7 @@ function PlatformSuperAdminContent() {
               }`}
             >
               <ShieldCheck className="w-4 h-4" />
-              {t('platform.tabAudit', 'سجل التدقيق المركزي')}
+              {locale === 'ar' ? 'سجل التدقيق المركزي' : 'Audit Trail'}
             </button>
           </div>
         </div>
@@ -1294,7 +1295,7 @@ function PlatformSuperAdminContent() {
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-150">
             <div className="w-full max-w-md p-6 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-subtle)] shadow-2xl space-y-4">
               <h3 className="text-lg font-bold text-[var(--text-main)]">
-                {t('platform.changePlan', 'تعديل باقة الأكاديمية')}
+                {locale === 'ar' ? 'تعديل باقة الأكاديمية' : 'Change Academy Plan'}
               </h3>
               <p className="text-xs text-[var(--text-muted)]">
                 {editingAcademy.name} ({editingAcademy.slug})
@@ -1302,7 +1303,7 @@ function PlatformSuperAdminContent() {
 
               <div className="space-y-2">
                 <label className="text-xs font-semibold text-[var(--text-main)]">
-                  {t('subscriptions.plan', 'خطة الاشتراك التجارية')}
+                  {locale === 'ar' ? 'خطة الاشتراك التجارية' : 'Commercial Plan'}
                 </label>
                 <select
                   value={selectedPlanCode}
@@ -1326,7 +1327,7 @@ function PlatformSuperAdminContent() {
                   onClick={() => setEditingAcademy(null)}
                   className="px-4 py-2 text-sm font-semibold rounded-lg bg-[var(--bg-card-hover)] hover:bg-[var(--border-subtle)] text-[var(--text-main)]"
                 >
-                  {t('common.cancel', 'إلغاء')}
+                  {locale === 'ar' ? 'إلغاء' : 'Cancel'}
                 </button>
                 <button
                   type="button"

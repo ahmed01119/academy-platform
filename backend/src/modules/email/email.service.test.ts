@@ -366,16 +366,17 @@ describe('EmailService', () => {
       expect(sent[0].html).toContain('يرجى توضيح بيانات الفروع والملاعب');
     });
 
-    it('5. sendPasswordReset renders 1-hour expiration notice and action link', async () => {
+    it('5. sendPasswordReset renders 5-minute OTP expiration notice and action link', async () => {
       await emailService.sendPasswordReset(
         'user@example.com',
         'خالد',
         'https://sportexus.com/reset-password?token=secret123',
         'ar',
+        '123456',
       );
       const sent = emailService.getSentEmails();
       expect(sent[0].subject).toContain('إعادة تعيين كلمة المرور');
-      expect(sent[0].html).toContain('ساعة واحدة فقط');
+      expect(sent[0].html).toContain('5 دقائق');
       expect(sent[0].html).toContain('https://sportexus.com/reset-password?token=secret123');
     });
 

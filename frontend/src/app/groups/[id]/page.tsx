@@ -3,12 +3,13 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { useAuth } from '../../../lib/auth-context';
-import { useLocale } from '../../../lib/locale-context';
+import { useAuth } from '@/contexts/auth-context';
+import { useLocale } from '@/contexts/locale-context';
 import { AppShell } from '../../../components/layout/AppShell';
 import { useToast } from '../../../components/ui/Toast';
-import { api } from '../../../lib/api-client';
+import { api } from '@/api/client';
 import type { PlayerSummary, TrainingGroupDetails } from '@academy/shared';
+import { translateDataString } from '@/utils/data-translator';
 import {
   Users,
   CalendarCheck,
@@ -25,14 +26,17 @@ import {
   UserPlus,
 } from 'lucide-react';
 
-const DAYS_OF_WEEK = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+const DAYS_OF_WEEK_AR = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+const DAYS_OF_WEEK_EN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 export default function GroupDetailsPage() {
   const router = useRouter();
   const params = useParams();
   const groupId = params.id as string;
   const { user, activeTenant, isLoading } = useAuth();
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
+  const isAr = locale === 'ar';
+  const DAYS_OF_WEEK = isAr ? DAYS_OF_WEEK_AR : DAYS_OF_WEEK_EN;
   const { toast } = useToast();
 
   const [group, setGroup] = useState<TrainingGroupDetails | null>(null);
@@ -61,7 +65,7 @@ export default function GroupDetailsPage() {
     dayOfWeek: 0,
     startTime: '17:00',
     endTime: '18:30',
-    location: 'الملعب الرئيسي',
+    location: isAr ? 'الملعب الرئيسي' : 'Main Ground',
   });
 
   useEffect(() => {
@@ -78,11 +82,11 @@ export default function GroupDetailsPage() {
       const data = await api.groups.get(groupId);
       setGroup(data);
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : 'فشل تحميل بيانات المجموعة');
+      setErrorMsg(err instanceof Error ? err.message : (isAr ? 'فشل تحميل بيانات المجموعة' : 'Failed to load group details'));
     } finally {
       setIsFetching(false);
     }
-  }, [groupId]);
+  }, [groupId, isAr]);
 
   useEffect(() => {
     if (user && activeTenant && groupId) {
@@ -135,7 +139,7 @@ export default function GroupDetailsPage() {
   const handleAssignMember = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedPlayerId) {
-      setActionError('يرجى تحديد لاعب من القائمة');
+      setActionError(isAr ? 'يرجى تحديد لاعب من القائمة' : 'Please select a player from the list');
       return;
     }
     setSubmittingAction(true);
@@ -146,32 +150,32 @@ export default function GroupDetailsPage() {
         startDate: new Date().toISOString().slice(0, 10),
       });
       setIsAddMemberModalOpen(false);
-      toast.success('تمت إضافة اللاعب للمجموعة التدريبية بنجاح');
+      toast.success(isAr ? 'تمت إضافة اللاعب للمجموعة التدريبية بنجاح' : 'Player added to squad successfully');
       await loadGroupDetails();
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'فشل إضافة اللاعب للمجموعة');
+      setActionError(err instanceof Error ? err.message : (isAr ? 'فشل إضافة اللاعب للمجموعة' : 'Failed to add player to squad'));
     } finally {
       setSubmittingAction(false);
     }
   };
 
   const handleRemoveMember = async (playerId: string, playerName: string) => {
-    if (!confirm(`هل أنت متأكد من إزالة اللاعب "${playerName}" من هذه المجموعة؟`)) {
+    if (!confirm(isAr ? `هل أنت متأكد من إزالة اللاعب "${playerName}" من هذه المجموعة؟` : `Are you sure you want to remove athlete "${playerName}" from this squad?`)) {
       return;
     }
     try {
       await api.groups.removePlayer(groupId, playerId);
-      toast.success(`تمت إزالة اللاعب "${playerName}" من المجموعة بنجاح`);
+      toast.success(isAr ? `تمت إزالة اللاعب "${playerName}" من المجموعة بنجاح` : `Athlete "${playerName}" removed from squad`);
       await loadGroupDetails();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'فشل إزالة اللاعب');
+      toast.error(err instanceof Error ? err.message : (isAr ? 'فشل إزالة اللاعب' : 'Failed to remove player'));
     }
   };
 
   const handleAssignCoach = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedCoachUserId) {
-      setActionError('يرجى تحديد مدرب من القائمة');
+      setActionError(isAr ? 'يرجى تحديد مدرب من القائمة' : 'Please select a coach from the list');
       return;
     }
     setSubmittingAction(true);
@@ -182,25 +186,25 @@ export default function GroupDetailsPage() {
         isHeadCoach,
       });
       setIsAddCoachModalOpen(false);
-      toast.success('تم تعيين المدرب للمجموعة التدريبية بنجاح');
+      toast.success(isAr ? 'تم تعيين المدرب للمجموعة التدريبية بنجاح' : 'Coach assigned to squad successfully');
       await loadGroupDetails();
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'فشل تعيين المدرب للمجموعة');
+      setActionError(err instanceof Error ? err.message : (isAr ? 'فشل تعيين المدرب للمجموعة' : 'Failed to assign coach'));
     } finally {
       setSubmittingAction(false);
     }
   };
 
   const handleRemoveCoach = async (coachUserId: string, coachName: string) => {
-    if (!confirm(`هل أنت متأكد من إزالة المدرب "${coachName}" من تدريب المجموعة؟`)) {
+    if (!confirm(isAr ? `هل أنت متأكد من إزالة المدرب "${coachName}" من تدريب المجموعة؟` : `Are you sure you want to remove coach "${coachName}" from this squad?`)) {
       return;
     }
     try {
       await api.groups.removeCoach(groupId, coachUserId);
-      toast.success(`تمت إزالة المدرب "${coachName}" من تدريب المجموعة`);
+      toast.success(isAr ? `تمت إزالة المدرب "${coachName}" من تدريب المجموعة` : `Coach "${coachName}" removed from squad`);
       await loadGroupDetails();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'فشل إزالة المدرب');
+      toast.error(err instanceof Error ? err.message : (isAr ? 'فشل إزالة المدرب' : 'Failed to remove coach'));
     }
   };
 
@@ -216,25 +220,25 @@ export default function GroupDetailsPage() {
         location: scheduleForm.location.trim() || undefined,
       });
       setIsAddScheduleModalOpen(false);
-      toast.success('تمت إضافة الموعد التدريبي الأسبوعي بنجاح');
+      toast.success(isAr ? 'تمت إضافة الموعد التدريبي الأسبوعي بنجاح' : 'Weekly training schedule added successfully');
       await loadGroupDetails();
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'فشل إضافة الموعد التدريبي');
+      setActionError(err instanceof Error ? err.message : (isAr ? 'فشل إضافة الموعد التدريبي' : 'Failed to add weekly schedule'));
     } finally {
       setSubmittingAction(false);
     }
   };
 
   const handleDeleteSchedule = async (scheduleId: string) => {
-    if (!confirm('هل أنت متأكد من حذف هذا الموعد التدريبي الأسبوعي؟')) {
+    if (!confirm(isAr ? 'هل أنت متأكد من حذف هذا الموعد التدريبي الأسبوعي؟' : 'Are you sure you want to delete this weekly schedule?')) {
       return;
     }
     try {
       await api.groups.deleteSchedule(groupId, scheduleId);
-      toast.success('تم حذف الموعد التدريبي الأسبوعي');
+      toast.success(isAr ? 'تم حذف الموعد التدريبي الأسبوعي' : 'Weekly schedule deleted successfully');
       await loadGroupDetails();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'فشل حذف الموعد التدريبي');
+      toast.error(err instanceof Error ? err.message : (isAr ? 'فشل حذف الموعد التدريبي' : 'Failed to delete schedule'));
     }
   };
 
@@ -295,7 +299,7 @@ export default function GroupDetailsPage() {
                       : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30'
                   }`}
                 >
-                  {group.status === 'ACTIVE' ? 'مجموعة نشطة' : 'غير نشطة'}
+                  {group.status === 'ACTIVE' ? (isAr ? 'مجموعة نشطة' : 'Active Squad') : (isAr ? 'غير نشطة' : 'Inactive')}
                 </span>
                 {group.ageCategory && (
                   <span className="rounded-full bg-[var(--bg-surface-subtle)] px-2.5 py-0.5 text-xs font-medium text-[var(--text-muted)] border border-[var(--border-subtle)]">
@@ -345,7 +349,7 @@ export default function GroupDetailsPage() {
                 className="flex items-center justify-center gap-2 rounded-xl bg-[var(--accent-primary)] text-white px-5 py-3 text-xs font-bold shadow-sm hover:brightness-110 transition-all cursor-pointer"
               >
                 <CalendarCheck className="h-4 w-4" />
-                <span>بدء حصة تدريبية فورية</span>
+                <span>{isAr ? 'بدء حصة تدريبية فورية' : 'Start Instant Session'}</span>
               </Link>
             </div>
           </div>
@@ -364,7 +368,7 @@ export default function GroupDetailsPage() {
             }`}
           >
             <Users className="h-4 w-4" />
-            <span>قائمة اللاعبين ({group.members.length})</span>
+            <span>{isAr ? `قائمة اللاعبين (${group.members.length})` : `Athletes Roster (${group.members.length})`}</span>
           </button>
 
           <button
@@ -378,7 +382,7 @@ export default function GroupDetailsPage() {
             }`}
           >
             <ShieldCheck className="h-4 w-4" />
-            <span>الكادر التدريبي ({group.coaches.length})</span>
+            <span>{isAr ? `الكادر التدريبي (${group.coaches.length})` : `Coaching Staff (${group.coaches.length})`}</span>
           </button>
 
           <button
@@ -392,7 +396,7 @@ export default function GroupDetailsPage() {
             }`}
           >
             <Clock className="h-4 w-4" />
-            <span>جدول المواعيد الأسبوعية ({group.schedules.length})</span>
+            <span>{isAr ? `جدول المواعيد الأسبوعية (${group.schedules.length})` : `Weekly Schedule (${group.schedules.length})`}</span>
           </button>
         </div>
 
@@ -416,7 +420,7 @@ export default function GroupDetailsPage() {
                 className="flex items-center gap-1.5 rounded-xl bg-[var(--accent-primary)] text-white px-3.5 py-2 text-xs font-semibold hover:brightness-110 transition-all cursor-pointer"
               >
                 <UserPlus className="h-4 w-4" />
-                <span>إضافة لاعب للمجموعة</span>
+                <span>{isAr ? 'إضافة لاعب للمجموعة' : 'Add Athlete to Squad'}</span>
               </button>
             </div>
 
@@ -454,9 +458,9 @@ export default function GroupDetailsPage() {
                           {member.playerName}
                         </h4>
                         <div className="flex items-center gap-2 text-[11px] text-[var(--text-muted)] mt-0.5">
-                          <span>{member.playerGender === 'MALE' ? 'ذكر' : 'أنثى'}</span>
+                          <span>{member.playerGender === 'MALE' ? (isAr ? 'ذكر' : 'Male') : (isAr ? 'أنثى' : 'Female')}</span>
                           <span>•</span>
-                          <span>مواليد {member.playerDateOfBirth}</span>
+                          <span>{isAr ? 'مواليد' : 'DOB'} {member.playerDateOfBirth}</span>
                         </div>
                       </div>
                     </div>
@@ -466,7 +470,7 @@ export default function GroupDetailsPage() {
                       id={`btn-remove-member-${member.playerId}`}
                       onClick={() => handleRemoveMember(member.playerId, member.playerName)}
                       className="p-2 rounded-xl text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
-                      title="إزالة اللاعب من المجموعة"
+                      title={isAr ? 'إزالة اللاعب من المجموعة' : 'Remove athlete from squad'}
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -496,7 +500,7 @@ export default function GroupDetailsPage() {
                 className="flex items-center gap-1.5 rounded-xl bg-[var(--accent-primary)] text-white px-3.5 py-2 text-xs font-semibold hover:brightness-110 transition-all cursor-pointer"
               >
                 <Plus className="h-4 w-4" />
-                <span>تعيين مدرب للمجموعة</span>
+                <span>{isAr ? 'تعيين مدرب للمجموعة' : 'Assign Coach'}</span>
               </button>
             </div>
 
@@ -550,7 +554,7 @@ export default function GroupDetailsPage() {
                         id={`btn-remove-coach-${c.coachUserId}`}
                         onClick={() => handleRemoveCoach(c.coachUserId, c.coachName)}
                         className="p-1.5 rounded-lg text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
-                        title="إزالة المدرب من المجموعة"
+                        title={isAr ? 'إزالة المدرب من المجموعة' : 'Remove coach from squad'}
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
@@ -584,7 +588,7 @@ export default function GroupDetailsPage() {
                 className="flex items-center gap-1.5 rounded-xl bg-[var(--accent-primary)] text-white px-3.5 py-2 text-xs font-semibold hover:brightness-110 transition-all cursor-pointer"
               >
                 <Plus className="h-4 w-4" />
-                <span>إضافة موعد تدريبي</span>
+                <span>{isAr ? 'إضافة موعد تدريبي' : 'Add Pitch Schedule'}</span>
               </button>
             </div>
 
@@ -619,7 +623,7 @@ export default function GroupDetailsPage() {
                           <Calendar className="h-4 w-4" />
                         </span>
                         <span className="font-bold text-[var(--text-main)] text-base">
-                          يوم {DAYS_OF_WEEK[s.dayOfWeek]}
+                          {isAr ? `يوم ${DAYS_OF_WEEK[s.dayOfWeek]}` : DAYS_OF_WEEK[s.dayOfWeek]}
                         </span>
                       </div>
                       <button
@@ -627,7 +631,7 @@ export default function GroupDetailsPage() {
                         id={`btn-delete-schedule-${s.id}`}
                         onClick={() => handleDeleteSchedule(s.id)}
                         className="p-1.5 rounded-lg text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
-                        title="حذف الموعد التدريبي"
+                        title={isAr ? 'حذف الموعد التدريبي' : 'Delete weekly schedule'}
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
@@ -637,13 +641,13 @@ export default function GroupDetailsPage() {
                       <div className="flex items-center gap-2 text-[var(--text-main)] font-medium">
                         <Clock className="h-3.5 w-3.5 text-[var(--accent-primary)]" />
                         <span>
-                          من {s.startTime} إلى {s.endTime}
+                          {isAr ? `من ${s.startTime} إلى ${s.endTime}` : `${s.startTime} - ${s.endTime}`}
                         </span>
                       </div>
                       {s.location && (
                         <div className="flex items-center gap-2">
                           <MapPin className="h-3.5 w-3.5 text-[var(--accent-primary)]" />
-                          <span>الموقع: {s.location}</span>
+                          <span>{isAr ? 'الموقع: ' : 'Location: '}{translateDataString(s.location, locale)}</span>
                         </div>
                       )}
                     </div>
@@ -661,7 +665,7 @@ export default function GroupDetailsPage() {
           <div className="w-full max-w-md rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-2xl relative space-y-5">
             <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-4">
               <h3 className="text-base font-bold text-[var(--text-main)]">
-                إضافة لاعب للمجموعة التدريبية
+                {isAr ? 'إضافة لاعب للمجموعة التدريبية' : 'Add Athlete to Training Squad'}
               </h3>
               <button
                 type="button"
@@ -684,11 +688,11 @@ export default function GroupDetailsPage() {
                   htmlFor="select-member-player"
                   className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5"
                 >
-                  اختر اللاعب (من مقيدي فرع {group.branchName})
+                  {isAr ? `اختر اللاعب (من مقيدي فرع ${group.branchName})` : `Select athlete (enrolled in ${translateDataString(group.branchName, locale)})`}
                 </label>
                 {availablePlayers.length === 0 ? (
                   <p className="text-xs text-amber-500">
-                    لا يوجد لاعبين غير معينين في هذا الفرع حالياً.
+                    {isAr ? 'لا يوجد لاعبين غير معينين في هذا الفرع حالياً.' : 'No unassigned athletes in this branch currently.'}
                   </p>
                 ) : (
                   <select
@@ -700,7 +704,7 @@ export default function GroupDetailsPage() {
                   >
                     {availablePlayers.map((p) => (
                       <option key={p.id} value={p.id}>
-                        {p.firstName} {p.lastName} ({p.gender === 'MALE' ? 'ذكر' : 'أنثى'} - مواليد{' '}
+                        {p.firstName} {p.lastName} ({p.gender === 'MALE' ? (isAr ? 'ذكر' : 'Male') : (isAr ? 'أنثى' : 'Female')} - {isAr ? 'مواليد' : 'DOB'}{' '}
                         {p.dateOfBirth})
                       </option>
                     ))}
@@ -722,7 +726,7 @@ export default function GroupDetailsPage() {
                   disabled={submittingAction || availablePlayers.length === 0}
                   className="rounded-xl bg-[var(--accent-primary)] text-white px-4 py-2 text-xs font-bold hover:brightness-110 disabled:opacity-50 cursor-pointer"
                 >
-                  {submittingAction ? 'جارٍ الحفظ...' : 'تأكيد الإضافة'}
+                  {submittingAction ? (isAr ? 'جارٍ الحفظ...' : 'Adding...') : (isAr ? 'تأكيد الإضافة' : 'Confirm Add')}
                 </button>
               </div>
             </form>
@@ -735,7 +739,7 @@ export default function GroupDetailsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
           <div className="w-full max-w-md rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-2xl relative space-y-5">
             <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-4">
-              <h3 className="text-base font-bold text-[var(--text-main)]">تعيين مدرب للمجموعة</h3>
+              <h3 className="text-base font-bold text-[var(--text-main)]">{isAr ? 'تعيين مدرب للمجموعة' : 'Assign Squad Coach'}</h3>
               <button
                 type="button"
                 onClick={() => setIsAddCoachModalOpen(false)}
@@ -757,11 +761,11 @@ export default function GroupDetailsPage() {
                   htmlFor="select-coach-user"
                   className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5"
                 >
-                  اختر المدرب من طاقم الأكاديمية
+                  {isAr ? 'اختر المدرب من طاقم الأكاديمية' : 'Select coach from academy staff'}
                 </label>
                 {availableStaff.length === 0 ? (
                   <p className="text-xs text-amber-500">
-                    لا يوجد أعضاء طاقم بدور مدرب متاحين حالياً.
+                    {isAr ? 'لا يوجد أعضاء طاقم بدور مدرب متاحين حالياً.' : 'No available coaching staff found.'}
                   </p>
                 ) : (
                   <select
@@ -789,7 +793,7 @@ export default function GroupDetailsPage() {
                   className="rounded border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] text-[var(--accent-primary)] focus:ring-[var(--accent-primary)]"
                 />
                 <label htmlFor="checkbox-head-coach" className="text-xs text-[var(--text-main)]">
-                  تعيين كمدرب رئيسي للمجموعة (Head Coach)
+                  {isAr ? 'تعيين كمدرب رئيسي للمجموعة (Head Coach)' : 'Assign as Head Coach'}
                 </label>
               </div>
 
@@ -807,7 +811,7 @@ export default function GroupDetailsPage() {
                   disabled={submittingAction || availableStaff.length === 0}
                   className="rounded-xl bg-[var(--accent-primary)] text-white px-4 py-2 text-xs font-bold hover:brightness-110 disabled:opacity-50 cursor-pointer"
                 >
-                  {submittingAction ? 'جارٍ الحفظ...' : 'تأكيد التعيين'}
+                  {submittingAction ? (isAr ? 'جارٍ الحفظ...' : 'Assigning...') : (isAr ? 'تأكيد التعيين' : 'Confirm Assign')}
                 </button>
               </div>
             </form>
@@ -821,7 +825,7 @@ export default function GroupDetailsPage() {
           <div className="w-full max-w-md rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-2xl relative space-y-5">
             <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-4">
               <h3 className="text-base font-bold text-[var(--text-main)]">
-                إضافة موعد تدريبي أسبوعي
+                {isAr ? 'إضافة موعد تدريبي أسبوعي' : 'Add Weekly Pitch Schedule'}
               </h3>
               <button
                 type="button"
@@ -912,7 +916,7 @@ export default function GroupDetailsPage() {
                   id="input-schedule-location"
                   value={scheduleForm.location}
                   onChange={(e) => setScheduleForm({ ...scheduleForm, location: e.target.value })}
-                  placeholder="مثال: الملعب الرئيسي A"
+                  placeholder={isAr ? 'مثال: الملعب الرئيسي A' : 'e.g. Main Pitch A'}
                   className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none transition-colors"
                 />
               </div>
@@ -931,7 +935,7 @@ export default function GroupDetailsPage() {
                   disabled={submittingAction}
                   className="rounded-xl bg-[var(--accent-primary)] text-white px-4 py-2 text-xs font-bold hover:brightness-110 disabled:opacity-50 cursor-pointer"
                 >
-                  {submittingAction ? 'جارٍ الحفظ...' : 'حفظ الموعد'}
+                  {submittingAction ? (isAr ? 'جارٍ الحفظ...' : 'Saving...') : (isAr ? 'حفظ الموعد' : 'Save Schedule')}
                 </button>
               </div>
             </form>

@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useLocale } from '../../lib/locale-context';
-import { useAuth } from '../../lib/auth-context';
-import { apiClient } from '../../lib/api-client';
+import { useLocale } from '@/contexts/locale-context';
+import { useAuth } from '@/contexts/auth-context';
+import { apiClient } from '@/api/client';
 import { useToast } from '../ui/Toast';
+import { translateDataString } from '@/utils/data-translator';
 import {
   UserPlus,
   Clock,
@@ -398,7 +399,7 @@ export function PlayerJoinRequestsTab() {
                         </option>
                         {branches.map((b) => (
                           <option key={b.id} value={b.id}>
-                            {b.name} ({b.city || 'الفرع'})
+                            {translateDataString(b.name, locale)} ({translateDataString(b.city, locale) || (ar ? 'الفرع' : 'Branch')})
                           </option>
                         ))}
                       </select>

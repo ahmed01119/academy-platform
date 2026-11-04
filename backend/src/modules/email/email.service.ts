@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { type ConfigService } from '@nestjs/config';
+import type { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 import type { Transporter } from 'nodemailer';
 
@@ -616,25 +616,43 @@ export class EmailService {
     name: string,
     resetUrl: string,
     locale: 'ar' | 'en' = 'ar',
+    otpCode?: string,
   ): Promise<SendEmailResult> {
     const isAr = locale === 'ar';
     const safeName = escapeHtml(name);
+    const safeOtp = otpCode ? escapeHtml(otpCode) : null;
 
     const subject = isAr
-      ? `إعادة تعيين كلمة المرور — سبورتكسس`
-      : `Password Reset Request — Sportexus`;
+      ? `رمز إعادة تعيين كلمة المرور — سبورتكسس`
+      : `Password Reset Verification Code — Sportexus`;
+
+    const otpHtml = safeOtp
+      ? `<div style="background: rgba(10, 59, 255, 0.08); border: 2px dashed #0A3BFF; border-radius: 12px; padding: 20px; text-align: center; margin: 20px 0;">
+           <div style="font-size: 13px; color: #64748b; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 8px; font-weight: 600;">
+             ${isAr ? 'رمز التحقق لمرة واحدة (OTP)' : 'One-Time Verification Code (OTP)'}
+           </div>
+           <div style="font-size: 34px; font-weight: 800; letter-spacing: 10px; color: #0A3BFF; font-family: monospace;">
+             ${safeOtp}
+           </div>
+           <div style="font-size: 13px; color: #ef4444; margin-top: 8px; font-weight: 600;">
+             ${isAr ? 'ينتهي هذا الرمز خلال 5 دقائق' : 'This code expires in 5 minutes'}
+           </div>
+         </div>`
+      : '';
 
     const html = this.renderBaseTemplate({
       locale,
-      preheader: isAr ? `رابط إعادة تعيين كلمة المرور.` : `Your password reset link.`,
+      preheader: isAr ? `رمز إعادة تعيين كلمة المرور الخاص بك.` : `Your password reset code.`,
       title: isAr ? 'طلب إعادة تعيين كلمة المرور' : 'Password Reset Request',
       greeting: isAr ? `مرحباً ${safeName}،` : `Hello ${safeName},`,
       bodyHtml: isAr
         ? `<p>تلقينا طلباً لإعادة تعيين كلمة المرور الخاصة بحسابك على منصة سبورتكسس.</p>
-           <p>انقر على الزر أدناه لاختيار كلمة مرور جديدة. هذا الرابط صالح لمدة <strong>ساعة واحدة فقط</strong>.</p>
+           ${otpHtml}
+           <p>استخدم رمز التحقق أعلاه أو انقر على الزر أدناه لإعادة تعيين كلمة المرور. الرمز صالح لمدة <strong>5 دقائق فقط</strong>.</p>
            <p style="color: #94a3b8; font-size: 13px;">إذا لم تطلب إعادة تعيين كلمة المرور، يمكنك تجاهل هذه الرسالة بأمان وستظل كلمة مرورك الحالية دون تغيير.</p>`
         : `<p>We received a request to reset the password for your Sportexus account.</p>
-           <p>Click the button below to choose a new password. This link is valid for <strong>1 hour only</strong>.</p>
+           ${otpHtml}
+           <p>Use the verification code above or click the button below to reset your password. This code is valid for <strong>5 minutes only</strong>.</p>
            <p style="color: #94a3b8; font-size: 13px;">If you did not request this, you can safely ignore this email.</p>`,
       actionButton: {
         label: isAr ? 'تعيين كلمة المرور الجديدة' : 'Reset My Password',
@@ -643,8 +661,8 @@ export class EmailService {
     });
 
     const text = isAr
-      ? `مرحباً ${name}، رابط إعادة تعيين كلمة المرور: ${resetUrl}`
-      : `Hello ${name}, your password reset link: ${resetUrl}`;
+      ? `مرحباً ${name}، رمز إعادة تعيين كلمة المرور هو: ${otpCode || 'راجع الرابط'} (صالح لمدة 5 دقائق). الرابط: ${resetUrl}`
+      : `Hello ${name}, your password reset code is: ${otpCode || 'see link'} (expires in 5 minutes). Link: ${resetUrl}`;
 
     return this.sendEmailDetailed({ to, subject, html, text, actionUrl: resetUrl });
   }

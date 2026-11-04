@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useLocale } from '../../lib/locale-context';
-import { useAuth } from '../../lib/auth-context';
-import apiClient from '../../lib/api-client';
+import { useLocale } from '@/contexts/locale-context';
+import { useAuth } from '@/contexts/auth-context';
+import apiClient from '@/api/client';
 import { useToast } from '../ui/Toast';
 import { Shield, UserPlus, Crown, LogOut } from 'lucide-react';
 import type { PlatformUserItem, PlatformAcademyItem } from '@academy/shared';

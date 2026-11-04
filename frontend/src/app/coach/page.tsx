@@ -3,9 +3,9 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '../../lib/auth-context';
-import { useLocale } from '../../lib/locale-context';
-import { apiClient } from '../../lib/api-client';
+import { useAuth } from '@/contexts/auth-context';
+import { useLocale } from '@/contexts/locale-context';
+import { apiClient } from '@/api/client';
 import { AppShell } from '../../components/layout/AppShell';
 import { PageHeader, StatCard, EmptyState, StatusBadge } from '../../components/ui';
 import {
@@ -26,7 +26,7 @@ import type { SessionSummary, TrainingGroupSummary } from '@academy/shared';
 
 export default function CoachWorkspacePage() {
   const { user, activeTenant, isLoading: authLoading } = useAuth();
-  const { t, isRtl } = useLocale();
+  const { locale, isRtl } = useLocale();
   const router = useRouter();
 
   const [todaySessions, setTodaySessions] = useState<SessionSummary[]>([]);
@@ -69,7 +69,7 @@ export default function CoachWorkspacePage() {
           <div className="flex flex-col items-center gap-3">
             <RefreshCw className="h-8 w-8 animate-spin text-[var(--accent-primary)]" />
             <p className="text-sm text-[var(--text-muted)]">
-              {t('common.loading', 'جارٍ تحميل مساحة عمل المدرب...')}
+              {locale === 'ar' ? 'جارٍ تحميل مساحة عمل المدرب...' : 'Loading coach workspace...'}
             </p>
           </div>
         </div>
@@ -78,16 +78,16 @@ export default function CoachWorkspacePage() {
   }
 
   return (
-    <AppShell breadcrumbs={[{ label: t('nav.coachWorkspace', 'مساحة عمل المدرب') }]}>
+    <AppShell breadcrumbs={[{ label: locale === 'ar' ? 'مساحة عمل المدرب' : 'Coach Workspace' }]}>
       <div className="space-y-8">
         {/* Welcome Coach Header */}
         <PageHeader
-          title={`مساحة المدرب: كابتن ${user?.name || ''} ⚽`}
-          description="إدارة الحصص التدريبية اليومية، التحضير الفوري بالباركود، وتقييم أداء وتطور اللاعبين ميدانياً."
+          title={locale === 'ar' ? `مساحة المدرب: كابتن ${user?.name || ''} ⚽` : `Coach Workspace: ${user?.name || ''} ⚽`}
+          description={locale === 'ar' ? 'إدارة الحصص التدريبية اليومية، التحضير الفوري بالباركود، وتقييم أداء وتطور اللاعبين ميدانياً.' : 'Manage daily training sessions, quick barcode attendance, and on-field player performance evaluation.'}
           icon={UserCheck}
           badge={
             <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[var(--accent-primary)] bg-[var(--accent-primary)]/10 px-3 py-1 rounded-full border border-[var(--accent-primary)]/20">
-              {activeTenant?.tenantName || 'الأكاديمية'}
+              {activeTenant?.tenantName || (locale === 'ar' ? 'الأكاديمية' : 'Academy')}
             </span>
           }
           actions={
@@ -97,21 +97,21 @@ export default function CoachWorkspacePage() {
                 className="flex items-center gap-2 rounded-xl bg-[var(--accent-primary)] px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-[var(--accent-primary)]/20 hover:opacity-90 transition-all"
               >
                 <Award className="h-4 w-4" />
-                <span>تقييمات اللاعبين</span>
+                <span>{locale === 'ar' ? 'تقييمات اللاعبين' : 'Player Evaluations'}</span>
               </Link>
               <Link
                 href="/players?tab=applications"
                 className="flex items-center gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-2.5 text-sm font-semibold text-[var(--text-main)] hover:border-[var(--accent-primary)] hover:text-[var(--accent-primary)] transition-all"
               >
                 <UserPlus className="h-4 w-4 text-[var(--accent-primary)]" />
-                <span>طلبات الانضمام</span>
+                <span>{locale === 'ar' ? 'طلبات الانضمام' : 'Join Requests'}</span>
               </Link>
               <Link
                 href="/sessions"
                 className="flex items-center gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-2.5 text-sm font-semibold text-[var(--text-main)] hover:border-[var(--accent-primary)] hover:text-[var(--accent-primary)] transition-all"
               >
                 <CalendarCheck className="h-4 w-4 text-[var(--accent-primary)]" />
-                <span>جدول الحصص</span>
+                <span>{locale === 'ar' ? 'جدول الحصص' : 'Sessions Schedule'}</span>
               </Link>
             </div>
           }
@@ -120,22 +120,22 @@ export default function CoachWorkspacePage() {
         {/* Quick Stat Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <StatCard
-            title="حصص اليوم الميدانية"
+            title={locale === 'ar' ? 'حصص اليوم الميدانية' : "Today's Sessions"}
             value={todaySessions.length}
             icon={CalendarCheck}
-            subtitle="حصص تدريبية مبرمجة لليوم في الفروع"
+            subtitle={locale === 'ar' ? 'حصص تدريبية مبرمجة لليوم في الفروع' : 'Training sessions scheduled today across branches'}
           />
           <StatCard
-            title="فرق التدريب المعتمدة"
+            title={locale === 'ar' ? 'فرق التدريب المعتمدة' : 'Assigned Training Groups'}
             value={assignedGroups.length}
             icon={Users}
-            subtitle="مجموعات وفئات عمرية مسندة إليك"
+            subtitle={locale === 'ar' ? 'مجموعات وفئات عمرية مسندة إليك' : 'Groups and age categories assigned to you'}
           />
           <StatCard
-            title="الذكاء الرياضي والتطوير"
-            value="4 محاور"
+            title={locale === 'ar' ? 'الذكاء الرياضي والتطوير' : 'Sports Intelligence & Development'}
+            value={locale === 'ar' ? '4 محاور' : '4 Pillars'}
             icon={Award}
-            subtitle="فني، تكتيكي، بدني وسلوكي"
+            subtitle={locale === 'ar' ? 'فني، تكتيكي، بدني وسلوكي' : 'Technical, Tactical, Physical & Behavioral'}
           />
         </div>
 
@@ -144,13 +144,13 @@ export default function CoachWorkspacePage() {
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-bold text-[var(--text-main)] flex items-center gap-2">
               <Clock className="h-5 w-5 text-[var(--accent-primary)]" />
-              <span>جدول حصص اليوم التدريبية</span>
+              <span>{locale === 'ar' ? 'جدول حصص اليوم التدريبية' : "Today's Training Schedule"}</span>
             </h2>
             <Link
               href="/sessions"
               className="text-xs font-semibold text-[var(--accent-primary)] hover:underline flex items-center gap-1"
             >
-              <span>عرض كل الحصص</span>
+              <span>{locale === 'ar' ? 'عرض كل الحصص' : 'View All Sessions'}</span>
               <ChevronIcon className="h-3.5 w-3.5" />
             </Link>
           </div>
@@ -158,15 +158,15 @@ export default function CoachWorkspacePage() {
           {todaySessions.length === 0 ? (
             <EmptyState
               icon={CalendarCheck}
-              title="لا توجد حصص تدريبية مجدولة لليوم"
-              description="يمكنك الاطلاع على جدول الحصص القادمة أو مراجعة الحصص المسجلة عبر صفحة الحصص."
+              title={locale === 'ar' ? 'لا توجد حصص تدريبية مجدولة لليوم' : 'No training sessions scheduled today'}
+              description={locale === 'ar' ? 'يمكنك الاطلاع على جدول الحصص القادمة أو مراجعة الحصص المسجلة عبر صفحة الحصص.' : 'You can view upcoming sessions or review recorded sessions in the sessions page.'}
               action={
                 <Link
                   href="/sessions"
                   className="inline-flex items-center gap-2 rounded-xl bg-[var(--accent-primary)] px-4 py-2 text-xs font-semibold text-white hover:opacity-90 transition-all"
                 >
                   <Calendar className="h-4 w-4" />
-                  <span>الانتقال لجدول الحصص</span>
+                  <span>{locale === 'ar' ? 'الانتقال لجدول الحصص' : 'Go to Sessions'}</span>
                 </Link>
               }
             />
@@ -182,16 +182,7 @@ export default function CoachWorkspacePage() {
                       <span className="text-sm font-bold text-[var(--text-main)]">
                         {session.groupName}
                       </span>
-                      <StatusBadge
-                        status={session.status}
-                        label={
-                          session.status === 'IN_PROGRESS'
-                            ? 'جارية الآن'
-                            : session.status === 'CLOSED'
-                              ? 'مكتملة'
-                              : 'مجدولة'
-                        }
-                      />
+                      <StatusBadge status={session.status} />
                     </div>
 
                     <div className="text-xs text-[var(--text-muted)] flex items-center gap-4 mb-4">
@@ -212,14 +203,14 @@ export default function CoachWorkspacePage() {
                       className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-[var(--accent-primary)] px-3 py-2 text-xs font-semibold text-white hover:opacity-90 transition-all shadow-sm"
                     >
                       <Play className="h-3.5 w-3.5 fill-current" />
-                      <span>بدء تحضير الحضور</span>
+                      <span>{locale === 'ar' ? 'بدء تحضير الحضور' : 'Take Attendance'}</span>
                     </Link>
                     <Link
                       href={`/evaluations?sessionId=${session.id}`}
                       className="flex items-center justify-center gap-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 py-2 text-xs font-semibold text-[var(--text-main)] hover:border-[var(--accent-primary)] hover:text-[var(--accent-primary)] transition-all"
                     >
                       <Award className="h-3.5 w-3.5 text-[var(--accent-primary)]" />
-                      <span>تقييم اللاعبين</span>
+                      <span>{locale === 'ar' ? 'تقييم اللاعبين' : 'Evaluate Players'}</span>
                     </Link>
                   </div>
                 </div>
@@ -233,13 +224,13 @@ export default function CoachWorkspacePage() {
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-bold text-[var(--text-main)] flex items-center gap-2">
               <Users className="h-5 w-5 text-[var(--accent-primary)]" />
-              <span>المجموعات والفرق المسندة</span>
+              <span>{locale === 'ar' ? 'المجموعات والفرق المسندة' : 'Assigned Groups & Teams'}</span>
             </h2>
             <Link
               href="/groups"
               className="text-xs font-semibold text-[var(--accent-primary)] hover:underline flex items-center gap-1"
             >
-              <span>عرض كل المجموعات</span>
+              <span>{locale === 'ar' ? 'عرض كل المجموعات' : 'View All Groups'}</span>
               <ChevronIcon className="h-3.5 w-3.5" />
             </Link>
           </div>
@@ -259,7 +250,7 @@ export default function CoachWorkspacePage() {
                   )}
                 </div>
                 <p className="text-xs text-[var(--text-muted)] mb-3">
-                  {group.description || 'فريق تدريبي معتمد بالأكاديمية'}
+                  {group.description || (locale === 'ar' ? 'فريق تدريبي معتمد بالأكاديمية' : 'Certified training team')}
                 </p>
                 <div className="flex items-center justify-between text-xs text-[var(--text-muted)] pt-3 border-t border-[var(--border-subtle)]">
                   <span>{group.branchName}</span>
@@ -267,7 +258,7 @@ export default function CoachWorkspacePage() {
                     href={`/groups/${group.id}`}
                     className="text-[var(--accent-primary)] font-semibold hover:underline flex items-center gap-1"
                   >
-                    <span>كشف الفريق</span>
+                    <span>{locale === 'ar' ? 'كشف الفريق' : 'View Roster'}</span>
                     <ChevronIcon className="h-3 w-3" />
                   </Link>
                 </div>

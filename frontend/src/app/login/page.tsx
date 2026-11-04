@@ -3,9 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '../../lib/auth-context';
-import { useLocale } from '../../lib/locale-context';
-import { getRoleHomeRoute } from '../../lib/role-routing';
+import { useAuth } from '@/contexts/auth-context';
+import { useLocale } from '@/contexts/locale-context';
+import { getRoleHomeRoute } from '@/utils/role-routing';
 import { Navbar } from '../../components/Navbar';
 import { SportexusLogo } from '../../components/brand/SportexusLogo';
 import { Mail, Eye, EyeOff, AlertCircle, ArrowRight, ShieldCheck, Loader2 } from 'lucide-react';
@@ -151,7 +151,15 @@ export default function LoginPage() {
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute left-3 top-3 text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors"
-                    title={showPassword ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'}
+                    title={
+                      showPassword
+                        ? locale === 'ar'
+                          ? 'إخفاء كلمة المرور'
+                          : 'Hide password'
+                        : locale === 'ar'
+                          ? 'إظهار كلمة المرور'
+                          : 'Show password'
+                    }
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>

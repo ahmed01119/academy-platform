@@ -3,16 +3,16 @@
 import React, { Suspense, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useAuth } from '../../lib/auth-context';
-import { useLocale } from '../../lib/locale-context';
+import { useAuth } from '@/contexts/auth-context';
+import { useLocale } from '@/contexts/locale-context';
 import {
   canAccessAdminRoutes,
   canAccessCoachRoutes,
   getRoleHomeRoute,
-} from '../../lib/role-routing';
+} from '@/utils/role-routing';
 import { AppShell } from '../../components/layout/AppShell';
 import { PageHeader, StatusBadge, useToast } from '../../components/ui';
-import { api } from '../../lib/api-client';
+import { api } from '@/api/client';
 import type {
   BranchSummary,
   SessionStatus,
@@ -173,7 +173,7 @@ function SessionsContent() {
     }
 
     const selectedGroup = groups.find((g) => g.id === createForm.groupId);
-    const groupName = selectedGroup ? selectedGroup.name : 'حصة تدريبية';
+    const groupName = selectedGroup ? selectedGroup.name : locale === 'ar' ? 'حصة تدريبية' : 'Training Session';
 
     setIsSubmitting(true);
     try {
@@ -191,7 +191,7 @@ function SessionsContent() {
       setIsCreateModalOpen(false);
       router.push(`/attendance/sessions/${created.id}`);
     } catch (err) {
-      setCreateError(err instanceof Error ? err.message : 'فشل إنشاء الحصة التدريبية');
+      setCreateError(err instanceof Error ? err.message : locale === 'ar' ? 'فشل إنشاء الحصة التدريبية' : 'Failed to create training session');
     } finally {
       setIsSubmitting(false);
     }
@@ -257,7 +257,7 @@ function SessionsContent() {
                 className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border-app)] bg-[var(--bg-surface)] px-3.5 py-2.5 text-xs font-semibold text-[var(--accent-primary)] hover:border-[var(--accent-primary)] transition-all shadow-sm"
               >
                 <QrCode className="h-4 w-4" />
-                <span>{t('nav.scanner', 'ماسح QR')}</span>
+                <span>{locale === 'ar' ? 'ماسح QR' : 'QR Scanner'}</span>
               </Link>
 
               <button

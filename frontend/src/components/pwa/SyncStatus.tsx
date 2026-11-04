@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useAuth } from '../../lib/auth-context';
-import { useLocale } from '../../lib/locale-context';
-import { offlineEngine } from '../../lib/offline-engine';
-import { offlineStore } from '../../lib/offline-attendance-store';
+import { useAuth } from '@/contexts/auth-context';
+import { useLocale } from '@/contexts/locale-context';
+import { offlineEngine } from '@/utils/offline-engine';
+import { offlineStore } from '@/utils/offline-attendance-store';
 
 export function SyncStatus() {
   const { activeTenant } = useAuth();

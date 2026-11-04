@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Search, X } from 'lucide-react';
-import { useLocale } from '../../lib/locale-context';
+import { useLocale } from '@/contexts/locale-context';
 
 export interface FilterOption {
   value: string;

@@ -63,7 +63,7 @@ export const ForgotPasswordRequestSchema = z.object({
 export type ForgotPasswordRequest = z.infer<typeof ForgotPasswordRequestSchema>;
 
 export const ResetPasswordRequestSchema = z.object({
-  token: z.string().min(10, 'Reset token is required'),
+  token: z.string().min(6, 'Reset token or verification code is required'),
   newPassword: PasswordSchema,
 });
 

@@ -1,8 +1,8 @@
 import type { Metadata, Viewport } from 'next';
 import { DEFAULT_LOCALE, LOCALE_DIRECTION } from '@academy/shared';
-import { AuthProvider } from '../lib/auth-context';
-import { ThemeProvider, themeInitScript } from '../lib/theme-context';
-import { LocaleProvider } from '../lib/locale-context';
+import { AuthProvider } from '@/contexts/auth-context';
+import { ThemeProvider, themeInitScript } from '@/contexts/theme-context';
+import { LocaleProvider, localeInitScript } from '@/contexts/locale-context';
 import { ToastProvider } from '../components/ui/Toast';
 import { ServiceWorkerRegistrar } from '../components/pwa/ServiceWorkerRegistrar';
 import { SyncStatus } from '../components/pwa/SyncStatus';
@@ -11,7 +11,7 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'SPORTEXUS | سبورتكسس — One Platform. Every Academy.',
   description:
-    'Sportexus: One Platform. Every Academy. منصة سحابية متكاملة لإدارة الأكاديميات الرياضية، الفروع، الاشتراكات، الحضور الذكي وتقييمات الأداء.',
+    'Sportexus: One Platform. Every Academy. A cloud-based sports academy management platform for branches, subscriptions, smart attendance, and performance evaluations.',
   applicationName: 'SPORTEXUS',
   manifest: '/manifest.webmanifest',
   icons: {
@@ -48,6 +48,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang={locale} dir={dir} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        <script dangerouslySetInnerHTML={{ __html: localeInitScript }} />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link

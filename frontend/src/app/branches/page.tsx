@@ -3,12 +3,14 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '../../lib/auth-context';
-import { canAccessAdminRoutes, getRoleHomeRoute } from '../../lib/role-routing';
+import { useAuth } from '@/contexts/auth-context';
+import { useLocale } from '@/contexts/locale-context';
+import { translateDataString } from '@/utils/data-translator';
+import { canAccessAdminRoutes, getRoleHomeRoute } from '@/utils/role-routing';
 import { AppShell } from '../../components/layout/AppShell';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { StatusBadge } from '../../components/ui/StatusBadge';
-import { api } from '../../lib/api-client';
+import { api } from '@/api/client';
 import type {
   BranchStatus,
   BranchSummary,
@@ -32,6 +34,8 @@ import {
 export default function BranchesPage() {
   const router = useRouter();
   const { user, activeTenant, isLoading } = useAuth();
+  const { locale, t } = useLocale();
+  const ar = locale === 'ar';
 
   const [branches, setBranches] = useState<BranchSummary[]>([]);
   const [isFetching, setIsFetching] = useState(true);
@@ -72,12 +76,12 @@ export default function BranchesPage() {
       const data = await api.branches.list();
       setBranches(data);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'فشل تحميل الفروع';
+      const msg = err instanceof Error ? err.message : ar ? 'فشل تحميل الفروع' : 'Failed to load branches';
       setErrorMessage(msg);
     } finally {
       setIsFetching(false);
     }
-  }, [user, activeTenant]);
+  }, [user, activeTenant, ar]);
 
   useEffect(() => {
     void loadBranches();
@@ -116,7 +120,7 @@ export default function BranchesPage() {
     setSuccessMessage(null);
 
     if (!name.trim()) {
-      setErrorMessage('يرجى إدخال اسم الفرع');
+      setErrorMessage(ar ? 'يرجى إدخال اسم الفرع' : 'Please enter branch name');
       return;
     }
 
@@ -137,11 +141,11 @@ export default function BranchesPage() {
       };
 
       await api.branches.create(payload);
-      setSuccessMessage('تم إنشاء الفرع بنجاح');
+      setSuccessMessage(ar ? 'تم إنشاء الفرع بنجاح' : 'Branch created successfully');
       setIsCreateModalOpen(false);
       await loadBranches();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'فشل إنشاء الفرع';
+      const msg = err instanceof Error ? err.message : ar ? 'فشل إنشاء الفرع' : 'Failed to create branch';
       setErrorMessage(msg);
     } finally {
       setIsSubmitting(false);
@@ -155,7 +159,7 @@ export default function BranchesPage() {
     setSuccessMessage(null);
 
     if (!name.trim()) {
-      setErrorMessage('يرجى إدخال اسم الفرع');
+      setErrorMessage(ar ? 'يرجى إدخال اسم الفرع' : 'Please enter branch name');
       return;
     }
 
@@ -172,11 +176,11 @@ export default function BranchesPage() {
       };
 
       await api.branches.update(editingBranch.id, payload);
-      setSuccessMessage('تم تحديث بيانات الفرع بنجاح');
+      setSuccessMessage(ar ? 'تم تحديث بيانات الفرع بنجاح' : 'Branch updated successfully');
       setIsEditModalOpen(false);
       await loadBranches();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'فشل تحديث الفرع';
+      const msg = err instanceof Error ? err.message : ar ? 'فشل تحديث الفرع' : 'Failed to update branch';
       setErrorMessage(msg);
     } finally {
       setIsSubmitting(false);
@@ -199,12 +203,19 @@ export default function BranchesPage() {
     <AppShell>
       <div className="space-y-6">
         <PageHeader
-          breadcrumbs={[{ label: 'الرئيسية', href: '/dashboard' }, { label: 'الفروع' }]}
-          title="إدارة الفروع التشغيلية"
-          description="إدارة مقرات الأكاديمية والملاعب المتاحة وسعة كل فرع وقيد اللاعبين."
+          breadcrumbs={[
+            { label: t('common.home', 'الرئيسية'), href: '/dashboard' },
+            { label: t('nav.branches', 'الفروع') },
+          ]}
+          title={ar ? 'إدارة الفروع والملاعب' : 'Operational Branches & Grounds'}
+          description={
+            ar
+              ? 'إدارة مقرات الأكاديمية والملاعب المتاحة وسعة كل فرع وقيد اللاعبين.'
+              : 'Manage academy sites, grounds, capacity limits, and player rosters.'
+          }
           badge={
             <span className="rounded-full bg-[var(--accent-primary)]/15 px-2.5 py-0.5 text-xs font-semibold text-[var(--accent-primary)] border border-[var(--accent-primary)]/30">
-              إجمالي {branches.length} فرع
+              {ar ? `إجمالي ${branches.length} فرع` : `Total: ${branches.length} Branches`}
             </span>
           }
           actions={
@@ -215,48 +226,50 @@ export default function BranchesPage() {
               className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[var(--accent-primary)] px-4 py-2 text-xs font-semibold text-white shadow-sm hover:brightness-110 transition-all cursor-pointer"
             >
               <Plus className="h-4 w-4" />
-              <span>إضافة فرع جديد</span>
+              <span>{ar ? 'إضافة فرع جديد' : 'Add New Branch'}</span>
             </button>
           }
         />
 
         {/* Alerts */}
         {errorMessage && (
-          <div className="rounded-xl border border-[#ef4444]/40 bg-[#ef4444]/10 p-4 text-xs text-[#fca5a5] flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 shrink-0 text-[#ef4444]" />
+          <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 p-4 text-xs text-rose-300 flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 shrink-0 text-rose-500" />
             <div className="flex-1 font-medium">{errorMessage}</div>
           </div>
         )}
 
         {successMessage && (
-          <div className="rounded-xl border border-[#2f9e6b]/40 bg-[#2f9e6b]/10 p-4 text-xs text-[#45c387] flex items-start gap-3">
-            <CheckCircle2 className="h-5 w-5 shrink-0 text-[#45c387]" />
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-4 text-xs text-emerald-300 flex items-start gap-3">
+            <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-500" />
             <div className="flex-1 font-medium">{successMessage}</div>
           </div>
         )}
 
         {/* Branches Grid */}
         {isFetching ? (
-          <div className="py-20 text-center text-[#9bb5a8]">
-            <RefreshCw className="h-8 w-8 animate-spin mx-auto text-[#2f9e6b] mb-2" />
-            <p className="text-xs">جارٍ تحميل الفروع...</p>
+          <div className="py-20 text-center text-[var(--text-muted)]">
+            <RefreshCw className="h-8 w-8 animate-spin mx-auto text-[var(--accent-primary)] mb-2" />
+            <p className="text-xs">{ar ? 'جارٍ تحميل الفروع...' : 'Loading branches...'}</p>
           </div>
         ) : branches.length === 0 ? (
           <div className="py-20 text-center text-[var(--text-muted)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-2xl">
             <Building className="h-12 w-12 mx-auto text-[var(--border-subtle)] mb-3" />
             <h3 className="text-base font-bold text-[var(--text-main)] mb-1">
-              لا توجد فروع مسجلة بعد
+              {ar ? 'لا توجد فروع مسجلة بعد' : 'No Branches Registered Yet'}
             </h3>
             <p className="text-xs text-[var(--text-muted)] max-w-sm mx-auto mb-5">
-              قم بإنشاء الفرع الأول للأكاديمية لتبدأ في تسجيل المدربين واللاعبين به.
+              {ar
+                ? 'قم بإنشاء الفرع الأول للأكاديمية لتبدأ في تسجيل المدربين واللاعبين به.'
+                : 'Create the first branch to begin enrolling coaches and players.'}
             </p>
             <button
               type="button"
               onClick={openCreateModal}
-              className="inline-flex items-center gap-2 rounded-xl bg-[var(--accent-primary)] px-4 py-2 text-xs font-semibold text-white shadow hover:brightness-110"
+              className="inline-flex items-center gap-2 rounded-xl bg-[var(--accent-primary)] px-4 py-2 text-xs font-semibold text-white shadow hover:brightness-110 cursor-pointer"
             >
               <Plus className="h-4 w-4" />
-              <span>إضافة فرع</span>
+              <span>{ar ? 'إضافة فرع' : 'Add Branch'}</span>
             </button>
           </div>
         ) : (
@@ -267,6 +280,14 @@ export default function BranchesPage() {
               const utilization =
                 capacityVal > 0 ? Math.min(100, Math.round((activeCount / capacityVal) * 100)) : 0;
 
+              const branchDisplayName =
+                locale === 'en' ? translateDataString(b.name, 'en') : b.name;
+              const cityDisplayName = b.city
+                ? locale === 'en'
+                  ? translateDataString(b.city, 'en')
+                  : b.city
+                : null;
+
               return (
                 <div
                   key={b.id}
@@ -276,17 +297,19 @@ export default function BranchesPage() {
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <div className="flex items-center gap-2">
-                          <h3 className="font-bold text-[var(--text-main)] text-base">{b.name}</h3>
+                          <h3 className="font-bold text-[var(--text-main)] text-base">
+                            {branchDisplayName}
+                          </h3>
                           {b.code && (
                             <span className="rounded bg-[var(--bg-surface-subtle)] px-2 py-0.5 text-[10px] font-mono text-[var(--accent-primary)] border border-[var(--border-subtle)]">
                               {b.code}
                             </span>
                           )}
                         </div>
-                        {b.city && (
+                        {cityDisplayName && (
                           <div className="text-xs text-[var(--text-muted)] flex items-center gap-1 mt-1">
                             <MapPin className="h-3 w-3 text-[var(--accent-primary)]" />
-                            <span>{b.city}</span>
+                            <span>{cityDisplayName}</span>
                             {b.address && <span>• {b.address}</span>}
                           </div>
                         )}
@@ -307,7 +330,7 @@ export default function BranchesPage() {
                       <div className="flex items-center justify-between text-xs">
                         <span className="text-[var(--text-muted)] flex items-center gap-1">
                           <Users className="h-3.5 w-3.5 text-blue-500" />
-                          اللاعبين المشتركين:
+                          {ar ? 'اللاعبين المشتركين:' : 'Enrolled Players:'}
                         </span>
                         <span className="font-bold text-[var(--text-main)]">
                           {activeCount}{' '}
@@ -317,7 +340,7 @@ export default function BranchesPage() {
                             </span>
                           ) : (
                             <span className="text-[var(--text-muted)] text-[10px] font-normal">
-                              (غير محدد السعة)
+                              {ar ? '(غير محدد السعة)' : '(Unlimited)'}
                             </span>
                           )}
                         </span>
@@ -338,7 +361,7 @@ export default function BranchesPage() {
                             />
                           </div>
                           <div className="text-[10px] text-[var(--text-muted)] text-left mt-1">
-                            نسبة الإشغال: {utilization}%
+                            {ar ? `نسبة الإشغال: ${utilization}%` : `Occupancy: ${utilization}%`}
                           </div>
                         </div>
                       )}
@@ -351,7 +374,7 @@ export default function BranchesPage() {
                       href={`/players?branchId=${b.id}`}
                       className="text-xs font-semibold text-[var(--accent-primary)] hover:underline"
                     >
-                      عرض لاعبي الفرع
+                      {ar ? 'عرض لاعبي الفرع' : 'View Branch Players'}
                     </Link>
 
                     <button
@@ -361,7 +384,7 @@ export default function BranchesPage() {
                       className="inline-flex items-center gap-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3 py-1.5 text-xs font-medium text-[var(--text-main)] hover:border-[var(--accent-primary)] hover:text-[var(--accent-primary)] transition-all cursor-pointer"
                     >
                       <Edit2 className="h-3.5 w-3.5" />
-                      <span>تعديل</span>
+                      <span>{ar ? 'تعديل' : 'Edit'}</span>
                     </button>
                   </div>
                 </div>
@@ -377,12 +400,12 @@ export default function BranchesPage() {
               <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3 mb-4">
                 <h3 className="font-bold text-[var(--text-main)] text-base flex items-center gap-2">
                   <Plus className="h-5 w-5 text-[var(--accent-primary)]" />
-                  إضافة فرع جديد للأكاديمية
+                  {ar ? 'إضافة فرع جديد للأكاديمية' : 'Add New Academy Branch'}
                 </h3>
                 <button
                   type="button"
                   onClick={() => setIsCreateModalOpen(false)}
-                  className="rounded-lg p-1 text-[var(--text-muted)] hover:bg-[var(--bg-surface-subtle)] hover:text-[var(--text-main)]"
+                  className="rounded-lg p-1 text-[var(--text-muted)] hover:bg-[var(--bg-surface-subtle)] hover:text-[var(--text-main)] cursor-pointer"
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -392,7 +415,7 @@ export default function BranchesPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1">
-                      اسم الفرع *
+                      {ar ? 'اسم الفرع *' : 'Branch Name *'}
                     </label>
                     <input
                       type="text"
@@ -400,21 +423,21 @@ export default function BranchesPage() {
                       id="input-create-branch-name"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      placeholder="مثال: فرع التجمع الخامس"
+                      placeholder={ar ? 'مثال: فرع التجمع الخامس' : 'e.g. Main Training Center'}
                       className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3.5 py-2 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none"
                     />
                   </div>
 
                   <div>
                     <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1">
-                      كود الفرع (Code)
+                      {ar ? 'كود الفرع (Code)' : 'Branch Code'}
                     </label>
                     <input
                       type="text"
                       id="input-create-branch-code"
                       value={code}
                       onChange={(e) => setCode(e.target.value.toUpperCase())}
-                      placeholder="TAGAMO"
+                      placeholder="MAIN_01"
                       className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3.5 py-2 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none font-mono uppercase"
                     />
                   </div>
@@ -423,21 +446,21 @@ export default function BranchesPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1">
-                      المدينة
+                      {ar ? 'المدينة' : 'City'}
                     </label>
                     <input
                       type="text"
                       id="input-create-branch-city"
                       value={city}
                       onChange={(e) => setCity(e.target.value)}
-                      placeholder="القاهرة"
+                      placeholder={ar ? 'القاهرة' : 'Cairo'}
                       className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3.5 py-2 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none"
                     />
                   </div>
 
                   <div>
                     <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1">
-                      السعة الاستيعابية (لاعب)
+                      {ar ? 'السعة الاستيعابية (لاعب)' : 'Capacity (Players)'}
                     </label>
                     <input
                       type="number"
@@ -446,7 +469,7 @@ export default function BranchesPage() {
                       onChange={(e) =>
                         setCapacity(e.target.value === '' ? '' : parseInt(e.target.value, 10))
                       }
-                      placeholder="مثال: 150"
+                      placeholder={ar ? 'مثال: 150' : 'e.g. 150'}
                       className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3.5 py-2 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none font-mono"
                     />
                   </div>
@@ -454,21 +477,21 @@ export default function BranchesPage() {
 
                 <div>
                   <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1">
-                    العنوان التفصيلي
+                    {ar ? 'العنوان التفصيلي' : 'Address Details'}
                   </label>
                   <input
                     type="text"
                     id="input-create-branch-address"
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
-                    placeholder="شارع التسعين، مجمع الملاعب الأولمبية"
+                    placeholder={ar ? 'شارع التسعين، مجمع الملاعب الأولمبية' : 'Olympic Sports Complex, 90th St.'}
                     className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3.5 py-2 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none"
                   />
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1">
-                    هاتف الفرع
+                    {ar ? 'هاتف الفرع' : 'Branch Phone'}
                   </label>
                   <input
                     type="tel"
@@ -484,9 +507,9 @@ export default function BranchesPage() {
                   <button
                     type="button"
                     onClick={() => setIsCreateModalOpen(false)}
-                    className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-4 py-2 text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text-main)]"
+                    className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-4 py-2 text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text-main)] cursor-pointer"
                   >
-                    إلغاء
+                    {ar ? 'إلغاء' : 'Cancel'}
                   </button>
                   <button
                     type="submit"
@@ -495,7 +518,7 @@ export default function BranchesPage() {
                     className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--accent-primary)] px-5 py-2 text-xs font-semibold text-white shadow hover:brightness-110 disabled:opacity-50 cursor-pointer"
                   >
                     <Save className="h-4 w-4" />
-                    <span>{isSubmitting ? 'جارٍ الحفظ...' : 'إنشاء الفرع'}</span>
+                    <span>{isSubmitting ? (ar ? 'جارٍ الحفظ...' : 'Saving...') : ar ? 'إنشاء الفرع' : 'Create Branch'}</span>
                   </button>
                 </div>
               </form>
@@ -510,12 +533,12 @@ export default function BranchesPage() {
               <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3 mb-4">
                 <h3 className="font-bold text-[var(--text-main)] text-base flex items-center gap-2">
                   <Edit2 className="h-5 w-5 text-[var(--accent-primary)]" />
-                  تعديل بيانات الفرع
+                  {ar ? 'تعديل بيانات الفرع' : 'Edit Branch Details'}
                 </h3>
                 <button
                   type="button"
                   onClick={() => setIsEditModalOpen(false)}
-                  className="rounded-lg p-1 text-[var(--text-muted)] hover:bg-[var(--bg-surface-subtle)] hover:text-[var(--text-main)]"
+                  className="rounded-lg p-1 text-[var(--text-muted)] hover:bg-[var(--bg-surface-subtle)] hover:text-[var(--text-main)] cursor-pointer"
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -525,7 +548,7 @@ export default function BranchesPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1">
-                      اسم الفرع *
+                      {ar ? 'اسم الفرع *' : 'Branch Name *'}
                     </label>
                     <input
                       type="text"
@@ -538,7 +561,7 @@ export default function BranchesPage() {
 
                   <div>
                     <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1">
-                      كود الفرع (Code)
+                      {ar ? 'كود الفرع (Code)' : 'Branch Code'}
                     </label>
                     <input
                       type="text"
@@ -552,7 +575,7 @@ export default function BranchesPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1">
-                      المدينة
+                      {ar ? 'المدينة' : 'City'}
                     </label>
                     <input
                       type="text"
@@ -564,7 +587,7 @@ export default function BranchesPage() {
 
                   <div>
                     <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1">
-                      السعة الاستيعابية
+                      {ar ? 'السعة الاستيعابية' : 'Capacity'}
                     </label>
                     <input
                       type="number"
@@ -579,7 +602,7 @@ export default function BranchesPage() {
 
                 <div>
                   <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1">
-                    العنوان
+                    {ar ? 'العنوان' : 'Address'}
                   </label>
                   <input
                     type="text"
@@ -592,7 +615,7 @@ export default function BranchesPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1">
-                      الهاتف
+                      {ar ? 'الهاتف' : 'Phone'}
                     </label>
                     <input
                       type="tel"
@@ -604,15 +627,15 @@ export default function BranchesPage() {
 
                   <div>
                     <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1">
-                      حالة الفرع
+                      {ar ? 'حالة الفرع' : 'Branch Status'}
                     </label>
                     <select
                       value={status}
                       onChange={(e) => setStatus(e.target.value as BranchStatus)}
-                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3.5 py-2 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none"
+                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3.5 py-2 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none cursor-pointer"
                     >
-                      <option value="ACTIVE">نشط (Active)</option>
-                      <option value="INACTIVE">غير نشط (Inactive)</option>
+                      <option value="ACTIVE">{ar ? 'نشط' : 'Active'}</option>
+                      <option value="INACTIVE">{ar ? 'غير نشط' : 'Inactive'}</option>
                     </select>
                   </div>
                 </div>
@@ -621,9 +644,9 @@ export default function BranchesPage() {
                   <button
                     type="button"
                     onClick={() => setIsEditModalOpen(false)}
-                    className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-4 py-2 text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text-main)]"
+                    className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-4 py-2 text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text-main)] cursor-pointer"
                   >
-                    إلغاء
+                    {ar ? 'إلغاء' : 'Cancel'}
                   </button>
                   <button
                     type="submit"
@@ -632,7 +655,7 @@ export default function BranchesPage() {
                     className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--accent-primary)] px-5 py-2 text-xs font-semibold text-white shadow hover:brightness-110 disabled:opacity-50 cursor-pointer"
                   >
                     <Save className="h-4 w-4" />
-                    <span>{isSubmitting ? 'جارٍ الحفظ...' : 'حفظ التعديلات'}</span>
+                    <span>{isSubmitting ? (ar ? 'جارٍ الحفظ...' : 'Saving...') : ar ? 'حفظ التعديلات' : 'Save Changes'}</span>
                   </button>
                 </div>
               </form>
