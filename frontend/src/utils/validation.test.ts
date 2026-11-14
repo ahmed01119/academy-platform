@@ -35,4 +35,3 @@ describe('validateWithSchema utility', () => {
     expect(result.errors?.password).toBeDefined();
   });
 });
-

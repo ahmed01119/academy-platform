@@ -73,4 +73,3 @@ export function FormSkeleton({ fields = 4 }: { fields?: number }) {
     </SkeletonContainer>
   );
 }
-

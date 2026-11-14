@@ -41,7 +41,11 @@ export function ReversalModal({ transaction, onClose, onSuccess }: ReversalModal
       await onSuccess();
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : isAr ? 'فشل عكس المعاملة' : 'Failed to reverse transaction',
+        err instanceof Error
+          ? err.message
+          : isAr
+            ? 'فشل عكس المعاملة'
+            : 'Failed to reverse transaction',
       );
     } finally {
       setIsSubmitting(false);

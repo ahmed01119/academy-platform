@@ -16,14 +16,7 @@ const paddingStyles = {
 };
 
 export const Card = forwardRef<HTMLDivElement, CardProps>(function Card(
-  {
-    interactive = false,
-    elevated = false,
-    padding = 'md',
-    className = '',
-    children,
-    ...props
-  },
+  { interactive = false, elevated = false, padding = 'md', className = '', children, ...props },
   ref,
 ) {
   return (
@@ -59,10 +52,7 @@ export function CardTitle({
   ...props
 }: React.HTMLAttributes<HTMLHeadingElement>) {
   return (
-    <h3
-      className={`text-base font-bold text-(--text-main) tracking-tight ${className}`}
-      {...props}
-    >
+    <h3 className={`text-base font-bold text-(--text-main) tracking-tight ${className}`} {...props}>
       {children}
     </h3>
   );
@@ -74,10 +64,7 @@ export function CardDescription({
   ...props
 }: React.HTMLAttributes<HTMLParagraphElement>) {
   return (
-    <p
-      className={`text-xs text-(--text-muted) mt-1 leading-relaxed ${className}`}
-      {...props}
-    >
+    <p className={`text-xs text-(--text-muted) mt-1 leading-relaxed ${className}`} {...props}>
       {children}
     </p>
   );

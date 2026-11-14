@@ -10,13 +10,7 @@ import { PageHeader } from '../../components/ui/PageHeader';
 import { StatCard } from '../../components/ui/StatCard';
 import { TableSkeleton, PageSkeleton } from '@/components/ui/skeleton';
 import { useToast } from '../../components/ui/Toast';
-import {
-  Building2,
-  Users,
-  Activity,
-  RefreshCw,
-  DollarSign,
-} from 'lucide-react';
+import { Building2, Users, Activity, RefreshCw, DollarSign } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import type {
   PlatformAcademyItem,
@@ -130,40 +124,43 @@ function PlatformSuperAdminContent() {
     }
   }, [isPlatformStaff, authLoading, router]);
 
-  const loadData = useCallback(async (forceRefresh = false) => {
-    if (forceRefresh) {
-      clearApiCache();
-    }
-    setIsLoading(true);
-    setFeedbackMessage(null);
-    try {
-      const [m, a, apps, u, p, l, s] = await Promise.all([
-        apiClient.platform.getMetrics().catch(() => null),
-        apiClient.platform.listAcademies().catch(() => []),
-        apiClient.platform.listAcademyApplications().catch(() => []),
-        apiClient.platform.listUsers({ limit: 50 }).catch(() => []),
-        apiClient.platform.listSaaSPlans().catch(() => []),
-        apiClient.platform.listAuditLogs({ limit: 50 }).catch(() => []),
-        apiClient.platform.getSecurityEvents().catch(() => []),
-      ]);
-      setMetrics(m);
-      setAcademies(a);
-      setApplications(apps);
-      setUsersList(u);
-      setPlans(p);
-      setAuditLogs(l);
-      setSecurityEvents(s);
-    } catch (err: unknown) {
-      setFeedbackMessage({
-        type: 'error',
-        text:
-          (err as Error)?.message ||
-          (locale === 'ar' ? 'فشل تحميل بيانات المنصة' : 'Failed to load platform data'),
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [locale]);
+  const loadData = useCallback(
+    async (forceRefresh = false) => {
+      if (forceRefresh) {
+        clearApiCache();
+      }
+      setIsLoading(true);
+      setFeedbackMessage(null);
+      try {
+        const [m, a, apps, u, p, l, s] = await Promise.all([
+          apiClient.platform.getMetrics().catch(() => null),
+          apiClient.platform.listAcademies().catch(() => []),
+          apiClient.platform.listAcademyApplications().catch(() => []),
+          apiClient.platform.listUsers({ limit: 50 }).catch(() => []),
+          apiClient.platform.listSaaSPlans().catch(() => []),
+          apiClient.platform.listAuditLogs({ limit: 50 }).catch(() => []),
+          apiClient.platform.getSecurityEvents().catch(() => []),
+        ]);
+        setMetrics(m);
+        setAcademies(a);
+        setApplications(apps);
+        setUsersList(u);
+        setPlans(p);
+        setAuditLogs(l);
+        setSecurityEvents(s);
+      } catch (err: unknown) {
+        setFeedbackMessage({
+          type: 'error',
+          text:
+            (err as Error)?.message ||
+            (locale === 'ar' ? 'فشل تحميل بيانات المنصة' : 'Failed to load platform data'),
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [locale],
+  );
 
   useEffect(() => {
     if (isPlatformStaff) {

@@ -26,7 +26,7 @@ export function Tabs({
   children,
   className = '',
 }: TabsProps) {
-  const currentTab = value !== undefined ? value : activeTab ?? '';
+  const currentTab = value !== undefined ? value : (activeTab ?? '');
   const handleChange = (tabId: string) => {
     onValueChange?.(tabId);
     onChange?.(tabId);
@@ -131,4 +131,3 @@ export function TabContent({ value, children, className = '' }: TabContentProps)
     </div>
   );
 }
-

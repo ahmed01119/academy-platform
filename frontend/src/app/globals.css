@@ -140,7 +140,7 @@ html:not(.dark) select option {
 
 /* Universal Autofill Fix for Dark/Light Themes */
 input:-webkit-autofill,
-input:-webkit-autofill:hover, 
+input:-webkit-autofill:hover,
 input:-webkit-autofill:focus,
 input:-webkit-autofill:active {
   -webkit-box-shadow: 0 0 0 1000px var(--bg-surface-subtle) inset !important;
@@ -328,12 +328,12 @@ a {
   text-decoration: none;
 }
 
-
 /* Direction and Typography Adaptation */
 html[dir='ltr'],
 html[lang='en'],
 [data-locale='en'] {
-  --font-display: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-display:
+    'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-body: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-family: var(--font-body);
 }

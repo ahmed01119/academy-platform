@@ -264,71 +264,71 @@ export const ARABIC_DATA_FALLBACKS: Record<string, string> = {
   'مجموعة الأمل': 'Hope Squad',
   'مجموعة الناشئين': 'Youth Squad',
   'كرة القدم': 'Football',
-  'السباحة': 'Swimming',
+  السباحة: 'Swimming',
   'كرة السلة': 'Basketball',
-  'التنس': 'Tennis',
-  'البادل': 'Padel',
-  'نشط': 'Active',
+  التنس: 'Tennis',
+  البادل: 'Padel',
+  نشط: 'Active',
   'غير نشط': 'Inactive',
-  'معلق': 'Suspended',
-  'حاضر': 'Present',
-  'غائب': 'Absent',
-  'متأخر': 'Late',
-  'معذور': 'Excused',
-  'مجدول': 'Scheduled',
+  معلق: 'Suspended',
+  حاضر: 'Present',
+  غائب: 'Absent',
+  متأخر: 'Late',
+  معذور: 'Excused',
+  مجدول: 'Scheduled',
   'جارية الآن': 'In Progress',
-  'مكتمل': 'Completed',
+  مكتمل: 'Completed',
   'معتمد / مكتمل': 'Completed',
-  'معتمد': 'Approved',
-  'ملغاة': 'Cancelled',
-  'ملغي': 'Cancelled',
-  'مرفوض': 'Rejected',
-  'معكوس': 'Reversed',
+  معتمد: 'Approved',
+  ملغاة: 'Cancelled',
+  ملغي: 'Cancelled',
+  مرفوض: 'Rejected',
+  معكوس: 'Reversed',
   'متأخر سداده': 'Overdue',
   'سداد جزئي': 'Partial',
-  'مدفوع': 'Paid',
+  مدفوع: 'Paid',
   'غير مدفوع': 'Unpaid',
   'قيد المراجعة': 'Pending Review',
   'قيد الاعتماد': 'Pending Approval',
   'قيد الانتظار': 'Pending',
-  'مؤكد': 'Confirmed',
-  'مقبول': 'Accepted',
-  'مغلقة': 'Closed',
-  'مغلق': 'Closed',
-  'ذكور': 'Male',
-  'إناث': 'Female',
+  مؤكد: 'Confirmed',
+  مقبول: 'Accepted',
+  مغلقة: 'Closed',
+  مغلق: 'Closed',
+  ذكور: 'Male',
+  إناث: 'Female',
   'ذكور (بنين)': 'Male',
   'إناث (بنات)': 'Female',
-  'شهري': 'Monthly',
-  'شهرياً': 'Monthly',
-  'سنوي': 'Annual',
-  'سنوياً': 'Annual',
-  'نقدي': 'Cash',
-  'نقداً': 'Cash',
+  شهري: 'Monthly',
+  شهرياً: 'Monthly',
+  سنوي: 'Annual',
+  سنوياً: 'Annual',
+  نقدي: 'Cash',
+  نقداً: 'Cash',
   'نقداً (كاش)': 'Cash',
   'تحويل بنكي': 'Bank Transfer',
-  'بطاقة': 'Card',
-  'الأكاديمية': 'Academy',
+  بطاقة: 'Card',
+  الأكاديمية: 'Academy',
   'الأكاديمية الرياضية': 'Sports Academy',
   'الملعب الرئيسي': 'Main Ground',
   'الملعب الرئيسي A': 'Main Ground A',
   'الملعب الرئيسي B': 'Main Ground B',
   'مصروف تشغيلي': 'Operational Expense',
   'مصروف تشغيلي للحصة': 'Session Operational Expense',
-  'النظام': 'System',
+  النظام: 'System',
   'باقة مخصصة': 'Custom Plan',
   'باقة تدريب رسمية': 'Official Training Package',
-  'الوالد': 'Father',
-  'الوالدة': 'Mother',
-  'الأب': 'Father',
-  'الأم': 'Mother',
+  الوالد: 'Father',
+  الوالدة: 'Mother',
+  الأب: 'Father',
+  الأم: 'Mother',
   'ولي أمر': 'Guardian',
   'ولي الأمر': 'Guardian',
   'وصي قانوني': 'Legal Guardian',
-  'أقارب': 'Relative',
-  'أخرى': 'Other',
-  'ذكر': 'Male',
-  'أنثى': 'Female',
+  أقارب: 'Relative',
+  أخرى: 'Other',
+  ذكر: 'Male',
+  أنثى: 'Female',
   'باقة النخبة': 'Elite Package',
   'باقة التأسيس': 'Foundational Package',
   'حصة تدريبية': 'Training Session',
@@ -337,11 +337,14 @@ export const ARABIC_DATA_FALLBACKS: Record<string, string> = {
   'غير محدد': 'Unassigned',
   'لا توجد': 'None',
   'لا يوجد': 'None',
-  'مواليد': 'DOB',
-  'هوية': 'ID',
+  مواليد: 'DOB',
+  هوية: 'ID',
 };
 
-export function translateStatus(status: string | undefined | null, locale: SupportedLocale): string {
+export function translateStatus(
+  status: string | undefined | null,
+  locale: SupportedLocale,
+): string {
   if (!status) return '';
   const key = status.toUpperCase().trim();
   const direct = STATUS_TRANSLATIONS[locale]?.[key];
@@ -397,7 +400,10 @@ export function translateSport(sport: string | undefined | null, locale: Support
   return sport;
 }
 
-export function translatePaymentMethod(method: string | undefined | null, locale: SupportedLocale): string {
+export function translatePaymentMethod(
+  method: string | undefined | null,
+  locale: SupportedLocale,
+): string {
   if (!method) return '';
   const key = method.toUpperCase().trim();
   const direct = PAYMENT_METHOD_TRANSLATIONS[locale]?.[key];
@@ -410,7 +416,10 @@ export function translatePaymentMethod(method: string | undefined | null, locale
   return method;
 }
 
-export function translateBillingCycle(cycle: string | undefined | null, locale: SupportedLocale): string {
+export function translateBillingCycle(
+  cycle: string | undefined | null,
+  locale: SupportedLocale,
+): string {
   if (!cycle) return '';
   const key = cycle.toUpperCase().trim();
   const direct = BILLING_CYCLE_TRANSLATIONS[locale]?.[key];
@@ -423,7 +432,10 @@ export function translateBillingCycle(cycle: string | undefined | null, locale: 
   return cycle;
 }
 
-export function translateGender(gender: string | undefined | null, locale: SupportedLocale): string {
+export function translateGender(
+  gender: string | undefined | null,
+  locale: SupportedLocale,
+): string {
   if (!gender) return '';
   const key = gender.toUpperCase().trim();
   const direct = GENDER_TRANSLATIONS[locale]?.[key];
@@ -436,7 +448,10 @@ export function translateGender(gender: string | undefined | null, locale: Suppo
   return gender;
 }
 
-export function translateDataString(value: string | undefined | null, locale: SupportedLocale): string {
+export function translateDataString(
+  value: string | undefined | null,
+  locale: SupportedLocale,
+): string {
   if (!value) return '';
   if (locale === 'ar') return value;
 

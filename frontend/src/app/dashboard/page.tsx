@@ -73,7 +73,8 @@ export default function DashboardPage() {
   const [staffCount, setStaffCount] = useState<number>(0);
   const [groupCount, setGroupCount] = useState<number>(0);
   const [sessionCount, setSessionCount] = useState<number>(0);
-  const [platformMetrics, setPlatformMetrics] = useState<DashboardCacheData['platformMetrics']>(null);
+  const [platformMetrics, setPlatformMetrics] =
+    useState<DashboardCacheData['platformMetrics']>(null);
   const [isFetchingData, setIsFetchingData] = useState(false);
 
   useEffect(() => {

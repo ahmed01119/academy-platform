@@ -91,7 +91,9 @@ function SettingsContent() {
   // Invite Staff Modal State
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState<'OWNER' | 'MANAGER' | 'BRANCH_MANAGER' | 'COACH' | 'RECEPTIONIST' | 'ACCOUNTANT' | 'VIEWER'>('COACH');
+  const [inviteRole, setInviteRole] = useState<
+    'OWNER' | 'MANAGER' | 'BRANCH_MANAGER' | 'COACH' | 'RECEPTIONIST' | 'ACCOUNTANT' | 'VIEWER'
+  >('COACH');
   const [isInviting, setIsInviting] = useState(false);
   const [inviteMsg, setInviteMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(
     null,
@@ -143,7 +145,12 @@ function SettingsContent() {
       setCurrency(profileData.currency || 'EGP');
       setTimezone(profileData.timezone || 'Africa/Cairo');
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : ar ? 'فشل تحميل بيانات الأكاديمية' : 'Failed to load settings';
+      const msg =
+        err instanceof Error
+          ? err.message
+          : ar
+            ? 'فشل تحميل بيانات الأكاديمية'
+            : 'Failed to load settings';
       setErrorMessage(msg);
     } finally {
       setIsFetching(false);
@@ -180,7 +187,8 @@ function SettingsContent() {
       setProfile(updated);
       setSuccessMessage(ar ? 'تم حفظ التعديلات بنجاح' : 'Settings saved successfully');
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : ar ? 'فشل حفظ الإعدادات' : 'Failed to save settings';
+      const msg =
+        err instanceof Error ? err.message : ar ? 'فشل حفظ الإعدادات' : 'Failed to save settings';
       setErrorMessage(msg);
     } finally {
       setIsSaving(false);
@@ -207,12 +215,15 @@ function SettingsContent() {
 
       setInviteMsg({
         type: 'success',
-        text: res.deliveryMessage || (ar ? 'تم إرسال رابط الدعوة بنجاح' : 'Staff invitation sent successfully'),
+        text:
+          res.deliveryMessage ||
+          (ar ? 'تم إرسال رابط الدعوة بنجاح' : 'Staff invitation sent successfully'),
       });
       setInviteEmail('');
       await loadData();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : ar ? 'فشل إرسال الدعوة' : 'Failed to send invitation';
+      const msg =
+        err instanceof Error ? err.message : ar ? 'فشل إرسال الدعوة' : 'Failed to send invitation';
       setInviteMsg({ type: 'error', text: msg });
     } finally {
       setIsInviting(false);
@@ -226,11 +237,19 @@ function SettingsContent() {
     try {
       const res = await api.tenancy.resendInvitation(invitationId);
       setSuccessMessage(
-        res.deliveryMessage || (ar ? 'تمت إعادة إرسال الدعوة وتحديث رابط التفعيل بنجاح' : 'Invitation resent successfully'),
+        res.deliveryMessage ||
+          (ar
+            ? 'تمت إعادة إرسال الدعوة وتحديث رابط التفعيل بنجاح'
+            : 'Invitation resent successfully'),
       );
       await loadData();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : ar ? 'فشل إعادة إرسال الدعوة' : 'Failed to resend invitation';
+      const msg =
+        err instanceof Error
+          ? err.message
+          : ar
+            ? 'فشل إعادة إرسال الدعوة'
+            : 'Failed to resend invitation';
       setErrorMessage(msg);
     } finally {
       setProcessingInvId(null);
@@ -255,7 +274,12 @@ function SettingsContent() {
       setSuccessMessage(ar ? 'تم إلغاء الدعوة بنجاح' : 'Invitation revoked successfully');
       await loadData();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : ar ? 'فشل إلغاء الدعوة' : 'Failed to revoke invitation';
+      const msg =
+        err instanceof Error
+          ? err.message
+          : ar
+            ? 'فشل إلغاء الدعوة'
+            : 'Failed to revoke invitation';
       setErrorMessage(msg);
     } finally {
       setProcessingInvId(null);
@@ -282,7 +306,8 @@ function SettingsContent() {
       await loadData();
     } catch (err: unknown) {
       setErrorMessage(
-        (err as Error)?.message || (ar ? 'فشل تحديث تفويض المدرب' : 'Failed to update coach delegation'),
+        (err as Error)?.message ||
+          (ar ? 'فشل تحديث تفويض المدرب' : 'Failed to update coach delegation'),
       );
     } finally {
       setDelegatingId(null);
@@ -477,7 +502,9 @@ function SettingsContent() {
 
                   <div className="space-y-1.5 sm:col-span-2">
                     <label className="text-xs font-semibold text-[var(--text-main)] block">
-                      {ar ? 'العنوان والموقع الجغرافي للمقر الرئيسي' : 'Headquarters Location & Address'}
+                      {ar
+                        ? 'العنوان والموقع الجغرافي للمقر الرئيسي'
+                        : 'Headquarters Location & Address'}
                     </label>
                     <input
                       type="text"
@@ -523,10 +550,22 @@ function SettingsContent() {
                       onChange={(e) => setTimezone(e.target.value)}
                       className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-main)] focus:outline-none focus:border-[var(--accent-primary)] cursor-pointer"
                     >
-                      <option value="Africa/Cairo">{ar ? 'توقيت القاهرة (Africa/Cairo - GMT+2)' : 'Cairo Time (Africa/Cairo - GMT+2)'}</option>
-                      <option value="Asia/Riyadh">{ar ? 'توقيت الرياض ومكة (Asia/Riyadh - GMT+3)' : 'Riyadh Time (Asia/Riyadh - GMT+3)'}</option>
-                      <option value="Asia/Dubai">{ar ? 'توقيت دبي (Asia/Dubai - GMT+4)' : 'Dubai Time (Asia/Dubai - GMT+4)'}</option>
-                      <option value="UTC">{ar ? 'التوقيت العالمي الموحد (UTC)' : 'Coordinated Universal Time (UTC)'}</option>
+                      <option value="Africa/Cairo">
+                        {ar
+                          ? 'توقيت القاهرة (Africa/Cairo - GMT+2)'
+                          : 'Cairo Time (Africa/Cairo - GMT+2)'}
+                      </option>
+                      <option value="Asia/Riyadh">
+                        {ar
+                          ? 'توقيت الرياض ومكة (Asia/Riyadh - GMT+3)'
+                          : 'Riyadh Time (Asia/Riyadh - GMT+3)'}
+                      </option>
+                      <option value="Asia/Dubai">
+                        {ar ? 'توقيت دبي (Asia/Dubai - GMT+4)' : 'Dubai Time (Asia/Dubai - GMT+4)'}
+                      </option>
+                      <option value="UTC">
+                        {ar ? 'التوقيت العالمي الموحد (UTC)' : 'Coordinated Universal Time (UTC)'}
+                      </option>
                     </select>
                   </div>
                 </div>
@@ -539,7 +578,15 @@ function SettingsContent() {
                   className="inline-flex items-center gap-2 rounded-xl bg-[var(--accent-primary)] px-6 py-2.5 text-xs font-semibold text-white shadow hover:brightness-110 transition-all disabled:opacity-50 cursor-pointer"
                 >
                   <Save className="h-4 w-4" />
-                  <span>{isSaving ? (ar ? 'جارٍ الحفظ...' : 'Saving...') : ar ? 'حفظ التعديلات' : 'Save Changes'}</span>
+                  <span>
+                    {isSaving
+                      ? ar
+                        ? 'جارٍ الحفظ...'
+                        : 'Saving...'
+                      : ar
+                        ? 'حفظ التعديلات'
+                        : 'Save Changes'}
+                  </span>
                 </button>
               </div>
             </form>
@@ -582,7 +629,9 @@ function SettingsContent() {
             <div className="rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-5 shadow-sm space-y-2">
               <h3 className="text-sm font-bold text-[var(--text-main)] flex items-center gap-2">
                 <ShieldCheck className="h-4 w-4 text-emerald-500" />
-                <span>{ar ? 'تفويض صلاحيات الكادر التدريبي (RBAC)' : 'Staff Role & Delegation (RBAC)'}</span>
+                <span>
+                  {ar ? 'تفويض صلاحيات الكادر التدريبي (RBAC)' : 'Staff Role & Delegation (RBAC)'}
+                </span>
               </h3>
               <p className="text-xs text-[var(--text-muted)]">
                 {ar
@@ -628,7 +677,9 @@ function SettingsContent() {
                           </div>
                           <div>
                             <div className="font-semibold text-sm text-[var(--text-main)] flex items-center gap-2">
-                              <span>{member.user?.name || (ar ? 'مستخدم بدون اسم' : 'Unnamed Staff')}</span>
+                              <span>
+                                {member.user?.name || (ar ? 'مستخدم بدون اسم' : 'Unnamed Staff')}
+                              </span>
                               <span
                                 className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                                   member.role === 'OWNER'
@@ -694,7 +745,13 @@ function SettingsContent() {
                                   : 'text-[var(--text-muted)] bg-[var(--bg-base)]'
                               }`}
                             >
-                              {canReview ? (ar ? 'مفوض لمراجعة الطلبات' : 'Review Delegated') : ar ? 'مشاهدة فقط' : 'View Only'}
+                              {canReview
+                                ? ar
+                                  ? 'مفوض لمراجعة الطلبات'
+                                  : 'Review Delegated'
+                                : ar
+                                  ? 'مشاهدة فقط'
+                                  : 'View Only'}
                             </span>
                           ) : (
                             <span className="text-[11px] text-[var(--text-muted)]">
@@ -721,11 +778,14 @@ function SettingsContent() {
                     <div className="flex items-center gap-2">
                       <Clock className="h-4 w-4 text-amber-400" />
                       <h3 className="text-sm font-bold text-[var(--text-main)]">
-                        {ar ? 'الدعوات المعلقة بانتظار التفعيل' : 'Pending Invitations'} ({pendingInvitations.length})
+                        {ar ? 'الدعوات المعلقة بانتظار التفعيل' : 'Pending Invitations'} (
+                        {pendingInvitations.length})
                       </h3>
                     </div>
                     <span className="text-xs text-[var(--text-muted)]">
-                      {ar ? 'تنتهي صلاحية الروابط تلقائياً بعد 7 أيام' : 'Links expire automatically in 7 days'}
+                      {ar
+                        ? 'تنتهي صلاحية الروابط تلقائياً بعد 7 أيام'
+                        : 'Links expire automatically in 7 days'}
                     </span>
                   </div>
 
@@ -855,9 +915,7 @@ function SettingsContent() {
                   }`}
                 >
                   <div>
-                    <span className="font-bold text-sm text-[var(--text-main)] block">
-                      English
-                    </span>
+                    <span className="font-bold text-sm text-[var(--text-main)] block">English</span>
                     <span className="text-xs text-[var(--text-muted)]">
                       Left-to-Right layout (LTR) with Latin typography
                     </span>
@@ -893,21 +951,27 @@ function SettingsContent() {
                   {
                     id: 'light' as ThemeMode,
                     title: ar ? 'المظهر النهاري (Light)' : 'Light Mode',
-                    desc: ar ? 'خلفيات بيضاء ناصعة وتباين عالي' : 'Clean white surfaces with high contrast',
+                    desc: ar
+                      ? 'خلفيات بيضاء ناصعة وتباين عالي'
+                      : 'Clean white surfaces with high contrast',
                     icon: Sun,
                     iconColor: 'text-amber-500',
                   },
                   {
                     id: 'dark' as ThemeMode,
                     title: ar ? 'المظهر الليلي (Dark)' : 'Dark Mode',
-                    desc: ar ? 'سماء ليلية وألوان مريحة للعين' : 'Deep stadium navy with reduced eye strain',
+                    desc: ar
+                      ? 'سماء ليلية وألوان مريحة للعين'
+                      : 'Deep stadium navy with reduced eye strain',
                     icon: Moon,
                     iconColor: 'text-emerald-400',
                   },
                   {
                     id: 'system' as ThemeMode,
                     title: ar ? 'تلقائي (System)' : 'System Mode',
-                    desc: ar ? 'يتطابق تلقائياً مع نظام جهازك' : 'Automatically adapts to OS preference',
+                    desc: ar
+                      ? 'يتطابق تلقائياً مع نظام جهازك'
+                      : 'Automatically adapts to OS preference',
                     icon: Monitor,
                     iconColor: 'text-sky-400',
                   },
@@ -1023,13 +1087,28 @@ function SettingsContent() {
                 </label>
                 <select
                   value={inviteRole}
-                  onChange={(e) => setInviteRole(e.target.value as 'OWNER' | 'MANAGER' | 'BRANCH_MANAGER' | 'COACH' | 'RECEPTIONIST' | 'ACCOUNTANT' | 'VIEWER')}
+                  onChange={(e) =>
+                    setInviteRole(
+                      e.target.value as
+                        | 'OWNER'
+                        | 'MANAGER'
+                        | 'BRANCH_MANAGER'
+                        | 'COACH'
+                        | 'RECEPTIONIST'
+                        | 'ACCOUNTANT'
+                        | 'VIEWER',
+                    )
+                  }
                   className="w-full rounded-xl border border-[var(--border-app)] bg-[var(--bg-base)] px-3 py-2.5 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-primary)]/20 transition-all cursor-pointer"
                 >
                   <option value="COACH">{ar ? 'مدرب (COACH)' : 'Coach'}</option>
                   <option value="MANAGER">{ar ? 'مدير عام (MANAGER)' : 'General Manager'}</option>
-                  <option value="BRANCH_MANAGER">{ar ? 'مدير فرع (BRANCH_MANAGER)' : 'Branch Manager'}</option>
-                  <option value="RECEPTIONIST">{ar ? 'موظف استقبال (RECEPTIONIST)' : 'Receptionist'}</option>
+                  <option value="BRANCH_MANAGER">
+                    {ar ? 'مدير فرع (BRANCH_MANAGER)' : 'Branch Manager'}
+                  </option>
+                  <option value="RECEPTIONIST">
+                    {ar ? 'موظف استقبال (RECEPTIONIST)' : 'Receptionist'}
+                  </option>
                   <option value="ACCOUNTANT">{ar ? 'محاسب (ACCOUNTANT)' : 'Accountant'}</option>
                   <option value="VIEWER">{ar ? 'مراقب فقط (VIEWER)' : 'Viewer'}</option>
                 </select>
@@ -1056,7 +1135,15 @@ function SettingsContent() {
                   ) : (
                     <Send className="h-3.5 w-3.5" />
                   )}
-                  <span>{isInviting ? (ar ? 'جارٍ الإرسال...' : 'Sending...') : ar ? 'إرسال الدعوة' : 'Send Invitation'}</span>
+                  <span>
+                    {isInviting
+                      ? ar
+                        ? 'جارٍ الإرسال...'
+                        : 'Sending...'
+                      : ar
+                        ? 'إرسال الدعوة'
+                        : 'Send Invitation'}
+                  </span>
                 </button>
               </div>
             </form>
@@ -1066,7 +1153,6 @@ function SettingsContent() {
     </AppShell>
   );
 }
-
 
 export default function SettingsPage() {
   return (

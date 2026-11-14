@@ -89,9 +89,7 @@ export function Modal({
                 </h3>
               )}
               {description && (
-                <p className="text-xs text-(--text-muted) mt-1.5 leading-relaxed">
-                  {description}
-                </p>
+                <p className="text-xs text-(--text-muted) mt-1.5 leading-relaxed">{description}</p>
               )}
             </div>
 
@@ -119,4 +117,3 @@ export function Modal({
     </div>
   );
 }
-

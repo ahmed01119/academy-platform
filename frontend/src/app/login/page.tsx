@@ -52,9 +52,7 @@ export default function LoginPage() {
         if (validation.errors.email) {
           if (!trimmedEmail) {
             errors.email =
-              locale === 'ar'
-                ? 'يرجى إدخال البريد الإلكتروني'
-                : 'Email address is required';
+              locale === 'ar' ? 'يرجى إدخال البريد الإلكتروني' : 'Email address is required';
           } else {
             errors.email =
               locale === 'ar'
@@ -64,10 +62,7 @@ export default function LoginPage() {
         }
 
         if (validation.errors.password) {
-          errors.password =
-            locale === 'ar'
-              ? 'يرجى إدخال كلمة المرور'
-              : 'Password is required';
+          errors.password = locale === 'ar' ? 'يرجى إدخال كلمة المرور' : 'Password is required';
         }
       }
 
@@ -151,7 +146,9 @@ export default function LoginPage() {
 
         // Map backend validation errors into field errors
         if (err.statusCode === 400 && (err.code === 'VALIDATION_ERROR' || details?.issues)) {
-          const backendIssues = (details?.issues || (details?.error as Record<string, unknown>)?.details || []) as Array<{
+          const backendIssues = (details?.issues ||
+            (details?.error as Record<string, unknown>)?.details ||
+            []) as Array<{
             field?: string;
             path?: (string | number)[];
             message?: string;
@@ -168,9 +165,7 @@ export default function LoginPage() {
             }
             if (field === 'password') {
               mappedErrors.password =
-                locale === 'ar'
-                  ? 'كلمة المرور مطلوبة'
-                  : issue.message || 'Password is required';
+                locale === 'ar' ? 'كلمة المرور مطلوبة' : issue.message || 'Password is required';
             }
           }
 
@@ -278,17 +273,25 @@ export default function LoginPage() {
                       placeholder="admin@academy.sa"
                       dir="ltr"
                       aria-invalid={Boolean(touched.email && fieldErrors.email)}
-                      aria-describedby={touched.email && fieldErrors.email ? 'email-error' : undefined}
+                      aria-describedby={
+                        touched.email && fieldErrors.email ? 'email-error' : undefined
+                      }
                       className={`w-full rounded-xl border bg-(--bg-surface-subtle) py-2.5 pr-4 pl-10 text-sm text-(--text-main) placeholder-(--text-muted) outline-none transition-all ${
                         touched.email && fieldErrors.email
                           ? 'border-rose-500 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 bg-rose-500/5'
                           : 'border-(--border-app) focus:border-(--accent-primary) focus:ring-1 focus:ring-(--accent-primary)'
                       }`}
                     />
-                    <Mail className={`absolute left-3 top-3 h-4 w-4 ${touched.email && fieldErrors.email ? 'text-rose-500' : 'text-(--text-muted)'}`} />
+                    <Mail
+                      className={`absolute left-3 top-3 h-4 w-4 ${touched.email && fieldErrors.email ? 'text-rose-500' : 'text-(--text-muted)'}`}
+                    />
                   </div>
                   {touched.email && fieldErrors.email && (
-                    <p id="email-error" className="flex items-center gap-1.5 text-xs text-rose-500 font-medium mt-1.5 animate-fade-in" role="alert">
+                    <p
+                      id="email-error"
+                      className="flex items-center gap-1.5 text-xs text-rose-500 font-medium mt-1.5 animate-fade-in"
+                      role="alert"
+                    >
                       <AlertCircle className="h-3.5 w-3.5 shrink-0" />
                       <span>{fieldErrors.email}</span>
                     </p>
@@ -320,14 +323,18 @@ export default function LoginPage() {
                       placeholder="••••••••••••"
                       dir="ltr"
                       aria-invalid={Boolean(touched.password && fieldErrors.password)}
-                      aria-describedby={touched.password && fieldErrors.password ? 'password-error' : undefined}
+                      aria-describedby={
+                        touched.password && fieldErrors.password ? 'password-error' : undefined
+                      }
                       className={`w-full rounded-xl border bg-(--bg-surface-subtle) py-2.5 pr-10 pl-10 text-sm text-(--text-main) placeholder-(--text-muted) outline-none transition-all ${
                         touched.password && fieldErrors.password
                           ? 'border-rose-500 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 bg-rose-500/5'
                           : 'border-(--border-app) focus:border-(--accent-primary) focus:ring-1 focus:ring-(--accent-primary)'
                       }`}
                     />
-                    <Lock className={`absolute left-3 top-3 h-4 w-4 ${touched.password && fieldErrors.password ? 'text-rose-500' : 'text-(--text-muted)'}`} />
+                    <Lock
+                      className={`absolute left-3 top-3 h-4 w-4 ${touched.password && fieldErrors.password ? 'text-rose-500' : 'text-(--text-muted)'}`}
+                    />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
@@ -346,7 +353,11 @@ export default function LoginPage() {
                     </button>
                   </div>
                   {touched.password && fieldErrors.password && (
-                    <p id="password-error" className="flex items-center gap-1.5 text-xs text-rose-500 font-medium mt-1.5 animate-fade-in" role="alert">
+                    <p
+                      id="password-error"
+                      className="flex items-center gap-1.5 text-xs text-rose-500 font-medium mt-1.5 animate-fade-in"
+                      role="alert"
+                    >
                       <AlertCircle className="h-3.5 w-3.5 shrink-0" />
                       <span>{fieldErrors.password}</span>
                     </p>

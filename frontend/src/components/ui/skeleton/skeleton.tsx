@@ -18,12 +18,7 @@ export function Skeleton({
   count = 1,
   gap = 'space-y-2.5',
 }: SkeletonProps) {
-  const el = (
-    <div
-      aria-hidden="true"
-      className={`shimmer-bg rounded-lg ${className}`}
-    />
-  );
+  const el = <div aria-hidden="true" className={`shimmer-bg rounded-lg ${className}`} />;
 
   if (count <= 1) return el;
 
@@ -53,4 +48,3 @@ export function SkeletonContainer({ children, label = 'Loading…' }: SkeletonCo
 }
 
 export default Skeleton;
-

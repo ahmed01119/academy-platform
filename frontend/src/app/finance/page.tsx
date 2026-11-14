@@ -61,7 +61,9 @@ export default function FinanceDashboardPage() {
 
   // Modals state
   const [isCollectPaymentOpen, setIsCollectPaymentOpen] = useState(false);
-  const [selectedSubForPayment, setSelectedSubForPayment] = useState<PlayerSubscriptionItem | null>(null);
+  const [selectedSubForPayment, setSelectedSubForPayment] = useState<PlayerSubscriptionItem | null>(
+    null,
+  );
   const [reversalTx, setReversalTx] = useState<FinancialTransactionItem | null>(null);
   const [isCreateSubOpen, setIsCreateSubOpen] = useState(false);
   const [isCreatePlanOpen, setIsCreatePlanOpen] = useState(false);
@@ -112,8 +114,28 @@ export default function FinanceDashboardPage() {
   const handleExportCsv = () => {
     if (!metrics?.recentTransactions?.length) return;
     const headers = isAr
-      ? ['رقم الإيصال', 'التاريخ', 'المستفيد / اللاعب', 'الفرع', 'النوع', 'المبلغ (ر.س)', 'طريقة الدفع', 'الحالة', 'ملاحظات']
-      : ['Receipt No', 'Date', 'Beneficiary / Athlete', 'Branch', 'Type', 'Amount', 'Payment Method', 'Status', 'Notes'];
+      ? [
+          'رقم الإيصال',
+          'التاريخ',
+          'المستفيد / اللاعب',
+          'الفرع',
+          'النوع',
+          'المبلغ (ر.س)',
+          'طريقة الدفع',
+          'الحالة',
+          'ملاحظات',
+        ]
+      : [
+          'Receipt No',
+          'Date',
+          'Beneficiary / Athlete',
+          'Branch',
+          'Type',
+          'Amount',
+          'Payment Method',
+          'Status',
+          'Notes',
+        ];
     const rows = metrics.recentTransactions.map((tx) => [
       tx.receiptNumber || tx.id.slice(0, 8),
       new Date(tx.createdAt).toLocaleDateString(isAr ? 'ar-EG' : 'en-US'),
@@ -194,15 +216,26 @@ export default function FinanceDashboardPage() {
           <div className="flex justify-between items-center">
             <div>
               <h1 className="text-xl font-extrabold text-black">
-                {translateDataString(activeTenant?.tenantName || (isAr ? 'الأكاديمية الرياضية' : 'Sports Academy'), locale)}
+                {translateDataString(
+                  activeTenant?.tenantName || (isAr ? 'الأكاديمية الرياضية' : 'Sports Academy'),
+                  locale,
+                )}
               </h1>
               <p className="text-xs text-black">
-                {isAr ? 'التقرير المالي وكشف الحساب الرسمي — منصة سبورتكسس' : 'Official Financial Statement & Ledger — Sportexus'}
+                {isAr
+                  ? 'التقرير المالي وكشف الحساب الرسمي — منصة سبورتكسس'
+                  : 'Official Financial Statement & Ledger — Sportexus'}
               </p>
             </div>
             <div className="text-left rtl:text-left text-xs text-black">
-              <p>{isAr ? 'تاريخ الطباعة: ' : 'Print Date: '}{new Date().toLocaleDateString(isAr ? 'ar-EG' : 'en-US')}</p>
-              <p>{isAr ? 'الوقت: ' : 'Time: '}{new Date().toLocaleTimeString(isAr ? 'ar-EG' : 'en-US')}</p>
+              <p>
+                {isAr ? 'تاريخ الطباعة: ' : 'Print Date: '}
+                {new Date().toLocaleDateString(isAr ? 'ar-EG' : 'en-US')}
+              </p>
+              <p>
+                {isAr ? 'الوقت: ' : 'Time: '}
+                {new Date().toLocaleTimeString(isAr ? 'ar-EG' : 'en-US')}
+              </p>
             </div>
           </div>
         </div>
@@ -270,7 +303,9 @@ export default function FinanceDashboardPage() {
 
             <div className="rounded-2xl border border-(--border-subtle) bg-(--bg-surface) p-4 shadow-xs">
               <div className="flex items-center justify-between text-(--text-muted) mb-1">
-                <span className="text-[11px] font-semibold">{isAr ? 'تحصيلات الحصص' : 'Session Fees'}</span>
+                <span className="text-[11px] font-semibold">
+                  {isAr ? 'تحصيلات الحصص' : 'Session Fees'}
+                </span>
                 <Wallet className="h-4 w-4 text-blue-500" />
               </div>
               <div className="text-xl font-extrabold text-blue-600 dark:text-blue-400">
@@ -334,7 +369,12 @@ export default function FinanceDashboardPage() {
         )}
 
         {/* TABS NAVIGATION */}
-        <Tabs value={activeTab} onValueChange={(val: string) => setActiveTab(val as 'OVERVIEW' | 'SUBSCRIPTIONS' | 'PLANS')}>
+        <Tabs
+          value={activeTab}
+          onValueChange={(val: string) =>
+            setActiveTab(val as 'OVERVIEW' | 'SUBSCRIPTIONS' | 'PLANS')
+          }
+        >
           <TabList className="mb-6">
             <TabTrigger value="OVERVIEW" icon={<Receipt className="h-4 w-4" />}>
               {isAr ? 'سجل العمليات والتحصيلات' : 'Transactions & Ledger'}

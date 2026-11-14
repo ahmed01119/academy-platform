@@ -9,9 +9,7 @@ export default function NotFound() {
           404
         </div>
         <div className="space-y-2">
-          <h1 className="text-2xl font-bold tracking-tight">
-            الصفحة غير موجودة | Page Not Found
-          </h1>
+          <h1 className="text-2xl font-bold tracking-tight">الصفحة غير موجودة | Page Not Found</h1>
           <p className="text-xs sm:text-sm text-[var(--text-muted)]">
             عذرًا، لم نتمكن من العثور على الصفحة المطلوبة.
             <br />
@@ -30,4 +28,3 @@ export default function NotFound() {
     </div>
   );
 }
-

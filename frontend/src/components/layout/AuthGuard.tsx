@@ -13,12 +13,7 @@ import {
 import { Loader2 } from 'lucide-react';
 
 export type RequiredPermission =
-  | 'authenticated'
-  | 'admin'
-  | 'coach'
-  | 'player'
-  | 'guardian'
-  | 'superadmin';
+  'authenticated' | 'admin' | 'coach' | 'player' | 'guardian' | 'superadmin';
 
 export interface AuthGuardProps {
   children: React.ReactNode;
@@ -91,4 +86,3 @@ export function AuthGuard({
 
   return <>{children}</>;
 }
-

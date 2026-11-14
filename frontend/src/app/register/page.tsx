@@ -652,7 +652,11 @@ export default function RegisterPage() {
                     </div>
 
                     {/* Real-time Password Strength Criteria Checklist */}
-                    <PasswordStrengthMeter password={password} locale={locale} showChecklist={true} />
+                    <PasswordStrengthMeter
+                      password={password}
+                      locale={locale}
+                      showChecklist={true}
+                    />
                   </div>
 
                   <button
