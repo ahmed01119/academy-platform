@@ -110,9 +110,11 @@ tokens, registration) — these touch the non-RLS tables `users`/`refresh_tokens
 - **Confirmations**: `components/ui/ConfirmDialog.tsx` (`ConfirmProvider` in the root layout, `useConfirm()`);
   native `confirm()` is no longer used.
 - **Access control in UI**: `utils/role-routing.ts` (`getRoleHomeRoute`, `canAccessAdminRoutes`, ...).
-  Each page checks auth itself and `router.push`es away; there is no `middleware.ts`.
-  `components/layout/AuthGuard.tsx` exists but is not used by any page yet. UI checks are
-  convenience only — the API enforces authorization.
+  Page access rules live in `lib/auth/access-rules.ts` (`authenticated`, `admin`, `admin-or-coach`,
+  `no-coach`, `platform-staff`); pages call `useAccessGuard(rule)` (`hooks/useAccessGuard.ts`), which
+  redirects only after auth has resolved, never to the current route, and at most once per decision.
+  `components/layout/AuthGuard.tsx` wraps the same hook for declarative use. There is no `middleware.ts`.
+  UI checks are convenience only — the API enforces authorization.
 - **Role landing**: super admin → `/dashboard`; COACH → `/coach`; OWNER/MANAGER/BRANCH_MANAGER/
   ACCOUNTANT/RECEPTIONIST → `/dashboard`; player → `/player`; guardian → `/guardian`.
 - **i18n**: `contexts/locale-context.tsx` + `locales/translations.ts`; `utils/data-translator.ts`

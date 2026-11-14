@@ -2,11 +2,10 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
+import { useAccessGuard } from '@/hooks/useAccessGuard';
 import { useLocale } from '@/contexts/locale-context';
 import { translateDataString } from '@/utils/data-translator';
-import { canAccessAdminRoutes, getRoleHomeRoute } from '@/utils/role-routing';
 import { AppShell } from '../../components/layout/AppShell';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { StatusBadge } from '../../components/ui/StatusBadge';
@@ -32,7 +31,6 @@ import {
 } from 'lucide-react';
 
 export default function BranchesPage() {
-  const router = useRouter();
   const { user, activeTenant, isLoading } = useAuth();
   const { locale, t } = useLocale();
   const ar = locale === 'ar';
@@ -57,17 +55,7 @@ export default function BranchesPage() {
   const [status, setStatus] = useState<BranchStatus>('ACTIVE');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    if (!isLoading) {
-      if (!user) {
-        router.push('/login');
-        return;
-      }
-      if (!canAccessAdminRoutes(user, activeTenant)) {
-        router.push(getRoleHomeRoute(user, activeTenant));
-      }
-    }
-  }, [user, activeTenant, isLoading, router]);
+  useAccessGuard('admin');
 
   const loadBranches = useCallback(async () => {
     if (!user || !activeTenant) return;

@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import jsQR from 'jsqr';
 import {
   Camera,
@@ -24,6 +23,7 @@ import {
   X,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
+import { useAccessGuard } from '@/hooks/useAccessGuard';
 import { useLocale } from '@/contexts/locale-context';
 import { translateDataString } from '@/utils/data-translator';
 import { AppShell } from '../../../components/layout/AppShell';
@@ -47,8 +47,7 @@ interface ScanFeedback {
 }
 
 export default function MobileAttendanceScannerPage() {
-  const router = useRouter();
-  const { user, activeTenant, isLoading: authLoading } = useAuth();
+  const { user, activeTenant } = useAuth();
   const { t, locale } = useLocale();
   const { toast } = useToast();
 
@@ -313,22 +312,14 @@ export default function MobileAttendanceScannerPage() {
   }, [handleSyncPendingScans, refreshPendingCount]);
 
   // Auth Guard
-  useEffect(() => {
-    if (!authLoading) {
-      if (!user) {
-        router.push('/login');
-        return;
-      }
-      if (activeTenant?.role === 'COACH') {
-        toast.error(
-          locale === 'en'
-            ? 'Coaches are not authorized to scan or record attendance per academy policy'
-            : 'غير مصرح للمدربين بمسح أو تسجيل الحضور وفقاً للسياسات الإدارية المعتمدة',
-        );
-        router.push('/attendance');
-      }
-    }
-  }, [authLoading, user, activeTenant, router, toast, locale]);
+  useAccessGuard('no-coach', {
+    onForbidden: () =>
+      toast.error(
+        locale === 'en'
+          ? 'Coaches are not authorized to scan or record attendance per academy policy'
+          : 'غير مصرح للمدربين بمسح أو تسجيل الحضور وفقاً للسياسات الإدارية المعتمدة',
+      ),
+  });
 
   // Load Sessions
   useEffect(() => {

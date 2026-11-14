@@ -143,8 +143,26 @@ Frontend findings (in addition to K14):
 | 0 — Prettier-only formatting commit (frontend) | ✅ | `0553112` |
 | Fix — restore 258 erased CSS-variable classes on `attendance/sessions/[id]` (damage from `1e77d5a`) | ✅ | `402c5df` |
 | 1 — foundation: `config/`, `lib/http/`, `features/<domain>/api.ts`, `api/client.ts` facade, contract test, `ConfirmProvider`/`useConfirm` replacing 8 native `confirm()`, dev-only QR simulator | ✅ | `9dcc3ad` |
-| 2 — shell & guards (`AuthGuard` adoption, AppShell K14) | ⏳ next | |
-| 3–13 | pending | |
+| 2 — shell & guards: `resolveAccess` + `useAccessGuard` replace 20 inline guards; `AuthGuard` rebuilt on the same hook; AppShell K14 fixed | ✅ | see change log |
+| 3 — auth & public pages | ⏳ next | |
+| 4–13 | pending | |
+
+Step 2 details:
+- Guard inventory (corrected): **20** page guards, not 21 — `forgot-password`/`reset-password` only redirect to
+  `/login` after a successful submit (not access control; untouched). Rules: `authenticated` (10 pages),
+  `admin` (5), `admin-or-coach` (2), `no-coach` (2, page-specific toast preserved), `platform-staff` (1).
+  Mapping is pinned by `src/lib/auth/page-access-map.test.ts`.
+- Equivalence: `src/lib/auth/access-rules.test.ts` compares the new rules with the verbatim legacy page logic over
+  600 combinations (6 user kinds × 10 memberships × loading on/off × 5 rules) — identical.
+- Only intentional behaviour difference: the hook never `router.push`es to the page already open (previously a
+  no-op push, e.g. VIEWER on `/dashboard`) and never repeats the same redirect.
+- Browser check (headless Chrome, fresh signed-out profile, production build): all 20 guarded URLs → `/login` with
+  no loops (`/platform` keeps its original `/dashboard` → `/login` hop); public pages do not redirect.
+- Authenticated, per-role browser checks: **pending** owner-provided test account (rules covered by unit tests).
+
+New findings (documented for the separate cleanup phase, not changed):
+- F12 Same missing-space typo as K14 in 8 more places: `bg-(--bg-base)text-(--text-main)` in `app/{accept-invite,landing,offline,register,reset-password,verify-email}/page.tsx`, and `bg-(--bg-base)text-(--text-muted)` twice in `components/platform/CoOwnerTab.tsx`.
+- F13 `/evaluations` and `/evaluations/player/[id]` have **no client-side access guard** (only API enforcement). Preserved as-is; adding one is a product decision.
 
 Step 1 verification: typecheck ✅, lint ✅ (0 errors), Prettier ✅, tests ✅ 108/108 (15 files; +24 new),
 production build ✅; simulator strings absent from `.next` output (verified by grep); production server smoke test:
@@ -163,4 +181,5 @@ New findings during Phase 1:
 |---|---|---|
 | 2026-11-14 | Initial knowledge baseline: created the five core docs; no application code modified. | `docs/PROJECT_OVERVIEW.md`, `docs/SYSTEM_ARCHITECTURE.md`, `docs/BUSINESS_LOGIC.md`, `docs/TECHNOLOGY_STACK.md`, `docs/DEVELOPMENT_STATUS.md` |
 | 2026-11-14 | Phase 1 frontend analysis + verification baseline (§9); proposal pending approval. | `docs/DEVELOPMENT_STATUS.md` |
+| 2026-11-14 | Phase 1 Step 2: shared access guard, AuthGuard rebuilt, AppShell text colour fixed. No permission, API or backend changes. | `frontend/src/lib/auth/access-rules.ts`, `frontend/src/hooks/useAccessGuard.ts`, `frontend/src/components/layout/{AuthGuard,AppShell}.tsx`, 20 pages under `frontend/src/app/` (+3 test files) |
 | 2026-11-14 | Phase 1 Steps 0–1 + session-page CSS repair (see §9 progress). No backend, API contract or currency changes. | `frontend/src/{config,lib/http,features/*/api.ts,api/client.ts,components/ui/ConfirmDialog.tsx,features/attendance/components/QrCheckInSimulator.tsx}`, 5 pages (confirm dialogs), `app/layout.tsx` |

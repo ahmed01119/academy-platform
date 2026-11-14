@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
+import { useAccessGuard } from '@/hooks/useAccessGuard';
 import { useLocale } from '@/contexts/locale-context';
 import { AppShell } from '../../../components/layout/AppShell';
 import { PageHeader } from '../../../components/ui/PageHeader';
@@ -50,11 +51,7 @@ export default function NewPlayerPage() {
   const [branchId, setBranchId] = useState('');
   const [startDate, setStartDate] = useState(new Date().toISOString().slice(0, 10));
 
-  useEffect(() => {
-    if (!isLoading && !user) {
-      router.push('/login');
-    }
-  }, [user, isLoading, router]);
+  useAccessGuard('authenticated');
 
   useEffect(() => {
     if (user && activeTenant) {

@@ -2,8 +2,9 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
+import { useAccessGuard } from '@/hooks/useAccessGuard';
 import { useLocale } from '@/contexts/locale-context';
 import { AppShell } from '../../../components/layout/AppShell';
 import { PageSkeleton } from '@/components/ui/skeleton';
@@ -39,7 +40,6 @@ const DAYS_OF_WEEK_EN = [
 ];
 
 export default function GroupDetailsPage() {
-  const router = useRouter();
   const params = useParams();
   const groupId = params.id as string;
   const { user, activeTenant, isLoading } = useAuth();
@@ -78,11 +78,7 @@ export default function GroupDetailsPage() {
     location: isAr ? 'الملعب الرئيسي' : 'Main Ground',
   });
 
-  useEffect(() => {
-    if (!isLoading && !user) {
-      router.push('/login');
-    }
-  }, [user, isLoading, router]);
+  useAccessGuard('authenticated');
 
   const loadGroupDetails = useCallback(async () => {
     if (!groupId) return;

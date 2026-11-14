@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
+import { useAccessGuard } from '@/hooks/useAccessGuard';
 import { useLocale } from '@/contexts/locale-context';
 import { AppShell } from '../../components/layout/AppShell';
 import { PageHeader } from '../../components/ui/PageHeader';
@@ -44,7 +44,6 @@ import {
 } from '@/components/finance';
 
 export default function FinanceDashboardPage() {
-  const router = useRouter();
   const { user, activeTenant, isLoading: authLoading } = useAuth();
   const { t, locale } = useLocale();
   const isAr = locale === 'ar';
@@ -69,11 +68,7 @@ export default function FinanceDashboardPage() {
   const [isCreatePlanOpen, setIsCreatePlanOpen] = useState(false);
 
   // Ensure authorized staff
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/login');
-    }
-  }, [user, authLoading, router]);
+  useAccessGuard('authenticated');
 
   const loadFinancialData = useCallback(async () => {
     setIsLoadingData(true);

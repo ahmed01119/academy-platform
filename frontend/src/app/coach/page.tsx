@@ -2,8 +2,8 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
+import { useAccessGuard } from '@/hooks/useAccessGuard';
 import { useLocale } from '@/contexts/locale-context';
 import { apiClient } from '@/api/client';
 import { AppShell } from '../../components/layout/AppShell';
@@ -42,7 +42,6 @@ function getStoredCoachCache(cacheKey: string): CoachCacheData | null {
 export default function CoachWorkspacePage() {
   const { user, activeTenant, isLoading: authLoading } = useAuth();
   const { locale, isRtl } = useLocale();
-  const router = useRouter();
 
   const cacheKey = user ? `sportexus_coach_${user.id}` : 'sportexus_coach';
   // Client-safe state initialization to prevent React hydration mismatch (#418)
@@ -99,13 +98,13 @@ export default function CoachWorkspacePage() {
     }
   }, [cacheKey, cachedData]);
 
+  useAccessGuard('authenticated');
+
   useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/login');
-    } else if (user) {
+    if (user) {
       void loadCoachData();
     }
-  }, [user, authLoading, router, loadCoachData]);
+  }, [user, authLoading, loadCoachData]);
 
   const ChevronIcon = isRtl ? ChevronLeft : ChevronRight;
 

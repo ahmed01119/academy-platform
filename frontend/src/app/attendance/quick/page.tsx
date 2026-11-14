@@ -2,8 +2,9 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
+import { useAccessGuard } from '@/hooks/useAccessGuard';
 import { AppShell } from '../../../components/layout/AppShell';
 import { PageHeader } from '../../../components/ui/PageHeader';
 import { useToast } from '../../../components/ui/Toast';
@@ -27,10 +28,9 @@ import {
 import { useLocale } from '@/contexts/locale-context';
 
 function QuickAttendanceContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const initialSessionId = searchParams.get('sessionId') || '';
-  const { user, activeTenant, isLoading: authLoading } = useAuth();
+  const { user, activeTenant } = useAuth();
   const { locale, isRtl } = useLocale();
   const { toast } = useToast();
 
@@ -61,22 +61,14 @@ function QuickAttendanceContent() {
   }, []);
 
   // Auth gate
-  useEffect(() => {
-    if (!authLoading) {
-      if (!user) {
-        router.push('/login');
-        return;
-      }
-      if (activeTenant?.role === 'COACH') {
-        toast.error(
-          isRtl
-            ? 'غير مصرح للمدربين بتسجيل الحضور وفقاً للسياسات الإدارية المعتمدة'
-            : 'Coaches are not permitted to record player attendance.',
-        );
-        router.push('/attendance');
-      }
-    }
-  }, [user, activeTenant, authLoading, router, isRtl, toast]);
+  useAccessGuard('no-coach', {
+    onForbidden: () =>
+      toast.error(
+        isRtl
+          ? 'غير مصرح للمدربين بتسجيل الحضور وفقاً للسياسات الإدارية المعتمدة'
+          : 'Coaches are not permitted to record player attendance.',
+      ),
+  });
 
   // Load Sessions
   useEffect(() => {

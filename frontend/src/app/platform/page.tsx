@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
+import { useAccessGuard } from '@/hooks/useAccessGuard';
 import { useLocale } from '@/contexts/locale-context';
 import { apiClient, clearApiCache } from '@/api/client';
 import { AppShell } from '../../components/layout/AppShell';
@@ -57,11 +58,10 @@ import {
 import { PromptModal, type PromptModalConfig } from '../../components/ui/PromptModal';
 
 function PlatformSuperAdminContent() {
-  const { user, isLoading: authLoading } = useAuth();
+  const { user } = useAuth();
   const { t, locale } = useLocale();
   const { toast } = useToast();
   const requestConfirmation = useConfirm();
-  const router = useRouter();
   const searchParams = useSearchParams();
 
   const [activeTab, setActiveTab] = useState<
@@ -120,11 +120,7 @@ function PlatformSuperAdminContent() {
 
   const isPlatformStaff = Boolean(user?.isPlatformSuperAdmin || user?.isPlatformOwner);
 
-  useEffect(() => {
-    if (!authLoading && !isPlatformStaff) {
-      router.push('/dashboard');
-    }
-  }, [isPlatformStaff, authLoading, router]);
+  useAccessGuard('platform-staff');
 
   const loadData = useCallback(
     async (forceRefresh = false) => {

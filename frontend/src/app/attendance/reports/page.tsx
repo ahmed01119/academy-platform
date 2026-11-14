@@ -1,11 +1,10 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
+import { useAccessGuard } from '@/hooks/useAccessGuard';
 import { useLocale } from '@/contexts/locale-context';
 import { translateDataString } from '@/utils/data-translator';
-import { canAccessAdminRoutes, getRoleHomeRoute } from '@/utils/role-routing';
 import { AppShell } from '../../../components/layout/AppShell';
 import { PageHeader } from '../../../components/ui/PageHeader';
 import { PageSkeleton } from '@/components/ui/skeleton';
@@ -26,7 +25,6 @@ import {
 } from 'lucide-react';
 
 export default function AttendanceReportsPage() {
-  const router = useRouter();
   const { user, activeTenant, isLoading } = useAuth();
   const { locale } = useLocale();
   const ar = locale === 'ar';
@@ -42,17 +40,7 @@ export default function AttendanceReportsPage() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
 
-  useEffect(() => {
-    if (!isLoading) {
-      if (!user) {
-        router.push('/login');
-        return;
-      }
-      if (!canAccessAdminRoutes(user, activeTenant)) {
-        router.push(getRoleHomeRoute(user, activeTenant));
-      }
-    }
-  }, [user, activeTenant, isLoading, router]);
+  useAccessGuard('admin');
 
   const loadReportData = useCallback(async () => {
     if (!user || !activeTenant) return;

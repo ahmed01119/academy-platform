@@ -2,8 +2,8 @@
 
 import React, { useCallback, useEffect, useState, use } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
+import { useAccessGuard } from '@/hooks/useAccessGuard';
 import { useLocale } from '@/contexts/locale-context';
 import { AppShell } from '../../../components/layout/AppShell';
 import { PageSkeleton } from '@/components/ui/skeleton';
@@ -40,7 +40,6 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
   const resolvedParams = use(params);
   const playerId = resolvedParams.id;
 
-  const router = useRouter();
   const { user, activeTenant, isLoading } = useAuth();
   const { t, locale } = useLocale();
   const isAr = locale === 'ar';
@@ -137,11 +136,7 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
     }
   };
 
-  useEffect(() => {
-    if (!isLoading && !user) {
-      router.push('/login');
-    }
-  }, [user, isLoading, router]);
+  useAccessGuard('authenticated');
 
   const loadPlayerData = useCallback(async () => {
     if (!user || !activeTenant || !playerId) return;

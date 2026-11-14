@@ -2,8 +2,8 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
+import { useAccessGuard } from '@/hooks/useAccessGuard';
 import { AppShell } from '../../components/layout/AppShell';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { CardGridSkeleton } from '@/components/ui/skeleton';
@@ -23,18 +23,13 @@ import {
 import { useLocale } from '@/contexts/locale-context';
 
 export default function AttendanceHubPage() {
-  const router = useRouter();
-  const { user, activeTenant, isLoading } = useAuth();
+  const { user, activeTenant } = useAuth();
   const { locale, isRtl } = useLocale();
 
   const [todaySessions, setTodaySessions] = useState<SessionSummary[]>([]);
   const [isFetching, setIsFetching] = useState(true);
 
-  useEffect(() => {
-    if (!isLoading && !user) {
-      router.push('/login');
-    }
-  }, [user, isLoading, router]);
+  useAccessGuard('authenticated');
 
   useEffect(() => {
     async function loadSessions() {

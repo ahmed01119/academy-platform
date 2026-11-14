@@ -19,7 +19,7 @@ export function AppShell({ children, hideSidebar = false, breadcrumbs }: AppShel
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   return (
-    <div className="h-screen flex w-full bg-(--bg-base)text-(--text-main) overflow-hidden transition-colors">
+    <div className="h-screen flex w-full bg-(--bg-base) text-(--text-main) overflow-hidden transition-colors">
       {/* Persistent Sidebar */}
       {!hideSidebar && (
         <React.Suspense fallback={<div className="w-16 shrink-0 h-full bg-[var(--bg-surface)]" />}>

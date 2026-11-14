@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
+import { useAccessGuard } from '@/hooks/useAccessGuard';
 import { useLocale } from '@/contexts/locale-context';
 import { translateDataString } from '@/utils/data-translator';
 import { apiClient } from '@/api/client';
@@ -64,7 +64,6 @@ function getStoredPlayerCache(cacheKey: string): PlayerCacheData | null {
 export default function PlayerPortalPage() {
   const { user, isLoading: authLoading } = useAuth();
   const { locale } = useLocale();
-  const router = useRouter();
   const ar = locale === 'ar';
 
   const cacheKey = user ? `sportexus_player_${user.id}` : 'sportexus_player';
@@ -121,13 +120,13 @@ export default function PlayerPortalPage() {
     }
   }, [cacheKey, cachedData]);
 
+  useAccessGuard('authenticated');
+
   useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/login');
-    } else if (user) {
+    if (user) {
       void loadPlayerData();
     }
-  }, [user, authLoading, router, loadPlayerData]);
+  }, [user, authLoading, loadPlayerData]);
 
   const handleClaimAccount = async (e: React.FormEvent) => {
     e.preventDefault();

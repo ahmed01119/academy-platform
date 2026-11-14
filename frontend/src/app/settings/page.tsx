@@ -1,12 +1,12 @@
 'use client';
 
 import React, { useCallback, useEffect, useState, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
+import { useAccessGuard } from '@/hooks/useAccessGuard';
 import { useLocale } from '@/contexts/locale-context';
 import { useTheme, type ThemeMode } from '@/contexts/theme-context';
 import { translateRole } from '@/utils/data-translator';
-import { canAccessAdminRoutes, getRoleHomeRoute } from '@/utils/role-routing';
 import { AppShell } from '../../components/layout/AppShell';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { PageSkeleton } from '@/components/ui/skeleton';
@@ -47,7 +47,6 @@ interface StaffMemberItem {
 }
 
 function SettingsContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const tabParam = searchParams.get('tab');
   const { user, activeTenant, isLoading } = useAuth();
@@ -110,17 +109,7 @@ function SettingsContent() {
   const [currency, setCurrency] = useState('EGP');
   const [timezone, setTimezone] = useState('Africa/Cairo');
 
-  useEffect(() => {
-    if (!isLoading) {
-      if (!user) {
-        router.push('/login');
-        return;
-      }
-      if (!canAccessAdminRoutes(user, activeTenant)) {
-        router.push(getRoleHomeRoute(user, activeTenant));
-      }
-    }
-  }, [user, activeTenant, isLoading, router]);
+  useAccessGuard('admin');
 
   const loadData = useCallback(async () => {
     if (!user || !activeTenant) {

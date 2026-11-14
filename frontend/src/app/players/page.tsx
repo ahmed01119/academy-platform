@@ -2,10 +2,10 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
+import { useAccessGuard } from '@/hooks/useAccessGuard';
 import { useLocale } from '@/contexts/locale-context';
-import { canAccessAdminRoutes, getRoleHomeRoute } from '@/utils/role-routing';
 import { AppShell } from '../../components/layout/AppShell';
 import { PageHeader, StatusBadge } from '../../components/ui';
 import { PageSkeleton, TableSkeleton } from '@/components/ui/skeleton';
@@ -27,7 +27,6 @@ import {
 } from 'lucide-react';
 
 function PlayersPageContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const requestedTab = searchParams.get('tab') === 'applications' ? 'applications' : 'roster';
   const { user, activeTenant, isLoading } = useAuth();
@@ -46,17 +45,7 @@ function PlayersPageContent() {
   const [selectedStatus, setSelectedStatus] = useState<PlayerStatus | ''>('');
   const [isFetching, setIsFetching] = useState(false);
 
-  useEffect(() => {
-    if (!isLoading) {
-      if (!user) {
-        router.push('/login');
-        return;
-      }
-      if (!canAccessAdminRoutes(user, activeTenant)) {
-        router.push(getRoleHomeRoute(user, activeTenant));
-      }
-    }
-  }, [user, activeTenant, isLoading, router]);
+  useAccessGuard('admin');
 
   const loadPlayers = useCallback(
     async (currentPage = page) => {

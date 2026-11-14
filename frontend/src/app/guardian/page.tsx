@@ -2,8 +2,8 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
+import { useAccessGuard } from '@/hooks/useAccessGuard';
 import { useLocale } from '@/contexts/locale-context';
 import { translateDataString } from '@/utils/data-translator';
 import { apiClient } from '@/api/client';
@@ -36,7 +36,6 @@ function getStoredGuardianCache(cacheKey: string): GuardianPortalData | null {
 export default function GuardianPortalPage() {
   const { user, isLoading: authLoading } = useAuth();
   const { locale, isRtl } = useLocale();
-  const router = useRouter();
   const ar = locale === 'ar';
 
   const cacheKey = user ? `sportexus_guardian_${user.id}` : 'sportexus_guardian';
@@ -95,13 +94,13 @@ export default function GuardianPortalPage() {
     }
   }, [cacheKey, cachedData, selectedChildId]);
 
+  useAccessGuard('authenticated');
+
   useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/login');
-    } else if (user) {
+    if (user) {
       void loadGuardianData();
     }
-  }, [user, authLoading, router, loadGuardianData]);
+  }, [user, authLoading, loadGuardianData]);
 
   // Load evaluations for currently selected child
   useEffect(() => {

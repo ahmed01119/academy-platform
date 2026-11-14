@@ -2,8 +2,9 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
+import { useAccessGuard } from '@/hooks/useAccessGuard';
 import { useLocale } from '@/contexts/locale-context';
 import {
   translateDataString,
@@ -53,7 +54,6 @@ import {
 } from 'lucide-react';
 
 export default function SessionAttendancePage() {
-  const router = useRouter();
   const params = useParams();
   const sessionId = params.id as string;
   const { user, activeTenant, isLoading } = useAuth();
@@ -128,11 +128,7 @@ export default function SessionAttendancePage() {
   const [closeCashierNotes, setCloseCashierNotes] = useState('');
   const [isSubmittingCloseCashier, setIsSubmittingCloseCashier] = useState(false);
 
-  useEffect(() => {
-    if (!isLoading && !user) {
-      router.push('/login');
-    }
-  }, [user, isLoading, router]);
+  useAccessGuard('authenticated');
 
   const loadCashierSummary = useCallback(async () => {
     if (!sessionId) return;

@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
+import { useAccessGuard } from '@/hooks/useAccessGuard';
 import { useLocale } from '@/contexts/locale-context';
 import { AppShell } from '../../components/layout/AppShell';
 import { PageHeader } from '../../components/ui/PageHeader';
@@ -25,7 +25,6 @@ import {
 } from 'lucide-react';
 
 export default function AccountPage() {
-  const router = useRouter();
   const { user, isLoading, refreshUser } = useAuth();
   const { locale } = useLocale();
 
@@ -48,11 +47,7 @@ export default function AccountPage() {
     text: string;
   } | null>(null);
 
-  useEffect(() => {
-    if (!isLoading && !user) {
-      router.push('/login');
-    }
-  }, [user, isLoading, router]);
+  useAccessGuard('authenticated');
 
   useEffect(() => {
     if (user) {

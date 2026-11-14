@@ -2,10 +2,9 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
+import { useAccessGuard } from '@/hooks/useAccessGuard';
 import { useLocale } from '@/contexts/locale-context';
-import { canAccessAdminRoutes, getRoleHomeRoute } from '@/utils/role-routing';
 import { AppShell } from '../../components/layout/AppShell';
 import { StatCard, StatusBadge } from '../../components/ui';
 import { PageSkeleton } from '@/components/ui/skeleton';
@@ -57,7 +56,6 @@ function getStoredDashboardCache(cacheKey: string): DashboardCacheData | null {
 }
 
 export default function DashboardPage() {
-  const router = useRouter();
   const { user, activeTenant, memberships, isLoading, refreshUser, switchTenant } = useAuth();
   const { t, locale, isRtl } = useLocale();
 
@@ -77,17 +75,7 @@ export default function DashboardPage() {
     useState<DashboardCacheData['platformMetrics']>(null);
   const [isFetchingData, setIsFetchingData] = useState(false);
 
-  useEffect(() => {
-    if (!isLoading) {
-      if (!user) {
-        router.push('/login');
-        return;
-      }
-      if (!canAccessAdminRoutes(user, activeTenant)) {
-        router.push(getRoleHomeRoute(user, activeTenant));
-      }
-    }
-  }, [user, activeTenant, isLoading, router]);
+  useAccessGuard('admin');
 
   useEffect(() => {
     const cached = getStoredDashboardCache(cacheKey);
