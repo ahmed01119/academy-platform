@@ -15,7 +15,9 @@ import { PageHeader } from '../../../../components/ui/PageHeader';
 import { ErrorState } from '../../../../components/ui/ErrorState';
 import { StatusBadge } from '../../../../components/ui/StatusBadge';
 import { useToast } from '../../../../components/ui/Toast';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { api } from '@/api/client';
+import { QrCheckInSimulator } from '@/features/attendance/components/QrCheckInSimulator';
 import type {
   AttendanceEventSummary,
   AttendanceRosterItem,
@@ -39,7 +41,6 @@ import {
   RefreshCw,
   Search,
   Check,
-  UserCheck,
   Timer,
   X,
   CreditCard,
@@ -58,6 +59,7 @@ export default function SessionAttendancePage() {
   const { user, activeTenant, isLoading } = useAuth();
   const { locale, t } = useLocale();
   const { toast } = useToast();
+  const requestConfirmation = useConfirm();
 
   const [session, setSession] = useState<SessionDetails | null>(null);
   const [isFetching, setIsFetching] = useState(true);
@@ -75,8 +77,6 @@ export default function SessionAttendancePage() {
   const [qrData, setQrData] = useState<GenerateQrResponse | null>(null);
   const [qrSecondsLeft, setQrSecondsLeft] = useState<number>(60);
   const [isGeneratingQr, setIsGeneratingQr] = useState(false);
-  const [qrCheckInPlayerId, setQrCheckInPlayerId] = useState('');
-  const [qrSimSuccess, setQrSimSuccess] = useState<string | null>(null);
 
   // Events / Audit Modal
   const [isEventsModalOpen, setIsEventsModalOpen] = useState(false);
@@ -364,15 +364,10 @@ export default function SessionAttendancePage() {
   const handleOpenQrModal = async () => {
     setIsQrModalOpen(true);
     setIsGeneratingQr(true);
-    setQrSimSuccess(null);
     try {
       const res = await api.attendance.generateQr(sessionId, { expiresInSeconds: 120 });
       setQrData(res);
       setQrSecondsLeft(120);
-      const firstRosterItem = session?.roster?.[0];
-      if (firstRosterItem) {
-        setQrCheckInPlayerId(firstRosterItem.playerId);
-      }
     } catch (err) {
       toast.error(
         err instanceof Error
@@ -383,36 +378,6 @@ export default function SessionAttendancePage() {
       );
     } finally {
       setIsGeneratingQr(false);
-    }
-  };
-
-  // Simulate QR Check-In
-  const handleSimulateQrCheckIn = async () => {
-    if (!qrData || !qrCheckInPlayerId) return;
-    try {
-      await api.attendance.checkInViaQr(sessionId, {
-        token: qrData.token,
-        playerId: qrCheckInPlayerId,
-      });
-      toast.success(
-        locale === 'en'
-          ? 'Attendance recorded via QR code successfully!'
-          : 'تم تسجيل الحضور عبر رمز QR بنجاح!',
-      );
-      setQrSimSuccess(
-        locale === 'en'
-          ? 'Attendance recorded via QR successfully!'
-          : 'تم تسجيل الحضور عبر QR بنجاح!',
-      );
-      await loadSessionDetails();
-    } catch (err) {
-      toast.error(
-        err instanceof Error
-          ? err.message
-          : locale === 'en'
-            ? 'Failed to check in via QR'
-            : 'فشل التحضير بالرمز',
-      );
     }
   };
 
@@ -436,7 +401,7 @@ export default function SessionAttendancePage() {
       locale === 'en'
         ? 'Are you sure you want to close this training session? Attendance will be locked.'
         : 'هل أنت متأكد من إغلاق الحصة التدريبية؟ سيتم قفل التحضير.';
-    if (!confirm(confirmationMsg)) return;
+    if (!(await requestConfirmation({ message: confirmationMsg, isDestructive: true }))) return;
     try {
       await api.attendance.closeSession(sessionId);
       toast.success(
@@ -572,7 +537,7 @@ export default function SessionAttendancePage() {
         ? `Do you want to mark all unmarked players (${unmarkedPlayers.length}) as "Present" at once?`
         : `هل تريد تحضير جميع اللاعبين غير المحددين (${unmarkedPlayers.length} لاعب) كـ "حاضر" دفعة واحدة؟`;
 
-    if (!confirm(confirmMsg)) {
+    if (!(await requestConfirmation(confirmMsg))) {
       return;
     }
 
@@ -1580,54 +1545,18 @@ export default function SessionAttendancePage() {
               </button>
             </div>
 
-            {/* Quick QR Check-in Simulator */}
-            <div className="rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) p-4 space-y-3">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-(--text-main)">
-                <UserCheck className="h-4 w-4 text-(--accent-primary)" />
-                <span>
-                  {locale === 'en'
-                    ? 'Player Check-in Simulator (Quick QR)'
-                    : 'محاكي المسح للاعب (Quick QR Scanner)'}
-                </span>
-              </div>
-              <p className="text-[11px] text-(--text-muted)">
-                {locale === 'en'
-                  ? 'For testing without a camera, select a player and simulate scan with current token:'
-                  : 'للاختبار دون ماسح ضوئي كاميرا، اختر لاعباً وانقر لتسجيل حضوره بالرمز الحالي:'}
-              </p>
-
-              {qrSimSuccess && (
-                <div className="rounded-lg bg-emerald-500/15 border border-emerald-500/30 p-2 text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
-                  <CheckCircle2 className="h-4 w-4" />
-                  <span>{qrSimSuccess}</span>
-                </div>
-              )}
-
-              <div className="flex items-center gap-2">
-                <select
-                  value={qrCheckInPlayerId}
-                  onChange={(e) => setQrCheckInPlayerId(e.target.value)}
-                  className="flex-1 rounded-xl border border-(--border-subtle) bg-(--bg-surface) px-3 py-2 text-xs text-(--text-main) focus:outline-none"
-                >
-                  {session.roster.map((r) => (
-                    <option key={r.playerId} value={r.playerId}>
-                      {translateDataString(r.playerName, locale)} (
-                      {translateStatus(r.status, locale)})
-                    </option>
-                  ))}
-                </select>
-
-                <button
-                  type="button"
-                  id="btn-simulate-qr-checkin"
-                  disabled={!qrData || qrSecondsLeft <= 0}
-                  onClick={handleSimulateQrCheckIn}
-                  className="rounded-xl bg-(--accent-primary) px-3.5 py-2 text-xs font-bold text-white hover:brightness-110 disabled:opacity-50"
-                >
-                  {locale === 'en' ? 'Check In' : 'تسجيل بالرمز'}
-                </button>
-              </div>
-            </div>
+            {/* Quick QR Check-in Simulator — development builds only.
+                `process.env.NODE_ENV` must stay inline here: Next.js replaces it with a literal,
+                so the branch and the component are removed from production bundles. */}
+            {process.env.NODE_ENV === 'development' && (
+              <QrCheckInSimulator
+                sessionId={sessionId}
+                token={qrData?.token ?? null}
+                isTokenValid={qrSecondsLeft > 0}
+                roster={session.roster}
+                onCheckedIn={loadSessionDetails}
+              />
+            )}
           </div>
         </div>
       )}
@@ -1718,7 +1647,9 @@ export default function SessionAttendancePage() {
 
                     <div className="text-end text-[10px] text-(--text-muted)">
                       <div>{ev.eventAt.slice(0, 10)}</div>
-                      <div className="font-mono text-(--text-muted)">{ev.eventAt.slice(11, 19)}</div>
+                      <div className="font-mono text-(--text-muted)">
+                        {ev.eventAt.slice(11, 19)}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -1997,7 +1928,9 @@ export default function SessionAttendancePage() {
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-(--text-muted)">{locale === 'en' ? 'Expenses:' : 'المصروفات:'}</span>
+                  <span className="text-(--text-muted)">
+                    {locale === 'en' ? 'Expenses:' : 'المصروفات:'}
+                  </span>
                   <span className="font-bold text-rose-600 dark:text-rose-400">
                     -{cashierSummary?.totalExpenses ?? 0} {locale === 'en' ? 'SAR' : 'ر.س'}
                   </span>

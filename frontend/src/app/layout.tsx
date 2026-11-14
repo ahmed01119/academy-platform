@@ -4,6 +4,7 @@ import { AuthProvider } from '@/contexts/auth-context';
 import { ThemeProvider, themeInitScript } from '@/contexts/theme-context';
 import { LocaleProvider, localeInitScript } from '@/contexts/locale-context';
 import { ToastProvider } from '../components/ui/Toast';
+import { ConfirmProvider } from '../components/ui/ConfirmDialog';
 import { ServiceWorkerRegistrar } from '../components/pwa/ServiceWorkerRegistrar';
 import { SyncStatus } from '../components/pwa/SyncStatus';
 import './globals.css';
@@ -61,7 +62,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           <LocaleProvider>
             <AuthProvider>
               <ToastProvider>
-                {children}
+                <ConfirmProvider>{children}</ConfirmProvider>
                 <ServiceWorkerRegistrar />
                 <SyncStatus />
               </ToastProvider>

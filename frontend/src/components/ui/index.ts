@@ -15,4 +15,5 @@ export * from './Modal';
 export * from './Tabs';
 export * from './Badge';
 export * from './PromptModal';
+export * from './ConfirmDialog';
 export * from './PasswordStrengthMeter';

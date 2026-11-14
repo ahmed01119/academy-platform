@@ -10,6 +10,7 @@ import { PageHeader } from '../../components/ui/PageHeader';
 import { StatCard } from '../../components/ui/StatCard';
 import { TableSkeleton, PageSkeleton } from '@/components/ui/skeleton';
 import { useToast } from '../../components/ui/Toast';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { Building2, Users, Activity, RefreshCw, DollarSign } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import type {
@@ -59,6 +60,7 @@ function PlatformSuperAdminContent() {
   const { user, isLoading: authLoading } = useAuth();
   const { t, locale } = useLocale();
   const { toast } = useToast();
+  const requestConfirmation = useConfirm();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -296,7 +298,7 @@ function PlatformSuperAdminContent() {
       locale === 'ar'
         ? `هل أنت متأكد من إنهاء كافة الجلسات النشطة للمستخدم (${targetUser.email})؟ سيتم تسجيل خروجه فوراً من جميع الأجهزة.`
         : `Force logout all active sessions for ${targetUser.email}?`;
-    if (!confirm(confirmMsg)) return;
+    if (!(await requestConfirmation({ message: confirmMsg, isDestructive: true }))) return;
 
     setActionLoading(`user-logout-${targetUser.id}`);
     try {

@@ -7,7 +7,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { useLocale } from '@/contexts/locale-context';
 import { canAccessAdminRoutes, canAccessCoachRoutes, getRoleHomeRoute } from '@/utils/role-routing';
 import { AppShell } from '../../components/layout/AppShell';
-import { PageHeader, StatusBadge, useToast } from '../../components/ui';
+import { PageHeader, StatusBadge, useConfirm, useToast } from '../../components/ui';
 import { PageSkeleton, CardGridSkeleton } from '@/components/ui/skeleton';
 import { api } from '@/api/client';
 import type {
@@ -55,6 +55,7 @@ function SessionsContent() {
   const { user, activeTenant, isLoading } = useAuth();
   const { t, locale, isRtl } = useLocale();
   const { toast } = useToast();
+  const requestConfirmation = useConfirm();
 
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [branches, setBranches] = useState<BranchSummary[]>([]);
@@ -206,11 +207,13 @@ function SessionsContent() {
 
   const handleCloseSession = async (sessionId: string) => {
     if (
-      !confirm(
-        locale === 'ar'
-          ? 'هل أنت متأكد من إغلاق هذه الحصة التدريبية وتثبيت سجل الحضور؟'
-          : 'Are you sure you want to close this training session and lock attendance?',
-      )
+      !(await requestConfirmation({
+        message:
+          locale === 'ar'
+            ? 'هل أنت متأكد من إغلاق هذه الحصة التدريبية وتثبيت سجل الحضور؟'
+            : 'Are you sure you want to close this training session and lock attendance?',
+        isDestructive: true,
+      }))
     ) {
       return;
     }

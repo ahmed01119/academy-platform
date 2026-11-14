@@ -1,0 +1,115 @@
+/**
+ * auth API endpoints (backend contract: /v1). Moved verbatim from src/api/client.ts.
+ */
+import type {
+  AuthResponse,
+  ForgotPasswordRequest,
+  LoginRequest,
+  RegisterRequest,
+  RegisterResponse,
+  ResetPasswordRequest,
+  TenantMembershipSummary,
+  UserSummary,
+  ChangePasswordRequest,
+  UpdateUserProfileRequest,
+} from '@academy/shared';
+import { request } from '@/lib/http/request';
+import { setActiveTenantIdHeader } from '@/lib/http/active-tenant';
+import { executeSingleFlightTokenRefresh } from '@/lib/http/token-refresh';
+import { ApiError } from '@/lib/http/api-error';
+
+export const authApi = {
+  async register(data: RegisterRequest): Promise<RegisterResponse> {
+    const res = await request<RegisterResponse>('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    if (res.activeTenant?.tenantId) {
+      setActiveTenantIdHeader(res.activeTenant.tenantId);
+    }
+    return res;
+  },
+
+  async login(data: LoginRequest): Promise<AuthResponse> {
+    const res = await request<AuthResponse>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    if (res.activeTenant?.tenantId) {
+      setActiveTenantIdHeader(res.activeTenant.tenantId);
+    }
+    return res;
+  },
+
+  async logout(): Promise<{ message: string }> {
+    const res = await request<{ message: string }>('/auth/logout', {
+      method: 'POST',
+    });
+    setActiveTenantIdHeader(null);
+    return res;
+  },
+
+  async refresh(refreshToken?: string): Promise<AuthResponse> {
+    const res = await executeSingleFlightTokenRefresh(refreshToken);
+    if (!res) {
+      throw new ApiError('Failed to refresh authentication session', 401, 'UNAUTHORIZED');
+    }
+    return res;
+  },
+
+  async forgotPassword(
+    data: ForgotPasswordRequest,
+  ): Promise<{ message: string; debugToken?: string }> {
+    return request('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  async resetPassword(data: ResetPasswordRequest): Promise<{ message: string }> {
+    return request('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  async verifyEmail(token: string): Promise<{ message: string }> {
+    return request('/auth/verify-email', {
+      method: 'POST',
+      body: JSON.stringify({ token }),
+    });
+  },
+
+  async resendVerification(email: string): Promise<{ message: string; debugToken?: string }> {
+    return request('/auth/resend-verification', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  },
+
+  async getMe(): Promise<{
+    user: UserSummary;
+    activeTenant?: TenantMembershipSummary;
+    memberships: TenantMembershipSummary[];
+  }> {
+    return request('/auth/me', {
+      method: 'GET',
+    });
+  },
+
+  async changePassword(data: ChangePasswordRequest): Promise<{ message: string }> {
+    return request('/auth/change-password', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  async updateProfile(
+    data: UpdateUserProfileRequest,
+  ): Promise<{ message: string; name?: string; phone?: string | null }> {
+    return request('/auth/profile', {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  },
+};

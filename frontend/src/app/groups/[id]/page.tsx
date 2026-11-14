@@ -8,6 +8,7 @@ import { useLocale } from '@/contexts/locale-context';
 import { AppShell } from '../../../components/layout/AppShell';
 import { PageSkeleton } from '@/components/ui/skeleton';
 import { useToast } from '../../../components/ui/Toast';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { api } from '@/api/client';
 import type { PlayerSummary, TrainingGroupDetails } from '@academy/shared';
 import { translateDataString } from '@/utils/data-translator';
@@ -46,6 +47,7 @@ export default function GroupDetailsPage() {
   const isAr = locale === 'ar';
   const DAYS_OF_WEEK = isAr ? DAYS_OF_WEEK_AR : DAYS_OF_WEEK_EN;
   const { toast } = useToast();
+  const requestConfirmation = useConfirm();
 
   const [group, setGroup] = useState<TrainingGroupDetails | null>(null);
   const [activeTab, setActiveTab] = useState<'members' | 'coaches' | 'schedules'>('members');
@@ -183,11 +185,12 @@ export default function GroupDetailsPage() {
 
   const handleRemoveMember = async (playerId: string, playerName: string) => {
     if (
-      !confirm(
-        isAr
+      !(await requestConfirmation({
+        message: isAr
           ? `هل أنت متأكد من إزالة اللاعب "${playerName}" من هذه المجموعة؟`
           : `Are you sure you want to remove athlete "${playerName}" from this squad?`,
-      )
+        isDestructive: true,
+      }))
     ) {
       return;
     }
@@ -239,11 +242,12 @@ export default function GroupDetailsPage() {
 
   const handleRemoveCoach = async (coachUserId: string, coachName: string) => {
     if (
-      !confirm(
-        isAr
+      !(await requestConfirmation({
+        message: isAr
           ? `هل أنت متأكد من إزالة المدرب "${coachName}" من تدريب المجموعة؟`
           : `Are you sure you want to remove coach "${coachName}" from this squad?`,
-      )
+        isDestructive: true,
+      }))
     ) {
       return;
     }
@@ -295,11 +299,12 @@ export default function GroupDetailsPage() {
 
   const handleDeleteSchedule = async (scheduleId: string) => {
     if (
-      !confirm(
-        isAr
+      !(await requestConfirmation({
+        message: isAr
           ? 'هل أنت متأكد من حذف هذا الموعد التدريبي الأسبوعي؟'
           : 'Are you sure you want to delete this weekly schedule?',
-      )
+        isDestructive: true,
+      }))
     ) {
       return;
     }

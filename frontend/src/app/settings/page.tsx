@@ -11,6 +11,7 @@ import { AppShell } from '../../components/layout/AppShell';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { PageSkeleton } from '@/components/ui/skeleton';
 import { api, apiClient } from '@/api/client';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
 import type { AcademyProfile, UpdateAcademySettings } from '@academy/shared';
 import {
   Building2,
@@ -52,6 +53,7 @@ function SettingsContent() {
   const { user, activeTenant, isLoading } = useAuth();
   const { locale, setLocale, t } = useLocale();
   const { theme, setTheme } = useTheme();
+  const requestConfirmation = useConfirm();
   const ar = locale === 'ar';
 
   const [activeTab, setActiveTab] = useState<'profile' | 'staff' | 'preferences'>(() => {
@@ -258,11 +260,12 @@ function SettingsContent() {
 
   const handleRevokeInvite = async (invitationId: string) => {
     if (
-      !window.confirm(
-        ar
+      !(await requestConfirmation({
+        message: ar
           ? 'هل أنت متأكد من رغبتك في إلغاء هذه الدعوة وسحب صلاحية رابط التفعيل؟'
           : 'Are you sure you want to revoke this invitation?',
-      )
+        isDestructive: true,
+      }))
     ) {
       return;
     }
