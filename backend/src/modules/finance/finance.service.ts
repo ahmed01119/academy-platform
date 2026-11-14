@@ -1,4 +1,5 @@
 import { EmailService } from '../email/email.service';
+import { FinancePlansService } from './finance-plans.service';
 import {
   Inject,
   Injectable,
@@ -40,6 +41,7 @@ export class FinanceService {
     @Inject(NotificationsService)
     private readonly notificationsService?: NotificationsService,
     @Optional() @Inject(EmailService) private readonly emailService?: EmailService,
+    @Optional() @Inject(FinancePlansService) private readonly plansService?: FinancePlansService,
   ) {}
 
   /**
@@ -109,11 +111,16 @@ export class FinanceService {
 
   /**
    * Lists player membership plans defined by this Academy.
+   * Delegates to FinancePlansService when available.
    */
   async listPlayerSubscriptionPlans(
     tenantContext: TenantContext,
     branchId?: string,
   ): Promise<PlayerSubscriptionPlanItem[]> {
+    if (this.plansService) {
+      return this.plansService.listPlayerSubscriptionPlans(tenantContext, branchId);
+    }
+
     return this.prisma.withTenantTransaction(
       { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
       async (tx) => {
@@ -148,11 +155,15 @@ export class FinanceService {
 
   /**
    * Creates a new player membership plan for the Academy.
+   * Delegates to FinancePlansService when available.
    */
   async createPlayerSubscriptionPlan(
     tenantContext: TenantContext,
     dto: CreatePlayerSubscriptionPlanRequest,
   ): Promise<PlayerSubscriptionPlanItem> {
+    if (this.plansService) {
+      return this.plansService.createPlayerSubscriptionPlan(tenantContext, dto);
+    }
     return this.prisma.withTenantTransaction(
       { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
       async (tx) => {

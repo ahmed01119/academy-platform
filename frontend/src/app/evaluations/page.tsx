@@ -10,6 +10,7 @@ import { translateDataString } from '@/utils/data-translator';
 import { offlineEngine } from '@/utils/offline-engine';
 import { AppShell } from '../../components/layout/AppShell';
 import { PageHeader } from '../../components/ui/PageHeader';
+import { PageSkeleton } from '@/components/ui/skeleton';
 import {
   Award,
   TrendingUp,
@@ -152,7 +153,9 @@ function EvaluationsCenterContent() {
     if (!formPlayerId || !formTemplateId) {
       setFormStatus({
         type: 'error',
-        text: ar ? 'يرجى اختيار اللاعب ونموذج التقييم' : 'Please select both player and criteria template',
+        text: ar
+          ? 'يرجى اختيار اللاعب ونموذج التقييم'
+          : 'Please select both player and criteria template',
       });
       return;
     }
@@ -178,7 +181,9 @@ function EvaluationsCenterContent() {
 
       setFormStatus({
         type: 'success',
-        text: ar ? 'تم اعتماد ونشر التقييم بنجاح!' : 'Evaluation submitted and published successfully!',
+        text: ar
+          ? 'تم اعتماد ونشر التقييم بنجاح!'
+          : 'Evaluation submitted and published successfully!',
       });
 
       setFormStrengths('');
@@ -203,10 +208,14 @@ function EvaluationsCenterContent() {
       <div className="space-y-6">
         <PageHeader
           breadcrumbs={[
-            { label: ar ? 'الرئيسية' : 'Home', href: '/dashboard' },
+            { label: ar ? 'لوحة التحكم' : 'Dashboard', href: '/dashboard' },
             { label: ar ? 'مركز التقييم والذكاء الرياضي' : 'Evaluation Center' },
           ]}
-          title={ar ? 'مركز تقييم الأداء والذكاء الرياضي' : 'Performance Evaluation & Athletic Intelligence'}
+          title={
+            ar
+              ? 'مركز تقييم الأداء والذكاء الرياضي'
+              : 'Performance Evaluation & Athletic Intelligence'
+          }
           description={
             ar
               ? 'متابعة تطور اللاعبين الرباعي (فني، تكتيكي، بدني، سلوكي)، وتصنيف الفئات العمرية بشفافية وعدالة.'
@@ -220,7 +229,7 @@ function EvaluationsCenterContent() {
                   void loadData();
                 }}
                 disabled={isLoading}
-                className="flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3.5 py-2 text-xs font-semibold text-[var(--text-muted)] hover:text-[var(--text-main)] hover:border-[var(--accent-primary)] transition-all cursor-pointer"
+                className="flex items-center gap-1.5 rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] px-3.5 py-2 text-xs font-semibold text-(--text-muted) hover:text-(--text-main) hover:border-[var(--accent-primary)] transition-all cursor-pointer"
                 title={ar ? 'تحديث البيانات' : 'Refresh data'}
               >
                 <RefreshCw
@@ -231,7 +240,7 @@ function EvaluationsCenterContent() {
               <button
                 type="button"
                 onClick={() => setActiveTab('new-eval')}
-                className="flex items-center gap-1.5 rounded-xl bg-[var(--accent-primary)] px-4 py-2 text-xs font-semibold text-white shadow-sm hover:brightness-110 transition-all cursor-pointer"
+                className="flex items-center gap-1.5 rounded-xl bg-(--accent-primary) px-4 py-2 text-xs font-semibold text-white shadow-sm hover:brightness-110 transition-all cursor-pointer"
               >
                 <PlusCircle className="h-4 w-4" />
                 <span>{ar ? 'تقييم لاعب جديد' : 'New Evaluation'}</span>
@@ -241,14 +250,14 @@ function EvaluationsCenterContent() {
         />
 
         {/* Tab Navigation */}
-        <div className="border-b border-[var(--border-subtle)] flex items-center gap-6 overflow-x-auto">
+        <div className="border-b border-(--border-subtle) flex items-center gap-6 overflow-x-auto">
           <button
             type="button"
             onClick={() => setActiveTab('rankings')}
             className={`pb-3 text-sm font-semibold transition-all relative cursor-pointer whitespace-nowrap ${
               activeTab === 'rankings'
                 ? 'text-[var(--accent-primary)] border-b-2 border-[var(--accent-primary)]'
-                : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                : 'text-(--text-muted) hover:text-(--text-main)'
             }`}
           >
             {ar ? 'لوحة الترتيب والتصنيف العادل' : 'Fair Leaderboard & Rankings'}
@@ -259,7 +268,7 @@ function EvaluationsCenterContent() {
             className={`pb-3 text-sm font-semibold transition-all relative cursor-pointer whitespace-nowrap ${
               activeTab === 'new-eval'
                 ? 'text-[var(--accent-primary)] border-b-2 border-[var(--accent-primary)]'
-                : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                : 'text-(--text-muted) hover:text-(--text-main)'
             }`}
           >
             {ar ? 'إضافة تقييم أداء للاعب' : 'New Player Evaluation'}
@@ -270,7 +279,7 @@ function EvaluationsCenterContent() {
             className={`pb-3 text-sm font-semibold transition-all relative cursor-pointer whitespace-nowrap ${
               activeTab === 'templates'
                 ? 'text-[var(--accent-primary)] border-b-2 border-[var(--accent-primary)]'
-                : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                : 'text-(--text-muted) hover:text-(--text-main)'
             }`}
           >
             {ar ? 'نماذج ومعايير التقييم' : 'Evaluation Templates'} ({templates.length})
@@ -296,16 +305,16 @@ function EvaluationsCenterContent() {
             </div>
 
             {/* Filter Bar */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-between items-center bg-[var(--bg-surface)] p-4 rounded-xl border border-[var(--border-subtle)]">
+            <div className="flex flex-col sm:flex-row gap-4 justify-between items-center bg-[var(--bg-surface)] p-4 rounded-xl border border-(--border-subtle)">
               <div className="flex items-center gap-3 w-full sm:w-auto">
-                <span className="text-xs text-[var(--text-muted)] font-medium flex items-center gap-1">
+                <span className="text-xs text-(--text-muted) font-medium flex items-center gap-1">
                   <Filter className="h-3.5 w-3.5 text-[var(--accent-primary)]" />
                   {ar ? 'الفئة العمرية:' : 'Age Category:'}
                 </span>
                 <select
                   value={selectedAgeCategory}
                   onChange={(e) => setSelectedAgeCategory(e.target.value)}
-                  className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none cursor-pointer"
+                  className="rounded-lg border border-(--border-subtle) bg-(--bg-base)px-3 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none cursor-pointer"
                 >
                   <option value="">{ar ? 'جميع الفئات العمرية' : 'All Age Groups'}</option>
                   <option value="U-11">{ar ? 'فئة البراعم (U-11)' : 'Juniors (U-11)'}</option>
@@ -315,13 +324,13 @@ function EvaluationsCenterContent() {
               </div>
 
               <div className="flex items-center gap-3 w-full sm:w-auto">
-                <span className="text-xs text-[var(--text-muted)] font-medium">
+                <span className="text-xs text-(--text-muted) font-medium">
                   {ar ? 'المجموعة التدريبية:' : 'Training Squad:'}
                 </span>
                 <select
                   value={selectedGroupId}
                   onChange={(e) => setSelectedGroupId(e.target.value)}
-                  className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none cursor-pointer"
+                  className="rounded-lg border border-(--border-subtle) bg-(--bg-base)px-3 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none cursor-pointer"
                 >
                   <option value="">{ar ? 'جميع المجموعات' : 'All Training Squads'}</option>
                   {groups.map((g) => (
@@ -334,20 +343,26 @@ function EvaluationsCenterContent() {
             </div>
 
             {/* Rankings Table */}
-            <div className="overflow-x-auto rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)]">
+            <div className="overflow-x-auto rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)]">
               <table className="w-full text-start text-xs">
-                <thead className="bg-[var(--bg-surface-subtle)] text-[var(--text-muted)] border-b border-[var(--border-subtle)]">
+                <thead className="bg-(--bg-surface-subtle) text-(--text-muted) border-b border-(--border-subtle)">
                   <tr>
-                    <th className="p-3.5 text-center w-16">{t('evaluations.rankCol', 'الترتيب')}</th>
+                    <th className="p-3.5 text-center w-16">
+                      {t('evaluations.rankCol', 'الترتيب')}
+                    </th>
                     <th className="p-3.5 text-start">{t('evaluations.playerCol', 'اللاعب')}</th>
-                    <th className="p-3.5 text-start">{ar ? 'الفئة / المجموعة' : 'Squad / Category'}</th>
+                    <th className="p-3.5 text-start">
+                      {ar ? 'الفئة / المجموعة' : 'Squad / Category'}
+                    </th>
                     <th className="p-3.5 text-center">
                       {t('evaluations.evaluationsCountCol', 'عدد التقييمات')}
                     </th>
                     <th className="p-3.5 text-center">
                       {t('evaluations.overallScoreCol', 'المعدل العام (10)')}
                     </th>
-                    <th className="p-3.5 text-center">{t('evaluations.trendCol', 'الاتجاه (Trend)')}</th>
+                    <th className="p-3.5 text-center">
+                      {t('evaluations.trendCol', 'الاتجاه (Trend)')}
+                    </th>
                     <th className="p-3.5 text-center">
                       {t('evaluations.viewProfileLink', 'الملف التنموي')}
                     </th>
@@ -356,7 +371,7 @@ function EvaluationsCenterContent() {
                 <tbody className="divide-y divide-[var(--border-subtle)]">
                   {!rankings || rankings.items.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="p-8 text-center text-[var(--text-muted)]">
+                      <td colSpan={7} className="p-8 text-center text-(--text-muted)">
                         {ar
                           ? 'لا توجد بيانات تقييم للاعبين ضمن الفئة المحددة حالياً. ابدأ بإضافة تقييم من تبويب "إضافة تقييم جديد".'
                           : 'No player evaluations found in this category. Start adding ratings via the "New Evaluation" tab.'}
@@ -371,7 +386,7 @@ function EvaluationsCenterContent() {
                       return (
                         <tr
                           key={item.playerId}
-                          className="hover:bg-[var(--bg-surface-subtle)]/50 transition-colors"
+                          className="hover:bg-(--bg-surface-subtle)/50 transition-colors"
                         >
                           <td className="p-3.5 text-center">
                             {isTop1 ? (
@@ -379,7 +394,7 @@ function EvaluationsCenterContent() {
                                 🥇
                               </span>
                             ) : isTop2 ? (
-                              <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-300/20 text-slate-400 font-extrabold text-xs border border-slate-300/40">
+                              <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-(--bg-surface-subtle) text-(--text-muted) font-extrabold text-xs border border-(--border-subtle)">
                                 🥈
                               </span>
                             ) : isTop3 ? (
@@ -387,28 +402,30 @@ function EvaluationsCenterContent() {
                                 🥉
                               </span>
                             ) : (
-                              <span className="font-bold text-[var(--text-muted)]">
-                                #{item.rank}
-                              </span>
+                              <span className="font-bold text-(--text-muted)">#{item.rank}</span>
                             )}
                           </td>
-                          <td className="p-3.5 font-bold text-[var(--text-main)] text-sm">
+                          <td className="p-3.5 font-bold text-(--text-main) text-sm">
                             {item.playerName}
                           </td>
-                          <td className="p-3.5 text-[var(--text-muted)]">
-                            <span className="rounded bg-[var(--bg-surface-subtle)] px-2 py-0.5 text-[11px] text-[var(--accent-primary)] me-2 border border-[var(--border-subtle)]">
+                          <td className="p-3.5 text-(--text-muted)">
+                            <span className="rounded bg-(--bg-surface-subtle) px-2 py-0.5 text-[11px] text-[var(--accent-primary)] me-2 border border-(--border-subtle)">
                               {item.ageCategory}
                             </span>
-                            <span>{locale === 'en' ? translateDataString(item.groupName, 'en') : item.groupName || '—'}</span>
+                            <span>
+                              {locale === 'en'
+                                ? translateDataString(item.groupName, 'en')
+                                : item.groupName || '—'}
+                            </span>
                           </td>
-                          <td className="p-3.5 text-center text-[var(--text-main)] font-medium">
+                          <td className="p-3.5 text-center text-(--text-main) font-medium">
                             {item.evaluationsCount} {ar ? 'تقييم' : 'evals'}
                           </td>
                           <td className="p-3.5 text-center">
                             <span className="text-base font-extrabold text-[var(--accent-primary)]">
                               {item.averageScore.toFixed(2)}
                             </span>
-                            <span className="text-[10px] text-[var(--text-muted)]"> / 10</span>
+                            <span className="text-[10px] text-(--text-muted)"> / 10</span>
                           </td>
                           <td className="p-3.5 text-center">
                             {item.trend === 'UP' ? (
@@ -421,7 +438,7 @@ function EvaluationsCenterContent() {
                                 {item.trendDelta}
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 text-[var(--text-muted)] text-xs">
+                              <span className="inline-flex items-center gap-1 text-(--text-muted) text-xs">
                                 <Minus className="h-3.5 w-3.5" />
                                 {ar ? 'مستقر' : 'Stable'}
                               </span>
@@ -430,7 +447,7 @@ function EvaluationsCenterContent() {
                           <td className="p-3.5 text-center">
                             <Link
                               href={`/evaluations/player/${item.playerId}`}
-                              className="inline-flex items-center gap-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3 py-1.5 text-xs font-semibold text-[var(--accent-primary)] hover:border-[var(--accent-primary)] transition-all"
+                              className="inline-flex items-center gap-1 rounded-lg border border-(--border-subtle) bg-(--bg-surface-subtle) px-3 py-1.5 text-xs font-semibold text-[var(--accent-primary)] hover:border-[var(--accent-primary)] transition-all"
                             >
                               <span>{ar ? 'استعراض الرادار' : 'View Profile'}</span>
                               {isRtl ? (
@@ -452,13 +469,15 @@ function EvaluationsCenterContent() {
 
         {/* TAB 2: NEW EVALUATION */}
         {activeTab === 'new-eval' && (
-          <div className="max-w-3xl mx-auto rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 sm:p-8 space-y-6">
+          <div className="max-w-3xl mx-auto rounded-2xl border border-(--border-subtle) bg-[var(--bg-surface)] p-6 sm:p-8 space-y-6">
             <div>
-              <h2 className="text-xl font-bold text-[var(--text-main)] flex items-center gap-2">
+              <h2 className="text-xl font-bold text-(--text-main) flex items-center gap-2">
                 <Award className="h-5 w-5 text-[var(--accent-primary)]" />
-                <span>{ar ? 'نموذج تقييم أداء اللاعب الرباعي' : '4-Pillar Player Evaluation Form'}</span>
+                <span>
+                  {ar ? 'نموذج تقييم أداء اللاعب الرباعي' : '4-Pillar Player Evaluation Form'}
+                </span>
               </h2>
-              <p className="text-xs text-[var(--text-muted)] mt-1">
+              <p className="text-xs text-(--text-muted) mt-1">
                 {ar
                   ? 'سجل درجات المهارات الرياضية، الملاحظات الخاصة بالمدرب، والتوجيهات الموجهة لولي الأمر واللاعب.'
                   : 'Score athletic competencies, record confidential coach remarks, and draft guardian guidance.'}
@@ -486,16 +505,18 @@ function EvaluationsCenterContent() {
               {/* Player Selector */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">
+                  <label className="block text-xs font-medium text-(--text-muted) mb-1.5">
                     {ar ? 'اللاعب المراد تقييمه *' : 'Selected Player *'}
                   </label>
                   <select
                     required
                     value={formPlayerId}
                     onChange={(e) => setFormPlayerId(e.target.value)}
-                    className="w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none cursor-pointer"
+                    className="w-full rounded-lg border border-(--border-subtle) bg-(--bg-base)px-3 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none cursor-pointer"
                   >
-                    <option value="">{ar ? 'اختر لاعباً من الأكاديمية...' : 'Select academy player...'}</option>
+                    <option value="">
+                      {ar ? 'اختر لاعباً من الأكاديمية...' : 'Select academy player...'}
+                    </option>
                     {players.map((p) => (
                       <option key={p.id} value={p.id}>
                         {p.firstName} {p.lastName}
@@ -505,13 +526,13 @@ function EvaluationsCenterContent() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">
+                  <label className="block text-xs font-medium text-(--text-muted) mb-1.5">
                     {ar ? 'نموذج المعايير المعتمد' : 'Criteria Template'}
                   </label>
                   <select
                     value={formTemplateId}
                     onChange={(e) => setFormTemplateId(e.target.value)}
-                    className="w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none cursor-pointer"
+                    className="w-full rounded-lg border border-(--border-subtle) bg-(--bg-base)px-3 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none cursor-pointer"
                   >
                     {templates.map((t) => (
                       <option key={t.id} value={t.id}>
@@ -523,30 +544,34 @@ function EvaluationsCenterContent() {
               </div>
 
               {/* Real-time Overall Score Display Card */}
-              <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] p-4 flex items-center justify-between">
+              <div className="rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) p-4 flex items-center justify-between">
                 <div>
-                  <span className="text-xs text-[var(--text-muted)]">
-                    {ar ? 'المعدل العام التراكمي المحسوب تلقائياً' : 'Calculated Cumulative Average'}
+                  <span className="text-xs text-(--text-muted)">
+                    {ar
+                      ? 'المعدل العام التراكمي المحسوب تلقائياً'
+                      : 'Calculated Cumulative Average'}
                   </span>
                   <div className="text-2xl font-extrabold text-[var(--accent-primary)] mt-0.5">
                     {calculatedOverall.toFixed(2)} / 10
                   </div>
                 </div>
-                <div className="text-end text-xs text-[var(--text-muted)]">
-                  {ar ? 'متوسط (فني + تكتيكي + بدني + سلوكي) / 4' : '(Technical + Tactical + Physical + Behavioral) / 4'}
+                <div className="text-end text-xs text-(--text-muted)">
+                  {ar
+                    ? 'متوسط (فني + تكتيكي + بدني + سلوكي) / 4'
+                    : '(Technical + Tactical + Physical + Behavioral) / 4'}
                 </div>
               </div>
 
               {/* 4 Pillars Sliders */}
               <div className="space-y-4 pt-2">
-                <h3 className="text-sm font-bold text-[var(--text-main)]">
+                <h3 className="text-sm font-bold text-(--text-main)">
                   {ar ? 'الدرجات الأساسية (من 1 إلى 10)' : 'Core Pillar Scores (Scale 1 - 10)'}
                 </h3>
 
                 {/* Technical Score */}
                 <div className="space-y-1">
                   <div className="flex justify-between text-xs">
-                    <span className="font-semibold text-[var(--text-main)]">
+                    <span className="font-semibold text-(--text-main)">
                       1. {ar ? 'المهارات الفنية' : 'Technical Skills'} (Technical)
                     </span>
                     <span className="font-bold text-[var(--accent-primary)]">
@@ -562,7 +587,7 @@ function EvaluationsCenterContent() {
                     onChange={(e) => setFormTechnical(parseFloat(e.target.value))}
                     className="w-full accent-[var(--accent-primary)] cursor-pointer"
                   />
-                  <span className="text-[10px] text-[var(--text-muted)]">
+                  <span className="text-[10px] text-(--text-muted)">
                     {ar
                       ? 'التحكم بالكرة، دقة التمرير، المراوغة، التسديد واستقبال الكرات.'
                       : 'Ball control, passing accuracy, dribbling, shooting, and first touch.'}
@@ -572,7 +597,7 @@ function EvaluationsCenterContent() {
                 {/* Tactical Score */}
                 <div className="space-y-1">
                   <div className="flex justify-between text-xs">
-                    <span className="font-semibold text-[var(--text-main)]">
+                    <span className="font-semibold text-(--text-main)">
                       2. {ar ? 'الوعي التكتيكي' : 'Tactical Awareness'} (Tactical)
                     </span>
                     <span className="font-bold text-[var(--accent-primary)]">
@@ -588,7 +613,7 @@ function EvaluationsCenterContent() {
                     onChange={(e) => setFormTactical(parseFloat(e.target.value))}
                     className="w-full accent-[var(--accent-primary)] cursor-pointer"
                   />
-                  <span className="text-[10px] text-[var(--text-muted)]">
+                  <span className="text-[10px] text-(--text-muted)">
                     {ar
                       ? 'التمركز الصحيح، اتخاذ القرار، رؤية الملعب، والتحرك بدون كرة.'
                       : 'Positioning, pitch vision, decision speed, and off-the-ball movement.'}
@@ -598,7 +623,7 @@ function EvaluationsCenterContent() {
                 {/* Physical Score */}
                 <div className="space-y-1">
                   <div className="flex justify-between text-xs">
-                    <span className="font-semibold text-[var(--text-main)]">
+                    <span className="font-semibold text-(--text-main)">
                       3. {ar ? 'الجاهزية البدنية' : 'Physical Fitness'} (Physical)
                     </span>
                     <span className="font-bold text-[var(--accent-primary)]">
@@ -614,7 +639,7 @@ function EvaluationsCenterContent() {
                     onChange={(e) => setFormPhysical(parseFloat(e.target.value))}
                     className="w-full accent-[var(--accent-primary)] cursor-pointer"
                   />
-                  <span className="text-[10px] text-[var(--text-muted)]">
+                  <span className="text-[10px] text-(--text-muted)">
                     {ar
                       ? 'السرعة بالكرة، الرشاقة، التوازن، القوة البدنية، والتحمل الهوائي.'
                       : 'Speed, agility, balance, core strength, and aerobic stamina.'}
@@ -624,7 +649,7 @@ function EvaluationsCenterContent() {
                 {/* Behavioral Score */}
                 <div className="space-y-1">
                   <div className="flex justify-between text-xs">
-                    <span className="font-semibold text-[var(--text-main)]">
+                    <span className="font-semibold text-(--text-main)">
                       4. {ar ? 'الانضباط والسلوك' : 'Discipline & Behavior'} (Behavioral)
                     </span>
                     <span className="font-bold text-[var(--accent-primary)]">
@@ -640,7 +665,7 @@ function EvaluationsCenterContent() {
                     onChange={(e) => setFormBehavioral(parseFloat(e.target.value))}
                     className="w-full accent-[var(--accent-primary)] cursor-pointer"
                   />
-                  <span className="text-[10px] text-[var(--text-muted)]">
+                  <span className="text-[10px] text-(--text-muted)">
                     {ar
                       ? 'الالتزام بتوجيهات المدرب، الروح الرياضية، والتعاون الإيجابي مع الزملاء.'
                       : 'Coachability, sportsmanship, discipline, and team camaraderie.'}
@@ -651,34 +676,42 @@ function EvaluationsCenterContent() {
               {/* Strengths & Improvements */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
                 <div>
-                  <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">
+                  <label className="block text-xs font-medium text-(--text-muted) mb-1">
                     {ar ? 'أبرز نقاط القوة' : 'Key Strengths'}
                   </label>
                   <textarea
                     rows={2}
-                    placeholder={ar ? 'مثال: دقة متناهية في التمرير القصير وهدوء تحت الضغط...' : 'e.g. Exceptional precision in short passes, composure under press...'}
+                    placeholder={
+                      ar
+                        ? 'مثال: دقة متناهية في التمرير القصير وهدوء تحت الضغط...'
+                        : 'e.g. Exceptional precision in short passes, composure under press...'
+                    }
                     value={formStrengths}
                     onChange={(e) => setFormStrengths(e.target.value)}
-                    className="w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-base)] p-2.5 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:outline-none"
+                    className="w-full rounded-lg border border-(--border-subtle) bg-(--bg-base)p-2.5 text-xs text-(--text-main) placeholder-(--text-muted) focus:border-(--accent-primary) focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">
+                  <label className="block text-xs font-medium text-(--text-muted) mb-1">
                     {ar ? 'مجالات بحاجة إلى تطوير' : 'Areas for Improvement'}
                   </label>
                   <textarea
                     rows={2}
-                    placeholder={ar ? 'مثال: التغطية العكسية عند فقدان الكرة، التسديد بالقدم اليسرى...' : 'e.g. Defensive recovery on turnovers, weaker-foot shooting...'}
+                    placeholder={
+                      ar
+                        ? 'مثال: التغطية العكسية عند فقدان الكرة، التسديد بالقدم اليسرى...'
+                        : 'e.g. Defensive recovery on turnovers, weaker-foot shooting...'
+                    }
                     value={formImprovements}
                     onChange={(e) => setFormImprovements(e.target.value)}
-                    className="w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-base)] p-2.5 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:outline-none"
+                    className="w-full rounded-lg border border-(--border-subtle) bg-(--bg-base)p-2.5 text-xs text-(--text-main) placeholder-(--text-muted) focus:border-(--accent-primary) focus:outline-none"
                   />
                 </div>
               </div>
 
               {/* Privacy-Tiers: Private Coach Notes vs. Guardian Feedback */}
-              <div className="space-y-4 pt-2 border-t border-[var(--border-subtle)]">
+              <div className="space-y-4 pt-2 border-t border-(--border-subtle)">
                 <div>
                   <div className="flex items-center gap-1.5 mb-1">
                     <Lock className="h-3.5 w-3.5 text-amber-500" />
@@ -690,10 +723,14 @@ function EvaluationsCenterContent() {
                   </div>
                   <textarea
                     rows={2}
-                    placeholder={ar ? 'ملاحظات فنية خاصة بالجهاز التدريبي، خطط تصعيد اللاعب...' : 'Private observations, promotion plans, physical health flags...'}
+                    placeholder={
+                      ar
+                        ? 'ملاحظات فنية خاصة بالجهاز التدريبي، خطط تصعيد اللاعب...'
+                        : 'Private observations, promotion plans, physical health flags...'
+                    }
                     value={formPrivateNotes}
                     onChange={(e) => setFormPrivateNotes(e.target.value)}
-                    className="w-full rounded-lg border border-amber-500/30 bg-[var(--bg-base)] p-2.5 text-xs text-[var(--text-main)] placeholder-amber-500/50 focus:border-amber-500 focus:outline-none"
+                    className="w-full rounded-lg border border-amber-500/30 bg-(--bg-base)p-2.5 text-xs text-(--text-main) placeholder-amber-500/50 focus:border-amber-500 focus:outline-none"
                   />
                 </div>
 
@@ -708,37 +745,45 @@ function EvaluationsCenterContent() {
                   </div>
                   <textarea
                     rows={2}
-                    placeholder={ar ? 'كلمة تشجيعية لولي الأمر، توجيهات غذائية ونوم، وتوصيات للتدريب المنزلي...' : 'Encouraging message, nutrition recommendations, home drills...'}
+                    placeholder={
+                      ar
+                        ? 'كلمة تشجيعية لولي الأمر، توجيهات غذائية ونوم، وتوصيات للتدريب المنزلي...'
+                        : 'Encouraging message, nutrition recommendations, home drills...'
+                    }
                     value={formGuardianFeedback}
                     onChange={(e) => setFormGuardianFeedback(e.target.value)}
-                    className="w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-base)] p-2.5 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:outline-none"
+                    className="w-full rounded-lg border border-(--border-subtle) bg-(--bg-base)p-2.5 text-xs text-(--text-main) placeholder-(--text-muted) focus:border-(--accent-primary) focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">
+                  <label className="block text-xs font-medium text-(--text-muted) mb-1">
                     {ar ? 'الأهداف المقترحة للمرحلة القادمة' : 'Next Milestone Goals'}
                   </label>
                   <input
                     type="text"
-                    placeholder={ar ? 'مثال: إتقان الكرات الثابتة، رفع معدل التحمل إلى 90 دقيقة...' : 'e.g. Master set-piece delivery, build 90-minute stamina...'}
+                    placeholder={
+                      ar
+                        ? 'مثال: إتقان الكرات الثابتة، رفع معدل التحمل إلى 90 دقيقة...'
+                        : 'e.g. Master set-piece delivery, build 90-minute stamina...'
+                    }
                     value={formGoals}
                     onChange={(e) => setFormGoals(e.target.value)}
-                    className="w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-base)] p-2.5 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:outline-none"
+                    className="w-full rounded-lg border border-(--border-subtle) bg-(--bg-base)p-2.5 text-xs text-(--text-main) placeholder-(--text-muted) focus:border-(--accent-primary) focus:outline-none"
                   />
                 </div>
               </div>
 
               {/* Publish Toggle & Submit Button */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-4 border-t border-[var(--border-subtle)]">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-4 border-t border-(--border-subtle)">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={formIsPublished}
                     onChange={(e) => setFormIsPublished(e.target.checked)}
-                    className="h-4 w-4 rounded border-[var(--border-subtle)] bg-[var(--bg-base)] text-[var(--accent-primary)] focus:ring-0"
+                    className="h-4 w-4 rounded border-(--border-subtle) bg-(--bg-base)text-[var(--accent-primary)] focus:ring-0"
                   />
-                  <span className="text-xs text-[var(--text-main)] font-medium">
+                  <span className="text-xs text-(--text-main) font-medium">
                     {ar
                       ? 'نشر التقييم فوراً ليظهر في بوابة اللاعب وبوابة ولي الأمر'
                       : 'Publish evaluation immediately to Player & Guardian portals'}
@@ -749,14 +794,14 @@ function EvaluationsCenterContent() {
                   <button
                     type="button"
                     onClick={() => void handleSaveDraft()}
-                    className="rounded-xl border border-[var(--border-subtle)] px-4 py-2.5 text-sm font-semibold text-[var(--text-main)] hover:bg-[var(--bg-surface-subtle)] transition-colors cursor-pointer"
+                    className="rounded-xl border border-(--border-subtle) px-4 py-2.5 text-sm font-semibold text-(--text-main) hover:bg-(--bg-surface-subtle) transition-colors cursor-pointer"
                   >
                     {ar ? 'حفظ مسودة محلية' : 'Save Local Draft'}
                   </button>
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="rounded-xl bg-[var(--accent-primary)] px-6 py-2.5 text-sm font-bold text-white shadow-sm hover:brightness-110 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                    className="rounded-xl bg-(--accent-primary) px-6 py-2.5 text-sm font-bold text-white shadow-sm hover:brightness-110 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                   >
                     {isSubmitting ? (
                       <>
@@ -782,32 +827,33 @@ function EvaluationsCenterContent() {
             {templates.map((template) => (
               <div
                 key={template.id}
-                className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 space-y-4"
+                className="rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] p-5 space-y-4"
               >
                 <div className="flex items-center justify-between">
-                  <h3 className="font-bold text-base text-[var(--text-main)]">{template.name}</h3>
+                  <h3 className="font-bold text-base text-(--text-main)">{template.name}</h3>
                   {template.isDefault && (
-                    <span className="rounded-full bg-[var(--accent-primary)]/15 px-2 py-0.5 text-xs font-semibold text-[var(--accent-primary)] border border-[var(--accent-primary)]/30">
+                    <span className="rounded-full bg-(--accent-primary)/15 px-2 py-0.5 text-xs font-semibold text-[var(--accent-primary)] border border-[var(--accent-primary)]/30">
                       {ar ? 'النموذج الافتراضي' : 'Default Template'}
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                  {template.description || (ar ? 'معايير تقييم متقدمة' : 'Advanced Evaluation Criteria')}
+                <p className="text-xs text-(--text-muted) leading-relaxed">
+                  {template.description ||
+                    (ar ? 'معايير تقييم متقدمة' : 'Advanced Evaluation Criteria')}
                 </p>
 
-                <div className="space-y-2 pt-2 border-t border-[var(--border-subtle)]">
-                  <h4 className="text-xs font-semibold text-[var(--text-main)]">
+                <div className="space-y-2 pt-2 border-t border-(--border-subtle)">
+                  <h4 className="text-xs font-semibold text-(--text-main)">
                     {ar ? 'المعايير المحددة:' : 'Configured Criteria:'}
                   </h4>
                   <div className="space-y-1.5">
                     {template.criteria.map((c) => (
                       <div
                         key={c.id}
-                        className="flex items-center justify-between text-xs bg-[var(--bg-surface-subtle)] p-2 rounded-lg"
+                        className="flex items-center justify-between text-xs bg-(--bg-surface-subtle) p-2 rounded-lg"
                       >
-                        <span className="text-[var(--text-main)]">{c.name}</span>
-                        <span className="text-[10px] text-[var(--accent-primary)] font-semibold bg-[var(--accent-primary)]/10 px-2 py-0.5 rounded">
+                        <span className="text-(--text-main)">{c.name}</span>
+                        <span className="text-[10px] text-[var(--accent-primary)] font-semibold bg-(--accent-primary)/10 px-2 py-0.5 rounded">
                           {c.category}
                         </span>
                       </div>
@@ -828,9 +874,7 @@ export default function EvaluationsCenterPage() {
     <Suspense
       fallback={
         <AppShell>
-          <div className="flex h-64 items-center justify-center">
-            <RefreshCw className="h-8 w-8 animate-spin text-[var(--accent-primary)]" />
-          </div>
+          <PageSkeleton hasStats variant="cards" hasFilters />
         </AppShell>
       }
     >

@@ -5,13 +5,10 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { useLocale } from '@/contexts/locale-context';
-import {
-  canAccessAdminRoutes,
-  canAccessCoachRoutes,
-  getRoleHomeRoute,
-} from '@/utils/role-routing';
+import { canAccessAdminRoutes, canAccessCoachRoutes, getRoleHomeRoute } from '@/utils/role-routing';
 import { AppShell } from '../../components/layout/AppShell';
 import { PageHeader, StatusBadge, useToast } from '../../components/ui';
+import { PageSkeleton, CardGridSkeleton } from '@/components/ui/skeleton';
 import { api } from '@/api/client';
 import type {
   BranchSummary,
@@ -38,7 +35,7 @@ export default function SessionsPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-[var(--bg-base)] flex items-center justify-center text-[var(--text-muted)]">
+        <div className="min-h-screen bg-(--bg-base)flex items-center justify-center text-(--text-muted)">
           <RefreshCw className="h-8 w-8 animate-spin text-[var(--accent-primary)]" />
         </div>
       }
@@ -173,7 +170,11 @@ function SessionsContent() {
     }
 
     const selectedGroup = groups.find((g) => g.id === createForm.groupId);
-    const groupName = selectedGroup ? selectedGroup.name : locale === 'ar' ? 'حصة تدريبية' : 'Training Session';
+    const groupName = selectedGroup
+      ? selectedGroup.name
+      : locale === 'ar'
+        ? 'حصة تدريبية'
+        : 'Training Session';
 
     setIsSubmitting(true);
     try {
@@ -191,7 +192,13 @@ function SessionsContent() {
       setIsCreateModalOpen(false);
       router.push(`/attendance/sessions/${created.id}`);
     } catch (err) {
-      setCreateError(err instanceof Error ? err.message : locale === 'ar' ? 'فشل إنشاء الحصة التدريبية' : 'Failed to create training session');
+      setCreateError(
+        err instanceof Error
+          ? err.message
+          : locale === 'ar'
+            ? 'فشل إنشاء الحصة التدريبية'
+            : 'Failed to create training session',
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -228,12 +235,9 @@ function SessionsContent() {
 
   if (isLoading || !user) {
     return (
-      <div className="min-h-screen bg-[var(--bg-base)] flex items-center justify-center text-[var(--text-muted)]">
-        <div className="flex flex-col items-center gap-3">
-          <RefreshCw className="h-8 w-8 animate-spin text-[var(--accent-primary)]" />
-          <p className="text-sm font-medium">{t('common.loading')}</p>
-        </div>
-      </div>
+      <AppShell>
+        <PageSkeleton variant="cards" hasFilters />
+      </AppShell>
     );
   }
 
@@ -254,7 +258,7 @@ function SessionsContent() {
             <div className="flex items-center gap-2.5">
               <Link
                 href="/attendance/scanner"
-                className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border-app)] bg-[var(--bg-surface)] px-3.5 py-2.5 text-xs font-semibold text-[var(--accent-primary)] hover:border-[var(--accent-primary)] transition-all shadow-sm"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-(--border-app) bg-[var(--bg-surface)] px-3.5 py-2.5 text-xs font-semibold text-[var(--accent-primary)] hover:border-[var(--accent-primary)] transition-all shadow-sm"
               >
                 <QrCode className="h-4 w-4" />
                 <span>{locale === 'ar' ? 'ماسح QR' : 'QR Scanner'}</span>
@@ -274,14 +278,14 @@ function SessionsContent() {
         />
 
         {/* Filter Bar */}
-        <div className="rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-4 shadow-sm">
+        <div className="rounded-2xl border border-(--border-app) bg-[var(--bg-surface)] p-4 shadow-sm">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
             {/* Branch Filter */}
             <select
               id="select-filter-branch"
               value={selectedBranchId}
               onChange={(e) => setSelectedBranchId(e.target.value)}
-              className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3 py-2 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:bg-[var(--bg-surface)] transition-all outline-none"
+              className="rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:bg-[var(--bg-surface)] transition-all outline-none"
             >
               <option value="">{locale === 'ar' ? 'جميع الفروع' : 'All Branches'}</option>
               {branches.map((b) => (
@@ -296,7 +300,7 @@ function SessionsContent() {
               id="select-filter-group"
               value={selectedGroupId}
               onChange={(e) => setSelectedGroupId(e.target.value)}
-              className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3 py-2 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:bg-[var(--bg-surface)] transition-all outline-none"
+              className="rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:bg-[var(--bg-surface)] transition-all outline-none"
             >
               <option value="">{locale === 'ar' ? 'جميع المجموعات' : 'All Groups'}</option>
               {groups.map((g) => (
@@ -311,7 +315,7 @@ function SessionsContent() {
               id="select-filter-status"
               value={selectedStatus}
               onChange={(e) => setSelectedStatus(e.target.value as SessionStatus | '')}
-              className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3 py-2 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:bg-[var(--bg-surface)] transition-all outline-none"
+              className="rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:bg-[var(--bg-surface)] transition-all outline-none"
             >
               <option value="">{locale === 'ar' ? 'جميع الحالات' : 'All Statuses'}</option>
               <option value="SCHEDULED">{locale === 'ar' ? 'مجدولة' : 'Scheduled'}</option>
@@ -324,7 +328,7 @@ function SessionsContent() {
               type="date"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
-              className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3 py-2 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:bg-[var(--bg-surface)] transition-all outline-none"
+              className="rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:bg-[var(--bg-surface)] transition-all outline-none"
             />
 
             {/* Date Range To & Reset */}
@@ -333,7 +337,7 @@ function SessionsContent() {
                 type="date"
                 value={dateTo}
                 onChange={(e) => setDateTo(e.target.value)}
-                className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3 py-2 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:bg-[var(--bg-surface)] transition-all outline-none"
+                className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:bg-[var(--bg-surface)] transition-all outline-none"
               />
 
               <button
@@ -347,7 +351,7 @@ function SessionsContent() {
                   setDateTo('');
                   void loadSessions(1);
                 }}
-                className="p-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors"
+                className="p-2 rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) text-(--text-muted) hover:text-(--text-main) transition-colors"
                 title={t('common.refresh')}
               >
                 <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
@@ -358,20 +362,15 @@ function SessionsContent() {
 
         {/* Sessions Grid */}
         {isFetching && sessions.length === 0 ? (
-          <div className="rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-12 text-center text-[var(--text-muted)] shadow-sm">
-            <RefreshCw className="h-8 w-8 animate-spin mx-auto text-[var(--accent-primary)] mb-3" />
-            <p className="text-sm font-medium">{t('common.loading')}</p>
-          </div>
+          <CardGridSkeleton count={6} cols={3} />
         ) : sessions.length === 0 ? (
-          <div className="rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-12 text-center text-[var(--text-muted)] space-y-3 shadow-sm">
-            <div className="h-12 w-12 rounded-2xl bg-[var(--badge-bg)] text-[var(--accent-primary)] flex items-center justify-center mx-auto">
+          <div className="rounded-2xl border border-(--border-app) bg-[var(--bg-surface)] p-12 text-center text-(--text-muted) space-y-3 shadow-sm">
+            <div className="h-12 w-12 rounded-2xl bg-(--badge-bg) text-[var(--accent-primary)] flex items-center justify-center mx-auto">
               <CalendarCheck className="h-6 w-6" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-[var(--text-main)]">
-                {t('common.noResults')}
-              </h3>
-              <p className="text-xs text-[var(--text-muted)] mt-1">
+              <h3 className="text-base font-bold text-(--text-main)">{t('common.noResults')}</h3>
+              <p className="text-xs text-(--text-muted) mt-1">
                 {locale === 'ar'
                   ? 'قم بإنشاء حصة تدريبية لمجموعة للبدء بأخذ الحضور إلكترونياً.'
                   : 'Create a training session to start recording attendance.'}
@@ -380,7 +379,7 @@ function SessionsContent() {
             <button
               type="button"
               onClick={() => setIsCreateModalOpen(true)}
-              className="inline-flex items-center gap-2 rounded-xl bg-[var(--accent-primary)] px-4 py-2 text-xs font-bold text-white hover:brightness-110 transition-all mt-2"
+              className="inline-flex items-center gap-2 rounded-xl bg-(--accent-primary) px-4 py-2 text-xs font-bold text-white hover:brightness-110 transition-all mt-2"
             >
               <Plus className="h-4 w-4" />
               <span>{locale === 'ar' ? 'إنشاء أول حصة تدريبية' : 'Create First Session'}</span>
@@ -398,7 +397,7 @@ function SessionsContent() {
                 <div
                   key={session.id}
                   id={`session-card-${session.id}`}
-                  className="rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-5 flex flex-col justify-between hover:border-[var(--accent-primary)]/50 transition-all shadow-sm hover:shadow-md"
+                  className="rounded-2xl border border-(--border-app) bg-[var(--bg-surface)] p-5 flex flex-col justify-between hover:border-[var(--accent-primary)]/50 transition-all shadow-sm hover:shadow-md"
                 >
                   <div className="space-y-4">
                     {/* Header */}
@@ -422,25 +421,25 @@ function SessionsContent() {
                             }
                             pulse={session.status === 'IN_PROGRESS'}
                           />
-                          <span className="text-[11px] text-[var(--text-muted)] flex items-center gap-1">
+                          <span className="text-[11px] text-(--text-muted) flex items-center gap-1">
                             <Building2 className="h-3 w-3 text-[var(--accent-primary)]" />
                             {session.branchName}
                           </span>
                         </div>
 
-                        <h3 className="text-base font-bold text-[var(--text-main)] mt-2 truncate">
+                        <h3 className="text-base font-bold text-(--text-main) mt-2 truncate">
                           {session.groupName}
                         </h3>
                       </div>
 
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--badge-bg)] text-[var(--accent-primary)]">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-(--badge-bg) text-[var(--accent-primary)]">
                         <CalendarCheck className="h-5 w-5" />
                       </div>
                     </div>
 
                     {/* Date & Time */}
-                    <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] p-3 text-xs space-y-1.5">
-                      <div className="flex items-center justify-between text-[var(--text-main)] font-semibold">
+                    <div className="rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) p-3 text-xs space-y-1.5">
+                      <div className="flex items-center justify-between text-(--text-main) font-semibold">
                         <span className="flex items-center gap-1.5">
                           <Calendar className="h-3.5 w-3.5 text-[var(--accent-primary)]" />
                           {session.sessionDate}
@@ -451,9 +450,9 @@ function SessionsContent() {
                         </span>
                       </div>
                       {session.coachName && (
-                        <div className="text-[var(--text-muted)] text-[11px] pt-1.5 border-t border-[var(--border-subtle)]">
+                        <div className="text-(--text-muted) text-[11px] pt-1.5 border-t border-(--border-subtle)">
                           {locale === 'ar' ? 'المدرب:' : 'Coach:'}{' '}
-                          <span className="font-semibold text-[var(--text-main)]">
+                          <span className="font-semibold text-(--text-main)">
                             {session.coachName}
                           </span>
                         </div>
@@ -463,7 +462,7 @@ function SessionsContent() {
                     {/* Attendance segmented bar */}
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between text-xs">
-                        <span className="text-[var(--text-muted)] flex items-center gap-1">
+                        <span className="text-(--text-muted) flex items-center gap-1">
                           <Users className="h-3.5 w-3.5 text-[var(--accent-primary)]" />
                           {locale === 'ar'
                             ? `نسبة الحضور (${attendedCount} من ${totalExpected})`
@@ -474,7 +473,7 @@ function SessionsContent() {
                         </span>
                       </div>
 
-                      <div className="h-2 w-full rounded-full bg-[var(--bg-surface-subtle)] overflow-hidden flex">
+                      <div className="h-2 w-full rounded-full bg-(--bg-surface-subtle) overflow-hidden flex">
                         <div
                           style={{
                             width: `${totalExpected > 0 ? (session.totalPresent / totalExpected) * 100 : 0}%`,
@@ -519,11 +518,11 @@ function SessionsContent() {
                   </div>
 
                   {/* Actions */}
-                  <div className="pt-4 mt-4 border-t border-[var(--border-subtle)] flex items-center justify-between gap-2.5">
+                  <div className="pt-4 mt-4 border-t border-(--border-subtle) flex items-center justify-between gap-2.5">
                     <Link
                       href={`/attendance/sessions/${session.id}`}
                       id={`btn-mark-session-${session.id}`}
-                      className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-[var(--accent-primary)] px-3.5 py-2.5 text-xs font-bold text-white shadow-sm hover:brightness-110 transition-all"
+                      className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-(--accent-primary) px-3.5 py-2.5 text-xs font-bold text-white shadow-sm hover:brightness-110 transition-all"
                     >
                       <span>{locale === 'ar' ? 'شاشة التحضير' : 'Take Attendance'}</span>
                       <DirectionIcon className="h-3.5 w-3.5" />
@@ -534,7 +533,7 @@ function SessionsContent() {
                         type="button"
                         id={`btn-close-session-${session.id}`}
                         onClick={() => handleCloseSession(session.id)}
-                        className="p-2.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] text-[var(--text-muted)] hover:text-rose-500 hover:border-rose-500/40 transition-colors"
+                        className="p-2.5 rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) text-(--text-muted) hover:text-rose-500 hover:border-rose-500/40 transition-colors"
                         title={locale === 'ar' ? 'إغلاق الحصة وتثبيت الكشف' : 'Close Session'}
                       >
                         <CheckCircle2 className="h-4 w-4" />
@@ -549,17 +548,17 @@ function SessionsContent() {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between border-t border-[var(--border-subtle)] pt-4 text-xs text-[var(--text-muted)]">
+          <div className="flex items-center justify-between border-t border-(--border-subtle) pt-4 text-xs text-(--text-muted)">
             <div>
               {locale === 'ar' ? (
                 <>
-                  صفحة <span className="font-bold text-[var(--text-main)]">{page}</span> من{' '}
-                  <span className="font-bold text-[var(--text-main)]">{totalPages}</span>
+                  صفحة <span className="font-bold text-(--text-main)">{page}</span> من{' '}
+                  <span className="font-bold text-(--text-main)">{totalPages}</span>
                 </>
               ) : (
                 <>
-                  Page <span className="font-bold text-[var(--text-main)]">{page}</span> of{' '}
-                  <span className="font-bold text-[var(--text-main)]">{totalPages}</span>
+                  Page <span className="font-bold text-(--text-main)">{page}</span> of{' '}
+                  <span className="font-bold text-(--text-main)">{totalPages}</span>
                 </>
               )}
             </div>
@@ -568,7 +567,7 @@ function SessionsContent() {
                 type="button"
                 disabled={page <= 1}
                 onClick={() => void loadSessions(page - 1)}
-                className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-1.5 text-xs font-semibold text-[var(--text-main)] hover:border-[var(--accent-primary)] disabled:opacity-40 transition-colors"
+                className="rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] px-3 py-1.5 text-xs font-semibold text-(--text-main) hover:border-[var(--accent-primary)] disabled:opacity-40 transition-colors"
               >
                 {t('common.back')}
               </button>
@@ -576,7 +575,7 @@ function SessionsContent() {
                 type="button"
                 disabled={page >= totalPages}
                 onClick={() => void loadSessions(page + 1)}
-                className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-1.5 text-xs font-semibold text-[var(--text-main)] hover:border-[var(--accent-primary)] disabled:opacity-40 transition-colors"
+                className="rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] px-3 py-1.5 text-xs font-semibold text-(--text-main) hover:border-[var(--accent-primary)] disabled:opacity-40 transition-colors"
               >
                 {t('common.next')}
               </button>
@@ -588,20 +587,20 @@ function SessionsContent() {
       {/* CREATE SESSION MODAL */}
       {isCreateModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="w-full max-w-lg rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-6 shadow-2xl relative space-y-5 animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-4">
+          <div className="w-full max-w-lg rounded-2xl border border-(--border-app) bg-[var(--bg-surface)] p-6 shadow-2xl relative space-y-5 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-(--border-subtle) pb-4">
               <div className="flex items-center gap-2.5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--badge-bg)] text-[var(--accent-primary)]">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-(--badge-bg) text-[var(--accent-primary)]">
                   <Plus className="h-5 w-5" />
                 </div>
-                <h2 className="text-base font-bold text-[var(--text-main)]">
+                <h2 className="text-base font-bold text-(--text-main)">
                   {locale === 'ar' ? 'إنشاء حصة تدريبية جديدة' : 'Create New Training Session'}
                 </h2>
               </div>
               <button
                 type="button"
                 onClick={() => setIsCreateModalOpen(false)}
-                className="rounded-lg p-1.5 text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-surface-subtle)] transition-colors"
+                className="rounded-lg p-1.5 text-(--text-muted) hover:text-(--text-main) hover:bg-(--bg-surface-subtle) transition-colors"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -618,7 +617,7 @@ function SessionsContent() {
                 <div>
                   <label
                     htmlFor="create-session-branch"
-                    className="block text-xs font-bold text-[var(--text-main)] mb-1.5"
+                    className="block text-xs font-bold text-(--text-main) mb-1.5"
                   >
                     {t('common.branch')} <span className="text-[var(--accent-primary)]">*</span>
                   </label>
@@ -627,7 +626,7 @@ function SessionsContent() {
                     value={createForm.branchId}
                     onChange={(e) => setCreateForm({ ...createForm, branchId: e.target.value })}
                     required
-                    className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:bg-[var(--bg-surface)] transition-all outline-none"
+                    className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:bg-[var(--bg-surface)] transition-all outline-none"
                   >
                     <option value="" disabled>
                       {locale === 'ar' ? 'اختر الفرع...' : 'Select branch...'}
@@ -643,7 +642,7 @@ function SessionsContent() {
                 <div>
                   <label
                     htmlFor="create-session-group"
-                    className="block text-xs font-bold text-[var(--text-main)] mb-1.5"
+                    className="block text-xs font-bold text-(--text-main) mb-1.5"
                   >
                     {t('common.group')} <span className="text-[var(--accent-primary)]">*</span>
                   </label>
@@ -652,7 +651,7 @@ function SessionsContent() {
                     value={createForm.groupId}
                     onChange={(e) => setCreateForm({ ...createForm, groupId: e.target.value })}
                     required
-                    className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:bg-[var(--bg-surface)] transition-all outline-none"
+                    className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:bg-[var(--bg-surface)] transition-all outline-none"
                   >
                     <option value="" disabled>
                       {locale === 'ar' ? 'اختر المجموعة...' : 'Select group...'}
@@ -671,7 +670,7 @@ function SessionsContent() {
               <div>
                 <label
                   htmlFor="create-session-date"
-                  className="block text-xs font-bold text-[var(--text-main)] mb-1.5"
+                  className="block text-xs font-bold text-(--text-main) mb-1.5"
                 >
                   {t('common.date')} <span className="text-[var(--accent-primary)]">*</span>
                 </label>
@@ -681,7 +680,7 @@ function SessionsContent() {
                   value={createForm.sessionDate}
                   onChange={(e) => setCreateForm({ ...createForm, sessionDate: e.target.value })}
                   required
-                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:bg-[var(--bg-surface)] transition-all outline-none"
+                  className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:bg-[var(--bg-surface)] transition-all outline-none"
                 />
               </div>
 
@@ -689,7 +688,7 @@ function SessionsContent() {
                 <div>
                   <label
                     htmlFor="create-session-start"
-                    className="block text-xs font-bold text-[var(--text-main)] mb-1.5"
+                    className="block text-xs font-bold text-(--text-main) mb-1.5"
                   >
                     {locale === 'ar' ? 'وقت البدء' : 'Start Time'}
                   </label>
@@ -699,13 +698,13 @@ function SessionsContent() {
                     value={createForm.startTime}
                     onChange={(e) => setCreateForm({ ...createForm, startTime: e.target.value })}
                     required
-                    className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:bg-[var(--bg-surface)] transition-all outline-none"
+                    className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:bg-[var(--bg-surface)] transition-all outline-none"
                   />
                 </div>
                 <div>
                   <label
                     htmlFor="create-session-end"
-                    className="block text-xs font-bold text-[var(--text-main)] mb-1.5"
+                    className="block text-xs font-bold text-(--text-main) mb-1.5"
                   >
                     {locale === 'ar' ? 'وقت الانتهاء' : 'End Time'}
                   </label>
@@ -715,7 +714,7 @@ function SessionsContent() {
                     value={createForm.endTime}
                     onChange={(e) => setCreateForm({ ...createForm, endTime: e.target.value })}
                     required
-                    className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:bg-[var(--bg-surface)] transition-all outline-none"
+                    className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:bg-[var(--bg-surface)] transition-all outline-none"
                   />
                 </div>
               </div>
@@ -723,7 +722,7 @@ function SessionsContent() {
               <div>
                 <label
                   htmlFor="create-session-coach"
-                  className="block text-xs font-bold text-[var(--text-main)] mb-1.5"
+                  className="block text-xs font-bold text-(--text-main) mb-1.5"
                 >
                   {t('common.coach')} ({locale === 'ar' ? 'اختياري' : 'Optional'})
                 </label>
@@ -731,7 +730,7 @@ function SessionsContent() {
                   id="create-session-coach"
                   value={createForm.coachUserId}
                   onChange={(e) => setCreateForm({ ...createForm, coachUserId: e.target.value })}
-                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:bg-[var(--bg-surface)] transition-all outline-none"
+                  className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:bg-[var(--bg-surface)] transition-all outline-none"
                 >
                   <option value="">{locale === 'ar' ? 'تحديد لاحقاً' : 'Assign Later'}</option>
                   {availableStaff.map((s) => (
@@ -742,11 +741,11 @@ function SessionsContent() {
                 </select>
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-[var(--border-subtle)]">
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-(--border-subtle)">
                 <button
                   type="button"
                   onClick={() => setIsCreateModalOpen(false)}
-                  className="px-4 py-2 text-xs font-semibold text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors"
+                  className="px-4 py-2 text-xs font-semibold text-(--text-muted) hover:text-(--text-main) transition-colors"
                 >
                   {t('common.cancel')}
                 </button>
@@ -754,7 +753,7 @@ function SessionsContent() {
                   type="submit"
                   id="btn-submit-create-session"
                   disabled={isSubmitting}
-                  className="rounded-xl bg-[var(--accent-primary)] px-5 py-2.5 text-xs font-bold text-white hover:brightness-110 disabled:opacity-50 transition-all shadow-md"
+                  className="rounded-xl bg-(--accent-primary) px-5 py-2.5 text-xs font-bold text-white hover:brightness-110 disabled:opacity-50 transition-all shadow-md"
                 >
                   {isSubmitting
                     ? t('common.loading')

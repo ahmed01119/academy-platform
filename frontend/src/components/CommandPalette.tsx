@@ -337,12 +337,12 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       onClick={onClose}
     >
       <div
-        className="w-full max-w-2xl overflow-hidden rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] shadow-2xl transition-all"
+        className="w-full max-w-2xl overflow-hidden rounded-2xl border border-(--border-app) bg-[var(--bg-surface)] shadow-2xl transition-all"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={handleKeyDown}
       >
         {/* Search Input Bar */}
-        <div className="flex items-center gap-3 border-b border-[var(--border-subtle)] px-4 py-3 bg-[var(--bg-base)]/50">
+        <div className="flex items-center gap-3 border-b border-(--border-subtle) px-4 py-3 bg-[var(--bg-base)]/50">
           <Search className="h-5 w-5 text-emerald-400 shrink-0" />
           <input
             ref={inputRef}
@@ -357,18 +357,18 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
                 ? 'ابحث عن صفحة، إجراء، أو لاعب... (Ctrl+K)'
                 : 'Search page, action, or player... (Ctrl+K)'
             }
-            className="flex-1 bg-transparent text-sm text-[var(--text-main)] placeholder-[var(--text-muted)] focus:outline-none"
+            className="flex-1 bg-transparent text-sm text-(--text-main) placeholder-(--text-muted) focus:outline-none"
           />
           {query && (
             <button
               type="button"
               onClick={() => setQuery('')}
-              className="text-xs text-[var(--text-muted)] hover:text-[var(--text-main)]"
+              className="text-xs text-(--text-muted) hover:text-(--text-main)"
             >
               <X className="w-4 h-4" />
             </button>
           )}
-          <span className="hidden sm:inline-flex rounded-md bg-[var(--bg-surface-subtle)] px-2 py-0.5 text-[10px] font-mono text-[var(--text-muted)] border border-[var(--border-subtle)]">
+          <span className="hidden sm:inline-flex rounded-md bg-(--bg-surface-subtle) px-2 py-0.5 text-[10px] font-mono text-(--text-muted) border border-(--border-subtle)">
             ESC
           </span>
         </div>
@@ -395,19 +395,15 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
                       className={`w-full flex items-center justify-between rounded-xl px-3 py-2 text-start transition-colors ${
                         isSelected
                           ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-                          : 'text-[var(--text-main)] hover:bg-[var(--bg-surface-subtle)]'
+                          : 'text-(--text-main) hover:bg-(--bg-surface-subtle)'
                       }`}
                     >
                       <div className="flex items-center gap-3">
-                        <div className="p-1.5 rounded-lg bg-[var(--bg-surface-subtle)]">
-                          {item.icon}
-                        </div>
+                        <div className="p-1.5 rounded-lg bg-(--bg-surface-subtle)">{item.icon}</div>
                         <div>
                           <div className="text-xs font-semibold">{item.title}</div>
                           {item.subtitle && (
-                            <div className="text-[11px] text-[var(--text-muted)]">
-                              {item.subtitle}
-                            </div>
+                            <div className="text-[11px] text-(--text-muted)">{item.subtitle}</div>
                           )}
                         </div>
                       </div>
@@ -424,7 +420,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
           {/* Quick Actions */}
           {filteredActions.length > 0 && (
             <div>
-              <div className="px-3 py-1.5 text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider flex items-center gap-1.5">
+              <div className="px-3 py-1.5 text-[11px] font-bold text-(--text-muted) uppercase tracking-wider flex items-center gap-1.5">
                 <Sparkles className="w-3 h-3 text-amber-400" />
                 {locale === 'ar' ? 'إجراءات سريعة' : 'Quick Actions'}
               </div>
@@ -441,19 +437,15 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
                       className={`w-full flex items-center justify-between rounded-xl px-3 py-2 text-start transition-colors ${
                         isSelected
                           ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-                          : 'text-[var(--text-main)] hover:bg-[var(--bg-surface-subtle)]'
+                          : 'text-(--text-main) hover:bg-(--bg-surface-subtle)'
                       }`}
                     >
                       <div className="flex items-center gap-3">
-                        <div className="p-1.5 rounded-lg bg-[var(--bg-surface-subtle)]">
-                          {item.icon}
-                        </div>
+                        <div className="p-1.5 rounded-lg bg-(--bg-surface-subtle)">{item.icon}</div>
                         <div>
                           <div className="text-xs font-semibold">{item.title}</div>
                           {item.subtitle && (
-                            <div className="text-[11px] text-[var(--text-muted)]">
-                              {item.subtitle}
-                            </div>
+                            <div className="text-[11px] text-(--text-muted)">{item.subtitle}</div>
                           )}
                         </div>
                       </div>
@@ -470,7 +462,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
           {/* Navigation Items */}
           {filteredNav.length > 0 && (
             <div>
-              <div className="px-3 py-1.5 text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider flex items-center gap-1.5">
+              <div className="px-3 py-1.5 text-[11px] font-bold text-(--text-muted) uppercase tracking-wider flex items-center gap-1.5">
                 <Layers className="w-3 h-3 text-emerald-400" />
                 {locale === 'ar' ? 'صفحات التطبيق' : 'Navigation'}
               </div>
@@ -487,19 +479,15 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
                       className={`w-full flex items-center justify-between rounded-xl px-3 py-2 text-start transition-colors ${
                         isSelected
                           ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-                          : 'text-[var(--text-main)] hover:bg-[var(--bg-surface-subtle)]'
+                          : 'text-(--text-main) hover:bg-(--bg-surface-subtle)'
                       }`}
                     >
                       <div className="flex items-center gap-3">
-                        <div className="p-1.5 rounded-lg bg-[var(--bg-surface-subtle)]">
-                          {item.icon}
-                        </div>
+                        <div className="p-1.5 rounded-lg bg-(--bg-surface-subtle)">{item.icon}</div>
                         <div>
                           <div className="text-xs font-semibold">{item.title}</div>
                           {item.subtitle && (
-                            <div className="text-[11px] text-[var(--text-muted)]">
-                              {item.subtitle}
-                            </div>
+                            <div className="text-[11px] text-(--text-muted)">{item.subtitle}</div>
                           )}
                         </div>
                       </div>
@@ -515,23 +503,23 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
 
           {/* Empty state when no matches */}
           {allItems.length === 0 && (
-            <div className="py-12 text-center text-xs text-[var(--text-muted)]">
+            <div className="py-12 text-center text-xs text-(--text-muted)">
               {locale === 'ar' ? 'لا توجد نتائج مطابقة لبحثك' : 'No matching results found'}
             </div>
           )}
         </div>
 
         {/* Footer shortcuts */}
-        <div className="flex items-center justify-between border-t border-[var(--border-subtle)] px-4 py-2 text-[10px] text-[var(--text-muted)] bg-[var(--bg-base)]/50">
+        <div className="flex items-center justify-between border-t border-(--border-subtle) px-4 py-2 text-[10px] text-(--text-muted) bg-[var(--bg-base)]/50">
           <div className="flex items-center gap-3">
             <span>
-              <kbd className="font-mono bg-[var(--bg-surface-subtle)] px-1 py-0.5 rounded border border-[var(--border-subtle)]">
+              <kbd className="font-mono bg-(--bg-surface-subtle) px-1 py-0.5 rounded border border-(--border-subtle)">
                 ↑↓
               </kbd>{' '}
               {locale === 'ar' ? 'للتنقل' : 'to navigate'}
             </span>
             <span>
-              <kbd className="font-mono bg-[var(--bg-surface-subtle)] px-1 py-0.5 rounded border border-[var(--border-subtle)]">
+              <kbd className="font-mono bg-(--bg-surface-subtle) px-1 py-0.5 rounded border border-(--border-subtle)">
                 ↵
               </kbd>{' '}
               {locale === 'ar' ? 'للاختيار' : 'to select'}

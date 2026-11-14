@@ -112,25 +112,25 @@ const STYLES: Record<ToastType, { border: string; bg: string; iconColor: string;
   {
     success: {
       border: 'border-emerald-500/30',
-      bg: 'bg-[var(--bg-surface)]/95 shadow-emerald-500/5',
+      bg: 'bg-(--bg-surface)/95 shadow-emerald-500/5',
       iconColor: 'text-emerald-500',
       badge: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
     },
     error: {
       border: 'border-rose-500/30',
-      bg: 'bg-[var(--bg-surface)]/95 shadow-rose-500/5',
+      bg: 'bg-(--bg-surface)/95 shadow-rose-500/5',
       iconColor: 'text-rose-500',
       badge: 'bg-rose-500/10 text-rose-600 dark:text-rose-400',
     },
     warning: {
       border: 'border-amber-500/30',
-      bg: 'bg-[var(--bg-surface)]/95 shadow-amber-500/5',
+      bg: 'bg-(--bg-surface)/95 shadow-amber-500/5',
       iconColor: 'text-amber-500',
       badge: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
     },
     info: {
       border: 'border-sky-500/30',
-      bg: 'bg-[var(--bg-surface)]/95 shadow-sky-500/5',
+      bg: 'bg-(--bg-surface)/95 shadow-sky-500/5',
       iconColor: 'text-sky-500',
       badge: 'bg-sky-500/10 text-sky-600 dark:text-sky-400',
     },
@@ -154,19 +154,15 @@ function ToastCard({ item, onDismiss }: { item: ToastItem; onDismiss: () => void
 
       <div className="flex-1 min-w-0">
         {item.title && (
-          <h4 className="text-xs font-bold text-[var(--text-main)] mb-0.5 leading-snug">
-            {item.title}
-          </h4>
+          <h4 className="text-xs font-bold text-(--text-main) mb-0.5 leading-snug">{item.title}</h4>
         )}
-        <p className="text-xs text-[var(--text-muted)] leading-relaxed break-words">
-          {item.message}
-        </p>
+        <p className="text-xs text-(--text-muted) leading-relaxed break-words">{item.message}</p>
       </div>
 
       <button
         type="button"
         onClick={onDismiss}
-        className="shrink-0 p-1 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-surface-subtle)] transition-colors cursor-pointer"
+        className="shrink-0 p-1 rounded-lg text-(--text-muted) hover:text-(--text-main) hover:bg-(--bg-surface-subtle) transition-colors cursor-pointer"
         aria-label={locale === 'ar' ? 'إغلاق التنبيه' : 'Dismiss notification'}
       >
         <X className="h-3.5 w-3.5" />

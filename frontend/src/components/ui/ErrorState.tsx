@@ -18,10 +18,10 @@ export function ErrorState({ title, message, onRetry }: ErrorStateProps) {
       <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-500">
         <AlertCircle className="h-6 w-6" />
       </div>
-      <h3 className="text-sm font-bold text-[var(--text-main)]">
+      <h3 className="text-sm font-bold text-(--text-main)">
         {title || (locale === 'ar' ? 'تعذر تحميل البيانات' : 'Failed to Load Data')}
       </h3>
-      <p className="text-xs text-[var(--text-muted)] max-w-md">{message}</p>
+      <p className="text-xs text-(--text-muted) max-w-md">{message}</p>
       {onRetry && (
         <button
           type="button"

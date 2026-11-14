@@ -30,12 +30,15 @@ import {
   type SessionSummary,
   type TenantContext,
 } from '@academy/shared';
+import { Optional } from '@nestjs/common';
+import { AttendanceRosterService } from './attendance-roster.service';
 
 @Injectable()
 export class AttendanceService {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(AuditService) private readonly auditService: AuditService,
+    @Optional() @Inject(AttendanceRosterService) private readonly rosterService?: AttendanceRosterService,
   ) {}
 
   /**
@@ -295,8 +298,13 @@ export class AttendanceService {
 
   /**
    * Lists sessions in the academy with summary metrics.
+   * Delegates to AttendanceRosterService when available.
    */
   async listSessions(tenantContext: TenantContext, query?: SessionQuery) {
+    if (this.rosterService) {
+      return this.rosterService.listSessions(tenantContext, query);
+    }
+
     const effectiveBranchId = tenantContext.branchId || query?.branchId;
 
     return this.prisma.withTenantTransaction(

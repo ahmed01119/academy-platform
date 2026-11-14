@@ -2,14 +2,21 @@ import { z } from 'zod';
 import { TenantRoleSchema } from '../constants/roles-permissions';
 
 export const PasswordSchema = z
-  .string()
+  .string({ required_error: 'Password is required' })
   .min(8, 'Password must be at least 8 characters long')
   .max(128, 'Password cannot exceed 128 characters')
   .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
   .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
-  .regex(/[0-9]/, 'Password must contain at least one number');
+  .regex(/[0-9]/, 'Password must contain at least one number')
+  .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character');
 
-export const EmailSchema = z.string().trim().email('Invalid email address').toLowerCase();
+export const EmailSchema = z
+  .string({ required_error: 'Email is required' })
+  .trim()
+  .min(1, 'Email is required')
+  .max(255, 'Email cannot exceed 255 characters')
+  .email('Invalid email address')
+  .toLowerCase();
 
 export const RegisterRequestSchema = z.object({
   name: z.string().trim().min(2, 'Name must be at least 2 characters').max(100),
@@ -50,8 +57,11 @@ export type RegisterResponse = z.infer<typeof RegisterResponseSchema>;
 
 export const LoginRequestSchema = z.object({
   email: EmailSchema,
-  password: z.string().min(1, 'Password is required'),
-  rememberMe: z.boolean().default(false),
+  password: z
+    .string({ required_error: 'Password is required' })
+    .min(1, 'Password is required')
+    .max(128, 'Password cannot exceed 128 characters'),
+  rememberMe: z.boolean().optional().default(false),
 });
 
 export type LoginRequest = z.input<typeof LoginRequestSchema>;

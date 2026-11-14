@@ -19,13 +19,15 @@ export function AppShell({ children, hideSidebar = false, breadcrumbs }: AppShel
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   return (
-    <div className="h-screen flex w-full bg-[var(--bg-base)] text-[var(--text-main)] overflow-hidden transition-colors">
+    <div className="h-screen flex w-full bg-(--bg-base)text-(--text-main) overflow-hidden transition-colors">
       {/* Persistent Sidebar */}
       {!hideSidebar && (
-        <Sidebar
-          isMobileOpen={isMobileSidebarOpen}
-          onCloseMobile={() => setIsMobileSidebarOpen(false)}
-        />
+        <React.Suspense fallback={<div className="w-16 shrink-0 h-full bg-[var(--bg-surface)]" />}>
+          <Sidebar
+            isMobileOpen={isMobileSidebarOpen}
+            onCloseMobile={() => setIsMobileSidebarOpen(false)}
+          />
+        </React.Suspense>
       )}
 
       {/* Main View Area with Pinned Topbar and Independent Content Scroll */}

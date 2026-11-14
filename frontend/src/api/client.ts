@@ -275,57 +275,108 @@ const NO_AUTO_REFRESH_PATHS = [
 
 interface RequestOptions extends RequestInit {
   _retry?: boolean;
+  skipCache?: boolean;
+}
+
+interface CacheItem {
+  data: unknown;
+  timestamp: number;
+}
+
+const memoryCache = new Map<string, CacheItem>();
+const inFlightRequests = new Map<string, Promise<unknown>>();
+const CACHE_TTL_MS = 25_000;
+
+export function clearApiCache(): void {
+  memoryCache.clear();
+  inFlightRequests.clear();
 }
 
 async function request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
+  const method = (options.method || 'GET').toUpperCase();
+  const isGet = method === 'GET';
   const headers = new Headers(options.headers || {});
   headers.set('Content-Type', 'application/json');
 
-  const isAuthEndpoint = AUTH_ENDPOINTS_WITHOUT_TENANT_HEADER.some((path) =>
-    endpoint.startsWith(path),
-  );
+  const cacheKey = `${activeTenantIdCache || 'global'}:${endpoint}`;
+  const shouldSkipCache = options.skipCache || headers.get('x-no-cache') === 'true';
 
-  if (activeTenantIdCache && !headers.has('x-tenant-id') && !isAuthEndpoint) {
-    headers.set('x-tenant-id', activeTenantIdCache);
-  }
+  if (isGet && !shouldSkipCache) {
+    const cached = memoryCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+      return cached.data as T;
+    }
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-    credentials: 'include',
-  });
-
-  const shouldTryRefresh =
-    response.status === 401 &&
-    !options._retry &&
-    !NO_AUTO_REFRESH_PATHS.some((path) => endpoint.startsWith(path));
-
-  if (shouldTryRefresh) {
-    const refreshed = await executeSingleFlightTokenRefresh();
-    if (refreshed) {
-      return request<T>(endpoint, {
-        ...options,
-        _retry: true,
-      });
+    const inFlight = inFlightRequests.get(cacheKey);
+    if (inFlight) {
+      return inFlight as Promise<T>;
     }
   }
 
-  const contentType = response.headers.get('content-type');
-  const isJson = contentType && contentType.includes('application/json');
-  const data = isJson ? await response.json() : await response.text();
+  const fetchPromise = (async () => {
+    const isAuthEndpoint = AUTH_ENDPOINTS_WITHOUT_TENANT_HEADER.some((path) =>
+      endpoint.startsWith(path),
+    );
 
-  if (!response.ok) {
-    const errorData = typeof data === 'object' && data !== null ? data : {};
-    const message =
-      (errorData as { message?: string | string[] }).message ??
-      `Request failed with status ${response.status}`;
-    const code = (errorData as { code?: string }).code;
-    const finalMessage = Array.isArray(message) ? message.join(', ') : message;
+    if (activeTenantIdCache && !headers.has('x-tenant-id') && !isAuthEndpoint) {
+      headers.set('x-tenant-id', activeTenantIdCache);
+    }
 
-    throw new ApiError(finalMessage, response.status, code, data);
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      ...options,
+      headers,
+      credentials: 'include',
+    });
+
+    const shouldTryRefresh =
+      response.status === 401 &&
+      !options._retry &&
+      !NO_AUTO_REFRESH_PATHS.some((path) => endpoint.startsWith(path));
+
+    if (shouldTryRefresh) {
+      const refreshed = await executeSingleFlightTokenRefresh();
+      if (refreshed) {
+        return request<T>(endpoint, {
+          ...options,
+          _retry: true,
+        });
+      }
+    }
+
+    const contentType = response.headers.get('content-type');
+    const isJson = contentType && contentType.includes('application/json');
+    const data = isJson ? await response.json() : await response.text();
+
+    if (!response.ok) {
+      const errorData = typeof data === 'object' && data !== null ? data : {};
+      const message =
+        (errorData as { message?: string | string[] }).message ??
+        `Request failed with status ${response.status}`;
+      const code = (errorData as { code?: string }).code;
+      const finalMessage = Array.isArray(message) ? message.join(', ') : message;
+
+      throw new ApiError(finalMessage, response.status, code, data);
+    }
+
+    if (isGet) {
+      memoryCache.set(cacheKey, { data, timestamp: Date.now() });
+    } else {
+      memoryCache.clear();
+    }
+
+    return data as T;
+  })();
+
+  if (isGet && !shouldSkipCache) {
+    inFlightRequests.set(cacheKey, fetchPromise);
+    try {
+      return (await fetchPromise) as T;
+    } finally {
+      inFlightRequests.delete(cacheKey);
+    }
   }
 
-  return data as T;
+  return fetchPromise as Promise<T>;
 }
 
 export const api = {

@@ -32,10 +32,10 @@ describe('role-routing', () => {
       expect(getRoleHomeRoute(null, null)).toBe('/login');
     });
 
-    it('lands Platform Super Admin in /platform regardless of active tenant', () => {
+    it('lands Platform Super Admin in /dashboard regardless of active tenant', () => {
       const superAdmin: UserSummary = { ...baseUser, isPlatformSuperAdmin: true };
-      expect(getRoleHomeRoute(superAdmin, createTenant('OWNER'))).toBe('/platform');
-      expect(getRoleHomeRoute(superAdmin, null)).toBe('/platform');
+      expect(getRoleHomeRoute(superAdmin, createTenant('OWNER'))).toBe('/dashboard');
+      expect(getRoleHomeRoute(superAdmin, null)).toBe('/dashboard');
     });
 
     it('lands Coach in /coach', () => {

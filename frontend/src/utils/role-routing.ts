@@ -10,9 +10,9 @@ export function getRoleHomeRoute(
 ): string {
   if (!user) return '/login';
 
-  // 1. Platform Super Admin must land in Platform Operations Console
+  // 1. Platform Super Admin lands on Dashboard
   if (user.isPlatformSuperAdmin) {
-    return '/platform';
+    return '/dashboard';
   }
 
   // 2. Active Tenant Membership determines experience

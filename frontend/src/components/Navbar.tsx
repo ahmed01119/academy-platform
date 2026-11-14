@@ -56,7 +56,10 @@ export function Navbar() {
   const hasGuardianProfile = Boolean(user?.hasGuardianProfile);
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-[var(--border-app)] bg-[var(--bg-base)]/90 backdrop-blur-md transition-colors">
+    <header
+      dir="ltr"
+      className="sticky top-0 z-50 w-full border-b border-(--border-app) bg-[var(--bg-base)]/90 backdrop-blur-md transition-colors"
+    >
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-3 sm:px-6 lg:px-8">
         {/* Brand & Nav */}
         <div className="flex items-center gap-3 sm:gap-6 lg:gap-8 min-w-0">
@@ -90,7 +93,7 @@ export function Navbar() {
                   <Link
                     href="/evaluations"
                     id="nav-link-coach-evaluations"
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--text-main)] hover:text-[var(--accent-primary)] hover:bg-[var(--bg-surface)] transition-all"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-(--text-main) hover:text-(--accent-primary) hover:bg-[var(--bg-surface)] transition-all"
                   >
                     <Award className="h-4 w-4 text-[var(--accent-primary)]" />
                     <span>{t('nav.evaluations')}</span>
@@ -98,7 +101,7 @@ export function Navbar() {
                   <Link
                     href="/sessions"
                     id="nav-link-coach-sessions"
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--text-main)] hover:text-[var(--accent-primary)] hover:bg-[var(--bg-surface)] transition-all"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-(--text-main) hover:text-(--accent-primary) hover:bg-[var(--bg-surface)] transition-all"
                   >
                     <CalendarCheck className="h-4 w-4 text-[var(--accent-primary)]" />
                     <span>{t('nav.sessions')}</span>
@@ -120,7 +123,7 @@ export function Navbar() {
                   <Link
                     href="/dashboard"
                     id="nav-link-dashboard"
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--text-main)] hover:text-[var(--accent-primary)] hover:bg-[var(--bg-surface)] transition-all"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-(--text-main) hover:text-(--accent-primary) hover:bg-[var(--bg-surface)] transition-all"
                   >
                     <LayoutDashboard className="h-4 w-4 text-[var(--accent-primary)]" />
                     <span>{t('nav.home')}</span>
@@ -128,7 +131,7 @@ export function Navbar() {
                   <Link
                     href="/players"
                     id="nav-link-players"
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--text-main)] hover:text-[var(--accent-primary)] hover:bg-[var(--bg-surface)] transition-all"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-(--text-main) hover:text-(--accent-primary) hover:bg-[var(--bg-surface)] transition-all"
                   >
                     <Users className="h-4 w-4 text-[var(--accent-primary)]" />
                     <span>{t('nav.players')}</span>
@@ -136,7 +139,7 @@ export function Navbar() {
                   <Link
                     href="/groups"
                     id="nav-link-groups"
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--text-main)] hover:text-[var(--accent-primary)] hover:bg-[var(--bg-surface)] transition-all"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-(--text-main) hover:text-(--accent-primary) hover:bg-[var(--bg-surface)] transition-all"
                   >
                     <Layers className="h-4 w-4 text-[var(--accent-primary)]" />
                     <span>{t('nav.groups')}</span>
@@ -144,7 +147,7 @@ export function Navbar() {
                   <Link
                     href="/evaluations"
                     id="nav-link-evaluations"
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--text-main)] hover:text-[var(--accent-primary)] hover:bg-[var(--bg-surface)] transition-all"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-(--text-main) hover:text-(--accent-primary) hover:bg-[var(--bg-surface)] transition-all"
                   >
                     <Award className="h-4 w-4 text-[var(--accent-primary)]" />
                     <span>{t('nav.evaluations')}</span>
@@ -152,7 +155,7 @@ export function Navbar() {
                   <Link
                     href="/sessions"
                     id="nav-link-sessions"
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--text-main)] hover:text-[var(--accent-primary)] hover:bg-[var(--bg-surface)] transition-all"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-(--text-main) hover:text-(--accent-primary) hover:bg-[var(--bg-surface)] transition-all"
                   >
                     <CalendarCheck className="h-4 w-4 text-[var(--accent-primary)]" />
                     <span>{t('nav.sessions')}</span>
@@ -168,7 +171,7 @@ export function Navbar() {
                   <Link
                     href="/attendance/reports"
                     id="nav-link-reports"
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--text-main)] hover:text-[var(--accent-primary)] hover:bg-[var(--bg-surface)] transition-all"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-(--text-main) hover:text-(--accent-primary) hover:bg-[var(--bg-surface)] transition-all"
                   >
                     <BarChart3 className="h-4 w-4 text-[var(--accent-primary)]" />
                     <span>{t('nav.reports')}</span>
@@ -176,7 +179,7 @@ export function Navbar() {
                   <Link
                     href="/branches"
                     id="nav-link-branches"
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--text-main)] hover:text-[var(--accent-primary)] hover:bg-[var(--bg-surface)] transition-all"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-(--text-main) hover:text-(--accent-primary) hover:bg-[var(--bg-surface)] transition-all"
                   >
                     <GitBranch className="h-4 w-4 text-[var(--accent-primary)]" />
                     <span>{t('nav.branches')}</span>
@@ -184,7 +187,7 @@ export function Navbar() {
                   <Link
                     href="/settings"
                     id="nav-link-settings"
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--text-main)] hover:text-[var(--accent-primary)] hover:bg-[var(--bg-surface)] transition-all"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-(--text-main) hover:text-(--accent-primary) hover:bg-[var(--bg-surface)] transition-all"
                   >
                     <Settings className="h-4 w-4 text-[var(--accent-primary)]" />
                     <span>{t('nav.settings')}</span>
@@ -222,7 +225,7 @@ export function Navbar() {
         {/* Right side controls */}
         <div className="flex items-center gap-2 sm:gap-3">
           {/* Controls: Locale & Theme */}
-          <div className="flex items-center gap-1.5 border-e border-[var(--border-app)] pe-2 sm:pe-3">
+          <div className="flex items-center gap-1.5 border-e border-(--border-app) pe-2 sm:pe-3">
             <LocaleToggle />
             <ThemeToggle />
           </div>
@@ -235,21 +238,21 @@ export function Navbar() {
                   <button
                     type="button"
                     onClick={() => setIsTenantMenuOpen(!isTenantMenuOpen)}
-                    className="flex items-center gap-2 rounded-lg border border-[var(--border-app)] bg-[var(--bg-surface)] px-2.5 py-1.5 text-xs text-[var(--text-main)] hover:border-emerald-500/60 transition-colors"
+                    className="flex items-center gap-2 rounded-lg border border-(--border-app) bg-[var(--bg-surface)] px-2.5 py-1.5 text-xs text-(--text-main) hover:border-emerald-500/60 transition-colors"
                   >
                     <Building2 className="h-3.5 w-3.5 text-[var(--accent-primary)]" />
                     <span className="font-medium max-w-[120px] truncate">
                       {activeTenant?.tenantName || (locale === 'ar' ? 'الأكاديمية' : 'Academy')}
                     </span>
-                    <span className="rounded bg-[var(--bg-surface-subtle)] px-1.5 py-0.5 text-[10px] text-[var(--text-muted)] hidden sm:inline">
+                    <span className="rounded bg-(--bg-surface-subtle) px-1.5 py-0.5 text-[10px] text-(--text-muted) hidden sm:inline">
                       {activeTenant?.role ? roleLabels[activeTenant.role] || activeTenant.role : ''}
                     </span>
-                    <ChevronDown className="h-3 w-3 text-[var(--text-muted)]" />
+                    <ChevronDown className="h-3 w-3 text-(--text-muted)" />
                   </button>
 
                   {isTenantMenuOpen && (
-                    <div className="absolute end-0 mt-2 w-64 rounded-xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-2 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150">
-                      <div className="px-2 py-1.5 text-xs font-medium text-[var(--text-muted)] border-b border-[var(--border-app)]">
+                    <div className="absolute end-0 mt-2 w-64 rounded-xl border border-(--border-app) bg-[var(--bg-surface)] p-2 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150">
+                      <div className="px-2 py-1.5 text-xs font-medium text-(--text-muted) border-b border-(--border-app)">
                         {locale === 'ar' ? 'الأكاديميات المتاحة' : 'Available Academies'} (
                         {memberships.length})
                       </div>
@@ -265,11 +268,11 @@ export function Navbar() {
                             className={`w-full flex items-center justify-between rounded-lg px-2.5 py-2 text-start text-xs transition-colors ${
                               m.tenantId === activeTenant?.tenantId
                                 ? 'bg-emerald-500/20 text-[var(--accent-primary)] font-semibold'
-                                : 'text-[var(--text-main)] hover:bg-[var(--bg-surface-subtle)]'
+                                : 'text-(--text-main) hover:bg-(--bg-surface-subtle)'
                             }`}
                           >
                             <span className="truncate">{m.tenantName}</span>
-                            <span className="text-[10px] text-[var(--text-muted)]">
+                            <span className="text-[10px] text-(--text-muted)">
                               {roleLabels[m.role] || m.role}
                             </span>
                           </button>
@@ -281,7 +284,7 @@ export function Navbar() {
               )}
 
               {/* User badge */}
-              <div className="hidden sm:flex items-center gap-1.5 rounded-lg bg-[var(--bg-surface-subtle)] px-2.5 py-1.5 text-xs text-[var(--text-main)]">
+              <div className="hidden sm:flex items-center gap-1.5 rounded-lg bg-(--bg-surface-subtle) px-2.5 py-1.5 text-xs text-(--text-main)">
                 <UserIcon className="h-3.5 w-3.5 text-[var(--accent-primary)]" />
                 <span className="font-medium truncate max-w-[100px]">{user.name}</span>
                 {isSuperAdmin && (
@@ -306,13 +309,13 @@ export function Navbar() {
             <div className="flex items-center gap-2">
               <Link
                 href="/login"
-                className="rounded-lg border border-[var(--border-app)] px-3 py-1.5 text-xs font-semibold text-[var(--text-main)] hover:border-[var(--accent-primary)] hover:text-[var(--accent-primary)] transition-all whitespace-nowrap"
+                className="rounded-lg border border-(--border-app) px-3 py-1.5 text-xs font-semibold text-(--text-main) hover:border-[var(--accent-primary)] hover:text-(--accent-primary) transition-all whitespace-nowrap"
               >
                 {t('common.login')}
               </Link>
               <a
                 href="#demo-request"
-                className="hidden sm:flex items-center gap-1.5 rounded-lg bg-[var(--accent-primary)] px-3.5 py-1.5 text-xs font-semibold text-white shadow-md shadow-emerald-500/20 hover:opacity-90 transition-all whitespace-nowrap"
+                className="hidden sm:flex items-center gap-1.5 rounded-lg bg-(--accent-primary) px-3.5 py-1.5 text-xs font-semibold text-white shadow-md shadow-emerald-500/20 hover:opacity-90 transition-all whitespace-nowrap"
               >
                 <Sparkles className="h-3.5 w-3.5" />
                 <span>{t('common.requestDemo')}</span>
@@ -325,7 +328,7 @@ export function Navbar() {
             <button
               type="button"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="lg:hidden flex items-center justify-center p-1.5 rounded-lg border border-[var(--border-app)] bg-[var(--bg-surface)] text-[var(--text-main)] hover:text-[var(--accent-primary)] transition-colors"
+              className="lg:hidden flex items-center justify-center p-1.5 rounded-lg border border-(--border-app) bg-[var(--bg-surface)] text-(--text-main) hover:text-(--accent-primary) transition-colors"
               aria-label="Toggle navigation"
             >
               {isMobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
@@ -336,12 +339,15 @@ export function Navbar() {
 
       {/* Mobile Drawer Menu */}
       {user && isMobileMenuOpen && (
-        <div className="lg:hidden border-t border-[var(--border-app)] bg-[var(--bg-surface)] px-4 py-3 space-y-2 shadow-xl animate-in slide-in-from-top-2 duration-200">
+        <div
+          dir={locale === 'ar' ? 'rtl' : 'ltr'}
+          className="lg:hidden border-t border-(--border-app) bg-[var(--bg-surface)] px-4 py-3 space-y-2 shadow-xl animate-in slide-in-from-top-2 duration-200"
+        >
           {/* User profile row */}
-          <div className="flex items-center justify-between pb-2 border-b border-[var(--border-app)] text-xs text-[var(--text-muted)]">
+          <div className="flex items-center justify-between pb-2 border-b border-(--border-app) text-xs text-(--text-muted)">
             <div className="flex items-center gap-2">
               <UserIcon className="h-4 w-4 text-[var(--accent-primary)]" />
-              <span className="font-semibold text-[var(--text-main)]">{user.name}</span>
+              <span className="font-semibold text-(--text-main)">{user.name}</span>
               {isSuperAdmin && (
                 <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-amber-500 border border-amber-500/30">
                   {locale === 'ar' ? 'أدمن المنصة' : 'Super Admin'}
@@ -392,7 +398,7 @@ export function Navbar() {
                 <Link
                   href="/evaluations"
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-2 p-2 rounded-lg text-xs font-medium text-[var(--text-main)] hover:bg-[var(--bg-surface-subtle)]"
+                  className="flex items-center gap-2 p-2 rounded-lg text-xs font-medium text-(--text-main) hover:bg-(--bg-surface-subtle)"
                 >
                   <Award className="h-4 w-4 shrink-0 text-[var(--accent-primary)]" />
                   <span>{t('nav.evaluations')}</span>
@@ -400,7 +406,7 @@ export function Navbar() {
                 <Link
                   href="/sessions"
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-2 p-2 rounded-lg text-xs font-medium text-[var(--text-main)] hover:bg-[var(--bg-surface-subtle)]"
+                  className="flex items-center gap-2 p-2 rounded-lg text-xs font-medium text-(--text-main) hover:bg-(--bg-surface-subtle)"
                 >
                   <CalendarCheck className="h-4 w-4 shrink-0 text-[var(--accent-primary)]" />
                   <span>{t('nav.sessions')}</span>
@@ -413,7 +419,7 @@ export function Navbar() {
                 <Link
                   href="/dashboard"
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-2 p-2 rounded-lg text-xs font-medium text-[var(--text-main)] hover:bg-[var(--bg-surface-subtle)]"
+                  className="flex items-center gap-2 p-2 rounded-lg text-xs font-medium text-(--text-main) hover:bg-(--bg-surface-subtle)"
                 >
                   <LayoutDashboard className="h-4 w-4 shrink-0 text-[var(--accent-primary)]" />
                   <span>{t('nav.home')}</span>
@@ -429,7 +435,7 @@ export function Navbar() {
                 <Link
                   href="/players"
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-2 p-2 rounded-lg text-xs font-medium text-[var(--text-main)] hover:bg-[var(--bg-surface-subtle)]"
+                  className="flex items-center gap-2 p-2 rounded-lg text-xs font-medium text-(--text-main) hover:bg-(--bg-surface-subtle)"
                 >
                   <Users className="h-4 w-4 shrink-0 text-[var(--accent-primary)]" />
                   <span>{t('nav.players')}</span>
@@ -437,7 +443,7 @@ export function Navbar() {
                 <Link
                   href="/groups"
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-2 p-2 rounded-lg text-xs font-medium text-[var(--text-main)] hover:bg-[var(--bg-surface-subtle)]"
+                  className="flex items-center gap-2 p-2 rounded-lg text-xs font-medium text-(--text-main) hover:bg-(--bg-surface-subtle)"
                 >
                   <Layers className="h-4 w-4 shrink-0 text-[var(--accent-primary)]" />
                   <span>{t('nav.groups')}</span>
@@ -445,7 +451,7 @@ export function Navbar() {
                 <Link
                   href="/evaluations"
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-2 p-2 rounded-lg text-xs font-medium text-[var(--text-main)] hover:bg-[var(--bg-surface-subtle)]"
+                  className="flex items-center gap-2 p-2 rounded-lg text-xs font-medium text-(--text-main) hover:bg-(--bg-surface-subtle)"
                 >
                   <Award className="h-4 w-4 shrink-0 text-[var(--accent-primary)]" />
                   <span>{t('nav.evaluations')}</span>
@@ -453,7 +459,7 @@ export function Navbar() {
                 <Link
                   href="/sessions"
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-2 p-2 rounded-lg text-xs font-medium text-[var(--text-main)] hover:bg-[var(--bg-surface-subtle)]"
+                  className="flex items-center gap-2 p-2 rounded-lg text-xs font-medium text-(--text-main) hover:bg-(--bg-surface-subtle)"
                 >
                   <CalendarCheck className="h-4 w-4 shrink-0 text-[var(--accent-primary)]" />
                   <span>{t('nav.sessions')}</span>
@@ -461,7 +467,7 @@ export function Navbar() {
                 <Link
                   href="/attendance/reports"
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-2 p-2 rounded-lg text-xs font-medium text-[var(--text-main)] hover:bg-[var(--bg-surface-subtle)]"
+                  className="flex items-center gap-2 p-2 rounded-lg text-xs font-medium text-(--text-main) hover:bg-(--bg-surface-subtle)"
                 >
                   <BarChart3 className="h-4 w-4 shrink-0 text-[var(--accent-primary)]" />
                   <span>{t('nav.reports')}</span>
@@ -469,7 +475,7 @@ export function Navbar() {
                 <Link
                   href="/branches"
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-2 p-2 rounded-lg text-xs font-medium text-[var(--text-main)] hover:bg-[var(--bg-surface-subtle)]"
+                  className="flex items-center gap-2 p-2 rounded-lg text-xs font-medium text-(--text-main) hover:bg-(--bg-surface-subtle)"
                 >
                   <GitBranch className="h-4 w-4 shrink-0 text-[var(--accent-primary)]" />
                   <span>{t('nav.branches')}</span>
@@ -477,7 +483,7 @@ export function Navbar() {
                 <Link
                   href="/settings"
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-2 p-2 rounded-lg text-xs font-medium text-[var(--text-main)] hover:bg-[var(--bg-surface-subtle)] col-span-2"
+                  className="flex items-center gap-2 p-2 rounded-lg text-xs font-medium text-(--text-main) hover:bg-(--bg-surface-subtle) col-span-2"
                 >
                   <Settings className="h-4 w-4 shrink-0 text-[var(--accent-primary)]" />
                   <span>{t('nav.settings')}</span>

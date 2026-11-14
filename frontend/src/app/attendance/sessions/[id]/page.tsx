@@ -667,7 +667,7 @@ export default function SessionAttendancePage() {
       <div className="space-y-6">
         <PageHeader
           breadcrumbs={[
-            { label: t('nav.home', 'الرئيسية'), href: '/dashboard' },
+            { label: t('nav.dashboard', 'لوحة التحكم'), href: '/dashboard' },
             { label: locale === 'en' ? 'Sessions' : 'الحصص التدريبية', href: '/sessions' },
             { label: translatedGroupName },
             { label: locale === 'en' ? 'Live Attendance Roster' : 'كشف الحضور المباشر' },

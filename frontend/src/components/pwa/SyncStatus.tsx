@@ -65,7 +65,7 @@ export function SyncStatus() {
       : 'Offline — attendance and drafts stay on this device';
 
   return (
-    <div className="fixed bottom-4 start-4 z-40 rounded-full border border-[var(--border-app)] bg-[var(--bg-surface)] px-3 py-1.5 text-xs text-[var(--text-muted)] shadow-sm">
+    <div className="fixed bottom-4 start-4 z-40 rounded-full border border-(--border-app) bg-[var(--bg-surface)] px-3 py-1.5 text-xs text-(--text-muted) shadow-sm">
       {label}
     </div>
   );

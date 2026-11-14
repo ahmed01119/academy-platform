@@ -49,26 +49,86 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 const BROADCAST_CHANNEL_NAME = 'sportexus_auth_sync';
 const LOCAL_STORAGE_SYNC_KEY = 'sportexus_auth_sync_event';
+const TAB_ID =
+  typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : Math.random().toString(36).substring(2);
+
+function getJwtExpiry(token?: string): number | null {
+  if (!token) return null;
+  try {
+    const parts = token.split('.');
+    const payloadPart = parts[1];
+    if (parts.length !== 3 || !payloadPart) return null;
+    const base64 = payloadPart.replace(/-/g, '+').replace(/_/g, '/');
+    const json = atob(base64);
+    const payload = JSON.parse(json);
+    return typeof payload.exp === 'number' ? payload.exp * 1000 : null;
+  } catch {
+    return null;
+  }
+}
+
+function getInitialStoredSession(): {
+  hasSession: boolean;
+  cachedUser: UserSummary | null;
+} {
+  if (typeof window === 'undefined') {
+    return { hasSession: false, cachedUser: null };
+  }
+  try {
+    const isAuthRoute =
+      window.location.pathname === '/login' ||
+      window.location.pathname === '/register' ||
+      window.location.pathname === '/reset-password';
+
+    if (isAuthRoute) {
+      return { hasSession: false, cachedUser: null };
+    }
+
+    const hasSession = localStorage.getItem('sportexus_has_session') === 'true';
+    const expiryStr = localStorage.getItem('sportexus_auth_expiry');
+    const expiry = expiryStr ? Number(expiryStr) : null;
+    const isExpired = expiry !== null && Date.now() > expiry;
+
+    if (!hasSession || isExpired) {
+      if (isExpired) {
+        localStorage.removeItem('sportexus_has_session');
+        localStorage.removeItem('sportexus_auth_expiry');
+        localStorage.removeItem('sportexus_auth_user');
+      }
+      return { hasSession: false, cachedUser: null };
+    }
+
+    const cachedUserStr = localStorage.getItem('sportexus_auth_user');
+    const cachedUser = cachedUserStr ? (JSON.parse(cachedUserStr) as UserSummary) : null;
+    return { hasSession: true, cachedUser };
+  } catch {
+    return { hasSession: false, cachedUser: null };
+  }
+}
 
 interface AuthSyncPayload {
   type: 'LOGIN' | 'LOGOUT' | 'TENANT_SWITCH';
   tenantId?: string;
+  sourceTabId?: string;
   timestamp: number;
 }
 
 function broadcastAuthSync(payload: AuthSyncPayload): void {
   if (typeof window === 'undefined') return;
+  const enriched: AuthSyncPayload = { ...payload, sourceTabId: TAB_ID };
   try {
     if ('BroadcastChannel' in window) {
       const channel = new BroadcastChannel(BROADCAST_CHANNEL_NAME);
-      channel.postMessage(payload);
+      channel.postMessage(enriched);
       channel.close();
     }
   } catch {
     // Ignore channel broadcast error
   }
   try {
-    localStorage.setItem(LOCAL_STORAGE_SYNC_KEY, JSON.stringify(payload));
+    localStorage.setItem(LOCAL_STORAGE_SYNC_KEY, JSON.stringify(enriched));
   } catch {
     // Ignore storage write error
   }
@@ -110,6 +170,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setAuthState('AUTHENTICATED');
       setError(null);
 
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('sportexus_has_session', 'true');
+          localStorage.setItem('sportexus_auth_user', JSON.stringify(data.user));
+        } catch {
+          // Ignore
+        }
+      }
+
       if (resolvedActive?.tenantId) {
         setActiveTenantIdHeader(resolvedActive.tenantId);
       } else {
@@ -132,6 +201,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setMemberships([]);
       setActiveTenantIdHeader(null);
       setAuthState('UNAUTHENTICATED');
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.removeItem('sportexus_has_session');
+          localStorage.removeItem('sportexus_auth_expiry');
+          localStorage.removeItem('sportexus_auth_user');
+        } catch {
+          // Ignore
+        }
+      }
       if (err instanceof ApiError && err.statusCode !== 401) {
         setError(err.message);
       }
@@ -141,14 +219,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [applyAuthState]);
 
   useEffect(() => {
-    void refreshUser();
+    const session = getInitialStoredSession();
+    if (session.hasSession && session.cachedUser) {
+      setUser(session.cachedUser);
+      setAuthState('AUTHENTICATED');
+      void refreshUser();
+    } else {
+      setAuthState('UNAUTHENTICATED');
+    }
   }, [refreshUser]);
+
+  // Periodic token expiration check (verifies token duration every 10 seconds)
+  useEffect(() => {
+    if (authState !== 'AUTHENTICATED') return;
+
+    const interval = setInterval(() => {
+      if (typeof window === 'undefined') return;
+      const expiryStr = localStorage.getItem('sportexus_auth_expiry');
+      if (expiryStr) {
+        const expiry = Number(expiryStr);
+        if (expiry && Date.now() > expiry) {
+          // Token duration elapsed: end session cleanly without auto-login loop
+          setUser(null);
+          setActiveTenant(null);
+          setMemberships([]);
+          setActiveTenantIdHeader(null);
+          setAuthState('UNAUTHENTICATED');
+          localStorage.removeItem('sportexus_has_session');
+          localStorage.removeItem('sportexus_auth_expiry');
+          localStorage.removeItem('sportexus_auth_user');
+        }
+      }
+    }, 10_000);
+
+    return () => clearInterval(interval);
+  }, [authState]);
 
   // Cross-tab synchronization and session-expiration listeners
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
     const handleSyncPayload = (payload: AuthSyncPayload) => {
+      // Ignore broadcast events originating from the current tab to prevent duplicate requests
+      if (payload.sourceTabId === TAB_ID) return;
+
       if (payload.type === 'LOGOUT') {
         setUser(null);
         setActiveTenant(null);
@@ -156,6 +270,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setActiveTenantIdHeader(null);
         setAuthState('UNAUTHENTICATED');
         setError(null);
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.removeItem('sportexus_has_session');
+            localStorage.removeItem('sportexus_auth_expiry');
+            localStorage.removeItem('sportexus_auth_user');
+          } catch {
+            // Ignore
+          }
+        }
         void offlineEngine.purgeAll().catch(() => undefined);
       } else if (payload.type === 'LOGIN' || payload.type === 'TENANT_SWITCH') {
         void refreshUser();
@@ -212,6 +335,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (data: LoginRequest) => {
     setActiveTenantIdHeader(null);
     const res = await api.auth.login(data);
+
+    // Save token duration and session flags in storage
+    if (typeof window !== 'undefined') {
+      try {
+        const expiry = getJwtExpiry(res.accessToken) || Date.now() + 15 * 60 * 1000;
+        localStorage.setItem('sportexus_has_session', 'true');
+        localStorage.setItem('sportexus_auth_expiry', String(expiry));
+        localStorage.setItem('sportexus_auth_user', JSON.stringify(res.user));
+      } catch {
+        // Ignore storage error
+      }
+    }
+
     applyAuthState(res);
 
     const activeMemberships = res.memberships.filter((m) => m.status === 'ACTIVE');
@@ -255,6 +391,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         localStorage.removeItem('academy_active_tenant_id');
         localStorage.removeItem('sportexus_auth_user');
+        localStorage.removeItem('sportexus_has_session');
+        localStorage.removeItem('sportexus_auth_expiry');
         sessionStorage.clear();
       } catch {
         // Ignore storage access errors

@@ -76,19 +76,19 @@ function AcceptInviteContent() {
 
   return (
     <div className="w-full max-w-md mx-auto">
-      <div className="rounded-3xl border border-[var(--border-app)] bg-[var(--bg-surface)]/95 p-5 sm:p-8 shadow-float backdrop-blur-xl relative overflow-hidden animate-scale-up">
+      <div className="rounded-3xl border border-(--border-app) bg-(--bg-surface)/95 p-5 sm:p-8 shadow-float backdrop-blur-xl relative overflow-hidden animate-scale-up">
         {/* Sportexus ambient glows */}
-        <div className="absolute -top-16 -right-16 h-40 w-40 rounded-full bg-[var(--accent-blue)]/20 blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-16 -left-16 h-40 w-40 rounded-full bg-[var(--accent-primary)]/10 blur-3xl pointer-events-none" />
+        <div className="absolute -top-16 -right-16 h-40 w-40 rounded-full bg-(--accent-blue)/20 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-16 -left-16 h-40 w-40 rounded-full bg-(--accent-primary)/10 blur-3xl pointer-events-none" />
 
         <div className="text-center mb-8 relative z-10">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-[#0A3BFF] to-[#00D6FF] shadow-lg shadow-blue-600/25">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-linear-to-tr from-[#0A3BFF] to-[#00D6FF] shadow-lg shadow-blue-600/25">
             <Users className="h-6 w-6 text-white" />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-[var(--text-main)]">
+          <h1 className="text-2xl font-bold tracking-tight text-(--text-main)">
             {locale === 'ar' ? 'دعوة للانضمام إلى أكاديمية' : 'Academy Staff Invitation'}
           </h1>
-          <p className="mt-2 text-sm text-[var(--text-muted)]">
+          <p className="mt-2 text-sm text-(--text-muted)">
             {locale === 'ar'
               ? 'تفعيل عضويتك والانضمام إلى فريق عمل الأكاديمية'
               : 'Activate your membership and join the academy staff'}
@@ -99,7 +99,7 @@ function AcceptInviteContent() {
         {isAuthLoading && (
           <div className="my-8 flex flex-col items-center justify-center gap-3 text-center relative z-10">
             <Loader2 className="h-8 w-8 animate-spin text-[var(--accent-primary)]" />
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-(--text-muted)">
               {locale === 'ar' ? 'جارٍ التحقق من بيانات الحساب...' : 'Checking session status...'}
             </p>
           </div>
@@ -132,7 +132,7 @@ function AcceptInviteContent() {
         {/* Not Logged In State */}
         {!isAuthLoading && !successMessage && !user && (
           <div className="space-y-6 relative z-10">
-            <div className="rounded-xl border border-[var(--border-app)] bg-[var(--bg-surface-subtle)] p-4 text-xs text-slate-300 leading-relaxed">
+            <div className="rounded-xl border border-(--border-app) bg-(--bg-surface-subtle) p-4 text-xs text-(--text-muted) leading-relaxed">
               <p>
                 {locale === 'ar'
                   ? 'لقبول هذه الدعوة، يرجى تسجيل الدخول أو إنشاء حساب بالبريد الإلكتروني الذي استلمت عليه الدعوة.'
@@ -151,7 +151,7 @@ function AcceptInviteContent() {
 
               <Link
                 href={registerRedirectUrl}
-                className="w-full flex items-center justify-center gap-2 rounded-xl border border-[var(--border-app)] bg-[var(--bg-surface-subtle)] py-2.5 text-xs font-semibold text-[var(--text-main)] hover:bg-[var(--bg-surface)] transition-all"
+                className="w-full flex items-center justify-center gap-2 rounded-xl border border-(--border-app) bg-(--bg-surface-subtle) py-2.5 text-xs font-semibold text-(--text-main) hover:bg-[var(--bg-surface)] transition-all"
               >
                 <UserPlus className="h-4 w-4 text-[var(--accent-primary)]" />
                 <span>{locale === 'ar' ? 'إنشاء حساب جديد' : 'Create New Account'}</span>
@@ -170,12 +170,14 @@ function AcceptInviteContent() {
               </div>
             )}
 
-            <div className="rounded-xl border border-[var(--border-app)] bg-[var(--bg-surface-subtle)] p-4 space-y-2 text-xs">
-              <div className="text-slate-400">
+            <div className="rounded-xl border border-(--border-app) bg-(--bg-surface-subtle) p-4 space-y-2 text-xs">
+              <div className="text-(--text-muted)">
                 {locale === 'ar' ? 'الحساب المسجل حالياً:' : 'Current signed-in account:'}
               </div>
-              <div className="font-semibold text-white font-mono break-all">{user.email}</div>
-              <p className="text-[11px] text-slate-400 pt-1">
+              <div className="font-semibold text-(--text-main) font-mono break-all">
+                {user.email}
+              </div>
+              <p className="text-[11px] text-(--text-muted) pt-1">
                 {locale === 'ar'
                   ? 'يجب أن يطابق بريدك الحالي البريد الذي أُرسلت إليه الدعوة.'
                   : 'Your signed-in email must match the recipient of this invitation.'}
@@ -184,7 +186,7 @@ function AcceptInviteContent() {
 
             <div>
               <label
-                className="block text-xs font-semibold text-[var(--text-sub)] mb-1.5"
+                className="block text-xs font-semibold text-(--text-sub) mb-1.5"
                 htmlFor="token"
               >
                 {locale === 'ar' ? 'رمز الدعوة (Invitation Token)' : 'Invitation Token'}
@@ -197,7 +199,7 @@ function AcceptInviteContent() {
                 onChange={(e) => setToken(e.target.value)}
                 placeholder={locale === 'ar' ? 'أدخل رمز الدعوة...' : 'Enter invitation token...'}
                 dir="ltr"
-                className="w-full rounded-xl border border-[var(--border-app)] bg-[var(--bg-surface-subtle)] py-2.5 px-3 text-xs font-mono text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:ring-1 focus:ring-[var(--accent-primary)] outline-none transition-all"
+                className="w-full rounded-xl border border-(--border-app) bg-(--bg-surface-subtle) py-2.5 px-3 text-xs font-mono text-(--text-main) placeholder-(--text-muted) focus:border-(--accent-primary) focus:ring-1 focus:ring-(--accent-primary) outline-none transition-all"
               />
             </div>
 
@@ -223,7 +225,7 @@ function AcceptInviteContent() {
           </form>
         )}
 
-        <div className="mt-8 border-t border-[var(--border-subtle)] pt-6 text-center text-xs text-[var(--text-muted)] relative z-10">
+        <div className="mt-8 border-t border-(--border-subtle) pt-6 text-center text-xs text-(--text-muted) relative z-10">
           <Link
             href="/login"
             className="font-semibold text-[var(--accent-primary)] hover:underline transition-colors"
@@ -243,12 +245,12 @@ function AcceptInviteLoadingFallback() {
 
 export default function AcceptInvitePage() {
   return (
-    <div className="min-h-screen bg-[var(--bg-base)] text-[var(--text-main)] flex flex-col overflow-x-hidden animate-fade-in">
+    <div className="min-h-screen bg-(--bg-base)text-(--text-main) flex flex-col overflow-x-hidden animate-fade-in">
       <Navbar />
       <main className="flex-1 flex items-center justify-center p-3 sm:p-6 lg:p-8">
         <Suspense
           fallback={
-            <div className="flex items-center gap-2 text-sm text-slate-400">
+            <div className="flex items-center gap-2 text-sm text-(--text-muted)">
               <Loader2 className="h-5 w-5 animate-spin text-[var(--accent-primary)]" />
               <AcceptInviteLoadingFallback />
             </div>

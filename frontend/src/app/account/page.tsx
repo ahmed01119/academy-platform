@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { useLocale } from '@/contexts/locale-context';
 import { AppShell } from '../../components/layout/AppShell';
 import { PageHeader } from '../../components/ui/PageHeader';
+import { PageSkeleton } from '@/components/ui/skeleton';
 import { api } from '@/api/client';
 import {
   User,
@@ -148,9 +149,7 @@ export default function AccountPage() {
   if (isLoading || !user) {
     return (
       <AppShell>
-        <div className="flex min-h-[60vh] items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-[var(--accent-primary)]" />
-        </div>
+        <PageSkeleton variant="form" hasFilters={false} />
       </AppShell>
     );
   }
@@ -169,16 +168,16 @@ export default function AccountPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Profile Information Card */}
-        <div className="rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-6 shadow-sm space-y-6">
-          <div className="flex items-center gap-3 pb-4 border-b border-[var(--border-subtle)]">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-lg font-extrabold text-white shadow-lg shadow-emerald-500/25">
+        <div className="rounded-2xl border border-(--border-app) bg-[var(--bg-surface)] p-6 shadow-sm space-y-6">
+          <div className="flex items-center gap-3 pb-4 border-b border-(--border-subtle)">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-linear-to-br from-emerald-500 to-teal-600 text-lg font-extrabold text-white shadow-lg shadow-emerald-500/25">
               {user.name.slice(0, 2).toUpperCase()}
             </div>
             <div>
-              <h2 className="text-sm font-bold text-[var(--text-main)]">
+              <h2 className="text-sm font-bold text-(--text-main)">
                 {locale === 'ar' ? 'الملف الشخصي' : 'Profile Information'}
               </h2>
-              <p className="text-xs text-[var(--text-muted)]">
+              <p className="text-xs text-(--text-muted)">
                 {locale === 'ar' ? 'بيانات الحساب الأساسية' : 'Your basic account details'}
               </p>
             </div>
@@ -204,7 +203,7 @@ export default function AccountPage() {
           <form onSubmit={handleSaveProfile} className="space-y-4">
             {/* Email (read-only) */}
             <div>
-              <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">
+              <label className="block text-xs font-semibold text-(--text-muted) mb-1.5">
                 <span className="flex items-center gap-1.5">
                   <Mail className="h-3.5 w-3.5" />
                   {locale === 'ar' ? 'البريد الإلكتروني' : 'Email Address'}
@@ -215,7 +214,7 @@ export default function AccountPage() {
                   type="email"
                   value={user.email}
                   disabled
-                  className="flex-1 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] py-2.5 px-3 text-sm text-[var(--text-muted)] cursor-not-allowed"
+                  className="flex-1 rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) py-2.5 px-3 text-sm text-(--text-muted) cursor-not-allowed"
                   dir="ltr"
                 />
                 {user.isEmailVerified ? (
@@ -236,7 +235,7 @@ export default function AccountPage() {
             <div>
               <label
                 htmlFor="account-name"
-                className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5"
+                className="block text-xs font-semibold text-(--text-muted) mb-1.5"
               >
                 <span className="flex items-center gap-1.5">
                   <User className="h-3.5 w-3.5" />
@@ -249,7 +248,7 @@ export default function AccountPage() {
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] py-2.5 px-3 text-sm text-[var(--text-main)] focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all"
+                className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) py-2.5 px-3 text-sm text-(--text-main) focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all"
               />
             </div>
 
@@ -257,7 +256,7 @@ export default function AccountPage() {
             <div>
               <label
                 htmlFor="account-phone"
-                className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5"
+                className="block text-xs font-semibold text-(--text-muted) mb-1.5"
               >
                 <span className="flex items-center gap-1.5">
                   <Phone className="h-3.5 w-3.5" />
@@ -271,12 +270,12 @@ export default function AccountPage() {
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="+20 10 1234 5678"
                 dir="ltr"
-                className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] py-2.5 px-3 text-sm text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all"
+                className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) py-2.5 px-3 text-sm text-(--text-main) placeholder-(--text-muted) focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all"
               />
             </div>
 
             {/* Account metadata */}
-            <div className="flex items-center gap-4 pt-2 text-[10px] text-[var(--text-muted)]">
+            <div className="flex items-center gap-4 pt-2 text-[10px] text-(--text-muted)">
               <span className="flex items-center gap-1">
                 <Clock className="h-3 w-3" />
                 {locale === 'ar' ? 'تم الإنشاء: ' : 'Created: '}
@@ -310,16 +309,16 @@ export default function AccountPage() {
         </div>
 
         {/* Change Password Card */}
-        <div className="rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-6 shadow-sm space-y-6">
-          <div className="flex items-center gap-3 pb-4 border-b border-[var(--border-subtle)]">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/25">
+        <div className="rounded-2xl border border-(--border-app) bg-[var(--bg-surface)] p-6 shadow-sm space-y-6">
+          <div className="flex items-center gap-3 pb-4 border-b border-(--border-subtle)">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-linear-to-br from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/25">
               <KeyRound className="h-6 w-6" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-[var(--text-main)]">
+              <h2 className="text-sm font-bold text-(--text-main)">
                 {locale === 'ar' ? 'تغيير كلمة المرور' : 'Change Password'}
               </h2>
-              <p className="text-xs text-[var(--text-muted)]">
+              <p className="text-xs text-(--text-muted)">
                 {locale === 'ar'
                   ? 'أدخل كلمة مرورك الحالية ثم كلمة المرور الجديدة'
                   : 'Enter your current password and set a new one'}
@@ -348,7 +347,7 @@ export default function AccountPage() {
             <div>
               <label
                 htmlFor="current-password"
-                className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5"
+                className="block text-xs font-semibold text-(--text-muted) mb-1.5"
               >
                 {locale === 'ar' ? 'كلمة المرور الحالية *' : 'Current Password *'}
               </label>
@@ -361,12 +360,12 @@ export default function AccountPage() {
                   onChange={(e) => setCurrentPassword(e.target.value)}
                   placeholder="••••••••"
                   dir="ltr"
-                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] py-2.5 px-3 pe-10 text-sm text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all"
+                  className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) py-2.5 px-3 pe-10 text-sm text-(--text-main) placeholder-(--text-muted) focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPasswords(!showPasswords)}
-                  className="absolute end-3 top-3 text-[var(--text-muted)] hover:text-[var(--text-main)]"
+                  className="absolute end-3 top-3 text-(--text-muted) hover:text-(--text-main)"
                 >
                   {showPasswords ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -376,7 +375,7 @@ export default function AccountPage() {
             <div>
               <label
                 htmlFor="new-password"
-                className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5"
+                className="block text-xs font-semibold text-(--text-muted) mb-1.5"
               >
                 {locale === 'ar' ? 'كلمة المرور الجديدة *' : 'New Password *'}
               </label>
@@ -388,9 +387,9 @@ export default function AccountPage() {
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder="••••••••"
                 dir="ltr"
-                className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] py-2.5 px-3 text-sm text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all"
+                className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) py-2.5 px-3 text-sm text-(--text-main) placeholder-(--text-muted) focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all"
               />
-              <p className="mt-1 text-[10px] text-[var(--text-muted)]">
+              <p className="mt-1 text-[10px] text-(--text-muted)">
                 {locale === 'ar'
                   ? 'حد أدنى 8 أحرف مع حرف كبير، حرف صغير، ورقم'
                   : 'Min 8 characters with uppercase, lowercase, and number'}
@@ -400,7 +399,7 @@ export default function AccountPage() {
             <div>
               <label
                 htmlFor="confirm-password"
-                className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5"
+                className="block text-xs font-semibold text-(--text-muted) mb-1.5"
               >
                 {locale === 'ar' ? 'تأكيد كلمة المرور الجديدة *' : 'Confirm New Password *'}
               </label>
@@ -412,7 +411,7 @@ export default function AccountPage() {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="••••••••"
                 dir="ltr"
-                className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] py-2.5 px-3 text-sm text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all"
+                className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) py-2.5 px-3 text-sm text-(--text-main) placeholder-(--text-muted) focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all"
               />
             </div>
 
@@ -433,16 +432,16 @@ export default function AccountPage() {
       </div>
 
       {/* Security Info Card */}
-      <div className="mt-6 rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-6 shadow-sm">
-        <div className="flex items-center gap-3 pb-4 border-b border-[var(--border-subtle)]">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/20">
+      <div className="mt-6 rounded-2xl border border-(--border-app) bg-[var(--bg-surface)] p-6 shadow-sm">
+        <div className="flex items-center gap-3 pb-4 border-b border-(--border-subtle)">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-linear-to-br from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/20">
             <Shield className="h-5 w-5" />
           </div>
           <div>
-            <h2 className="text-sm font-bold text-[var(--text-main)]">
+            <h2 className="text-sm font-bold text-(--text-main)">
               {locale === 'ar' ? 'معلومات الأمان' : 'Security Information'}
             </h2>
-            <p className="text-xs text-[var(--text-muted)]">
+            <p className="text-xs text-(--text-muted)">
               {locale === 'ar'
                 ? 'ملخص حالة أمان حسابك'
                 : 'Overview of your account security status'}
@@ -451,8 +450,8 @@ export default function AccountPage() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
-          <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] p-4 space-y-2">
-            <div className="text-xs font-bold text-[var(--text-main)] flex items-center gap-1.5">
+          <div className="rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) p-4 space-y-2">
+            <div className="text-xs font-bold text-(--text-main) flex items-center gap-1.5">
               <Mail className="h-3.5 w-3.5 text-emerald-400" />
               {locale === 'ar' ? 'تأكيد البريد' : 'Email Verification'}
             </div>
@@ -469,8 +468,8 @@ export default function AccountPage() {
             </div>
           </div>
 
-          <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] p-4 space-y-2">
-            <div className="text-xs font-bold text-[var(--text-main)] flex items-center gap-1.5">
+          <div className="rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) p-4 space-y-2">
+            <div className="text-xs font-bold text-(--text-main) flex items-center gap-1.5">
               <KeyRound className="h-3.5 w-3.5 text-blue-400" />
               {locale === 'ar' ? 'حماية كلمة المرور' : 'Password Protection'}
             </div>
@@ -479,8 +478,8 @@ export default function AccountPage() {
             </div>
           </div>
 
-          <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] p-4 space-y-2">
-            <div className="text-xs font-bold text-[var(--text-main)] flex items-center gap-1.5">
+          <div className="rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) p-4 space-y-2">
+            <div className="text-xs font-bold text-(--text-main) flex items-center gap-1.5">
               <Sparkles className="h-3.5 w-3.5 text-purple-400" />
               {locale === 'ar' ? 'مستوى الحساب' : 'Account Tier'}
             </div>

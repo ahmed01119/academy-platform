@@ -9,6 +9,7 @@ import { translateDataString } from '@/utils/data-translator';
 import { apiClient } from '@/api/client';
 import { AppShell } from '../../components/layout/AppShell';
 import { PageHeader } from '../../components/ui/PageHeader';
+import { PageSkeleton } from '@/components/ui/skeleton';
 import {
   HeartHandshake,
   Award,
@@ -22,16 +23,42 @@ import {
 } from 'lucide-react';
 import type { GuardianPortalData, PlayerEvaluation } from '@academy/shared';
 
+function getStoredGuardianCache(cacheKey: string): GuardianPortalData | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(cacheKey);
+    return raw ? (JSON.parse(raw) as GuardianPortalData) : null;
+  } catch {
+    return null;
+  }
+}
+
 export default function GuardianPortalPage() {
   const { user, isLoading: authLoading } = useAuth();
   const { locale, isRtl } = useLocale();
   const router = useRouter();
   const ar = locale === 'ar';
 
+  const cacheKey = user ? `sportexus_guardian_${user.id}` : 'sportexus_guardian';
+  // Client-safe state initialization to prevent React hydration mismatch (#418)
+  const [cachedData, setCachedData] = useState<GuardianPortalData | null>(null);
   const [guardianData, setGuardianData] = useState<GuardianPortalData | null>(null);
   const [selectedChildId, setSelectedChildId] = useState<string>('');
   const [childEvaluations, setChildEvaluations] = useState<PlayerEvaluation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Hydrate cache on client mount
+  useEffect(() => {
+    const cached = getStoredGuardianCache(cacheKey);
+    if (cached) {
+      setCachedData(cached);
+      setGuardianData(cached);
+      if (cached.children?.[0]?.playerId) {
+        setSelectedChildId(cached.children[0].playerId);
+      }
+      setIsLoading(false);
+    }
+  }, [cacheKey]);
 
   // Claim account state
   const [isClaimModalOpen, setIsClaimModalOpen] = useState(false);
@@ -43,19 +70,30 @@ export default function GuardianPortalPage() {
   const [isClaiming, setIsClaiming] = useState(false);
 
   const loadGuardianData = React.useCallback(async () => {
-    setIsLoading(true);
+    if (!cachedData) {
+      setIsLoading(true);
+    }
     try {
       const data = await apiClient.portal.getGuardianProfile();
       setGuardianData(data);
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(cacheKey, JSON.stringify(data));
+        } catch {
+          // Ignore
+        }
+      }
       if (data.children.length > 0 && !selectedChildId) {
         setSelectedChildId(data.children[0]!.playerId);
       }
     } catch {
-      setGuardianData(null);
+      if (!cachedData) {
+        setGuardianData(null);
+      }
     } finally {
       setIsLoading(false);
     }
-  }, [selectedChildId]);
+  }, [cacheKey, cachedData, selectedChildId]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -91,14 +129,20 @@ export default function GuardianPortalPage() {
       const res = await apiClient.portal.redeemClaimToken(claimTokenInput.trim());
       setClaimStatus({
         type: 'success',
-        text: res.message || (ar ? 'تم ربط حساب اللاعب بحساب ولي الأمر بنجاح!' : 'Child profile linked to guardian account!'),
+        text:
+          res.message ||
+          (ar
+            ? 'تم ربط حساب اللاعب بحساب ولي الأمر بنجاح!'
+            : 'Child profile linked to guardian account!'),
       });
       setClaimTokenInput('');
       await loadGuardianData();
     } catch (err: unknown) {
       setClaimStatus({
         type: 'error',
-        text: (err as Error)?.message || (ar ? 'رمز المطالبة غير صالح أو منتهي الصلاحية' : 'Invalid or expired claim token'),
+        text:
+          (err as Error)?.message ||
+          (ar ? 'رمز المطالبة غير صالح أو منتهي الصلاحية' : 'Invalid or expired claim token'),
       });
     } finally {
       setIsClaiming(false);
@@ -108,14 +152,7 @@ export default function GuardianPortalPage() {
   if (authLoading || isLoading) {
     return (
       <AppShell>
-        <div className="flex h-[60vh] items-center justify-center">
-          <div className="flex flex-col items-center gap-3">
-            <RefreshCw className="h-8 w-8 animate-spin text-[var(--accent-primary)]" />
-            <p className="text-sm font-medium text-[var(--text-muted)]">
-              {ar ? 'جارٍ تحميل بوابة ولي الأمر...' : 'Loading Guardian Portal...'}
-            </p>
-          </div>
-        </div>
+        <PageSkeleton variant="cards" />
       </AppShell>
     );
   }
@@ -125,16 +162,16 @@ export default function GuardianPortalPage() {
     return (
       <AppShell>
         <div className="py-8">
-          <div className="mx-auto max-w-xl rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-8 text-center space-y-6 shadow-sm">
+          <div className="mx-auto max-w-xl rounded-2xl border border-(--border-subtle) bg-[var(--bg-surface)] p-8 text-center space-y-6 shadow-sm">
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-purple-500/10 border border-purple-500/30 text-purple-600 dark:text-purple-400">
               <HeartHandshake className="h-8 w-8" />
             </div>
 
             <div>
-              <h1 className="text-2xl font-bold text-[var(--text-main)]">
+              <h1 className="text-2xl font-bold text-(--text-main)">
                 {ar ? 'بوابة ولي الأمر' : 'Guardian Portal'}
               </h1>
-              <p className="text-sm text-[var(--text-muted)] mt-2 leading-relaxed">
+              <p className="text-sm text-(--text-muted) mt-2 leading-relaxed">
                 {ar
                   ? 'لم يتم ربط أي أبناء مسجلين بحسابك حتى الآن. يرجى إدخال رمز المطالبة (Claim Code) الممنوح لك من قِبل الأكاديمية لربط ملف ابنك ومتابعة حضوره وأدائه.'
                   : 'No players are currently linked to your guardian account. Please enter the claim code provided by the academy administration to track attendance and evaluations.'}
@@ -155,7 +192,7 @@ export default function GuardianPortalPage() {
 
             <form onSubmit={handleClaimChild} className="space-y-4 text-start">
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">
+                <label className="block text-xs font-semibold text-(--text-muted) mb-1.5">
                   {ar ? 'رمز المطالبة (Claim Code):' : 'Claim Token / Code:'}
                 </label>
                 <input
@@ -164,7 +201,7 @@ export default function GuardianPortalPage() {
                   placeholder="ACAD-XXXX"
                   value={claimTokenInput}
                   onChange={(e) => setClaimTokenInput(e.target.value)}
-                  className="w-full font-mono text-center tracking-widest text-lg font-bold rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-4 py-3 text-[var(--text-main)] placeholder:text-[var(--text-muted)] focus:border-purple-500 focus:outline-none"
+                  className="w-full font-mono text-center tracking-widest text-lg font-bold rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-4 py-3 text-(--text-main) placeholder:text-(--text-muted) focus:border-purple-500 focus:outline-none"
                 />
               </div>
 
@@ -182,7 +219,7 @@ export default function GuardianPortalPage() {
               </button>
             </form>
 
-            <p className="text-xs text-[var(--text-muted)]">
+            <p className="text-xs text-(--text-muted)">
               {ar
                 ? 'رمز المطالبة يوفره المشرف أو المدرب لتأكيد صلة القرابة برقم الهوية أو الجوال.'
                 : 'The token is supplied by the coaching staff or admin desk to verify guardianship.'}
@@ -201,7 +238,7 @@ export default function GuardianPortalPage() {
       <div className="space-y-8">
         <PageHeader
           breadcrumbs={[
-            { label: ar ? 'الرئيسية' : 'Home', href: '/dashboard' },
+            { label: ar ? 'لوحة التحكم' : 'Dashboard', href: '/dashboard' },
             { label: ar ? 'بوابة ولي الأمر' : 'Guardian Portal' },
           ]}
           title={ar ? `أهلاً بك، ${guardianData.name} 👨‍👩‍👧‍👦` : `Welcome, ${guardianData.name} 👨‍👩‍👧‍👦`}
@@ -225,7 +262,7 @@ export default function GuardianPortalPage() {
         {/* Multi-Child Selector Tabs */}
         {guardianData.children.length > 1 && (
           <div className="flex items-center gap-3 overflow-x-auto pb-2">
-            <span className="text-xs text-[var(--text-muted)] font-medium flex-shrink-0">
+            <span className="text-xs text-(--text-muted) font-medium flex-shrink-0">
               {ar ? 'اختيار الابن:' : 'Select Child:'}
             </span>
             {guardianData.children.map((child) => (
@@ -236,7 +273,7 @@ export default function GuardianPortalPage() {
                 className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all flex-shrink-0 cursor-pointer ${
                   child.playerId === selectedChildId
                     ? 'bg-purple-600 text-white shadow-sm'
-                    : 'bg-[var(--bg-surface)] text-[var(--text-muted)] border border-[var(--border-subtle)] hover:text-[var(--text-main)]'
+                    : 'bg-[var(--bg-surface)] text-(--text-muted) border border-(--border-subtle) hover:text-(--text-main)'
                 }`}
               >
                 <span>
@@ -251,16 +288,16 @@ export default function GuardianPortalPage() {
         {/* Selected Child Summary Overview */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Child Identity Card */}
-          <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 space-y-4 shadow-sm">
+          <div className="rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] p-5 space-y-4 shadow-sm">
             <div className="flex items-center gap-3">
               <div className="h-14 w-14 rounded-xl bg-purple-600 text-white flex items-center justify-center text-xl font-black shadow-md">
                 {selectedChild.firstName.charAt(0)}
               </div>
               <div>
-                <h3 className="font-bold text-lg text-[var(--text-main)]">
+                <h3 className="font-bold text-lg text-(--text-main)">
                   {selectedChild.firstName} {selectedChild.lastName}
                 </h3>
-                <span className="text-xs text-[var(--text-muted)] block">
+                <span className="text-xs text-(--text-muted) block">
                   {selectedChild.tenantName} •{' '}
                   {locale === 'en'
                     ? translateDataString(selectedChild.branchName, 'en') || 'Main Branch'
@@ -269,10 +306,10 @@ export default function GuardianPortalPage() {
               </div>
             </div>
 
-            <div className="space-y-2 text-xs border-t border-[var(--border-subtle)] pt-3 text-[var(--text-muted)]">
+            <div className="space-y-2 text-xs border-t border-(--border-subtle) pt-3 text-(--text-muted)">
               <div className="flex justify-between">
                 <span>{ar ? 'الفريق:' : 'Group / Squad:'}</span>
-                <span className="text-[var(--text-main)] font-semibold">
+                <span className="text-(--text-main) font-semibold">
                   {locale === 'en'
                     ? translateDataString(selectedChild.groupName, 'en') || 'Junior Squad'
                     : selectedChild.groupName || 'فريق البراعم'}
@@ -280,7 +317,7 @@ export default function GuardianPortalPage() {
               </div>
               <div className="flex justify-between">
                 <span>{ar ? 'صلة القرابة:' : 'Relationship:'}</span>
-                <span className="text-[var(--text-main)] font-semibold">
+                <span className="text-(--text-main) font-semibold">
                   {selectedChild.relationship === 'FATHER'
                     ? ar
                       ? 'الوالد'
@@ -292,7 +329,7 @@ export default function GuardianPortalPage() {
               </div>
               <div className="flex justify-between">
                 <span>{ar ? 'تاريخ الميلاد:' : 'Date of Birth:'}</span>
-                <span className="text-[var(--text-main)] font-semibold">
+                <span className="text-(--text-main) font-semibold">
                   {selectedChild.dateOfBirth
                     ? new Date(selectedChild.dateOfBirth).toLocaleDateString(ar ? 'ar-EG' : 'en-US')
                     : '—'}
@@ -302,9 +339,9 @@ export default function GuardianPortalPage() {
           </div>
 
           {/* Attendance Rate Card */}
-          <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 flex flex-col justify-between shadow-sm">
+          <div className="rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] p-5 flex flex-col justify-between shadow-sm">
             <div>
-              <span className="text-xs text-[var(--text-muted)] flex items-center gap-1.5 mb-1">
+              <span className="text-xs text-(--text-muted) flex items-center gap-1.5 mb-1">
                 <CalendarCheck className="h-4 w-4 text-[var(--accent-primary)]" />
                 {ar ? 'نسبة الالتزام بالحضور' : 'Attendance Compliance Rate'}
               </span>
@@ -312,7 +349,7 @@ export default function GuardianPortalPage() {
                 {selectedChild.attendanceRate}%
               </div>
             </div>
-            <p className="text-xs text-[var(--text-muted)] mt-4 leading-relaxed">
+            <p className="text-xs text-(--text-muted) mt-4 leading-relaxed">
               {ar
                 ? 'المواظبة على التدريبات الأسبوعية تعزز من لياقة وانضباط اللاعب وتطوره الفني داخل الملعب.'
                 : 'Consistent weekly training check-ins reinforce player stamina, discipline, and tactical growth.'}
@@ -320,9 +357,9 @@ export default function GuardianPortalPage() {
           </div>
 
           {/* Performance Score Card */}
-          <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 flex flex-col justify-between shadow-sm">
+          <div className="rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] p-5 flex flex-col justify-between shadow-sm">
             <div>
-              <span className="text-xs text-[var(--text-muted)] flex items-center gap-1.5 mb-1">
+              <span className="text-xs text-(--text-muted) flex items-center gap-1.5 mb-1">
                 <Award className="h-4 w-4 text-amber-500" />
                 {ar ? 'آخر تقييم أداء مسجل' : 'Latest Overall Rating'}
               </span>
@@ -344,15 +381,15 @@ export default function GuardianPortalPage() {
 
         {/* Coach Feedback Specifically Directed to Guardian */}
         <div className="space-y-4">
-          <h2 className="text-lg font-bold text-[var(--text-main)] flex items-center gap-2">
+          <h2 className="text-lg font-bold text-(--text-main) flex items-center gap-2">
             <HeartHandshake className="h-5 w-5 text-purple-500" />
             <span>{ar ? 'توجيهات وملاحظات المدربين لولي الأمر' : 'Coach Guidance & Feedback'}</span>
           </h2>
 
           {childEvaluations.length === 0 ? (
-            <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-8 text-center text-[var(--text-muted)] shadow-sm">
+            <div className="rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] p-8 text-center text-(--text-muted) shadow-sm">
               <Award className="h-10 w-10 text-purple-400 mx-auto mb-2 opacity-50" />
-              <div className="font-semibold text-[var(--text-main)]">
+              <div className="font-semibold text-(--text-main)">
                 {ar ? 'لا توجد ملاحظات منشورة حتى الآن' : 'No Feedback Published Yet'}
               </div>
               <p className="text-xs mt-1">
@@ -366,19 +403,21 @@ export default function GuardianPortalPage() {
               {childEvaluations.map((item) => (
                 <div
                   key={item.id}
-                  className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 space-y-4 hover:border-purple-500/30 transition-colors shadow-sm"
+                  className="rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] p-5 space-y-4 hover:border-purple-500/30 transition-colors shadow-sm"
                 >
-                  <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
+                  <div className="flex items-center justify-between border-b border-(--border-subtle) pb-3">
                     <div>
-                      <span className="text-xs text-[var(--text-muted)]">
-                        {ar ? 'تاريخ الحصة: ' : 'Session Date: '}{item.evaluationDate}
+                      <span className="text-xs text-(--text-muted)">
+                        {ar ? 'تاريخ الحصة: ' : 'Session Date: '}
+                        {item.evaluationDate}
                       </span>
-                      <div className="text-xs font-semibold text-[var(--text-main)] mt-0.5">
-                        {ar ? 'المدرب المقيّم: ' : 'Evaluator: '}{item.evaluatorName}
+                      <div className="text-xs font-semibold text-(--text-main) mt-0.5">
+                        {ar ? 'المدرب المقيّم: ' : 'Evaluator: '}
+                        {item.evaluatorName}
                       </div>
                     </div>
                     <div className="text-end">
-                      <span className="text-xs text-[var(--text-muted)]">
+                      <span className="text-xs text-(--text-muted)">
                         {ar ? 'التقييم العام:' : 'Overall Score:'}
                       </span>
                       <div className="text-lg font-black text-[var(--accent-primary)]">
@@ -397,35 +436,35 @@ export default function GuardianPortalPage() {
                   )}
 
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-                    <div className="rounded-lg bg-[var(--bg-surface-subtle)] p-2.5 text-center">
-                      <span className="text-[10px] text-[var(--text-muted)] block">
+                    <div className="rounded-lg bg-(--bg-surface-subtle) p-2.5 text-center">
+                      <span className="text-[10px] text-(--text-muted) block">
                         {ar ? 'المهارات الفنية' : 'Technical'}
                       </span>
-                      <span className="font-bold text-[var(--text-main)]">
+                      <span className="font-bold text-(--text-main)">
                         {item.technicalScore.toFixed(1)} / 10
                       </span>
                     </div>
-                    <div className="rounded-lg bg-[var(--bg-surface-subtle)] p-2.5 text-center">
-                      <span className="text-[10px] text-[var(--text-muted)] block">
+                    <div className="rounded-lg bg-(--bg-surface-subtle) p-2.5 text-center">
+                      <span className="text-[10px] text-(--text-muted) block">
                         {ar ? 'الوعي التكتيكي' : 'Tactical'}
                       </span>
-                      <span className="font-bold text-[var(--text-main)]">
+                      <span className="font-bold text-(--text-main)">
                         {item.tacticalScore.toFixed(1)} / 10
                       </span>
                     </div>
-                    <div className="rounded-lg bg-[var(--bg-surface-subtle)] p-2.5 text-center">
-                      <span className="text-[10px] text-[var(--text-muted)] block">
+                    <div className="rounded-lg bg-(--bg-surface-subtle) p-2.5 text-center">
+                      <span className="text-[10px] text-(--text-muted) block">
                         {ar ? 'الجاهزية البدنية' : 'Physical'}
                       </span>
-                      <span className="font-bold text-[var(--text-main)]">
+                      <span className="font-bold text-(--text-main)">
                         {item.physicalScore.toFixed(1)} / 10
                       </span>
                     </div>
-                    <div className="rounded-lg bg-[var(--bg-surface-subtle)] p-2.5 text-center">
-                      <span className="text-[10px] text-[var(--text-muted)] block">
+                    <div className="rounded-lg bg-(--bg-surface-subtle) p-2.5 text-center">
+                      <span className="text-[10px] text-(--text-muted) block">
                         {ar ? 'السلوك والانضباط' : 'Behavior'}
                       </span>
-                      <span className="font-bold text-[var(--text-main)]">
+                      <span className="font-bold text-(--text-main)">
                         {item.behavioralScore.toFixed(1)} / 10
                       </span>
                     </div>
@@ -440,9 +479,9 @@ export default function GuardianPortalPage() {
       {/* Claim Child Modal */}
       {isClaimModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="w-full max-w-md rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
-              <h3 className="font-bold text-sm text-[var(--text-main)] flex items-center gap-2">
+          <div className="w-full max-w-md rounded-2xl border border-(--border-app) bg-[var(--bg-surface)] p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-(--border-subtle) pb-3">
+              <h3 className="font-bold text-sm text-(--text-main) flex items-center gap-2">
                 <PlusCircle className="h-4 w-4 text-purple-500" />
                 <span>{ar ? 'ربط ابن إضافي بالحساب' : 'Link Additional Child Profile'}</span>
               </h3>
@@ -452,7 +491,7 @@ export default function GuardianPortalPage() {
                   setIsClaimModalOpen(false);
                   setClaimStatus(null);
                 }}
-                className="h-8 w-8 rounded-lg flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--bg-surface-subtle)]"
+                className="h-8 w-8 rounded-lg flex items-center justify-center text-(--text-muted) hover:bg-(--bg-surface-subtle)"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -472,7 +511,7 @@ export default function GuardianPortalPage() {
 
             <form onSubmit={handleClaimChild} className="space-y-4 text-start">
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1">
+                <label className="block text-xs font-semibold text-(--text-muted) mb-1">
                   {ar ? 'رمز المطالبة (Claim Code):' : 'Claim Token / Code:'}
                 </label>
                 <input
@@ -481,7 +520,7 @@ export default function GuardianPortalPage() {
                   placeholder="ACAD-XXXX"
                   value={claimTokenInput}
                   onChange={(e) => setClaimTokenInput(e.target.value)}
-                  className="w-full font-mono text-center tracking-widest text-base font-bold rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-4 py-2.5 text-[var(--text-main)] placeholder:text-[var(--text-muted)] focus:border-purple-500 focus:outline-none"
+                  className="w-full font-mono text-center tracking-widest text-base font-bold rounded-xl border border-(--border-subtle) bg-(--bg-base)px-4 py-2.5 text-(--text-main) placeholder:text-(--text-muted) focus:border-purple-500 focus:outline-none"
                 />
               </div>
 
@@ -492,7 +531,7 @@ export default function GuardianPortalPage() {
                     setIsClaimModalOpen(false);
                     setClaimStatus(null);
                   }}
-                  className="rounded-xl border border-[var(--border-subtle)] px-4 py-2 text-xs font-semibold text-[var(--text-muted)] hover:bg-[var(--bg-surface-subtle)] cursor-pointer"
+                  className="rounded-xl border border-(--border-subtle) px-4 py-2 text-xs font-semibold text-(--text-muted) hover:bg-(--bg-surface-subtle) cursor-pointer"
                 >
                   {ar ? 'إلغاء' : 'Cancel'}
                 </button>
@@ -501,7 +540,13 @@ export default function GuardianPortalPage() {
                   disabled={isClaiming || !claimTokenInput.trim()}
                   className="rounded-xl bg-purple-600 px-5 py-2 text-xs font-bold text-white hover:bg-purple-700 transition-colors disabled:opacity-50 cursor-pointer"
                 >
-                  {isClaiming ? (ar ? 'جارٍ التحقق...' : 'Claiming...') : ar ? 'تأكيد الربط' : 'Confirm Link'}
+                  {isClaiming
+                    ? ar
+                      ? 'جارٍ التحقق...'
+                      : 'Claiming...'
+                    : ar
+                      ? 'تأكيد الربط'
+                      : 'Confirm Link'}
                 </button>
               </div>
             </form>

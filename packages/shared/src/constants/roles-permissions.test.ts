@@ -42,6 +42,7 @@ describe('roles and permissions', () => {
     expect(PasswordSchema.safeParse('alllowercase1').success).toBe(false); // no uppercase
     expect(PasswordSchema.safeParse('ALLUPPERCASE1').success).toBe(false); // no lowercase
     expect(PasswordSchema.safeParse('NoNumbersHere!').success).toBe(false); // no digit
+    expect(PasswordSchema.safeParse('NoSpecialChar123').success).toBe(false); // no special char
     expect(PasswordSchema.safeParse('StrongPass123!').success).toBe(true);
   });
 

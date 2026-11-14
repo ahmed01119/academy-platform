@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { useLocale } from '@/contexts/locale-context';
 import { AppShell } from '../../../components/layout/AppShell';
+import { PageSkeleton } from '@/components/ui/skeleton';
 import { useToast } from '../../../components/ui/Toast';
 import { api } from '@/api/client';
 import type { PlayerSummary, TrainingGroupDetails } from '@academy/shared';
@@ -19,7 +20,6 @@ import {
   Plus,
   Trash2,
   ShieldCheck,
-  RefreshCw,
   AlertCircle,
   Building2,
   X,
@@ -27,7 +27,15 @@ import {
 } from 'lucide-react';
 
 const DAYS_OF_WEEK_AR = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
-const DAYS_OF_WEEK_EN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const DAYS_OF_WEEK_EN = [
+  'Sunday',
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+];
 
 export default function GroupDetailsPage() {
   const router = useRouter();
@@ -82,7 +90,13 @@ export default function GroupDetailsPage() {
       const data = await api.groups.get(groupId);
       setGroup(data);
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : (isAr ? 'فشل تحميل بيانات المجموعة' : 'Failed to load group details'));
+      setErrorMsg(
+        err instanceof Error
+          ? err.message
+          : isAr
+            ? 'فشل تحميل بيانات المجموعة'
+            : 'Failed to load group details',
+      );
     } finally {
       setIsFetching(false);
     }
@@ -150,25 +164,45 @@ export default function GroupDetailsPage() {
         startDate: new Date().toISOString().slice(0, 10),
       });
       setIsAddMemberModalOpen(false);
-      toast.success(isAr ? 'تمت إضافة اللاعب للمجموعة التدريبية بنجاح' : 'Player added to squad successfully');
+      toast.success(
+        isAr ? 'تمت إضافة اللاعب للمجموعة التدريبية بنجاح' : 'Player added to squad successfully',
+      );
       await loadGroupDetails();
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : (isAr ? 'فشل إضافة اللاعب للمجموعة' : 'Failed to add player to squad'));
+      setActionError(
+        err instanceof Error
+          ? err.message
+          : isAr
+            ? 'فشل إضافة اللاعب للمجموعة'
+            : 'Failed to add player to squad',
+      );
     } finally {
       setSubmittingAction(false);
     }
   };
 
   const handleRemoveMember = async (playerId: string, playerName: string) => {
-    if (!confirm(isAr ? `هل أنت متأكد من إزالة اللاعب "${playerName}" من هذه المجموعة؟` : `Are you sure you want to remove athlete "${playerName}" from this squad?`)) {
+    if (
+      !confirm(
+        isAr
+          ? `هل أنت متأكد من إزالة اللاعب "${playerName}" من هذه المجموعة؟`
+          : `Are you sure you want to remove athlete "${playerName}" from this squad?`,
+      )
+    ) {
       return;
     }
     try {
       await api.groups.removePlayer(groupId, playerId);
-      toast.success(isAr ? `تمت إزالة اللاعب "${playerName}" من المجموعة بنجاح` : `Athlete "${playerName}" removed from squad`);
+      toast.success(
+        isAr
+          ? `تمت إزالة اللاعب "${playerName}" من المجموعة بنجاح`
+          : `Athlete "${playerName}" removed from squad`,
+      );
       await loadGroupDetails();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : (isAr ? 'فشل إزالة اللاعب' : 'Failed to remove player'));
+      toast.error(
+        err instanceof Error ? err.message : isAr ? 'فشل إزالة اللاعب' : 'Failed to remove player',
+      );
     }
   };
 
@@ -186,25 +220,45 @@ export default function GroupDetailsPage() {
         isHeadCoach,
       });
       setIsAddCoachModalOpen(false);
-      toast.success(isAr ? 'تم تعيين المدرب للمجموعة التدريبية بنجاح' : 'Coach assigned to squad successfully');
+      toast.success(
+        isAr ? 'تم تعيين المدرب للمجموعة التدريبية بنجاح' : 'Coach assigned to squad successfully',
+      );
       await loadGroupDetails();
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : (isAr ? 'فشل تعيين المدرب للمجموعة' : 'Failed to assign coach'));
+      setActionError(
+        err instanceof Error
+          ? err.message
+          : isAr
+            ? 'فشل تعيين المدرب للمجموعة'
+            : 'Failed to assign coach',
+      );
     } finally {
       setSubmittingAction(false);
     }
   };
 
   const handleRemoveCoach = async (coachUserId: string, coachName: string) => {
-    if (!confirm(isAr ? `هل أنت متأكد من إزالة المدرب "${coachName}" من تدريب المجموعة؟` : `Are you sure you want to remove coach "${coachName}" from this squad?`)) {
+    if (
+      !confirm(
+        isAr
+          ? `هل أنت متأكد من إزالة المدرب "${coachName}" من تدريب المجموعة؟`
+          : `Are you sure you want to remove coach "${coachName}" from this squad?`,
+      )
+    ) {
       return;
     }
     try {
       await api.groups.removeCoach(groupId, coachUserId);
-      toast.success(isAr ? `تمت إزالة المدرب "${coachName}" من تدريب المجموعة` : `Coach "${coachName}" removed from squad`);
+      toast.success(
+        isAr
+          ? `تمت إزالة المدرب "${coachName}" من تدريب المجموعة`
+          : `Coach "${coachName}" removed from squad`,
+      );
       await loadGroupDetails();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : (isAr ? 'فشل إزالة المدرب' : 'Failed to remove coach'));
+      toast.error(
+        err instanceof Error ? err.message : isAr ? 'فشل إزالة المدرب' : 'Failed to remove coach',
+      );
     }
   };
 
@@ -220,37 +274,56 @@ export default function GroupDetailsPage() {
         location: scheduleForm.location.trim() || undefined,
       });
       setIsAddScheduleModalOpen(false);
-      toast.success(isAr ? 'تمت إضافة الموعد التدريبي الأسبوعي بنجاح' : 'Weekly training schedule added successfully');
+      toast.success(
+        isAr
+          ? 'تمت إضافة الموعد التدريبي الأسبوعي بنجاح'
+          : 'Weekly training schedule added successfully',
+      );
       await loadGroupDetails();
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : (isAr ? 'فشل إضافة الموعد التدريبي' : 'Failed to add weekly schedule'));
+      setActionError(
+        err instanceof Error
+          ? err.message
+          : isAr
+            ? 'فشل إضافة الموعد التدريبي'
+            : 'Failed to add weekly schedule',
+      );
     } finally {
       setSubmittingAction(false);
     }
   };
 
   const handleDeleteSchedule = async (scheduleId: string) => {
-    if (!confirm(isAr ? 'هل أنت متأكد من حذف هذا الموعد التدريبي الأسبوعي؟' : 'Are you sure you want to delete this weekly schedule?')) {
+    if (
+      !confirm(
+        isAr
+          ? 'هل أنت متأكد من حذف هذا الموعد التدريبي الأسبوعي؟'
+          : 'Are you sure you want to delete this weekly schedule?',
+      )
+    ) {
       return;
     }
     try {
       await api.groups.deleteSchedule(groupId, scheduleId);
-      toast.success(isAr ? 'تم حذف الموعد التدريبي الأسبوعي' : 'Weekly schedule deleted successfully');
+      toast.success(
+        isAr ? 'تم حذف الموعد التدريبي الأسبوعي' : 'Weekly schedule deleted successfully',
+      );
       await loadGroupDetails();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : (isAr ? 'فشل حذف الموعد التدريبي' : 'Failed to delete schedule'));
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : isAr
+            ? 'فشل حذف الموعد التدريبي'
+            : 'Failed to delete schedule',
+      );
     }
   };
 
   if (isLoading || isFetching) {
     return (
       <AppShell>
-        <div className="flex h-96 flex-col items-center justify-center gap-3">
-          <RefreshCw className="h-8 w-8 animate-spin text-[var(--accent-primary)]" />
-          <p className="text-sm font-medium text-[var(--text-muted)]">
-            جارٍ تحميل تفاصيل المجموعة التدريبية...
-          </p>
-        </div>
+        <PageSkeleton variant="detail" />
       </AppShell>
     );
   }
@@ -262,15 +335,13 @@ export default function GroupDetailsPage() {
           <div className="h-12 w-12 rounded-2xl bg-red-500/10 text-red-500 flex items-center justify-center mx-auto">
             <AlertCircle className="h-6 w-6" />
           </div>
-          <h2 className="text-xl font-bold text-[var(--text-main)]">
-            لم نتمكن من العثور على المجموعة
-          </h2>
-          <p className="text-sm text-[var(--text-muted)]">
+          <h2 className="text-xl font-bold text-(--text-main)">لم نتمكن من العثور على المجموعة</h2>
+          <p className="text-sm text-(--text-muted)">
             {errorMsg || 'المجموعة غير موجودة أو تم حذفها'}
           </p>
           <Link
             href="/groups"
-            className="inline-flex items-center gap-2 rounded-xl bg-[var(--accent-primary)] text-white px-4 py-2 text-xs font-semibold hover:brightness-110"
+            className="inline-flex items-center gap-2 rounded-xl bg-(--accent-primary) text-white px-4 py-2 text-xs font-semibold hover:brightness-110"
           >
             العودة لقائمة المجموعات
           </Link>
@@ -288,7 +359,7 @@ export default function GroupDetailsPage() {
     <AppShell breadcrumbs={[{ label: t('nav.groups'), href: '/groups' }, { label: group.name }]}>
       <div className="space-y-8">
         {/* Hero Group Card */}
-        <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 sm:p-8 shadow-sm relative overflow-hidden">
+        <div className="rounded-2xl border border-(--border-subtle) bg-[var(--bg-surface)] p-6 sm:p-8 shadow-sm relative overflow-hidden">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
             <div className="space-y-2">
               <div className="flex flex-wrap items-center gap-2">
@@ -299,33 +370,39 @@ export default function GroupDetailsPage() {
                       : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30'
                   }`}
                 >
-                  {group.status === 'ACTIVE' ? (isAr ? 'مجموعة نشطة' : 'Active Squad') : (isAr ? 'غير نشطة' : 'Inactive')}
+                  {group.status === 'ACTIVE'
+                    ? isAr
+                      ? 'مجموعة نشطة'
+                      : 'Active Squad'
+                    : isAr
+                      ? 'غير نشطة'
+                      : 'Inactive'}
                 </span>
                 {group.ageCategory && (
-                  <span className="rounded-full bg-[var(--bg-surface-subtle)] px-2.5 py-0.5 text-xs font-medium text-[var(--text-muted)] border border-[var(--border-subtle)]">
+                  <span className="rounded-full bg-(--bg-surface-subtle) px-2.5 py-0.5 text-xs font-medium text-(--text-muted) border border-(--border-subtle)">
                     {group.ageCategory}
                   </span>
                 )}
-                <span className="flex items-center gap-1 text-xs text-[var(--text-muted)]">
+                <span className="flex items-center gap-1 text-xs text-(--text-muted)">
                   <Building2 className="h-3.5 w-3.5 text-[var(--accent-primary)]" />
                   {group.branchName}
                 </span>
               </div>
 
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-[var(--text-main)]">
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-(--text-main)">
                 {group.name}
               </h1>
               {group.description && (
-                <p className="text-sm text-[var(--text-muted)] max-w-2xl">{group.description}</p>
+                <p className="text-sm text-(--text-muted) max-w-2xl">{group.description}</p>
               )}
             </div>
 
             {/* Capacity & Quick Actions */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
-              <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] p-4 min-w-[200px] space-y-1.5">
+              <div className="rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) p-4 min-w-[200px] space-y-1.5">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-[var(--text-muted)]">سعة الفريق:</span>
-                  <span className="font-bold text-[var(--text-main)]">
+                  <span className="text-(--text-muted)">سعة الفريق:</span>
+                  <span className="font-bold text-(--text-main)">
                     {group.members.length} {capacity ? `/ ${capacity}` : 'لاعب'}
                   </span>
                 </div>
@@ -333,9 +410,7 @@ export default function GroupDetailsPage() {
                   <div className="h-2 w-full rounded-full bg-[var(--bg-surface)] overflow-hidden">
                     <div
                       className={`h-full rounded-full ${
-                        group.members.length >= capacity
-                          ? 'bg-red-500'
-                          : 'bg-[var(--accent-primary)]'
+                        group.members.length >= capacity ? 'bg-red-500' : 'bg-(--accent-primary)'
                       }`}
                       style={{ width: `${fillPercentage}%` }}
                     />
@@ -346,7 +421,7 @@ export default function GroupDetailsPage() {
               <Link
                 href={`/sessions?groupId=${group.id}&branchId=${group.branchId}&create=true`}
                 id="btn-start-session"
-                className="flex items-center justify-center gap-2 rounded-xl bg-[var(--accent-primary)] text-white px-5 py-3 text-xs font-bold shadow-sm hover:brightness-110 transition-all cursor-pointer"
+                className="flex items-center justify-center gap-2 rounded-xl bg-(--accent-primary) text-white px-5 py-3 text-xs font-bold shadow-sm hover:brightness-110 transition-all cursor-pointer"
               >
                 <CalendarCheck className="h-4 w-4" />
                 <span>{isAr ? 'بدء حصة تدريبية فورية' : 'Start Instant Session'}</span>
@@ -356,19 +431,23 @@ export default function GroupDetailsPage() {
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex items-center gap-2 border-b border-[var(--border-subtle)]">
+        <div className="flex items-center gap-2 border-b border-(--border-subtle)">
           <button
             type="button"
             id="tab-btn-members"
             onClick={() => setActiveTab('members')}
             className={`flex items-center gap-2 px-5 py-3 text-xs font-bold border-b-2 transition-all cursor-pointer ${
               activeTab === 'members'
-                ? 'border-[var(--accent-primary)] text-[var(--accent-primary)] bg-[var(--bg-surface-subtle)]'
-                : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                ? 'border-[var(--accent-primary)] text-[var(--accent-primary)] bg-(--bg-surface-subtle)'
+                : 'border-transparent text-(--text-muted) hover:text-(--text-main)'
             }`}
           >
             <Users className="h-4 w-4" />
-            <span>{isAr ? `قائمة اللاعبين (${group.members.length})` : `Athletes Roster (${group.members.length})`}</span>
+            <span>
+              {isAr
+                ? `قائمة اللاعبين (${group.members.length})`
+                : `Athletes Roster (${group.members.length})`}
+            </span>
           </button>
 
           <button
@@ -377,12 +456,16 @@ export default function GroupDetailsPage() {
             onClick={() => setActiveTab('coaches')}
             className={`flex items-center gap-2 px-5 py-3 text-xs font-bold border-b-2 transition-all cursor-pointer ${
               activeTab === 'coaches'
-                ? 'border-[var(--accent-primary)] text-[var(--accent-primary)] bg-[var(--bg-surface-subtle)]'
-                : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                ? 'border-[var(--accent-primary)] text-[var(--accent-primary)] bg-(--bg-surface-subtle)'
+                : 'border-transparent text-(--text-muted) hover:text-(--text-main)'
             }`}
           >
             <ShieldCheck className="h-4 w-4" />
-            <span>{isAr ? `الكادر التدريبي (${group.coaches.length})` : `Coaching Staff (${group.coaches.length})`}</span>
+            <span>
+              {isAr
+                ? `الكادر التدريبي (${group.coaches.length})`
+                : `Coaching Staff (${group.coaches.length})`}
+            </span>
           </button>
 
           <button
@@ -391,12 +474,16 @@ export default function GroupDetailsPage() {
             onClick={() => setActiveTab('schedules')}
             className={`flex items-center gap-2 px-5 py-3 text-xs font-bold border-b-2 transition-all cursor-pointer ${
               activeTab === 'schedules'
-                ? 'border-[var(--accent-primary)] text-[var(--accent-primary)] bg-[var(--bg-surface-subtle)]'
-                : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                ? 'border-[var(--accent-primary)] text-[var(--accent-primary)] bg-(--bg-surface-subtle)'
+                : 'border-transparent text-(--text-muted) hover:text-(--text-main)'
             }`}
           >
             <Clock className="h-4 w-4" />
-            <span>{isAr ? `جدول المواعيد الأسبوعية (${group.schedules.length})` : `Weekly Schedule (${group.schedules.length})`}</span>
+            <span>
+              {isAr
+                ? `جدول المواعيد الأسبوعية (${group.schedules.length})`
+                : `Weekly Schedule (${group.schedules.length})`}
+            </span>
           </button>
         </div>
 
@@ -405,10 +492,10 @@ export default function GroupDetailsPage() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-base font-bold text-[var(--text-main)]">
+                <h3 className="text-base font-bold text-(--text-main)">
                   اللاعبين المقيدين بالمجموعة
                 </h3>
-                <p className="text-xs text-[var(--text-muted)]">
+                <p className="text-xs text-(--text-muted)">
                   هؤلاء اللاعبين سيتم إدراجهم تلقائياً في كشف الحضور عند بدء أي حصة تدريبية
                   للمجموعة.
                 </p>
@@ -417,7 +504,7 @@ export default function GroupDetailsPage() {
                 type="button"
                 id="btn-open-add-member"
                 onClick={handleOpenAddMemberModal}
-                className="flex items-center gap-1.5 rounded-xl bg-[var(--accent-primary)] text-white px-3.5 py-2 text-xs font-semibold hover:brightness-110 transition-all cursor-pointer"
+                className="flex items-center gap-1.5 rounded-xl bg-(--accent-primary) text-white px-3.5 py-2 text-xs font-semibold hover:brightness-110 transition-all cursor-pointer"
               >
                 <UserPlus className="h-4 w-4" />
                 <span>{isAr ? 'إضافة لاعب للمجموعة' : 'Add Athlete to Squad'}</span>
@@ -425,18 +512,18 @@ export default function GroupDetailsPage() {
             </div>
 
             {group.members.length === 0 ? (
-              <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-10 text-center text-[var(--text-muted)] space-y-3">
+              <div className="rounded-2xl border border-(--border-subtle) bg-[var(--bg-surface)] p-10 text-center text-(--text-muted) space-y-3">
                 <Users className="h-8 w-8 mx-auto text-[var(--accent-primary)]" />
-                <p className="text-sm font-semibold text-[var(--text-main)]">
+                <p className="text-sm font-semibold text-(--text-main)">
                   لا يوجد لاعبين مقيدين بالمجموعة حتى الآن
                 </p>
-                <p className="text-xs text-[var(--text-muted)]">
+                <p className="text-xs text-(--text-muted)">
                   أضف اللاعبين المسجلين في فرع {group.branchName} إلى هذه المجموعة.
                 </p>
                 <button
                   type="button"
                   onClick={handleOpenAddMemberModal}
-                  className="rounded-xl border border-[var(--accent-primary)] bg-[var(--accent-primary)]/10 px-4 py-2 text-xs font-semibold text-[var(--accent-primary)] hover:bg-[var(--accent-primary)]/20 transition-all cursor-pointer"
+                  className="rounded-xl border border-[var(--accent-primary)] bg-(--accent-primary)/10 px-4 py-2 text-xs font-semibold text-[var(--accent-primary)] hover:bg-(--accent-primary)/20 transition-all cursor-pointer"
                 >
                   إضافة أول لاعب
                 </button>
@@ -447,20 +534,30 @@ export default function GroupDetailsPage() {
                   <div
                     key={member.id}
                     id={`member-card-${member.playerId}`}
-                    className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 flex items-center justify-between gap-3 shadow-sm hover:border-[var(--accent-primary)]/40 transition-colors"
+                    className="rounded-2xl border border-(--border-subtle) bg-[var(--bg-surface)] p-4 flex items-center justify-between gap-3 shadow-sm hover:border-[var(--accent-primary)]/40 transition-colors"
                   >
                     <div className="flex items-center gap-3">
                       <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-500/10 font-bold text-emerald-600 dark:text-emerald-400 text-sm">
                         {member.playerName.slice(0, 2)}
                       </div>
                       <div>
-                        <h4 className="text-sm font-bold text-[var(--text-main)]">
+                        <h4 className="text-sm font-bold text-(--text-main)">
                           {member.playerName}
                         </h4>
-                        <div className="flex items-center gap-2 text-[11px] text-[var(--text-muted)] mt-0.5">
-                          <span>{member.playerGender === 'MALE' ? (isAr ? 'ذكر' : 'Male') : (isAr ? 'أنثى' : 'Female')}</span>
+                        <div className="flex items-center gap-2 text-[11px] text-(--text-muted) mt-0.5">
+                          <span>
+                            {member.playerGender === 'MALE'
+                              ? isAr
+                                ? 'ذكر'
+                                : 'Male'
+                              : isAr
+                                ? 'أنثى'
+                                : 'Female'}
+                          </span>
                           <span>•</span>
-                          <span>{isAr ? 'مواليد' : 'DOB'} {member.playerDateOfBirth}</span>
+                          <span>
+                            {isAr ? 'مواليد' : 'DOB'} {member.playerDateOfBirth}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -486,10 +583,10 @@ export default function GroupDetailsPage() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-base font-bold text-[var(--text-main)]">
+                <h3 className="text-base font-bold text-(--text-main)">
                   المدربين المسؤولين عن المجموعة
                 </h3>
-                <p className="text-xs text-[var(--text-muted)]">
+                <p className="text-xs text-(--text-muted)">
                   المدرب المعين يتمتع بصلاحية أخذ الحضور وإدارة جلسات وتدريبات هذه المجموعة.
                 </p>
               </div>
@@ -497,7 +594,7 @@ export default function GroupDetailsPage() {
                 type="button"
                 id="btn-open-add-coach"
                 onClick={handleOpenAddCoachModal}
-                className="flex items-center gap-1.5 rounded-xl bg-[var(--accent-primary)] text-white px-3.5 py-2 text-xs font-semibold hover:brightness-110 transition-all cursor-pointer"
+                className="flex items-center gap-1.5 rounded-xl bg-(--accent-primary) text-white px-3.5 py-2 text-xs font-semibold hover:brightness-110 transition-all cursor-pointer"
               >
                 <Plus className="h-4 w-4" />
                 <span>{isAr ? 'تعيين مدرب للمجموعة' : 'Assign Coach'}</span>
@@ -505,18 +602,18 @@ export default function GroupDetailsPage() {
             </div>
 
             {group.coaches.length === 0 ? (
-              <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-10 text-center text-[var(--text-muted)] space-y-3">
+              <div className="rounded-2xl border border-(--border-subtle) bg-[var(--bg-surface)] p-10 text-center text-(--text-muted) space-y-3">
                 <ShieldCheck className="h-8 w-8 mx-auto text-[var(--accent-primary)]" />
-                <p className="text-sm font-semibold text-[var(--text-main)]">
+                <p className="text-sm font-semibold text-(--text-main)">
                   لم يتم تعيين أي مدرب لهذه المجموعة بعد
                 </p>
-                <p className="text-xs text-[var(--text-muted)]">
+                <p className="text-xs text-(--text-muted)">
                   قم بتعيين مدرب رئيسي للإشراف الفني وأخذ حضور الحصص.
                 </p>
                 <button
                   type="button"
                   onClick={handleOpenAddCoachModal}
-                  className="rounded-xl border border-[var(--accent-primary)] bg-[var(--accent-primary)]/10 px-4 py-2 text-xs font-semibold text-[var(--accent-primary)] hover:bg-[var(--accent-primary)]/20 transition-all cursor-pointer"
+                  className="rounded-xl border border-[var(--accent-primary)] bg-(--accent-primary)/10 px-4 py-2 text-xs font-semibold text-[var(--accent-primary)] hover:bg-(--accent-primary)/20 transition-all cursor-pointer"
                 >
                   تعيين مدرب الآن
                 </button>
@@ -527,7 +624,7 @@ export default function GroupDetailsPage() {
                   <div
                     key={c.id}
                     id={`coach-card-${c.coachUserId}`}
-                    className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 space-y-3 shadow-sm hover:border-[var(--accent-primary)]/40 transition-colors"
+                    className="rounded-2xl border border-(--border-subtle) bg-[var(--bg-surface)] p-5 space-y-3 shadow-sm hover:border-[var(--accent-primary)]/40 transition-colors"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-3">
@@ -536,16 +633,14 @@ export default function GroupDetailsPage() {
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
-                            <h4 className="text-sm font-bold text-[var(--text-main)]">
-                              {c.coachName}
-                            </h4>
+                            <h4 className="text-sm font-bold text-(--text-main)">{c.coachName}</h4>
                             {c.isHeadCoach && (
                               <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400 border border-amber-500/30">
                                 مدرب رئيسي
                               </span>
                             )}
                           </div>
-                          <p className="text-xs text-[var(--text-muted)] mt-0.5">{c.coachEmail}</p>
+                          <p className="text-xs text-(--text-muted) mt-0.5">{c.coachEmail}</p>
                         </div>
                       </div>
 
@@ -571,10 +666,10 @@ export default function GroupDetailsPage() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-base font-bold text-[var(--text-main)]">
+                <h3 className="text-base font-bold text-(--text-main)">
                   المواعيد التدريبية الأسبوعية
                 </h3>
-                <p className="text-xs text-[var(--text-muted)]">
+                <p className="text-xs text-(--text-muted)">
                   أوقات التمارين الدورية التي تكرر أسبوعياً لهذه المجموعة على أرض الملعب.
                 </p>
               </div>
@@ -585,7 +680,7 @@ export default function GroupDetailsPage() {
                   setActionError(null);
                   setIsAddScheduleModalOpen(true);
                 }}
-                className="flex items-center gap-1.5 rounded-xl bg-[var(--accent-primary)] text-white px-3.5 py-2 text-xs font-semibold hover:brightness-110 transition-all cursor-pointer"
+                className="flex items-center gap-1.5 rounded-xl bg-(--accent-primary) text-white px-3.5 py-2 text-xs font-semibold hover:brightness-110 transition-all cursor-pointer"
               >
                 <Plus className="h-4 w-4" />
                 <span>{isAr ? 'إضافة موعد تدريبي' : 'Add Pitch Schedule'}</span>
@@ -593,18 +688,18 @@ export default function GroupDetailsPage() {
             </div>
 
             {group.schedules.length === 0 ? (
-              <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-10 text-center text-[var(--text-muted)] space-y-3">
+              <div className="rounded-2xl border border-(--border-subtle) bg-[var(--bg-surface)] p-10 text-center text-(--text-muted) space-y-3">
                 <Clock className="h-8 w-8 mx-auto text-[var(--accent-primary)]" />
-                <p className="text-sm font-semibold text-[var(--text-main)]">
+                <p className="text-sm font-semibold text-(--text-main)">
                   لا توجد مواعيد أسبوعية مسجلة
                 </p>
-                <p className="text-xs text-[var(--text-muted)]">
+                <p className="text-xs text-(--text-muted)">
                   أضف أيام وساعات التمرين المنتظمة لتسهيل إنشاء الحصص التدريبية.
                 </p>
                 <button
                   type="button"
                   onClick={() => setIsAddScheduleModalOpen(true)}
-                  className="rounded-xl border border-[var(--accent-primary)] bg-[var(--accent-primary)]/10 px-4 py-2 text-xs font-semibold text-[var(--accent-primary)] hover:bg-[var(--accent-primary)]/20 transition-all cursor-pointer"
+                  className="rounded-xl border border-[var(--accent-primary)] bg-(--accent-primary)/10 px-4 py-2 text-xs font-semibold text-[var(--accent-primary)] hover:bg-(--accent-primary)/20 transition-all cursor-pointer"
                 >
                   إضافة أول موعد
                 </button>
@@ -615,14 +710,14 @@ export default function GroupDetailsPage() {
                   <div
                     key={s.id}
                     id={`schedule-card-${s.id}`}
-                    className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 space-y-3 shadow-sm hover:border-[var(--accent-primary)]/40 transition-colors"
+                    className="rounded-2xl border border-(--border-subtle) bg-[var(--bg-surface)] p-5 space-y-3 shadow-sm hover:border-[var(--accent-primary)]/40 transition-colors"
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--accent-primary)]/10 text-[var(--accent-primary)]">
+                        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-(--accent-primary)/10 text-[var(--accent-primary)]">
                           <Calendar className="h-4 w-4" />
                         </span>
-                        <span className="font-bold text-[var(--text-main)] text-base">
+                        <span className="font-bold text-(--text-main) text-base">
                           {isAr ? `يوم ${DAYS_OF_WEEK[s.dayOfWeek]}` : DAYS_OF_WEEK[s.dayOfWeek]}
                         </span>
                       </div>
@@ -637,17 +732,22 @@ export default function GroupDetailsPage() {
                       </button>
                     </div>
 
-                    <div className="space-y-1.5 text-xs text-[var(--text-muted)]">
-                      <div className="flex items-center gap-2 text-[var(--text-main)] font-medium">
+                    <div className="space-y-1.5 text-xs text-(--text-muted)">
+                      <div className="flex items-center gap-2 text-(--text-main) font-medium">
                         <Clock className="h-3.5 w-3.5 text-[var(--accent-primary)]" />
                         <span>
-                          {isAr ? `من ${s.startTime} إلى ${s.endTime}` : `${s.startTime} - ${s.endTime}`}
+                          {isAr
+                            ? `من ${s.startTime} إلى ${s.endTime}`
+                            : `${s.startTime} - ${s.endTime}`}
                         </span>
                       </div>
                       {s.location && (
                         <div className="flex items-center gap-2">
                           <MapPin className="h-3.5 w-3.5 text-[var(--accent-primary)]" />
-                          <span>{isAr ? 'الموقع: ' : 'Location: '}{translateDataString(s.location, locale)}</span>
+                          <span>
+                            {isAr ? 'الموقع: ' : 'Location: '}
+                            {translateDataString(s.location, locale)}
+                          </span>
                         </div>
                       )}
                     </div>
@@ -662,15 +762,15 @@ export default function GroupDetailsPage() {
       {/* MODAL: ADD MEMBER */}
       {isAddMemberModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="w-full max-w-md rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-2xl relative space-y-5">
-            <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-4">
-              <h3 className="text-base font-bold text-[var(--text-main)]">
+          <div className="w-full max-w-md rounded-2xl border border-(--border-subtle) bg-[var(--bg-surface)] p-6 shadow-2xl relative space-y-5">
+            <div className="flex items-center justify-between border-b border-(--border-subtle) pb-4">
+              <h3 className="text-base font-bold text-(--text-main)">
                 {isAr ? 'إضافة لاعب للمجموعة التدريبية' : 'Add Athlete to Training Squad'}
               </h3>
               <button
                 type="button"
                 onClick={() => setIsAddMemberModalOpen(false)}
-                className="p-1 text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer"
+                className="p-1 text-(--text-muted) hover:text-(--text-main) transition-colors cursor-pointer"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -686,13 +786,17 @@ export default function GroupDetailsPage() {
               <div>
                 <label
                   htmlFor="select-member-player"
-                  className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5"
+                  className="block text-xs font-semibold text-(--text-muted) mb-1.5"
                 >
-                  {isAr ? `اختر اللاعب (من مقيدي فرع ${group.branchName})` : `Select athlete (enrolled in ${translateDataString(group.branchName, locale)})`}
+                  {isAr
+                    ? `اختر اللاعب (من مقيدي فرع ${group.branchName})`
+                    : `Select athlete (enrolled in ${translateDataString(group.branchName, locale)})`}
                 </label>
                 {availablePlayers.length === 0 ? (
                   <p className="text-xs text-amber-500">
-                    {isAr ? 'لا يوجد لاعبين غير معينين في هذا الفرع حالياً.' : 'No unassigned athletes in this branch currently.'}
+                    {isAr
+                      ? 'لا يوجد لاعبين غير معينين في هذا الفرع حالياً.'
+                      : 'No unassigned athletes in this branch currently.'}
                   </p>
                 ) : (
                   <select
@@ -700,33 +804,40 @@ export default function GroupDetailsPage() {
                     value={selectedPlayerId}
                     onChange={(e) => setSelectedPlayerId(e.target.value)}
                     required
-                    className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none transition-colors"
+                    className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors"
                   >
                     {availablePlayers.map((p) => (
                       <option key={p.id} value={p.id}>
-                        {p.firstName} {p.lastName} ({p.gender === 'MALE' ? (isAr ? 'ذكر' : 'Male') : (isAr ? 'أنثى' : 'Female')} - {isAr ? 'مواليد' : 'DOB'}{' '}
-                        {p.dateOfBirth})
+                        {p.firstName} {p.lastName} (
+                        {p.gender === 'MALE' ? (isAr ? 'ذكر' : 'Male') : isAr ? 'أنثى' : 'Female'} -{' '}
+                        {isAr ? 'مواليد' : 'DOB'} {p.dateOfBirth})
                       </option>
                     ))}
                   </select>
                 )}
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-[var(--border-subtle)]">
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-(--border-subtle)">
                 <button
                   type="button"
                   onClick={() => setIsAddMemberModalOpen(false)}
-                  className="px-4 py-2 text-xs text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer"
+                  className="px-4 py-2 text-xs text-(--text-muted) hover:text-(--text-main) transition-colors cursor-pointer"
                 >
-                  إلغاء
+                  {isAr ? 'إلغاء' : 'Cancel'}
                 </button>
                 <button
                   type="submit"
                   id="btn-submit-add-member"
                   disabled={submittingAction || availablePlayers.length === 0}
-                  className="rounded-xl bg-[var(--accent-primary)] text-white px-4 py-2 text-xs font-bold hover:brightness-110 disabled:opacity-50 cursor-pointer"
+                  className="rounded-xl bg-(--accent-primary) text-white px-4 py-2 text-xs font-bold hover:brightness-110 disabled:opacity-50 cursor-pointer"
                 >
-                  {submittingAction ? (isAr ? 'جارٍ الحفظ...' : 'Adding...') : (isAr ? 'تأكيد الإضافة' : 'Confirm Add')}
+                  {submittingAction
+                    ? isAr
+                      ? 'جارٍ الحفظ...'
+                      : 'Adding...'
+                    : isAr
+                      ? 'تأكيد الإضافة'
+                      : 'Confirm Add'}
                 </button>
               </div>
             </form>
@@ -737,13 +848,15 @@ export default function GroupDetailsPage() {
       {/* MODAL: ADD COACH */}
       {isAddCoachModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="w-full max-w-md rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-2xl relative space-y-5">
-            <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-4">
-              <h3 className="text-base font-bold text-[var(--text-main)]">{isAr ? 'تعيين مدرب للمجموعة' : 'Assign Squad Coach'}</h3>
+          <div className="w-full max-w-md rounded-2xl border border-(--border-subtle) bg-[var(--bg-surface)] p-6 shadow-2xl relative space-y-5">
+            <div className="flex items-center justify-between border-b border-(--border-subtle) pb-4">
+              <h3 className="text-base font-bold text-(--text-main)">
+                {isAr ? 'تعيين مدرب للمجموعة' : 'Assign Squad Coach'}
+              </h3>
               <button
                 type="button"
                 onClick={() => setIsAddCoachModalOpen(false)}
-                className="p-1 text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer"
+                className="p-1 text-(--text-muted) hover:text-(--text-main) transition-colors cursor-pointer"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -759,13 +872,15 @@ export default function GroupDetailsPage() {
               <div>
                 <label
                   htmlFor="select-coach-user"
-                  className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5"
+                  className="block text-xs font-semibold text-(--text-muted) mb-1.5"
                 >
                   {isAr ? 'اختر المدرب من طاقم الأكاديمية' : 'Select coach from academy staff'}
                 </label>
                 {availableStaff.length === 0 ? (
                   <p className="text-xs text-amber-500">
-                    {isAr ? 'لا يوجد أعضاء طاقم بدور مدرب متاحين حالياً.' : 'No available coaching staff found.'}
+                    {isAr
+                      ? 'لا يوجد أعضاء طاقم بدور مدرب متاحين حالياً.'
+                      : 'No available coaching staff found.'}
                   </p>
                 ) : (
                   <select
@@ -773,7 +888,7 @@ export default function GroupDetailsPage() {
                     value={selectedCoachUserId}
                     onChange={(e) => setSelectedCoachUserId(e.target.value)}
                     required
-                    className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none transition-colors"
+                    className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors"
                   >
                     {availableStaff.map((s) => (
                       <option key={s.user.id} value={s.user.id}>
@@ -790,28 +905,34 @@ export default function GroupDetailsPage() {
                   id="checkbox-head-coach"
                   checked={isHeadCoach}
                   onChange={(e) => setIsHeadCoach(e.target.checked)}
-                  className="rounded border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] text-[var(--accent-primary)] focus:ring-[var(--accent-primary)]"
+                  className="rounded border-(--border-subtle) bg-(--bg-surface-subtle) text-[var(--accent-primary)] focus:ring-(--accent-primary)"
                 />
-                <label htmlFor="checkbox-head-coach" className="text-xs text-[var(--text-main)]">
+                <label htmlFor="checkbox-head-coach" className="text-xs text-(--text-main)">
                   {isAr ? 'تعيين كمدرب رئيسي للمجموعة (Head Coach)' : 'Assign as Head Coach'}
                 </label>
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-[var(--border-subtle)]">
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-(--border-subtle)">
                 <button
                   type="button"
                   onClick={() => setIsAddCoachModalOpen(false)}
-                  className="px-4 py-2 text-xs text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer"
+                  className="px-4 py-2 text-xs text-(--text-muted) hover:text-(--text-main) transition-colors cursor-pointer"
                 >
-                  إلغاء
+                  {isAr ? 'إلغاء' : 'Cancel'}
                 </button>
                 <button
                   type="submit"
                   id="btn-submit-add-coach"
                   disabled={submittingAction || availableStaff.length === 0}
-                  className="rounded-xl bg-[var(--accent-primary)] text-white px-4 py-2 text-xs font-bold hover:brightness-110 disabled:opacity-50 cursor-pointer"
+                  className="rounded-xl bg-(--accent-primary) text-white px-4 py-2 text-xs font-bold hover:brightness-110 disabled:opacity-50 cursor-pointer"
                 >
-                  {submittingAction ? (isAr ? 'جارٍ الحفظ...' : 'Assigning...') : (isAr ? 'تأكيد التعيين' : 'Confirm Assign')}
+                  {submittingAction
+                    ? isAr
+                      ? 'جارٍ الحفظ...'
+                      : 'Assigning...'
+                    : isAr
+                      ? 'تأكيد التعيين'
+                      : 'Confirm Assign'}
                 </button>
               </div>
             </form>
@@ -822,15 +943,15 @@ export default function GroupDetailsPage() {
       {/* MODAL: ADD SCHEDULE */}
       {isAddScheduleModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="w-full max-w-md rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-2xl relative space-y-5">
-            <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-4">
-              <h3 className="text-base font-bold text-[var(--text-main)]">
+          <div className="w-full max-w-md rounded-2xl border border-(--border-subtle) bg-[var(--bg-surface)] p-6 shadow-2xl relative space-y-5">
+            <div className="flex items-center justify-between border-b border-(--border-subtle) pb-4">
+              <h3 className="text-base font-bold text-(--text-main)">
                 {isAr ? 'إضافة موعد تدريبي أسبوعي' : 'Add Weekly Pitch Schedule'}
               </h3>
               <button
                 type="button"
                 onClick={() => setIsAddScheduleModalOpen(false)}
-                className="p-1 text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer"
+                className="p-1 text-(--text-muted) hover:text-(--text-main) transition-colors cursor-pointer"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -846,7 +967,7 @@ export default function GroupDetailsPage() {
               <div>
                 <label
                   htmlFor="select-schedule-day"
-                  className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5"
+                  className="block text-xs font-semibold text-(--text-muted) mb-1.5"
                 >
                   يوم الأسبوع
                 </label>
@@ -857,7 +978,7 @@ export default function GroupDetailsPage() {
                     setScheduleForm({ ...scheduleForm, dayOfWeek: Number(e.target.value) })
                   }
                   required
-                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none transition-colors"
+                  className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors"
                 >
                   {DAYS_OF_WEEK.map((day, idx) => (
                     <option key={idx} value={idx}>
@@ -871,7 +992,7 @@ export default function GroupDetailsPage() {
                 <div>
                   <label
                     htmlFor="input-start-time"
-                    className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5"
+                    className="block text-xs font-semibold text-(--text-muted) mb-1.5"
                   >
                     وقت البدء (HH:MM)
                   </label>
@@ -883,13 +1004,13 @@ export default function GroupDetailsPage() {
                       setScheduleForm({ ...scheduleForm, startTime: e.target.value })
                     }
                     required
-                    className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none transition-colors"
+                    className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors"
                   />
                 </div>
                 <div>
                   <label
                     htmlFor="input-end-time"
-                    className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5"
+                    className="block text-xs font-semibold text-(--text-muted) mb-1.5"
                   >
                     وقت الانتهاء (HH:MM)
                   </label>
@@ -899,7 +1020,7 @@ export default function GroupDetailsPage() {
                     value={scheduleForm.endTime}
                     onChange={(e) => setScheduleForm({ ...scheduleForm, endTime: e.target.value })}
                     required
-                    className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none transition-colors"
+                    className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors"
                   />
                 </div>
               </div>
@@ -907,7 +1028,7 @@ export default function GroupDetailsPage() {
               <div>
                 <label
                   htmlFor="input-schedule-location"
-                  className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5"
+                  className="block text-xs font-semibold text-(--text-muted) mb-1.5"
                 >
                   المكان / الملعب
                 </label>
@@ -917,25 +1038,31 @@ export default function GroupDetailsPage() {
                   value={scheduleForm.location}
                   onChange={(e) => setScheduleForm({ ...scheduleForm, location: e.target.value })}
                   placeholder={isAr ? 'مثال: الملعب الرئيسي A' : 'e.g. Main Pitch A'}
-                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none transition-colors"
+                  className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-[var(--border-subtle)]">
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-(--border-subtle)">
                 <button
                   type="button"
                   onClick={() => setIsAddScheduleModalOpen(false)}
-                  className="px-4 py-2 text-xs text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer"
+                  className="px-4 py-2 text-xs text-(--text-muted) hover:text-(--text-main) transition-colors cursor-pointer"
                 >
-                  إلغاء
+                  {isAr ? 'إلغاء' : 'Cancel'}
                 </button>
                 <button
                   type="submit"
                   id="btn-submit-add-schedule"
                   disabled={submittingAction}
-                  className="rounded-xl bg-[var(--accent-primary)] text-white px-4 py-2 text-xs font-bold hover:brightness-110 disabled:opacity-50 cursor-pointer"
+                  className="rounded-xl bg-(--accent-primary) text-white px-4 py-2 text-xs font-bold hover:brightness-110 disabled:opacity-50 cursor-pointer"
                 >
-                  {submittingAction ? (isAr ? 'جارٍ الحفظ...' : 'Saving...') : (isAr ? 'حفظ الموعد' : 'Save Schedule')}
+                  {submittingAction
+                    ? isAr
+                      ? 'جارٍ الحفظ...'
+                      : 'Saving...'
+                    : isAr
+                      ? 'حفظ الموعد'
+                      : 'Save Schedule'}
                 </button>
               </div>
             </form>

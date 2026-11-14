@@ -35,11 +35,15 @@ export function SportexusLogo({
     >
       {/* Dynamic S Logo Symbol with Football */}
       <div
+        style={{ width: '40px', height: '40px', maxWidth: '100%' }}
         className={`relative shrink-0 flex items-center justify-center transition-transform duration-200 group-hover:scale-105 ${sizeClasses.symbol}`}
       >
         <svg
+          width="40"
+          height="40"
           viewBox="0 0 240 240"
           fill="none"
+          style={{ width: '100%', height: '100%', maxWidth: '48px', maxHeight: '48px' }}
           className="w-full h-full drop-shadow-[0_4px_12px_rgba(10,59,255,0.25)]"
         >
           <defs>
@@ -112,7 +116,7 @@ export function SportexusLogo({
                   ? 'text-[#0F172A]'
                   : theme === 'dark'
                     ? 'text-white'
-                    : 'text-[var(--text-main)]'
+                    : 'text-(--text-main)'
               } ${sizeClasses.text}`}
             >
               Sport
@@ -128,13 +132,13 @@ export function SportexusLogo({
           </div>
 
           <span
-            className={`font-bold tracking-[0.22em] uppercase text-[var(--text-muted)] mt-1 ${sizeClasses.subtitle}`}
+            className={`font-bold tracking-[0.22em] uppercase text-(--text-muted) mt-1 ${sizeClasses.subtitle}`}
           >
             ACADEMY PLATFORM
           </span>
 
           {showTagline && (
-            <span className="text-[11px] font-medium text-[var(--text-muted)] mt-0.5 tracking-normal">
+            <span className="text-[11px] font-medium text-(--text-muted) mt-0.5 tracking-normal">
               One Platform. Every Academy.
             </span>
           )}

@@ -40,23 +40,23 @@ export function FilterBar({
   const currentSearch = searchTerm ?? searchValue ?? '';
 
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-3 shadow-sm">
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-(--border-app) bg-[var(--bg-surface)] p-3 shadow-sm">
       {/* Search Input */}
       <div className="relative flex-1 min-w-[220px]">
-        <Search className="absolute start-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--text-muted)] pointer-events-none" />
+        <Search className="absolute inset-s-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-(--text-muted) pointer-events-none" />
         <input
           id="global-page-search"
           type="text"
           value={currentSearch}
           onChange={(e) => onSearchChange(e.target.value)}
           placeholder={searchPlaceholder || t('common.search', 'بحث...')}
-          className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] py-2 ps-9 pe-9 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:ring-1 focus:ring-[var(--accent-primary)] focus:bg-[var(--bg-surface)] transition-all outline-none"
+          className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) py-2 ps-9 pe-9 text-xs text-(--text-main) placeholder-(--text-muted) focus:border-(--accent-primary) focus:ring-1 focus:ring-(--accent-primary) focus:bg-[var(--bg-surface)] transition-all outline-none"
         />
         {currentSearch && (
           <button
             type="button"
             onClick={() => onSearchChange('')}
-            className="absolute end-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors"
+            className="absolute end-3 top-1/2 -translate-y-1/2 text-(--text-muted) hover:text-(--text-main) transition-colors"
           >
             <X className="h-3.5 w-3.5" />
           </button>
@@ -69,12 +69,12 @@ export function FilterBar({
           {filters?.map((f) => (
             <div key={f.id} className="flex items-center gap-1.5">
               {f.label && (
-                <span className="text-xs text-[var(--text-muted)] font-medium">{f.label}:</span>
+                <span className="text-xs text-(--text-muted) font-medium">{f.label}:</span>
               )}
               <select
                 value={f.value}
                 onChange={(e) => f.onChange(e.target.value)}
-                className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-2.5 py-1.5 text-xs text-[var(--text-main)] outline-none focus:border-[var(--accent-primary)] transition-colors cursor-pointer"
+                className="rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-2.5 py-1.5 text-xs text-(--text-main) outline-none focus:border-(--accent-primary) transition-colors cursor-pointer"
               >
                 {f.options.map((opt) => (
                   <option key={opt.value} value={opt.value}>

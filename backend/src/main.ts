@@ -1,11 +1,12 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import cookieParser from 'cookie-parser';
+import express from 'express';
 import { AppModule } from './app.module';
 import { AppConfigService } from './config/app-config.service';
 import { correlationMiddleware } from './common/correlation.middleware';
 import { securityHeadersMiddleware } from './common/security-headers.middleware';
-import { ZodExceptionFilter } from './common/zod-exception.filter';
+import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -14,6 +15,9 @@ async function bootstrap() {
 
   const config = app.get(AppConfigService);
 
+  // Request parsing with size protection
+  app.use(express.json({ limit: '10mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '10mb' }));
   app.use(cookieParser());
   app.use(correlationMiddleware);
   app.use(securityHeadersMiddleware);
@@ -67,8 +71,8 @@ async function bootstrap() {
 
   app.setGlobalPrefix('v1');
 
-  // Convert Zod validation errors to 400 Bad Request (not 500)
-  app.useGlobalFilters(new ZodExceptionFilter());
+  // Global exception filter for unified, production-grade error response contract
+  app.useGlobalFilters(new GlobalExceptionFilter());
 
   await app.listen(config.port, '0.0.0.0');
 }

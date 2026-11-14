@@ -146,7 +146,7 @@ Connected Database Identity:
    - **Before:** `<div className="flex items-center gap-2 border-b ... overflow-x-auto">`. Inside a flex layout without constrained min-width, the 9 horizontal tabs forced the flex container to expand, causing the **entire page** to scroll horizontally.
    - **After:**
      ```tsx
-     <div className="w-full max-w-full min-w-0 border-b border-[var(--border-subtle)] overflow-x-auto scrollbar-none py-1">
+     <div className="w-full max-w-full min-w-0 border-b border-(--border-subtle) overflow-x-auto scrollbar-none py-1">
        <div className="flex items-center gap-1.5 sm:gap-2 min-w-max pb-0.5">...</div>
      </div>
      ```

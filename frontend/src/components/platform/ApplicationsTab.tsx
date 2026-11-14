@@ -140,7 +140,7 @@ export function ApplicationsTab({
       {/* Search and Filters */}
       <div className="flex flex-col sm:flex-row items-center gap-3">
         <div className="relative flex-1 w-full">
-          <Search className="w-4 h-4 absolute top-1/2 -translate-y-1/2 start-3 text-[var(--text-muted)]" />
+          <Search className="w-4 h-4 absolute top-1/2 -translate-y-1/2 inset-s-3 text-(--text-muted)" />
           <input
             type="text"
             value={searchQuery}
@@ -150,16 +150,16 @@ export function ApplicationsTab({
                 ? 'بحث باسم الأكاديمية، مقدم الطلب، أو البريد...'
                 : 'Search academy name, applicant, or email...'
             }
-            className="w-full ps-9 pe-3 py-2 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-sm text-[var(--text-main)] focus:outline-none focus:border-emerald-500 transition-colors"
+            className="w-full ps-9 pe-3 py-2 rounded-xl bg-[var(--bg-surface)] border border-(--border-subtle) text-sm text-(--text-main) focus:outline-none focus:border-emerald-500 transition-colors"
           />
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto">
-          <Filter className="w-4 h-4 text-[var(--text-muted)] shrink-0" />
+          <Filter className="w-4 h-4 text-(--text-muted) shrink-0" />
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-xs font-medium text-[var(--text-main)] focus:outline-none focus:border-emerald-500"
+            className="px-3 py-2 rounded-xl bg-[var(--bg-surface)] border border-(--border-subtle) text-xs font-medium text-(--text-main) focus:outline-none focus:border-emerald-500"
           >
             <option value="ALL">{locale === 'ar' ? 'جميع الحالات' : 'All Statuses'}</option>
             <option value="PENDING_REVIEW">
@@ -176,12 +176,12 @@ export function ApplicationsTab({
 
       {/* Applications Cards / Table */}
       {filteredApplications.length === 0 ? (
-        <div className="py-16 text-center rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)]">
-          <Inbox className="w-10 h-10 mx-auto text-[var(--text-muted)] opacity-50 mb-3" />
-          <h4 className="text-sm font-bold text-[var(--text-main)]">
+        <div className="py-16 text-center rounded-2xl border border-(--border-subtle) bg-[var(--bg-surface)]">
+          <Inbox className="w-10 h-10 mx-auto text-(--text-muted) opacity-50 mb-3" />
+          <h4 className="text-sm font-bold text-(--text-main)">
             {locale === 'ar' ? 'لا توجد طلبات انضمام' : 'No applications found'}
           </h4>
-          <p className="text-xs text-[var(--text-muted)] mt-1">
+          <p className="text-xs text-(--text-muted) mt-1">
             {locale === 'ar'
               ? 'تظهر هنا جميع طلبات إنشاء الأكاديميات الواردة من الصفحة العامة للمراجعة والاعتماد.'
               : 'Academy registration requests submitted via the public landing page appear here.'}
@@ -192,21 +192,21 @@ export function ApplicationsTab({
           {filteredApplications.map((app) => (
             <div
               key={app.id}
-              className="p-5 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] shadow-sm hover:border-[var(--border-app)] transition-all space-y-3"
+              className="p-5 rounded-2xl border border-(--border-subtle) bg-[var(--bg-surface)] shadow-sm hover:border-(--border-app) transition-all space-y-3"
             >
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[var(--border-subtle)] pb-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-(--border-subtle) pb-3">
                 <div className="flex items-center gap-3">
                   <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400">
                     <Building className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold text-[var(--text-main)] flex items-center gap-2">
+                    <h3 className="text-sm font-bold text-(--text-main) flex items-center gap-2">
                       {app.academyName}
-                      <span className="text-xs font-mono font-normal text-[var(--text-muted)]">
+                      <span className="text-xs font-mono font-normal text-(--text-muted)">
                         ({app.academySlug})
                       </span>
                     </h3>
-                    <div className="flex items-center gap-3 text-xs text-[var(--text-muted)] mt-0.5">
+                    <div className="flex items-center gap-3 text-xs text-(--text-muted) mt-0.5">
                       <span className="flex items-center gap-1">
                         <User className="w-3.5 h-3.5" /> {app.applicantName}
                       </span>
@@ -245,15 +245,15 @@ export function ApplicationsTab({
 
               {/* Details grid */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                <div className="flex items-center gap-2 text-[var(--text-muted)]">
+                <div className="flex items-center gap-2 text-(--text-muted)">
                   <Mail className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                   <span className="truncate">{app.contactEmail}</span>
                 </div>
-                <div className="flex items-center gap-2 text-[var(--text-muted)]">
+                <div className="flex items-center gap-2 text-(--text-muted)">
                   <Phone className="w-3.5 h-3.5 text-blue-400 shrink-0" />
                   <span>{app.contactPhone || '-'}</span>
                 </div>
-                <div className="flex items-center gap-2 text-[var(--text-muted)]">
+                <div className="flex items-center gap-2 text-(--text-muted)">
                   <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                   <span>
                     {new Date(app.createdAt).toLocaleDateString(
@@ -265,8 +265,8 @@ export function ApplicationsTab({
               </div>
 
               {app.notes && (
-                <div className="p-3 rounded-xl bg-[var(--bg-surface-subtle)] text-xs text-[var(--text-muted)]">
-                  <span className="font-semibold text-[var(--text-main)] block mb-0.5">
+                <div className="p-3 rounded-xl bg-(--bg-surface-subtle) text-xs text-(--text-muted)">
+                  <span className="font-semibold text-(--text-main) block mb-0.5">
                     {locale === 'ar' ? 'ملاحظات مقدم الطلب:' : 'Applicant Notes:'}
                   </span>
                   {app.notes}
@@ -295,14 +295,14 @@ export function ApplicationsTab({
           onClick={() => setReviewingApp(null)}
         >
           <div
-            className="w-full max-w-lg rounded-2xl border border-[var(--border-app)] bg-[var(--bg-card)] p-6 shadow-2xl space-y-4"
+            className="w-full max-w-lg rounded-2xl border border-(--border-app) bg-[var(--bg-card)] p-6 shadow-2xl space-y-4"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="border-b border-[var(--border-subtle)] pb-3">
-              <h3 className="text-base font-bold text-[var(--text-main)]">
+            <div className="border-b border-(--border-subtle) pb-3">
+              <h3 className="text-base font-bold text-(--text-main)">
                 {locale === 'ar' ? 'مراجعة طلب تأسيس أكاديمية' : 'Review Academy Application'}
               </h3>
-              <p className="text-xs text-[var(--text-muted)] mt-0.5">
+              <p className="text-xs text-(--text-muted) mt-0.5">
                 {reviewingApp.academyName} ({reviewingApp.academySlug})
               </p>
             </div>
@@ -310,7 +310,7 @@ export function ApplicationsTab({
             <form onSubmit={handleSubmitReview} className="space-y-4">
               {/* Decision radio */}
               <div className="space-y-2">
-                <label className="text-xs font-semibold text-[var(--text-main)]">
+                <label className="text-xs font-semibold text-(--text-main)">
                   {locale === 'ar' ? 'القرار الإداري' : 'Administrative Decision'}
                 </label>
                 <div className="grid grid-cols-3 gap-2">
@@ -320,7 +320,7 @@ export function ApplicationsTab({
                     className={`py-2 px-3 rounded-xl border text-xs font-semibold flex flex-col items-center gap-1 transition-all ${
                       reviewStatus === 'APPROVED'
                         ? 'border-emerald-500 bg-emerald-500/15 text-emerald-400'
-                        : 'border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] text-[var(--text-muted)]'
+                        : 'border-(--border-subtle) bg-(--bg-surface-subtle) text-(--text-muted)'
                     }`}
                   >
                     <CheckCircle2 className="w-4 h-4" />
@@ -333,7 +333,7 @@ export function ApplicationsTab({
                     className={`py-2 px-3 rounded-xl border text-xs font-semibold flex flex-col items-center gap-1 transition-all ${
                       reviewStatus === 'MORE_INFO_REQUESTED'
                         ? 'border-blue-500 bg-blue-500/15 text-blue-400'
-                        : 'border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] text-[var(--text-muted)]'
+                        : 'border-(--border-subtle) bg-(--bg-surface-subtle) text-(--text-muted)'
                     }`}
                   >
                     <HelpCircle className="w-4 h-4" />
@@ -346,7 +346,7 @@ export function ApplicationsTab({
                     className={`py-2 px-3 rounded-xl border text-xs font-semibold flex flex-col items-center gap-1 transition-all ${
                       reviewStatus === 'REJECTED'
                         ? 'border-rose-500 bg-rose-500/15 text-rose-400'
-                        : 'border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] text-[var(--text-muted)]'
+                        : 'border-(--border-subtle) bg-(--bg-surface-subtle) text-(--text-muted)'
                     }`}
                   >
                     <XCircle className="w-4 h-4" />
@@ -405,7 +405,7 @@ export function ApplicationsTab({
 
               {/* Review notes */}
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-[var(--text-main)]">
+                <label className="text-xs font-semibold text-(--text-main)">
                   {locale === 'ar'
                     ? 'ملاحظات المراجعة (تُرسل لمقدم الطلب)'
                     : 'Decision Notes (sent to applicant)'}
@@ -419,16 +419,16 @@ export function ApplicationsTab({
                       ? 'أدخل أي ملاحظات أو توجيهات لمقدم الطلب...'
                       : 'Enter optional guidance or rationale for the applicant...'
                   }
-                  className="w-full px-3 py-2 rounded-xl bg-[var(--bg-surface-subtle)] border border-[var(--border-subtle)] text-xs text-[var(--text-main)] focus:outline-none focus:border-emerald-500"
+                  className="w-full px-3 py-2 rounded-xl bg-(--bg-surface-subtle) border border-(--border-subtle) text-xs text-(--text-main) focus:outline-none focus:border-emerald-500"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-[var(--border-subtle)]">
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-(--border-subtle)">
                 <button
                   type="button"
                   onClick={() => setReviewingApp(null)}
                   disabled={isSubmitting}
-                  className="px-4 py-2 text-xs font-semibold rounded-xl bg-[var(--bg-card-hover)] text-[var(--text-muted)]"
+                  className="px-4 py-2 text-xs font-semibold rounded-xl bg-[var(--bg-card-hover)] text-(--text-muted)"
                 >
                   {locale === 'ar' ? 'إلغاء' : 'Cancel'}
                 </button>

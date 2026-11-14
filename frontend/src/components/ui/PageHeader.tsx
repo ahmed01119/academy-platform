@@ -1,8 +1,6 @@
 'use client';
 
 import React from 'react';
-import Link from 'next/link';
-import { ChevronRight } from 'lucide-react';
 
 export interface BreadcrumbItem {
   label: string;
@@ -12,6 +10,10 @@ export interface BreadcrumbItem {
 export interface PageHeaderProps {
   title: string;
   description?: string;
+  /**
+   * Breadcrumbs are displayed exclusively in the top navigation bar (Topbar)
+   * to maintain a clean layout without duplicate breadcrumb trails.
+   */
   breadcrumbs?: BreadcrumbItem[];
   badge?: React.ReactNode;
   actions?: React.ReactNode;
@@ -22,7 +24,7 @@ export interface PageHeaderProps {
 export function PageHeader({
   title,
   description,
-  breadcrumbs,
+  breadcrumbs: _breadcrumbs,
   badge,
   actions,
   icon: Icon,
@@ -33,50 +35,23 @@ export function PageHeader({
     if (React.isValidElement(Icon)) return Icon;
     const IconComponent = Icon as React.ComponentType<{ className?: string }>;
     return (
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--accent-primary)]/10 text-[var(--accent-primary)]">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-(--accent-primary)/10 text-[var(--accent-primary)]">
         <IconComponent className="h-5 w-5" />
       </div>
     );
   };
   return (
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-2 border-b border-[var(--border-subtle)]">
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-2 border-b border-(--border-subtle)">
       <div className="space-y-1">
-        {breadcrumbs && breadcrumbs.length > 0 && (
-          <nav
-            aria-label="Breadcrumb"
-            className="flex items-center gap-1.5 text-xs text-[var(--text-muted)] mb-1"
-          >
-            {breadcrumbs.map((crumb, idx) => {
-              const isLast = idx === breadcrumbs.length - 1;
-              return (
-                <React.Fragment key={crumb.label}>
-                  {idx > 0 && <ChevronRight className="h-3 w-3 rtl:rotate-180 opacity-60" />}
-                  {isLast || !crumb.href ? (
-                    <span className={isLast ? 'text-[var(--text-main)] font-medium' : ''}>
-                      {crumb.label}
-                    </span>
-                  ) : (
-                    <Link
-                      href={crumb.href}
-                      className="hover:text-[var(--accent-primary)] transition-colors"
-                    >
-                      {crumb.label}
-                    </Link>
-                  )}
-                </React.Fragment>
-              );
-            })}
-          </nav>
-        )}
         <div className="flex items-center gap-2.5 flex-wrap">
           {renderIcon()}
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[var(--text-main)]">
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-(--text-main)">
             {title}
           </h1>
           {badge}
         </div>
         {description && (
-          <p className="text-xs sm:text-sm text-[var(--text-muted)] max-w-2xl leading-relaxed">
+          <p className="text-xs sm:text-sm text-(--text-muted) max-w-2xl leading-relaxed">
             {description}
           </p>
         )}

@@ -2,6 +2,14 @@
  * Cache static shell and brand assets only.
  * NEVER cache /v1 API, /version.json, /sw.js, cookies, or authenticated HTML.
  */
+
+// If running on local development/host, self-unregister immediately to prevent stale chunk 404s
+if (typeof self !== 'undefined' && self.location && (self.location.hostname === 'localhost' || self.location.hostname === '127.0.0.1' || self.location.hostname === '[::1]')) {
+  if (self.registration && typeof self.registration.unregister === 'function') {
+    self.registration.unregister();
+  }
+}
+
 const VERSION = 'sportexus-shell-6e2f9b0d1d3a-mvu8sufe';
 const PRECACHE = ['/offline', '/manifest.webmanifest', '/icon', '/apple-icon'];
 

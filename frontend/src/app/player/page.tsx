@@ -8,6 +8,7 @@ import { translateDataString } from '@/utils/data-translator';
 import { apiClient } from '@/api/client';
 import { AppShell } from '../../components/layout/AppShell';
 import { PageHeader } from '../../components/ui/PageHeader';
+import { PageSkeleton } from '@/components/ui/skeleton';
 import {
   CalendarCheck,
   Award,
@@ -25,32 +26,51 @@ import type {
   PlayerQrCardResponse,
 } from '@academy/shared';
 
+type PlayerData = {
+  profile: PlayerPortalProfile;
+  upcomingSessions: Array<{
+    id: string;
+    sessionDate: string;
+    startTime: string;
+    endTime: string;
+    groupName: string;
+    branchName?: string;
+  }>;
+  attendanceSummary: {
+    totalEligible: number;
+    present: number;
+    late: number;
+    absent: number;
+    attendanceRate: number;
+  };
+  recentEvaluations: PlayerPortalEvaluation[];
+};
+
+interface PlayerCacheData {
+  data: PlayerData | null;
+  qrCard: PlayerQrCardResponse | null;
+}
+
+function getStoredPlayerCache(cacheKey: string): PlayerCacheData | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(cacheKey);
+    return raw ? (JSON.parse(raw) as PlayerCacheData) : null;
+  } catch {
+    return null;
+  }
+}
+
 export default function PlayerPortalPage() {
   const { user, isLoading: authLoading } = useAuth();
   const { locale } = useLocale();
   const router = useRouter();
   const ar = locale === 'ar';
 
-  const [data, setData] = useState<{
-    profile: PlayerPortalProfile;
-    upcomingSessions: Array<{
-      id: string;
-      sessionDate: string;
-      startTime: string;
-      endTime: string;
-      groupName: string;
-      branchName?: string;
-    }>;
-    attendanceSummary: {
-      totalEligible: number;
-      present: number;
-      late: number;
-      absent: number;
-      attendanceRate: number;
-    };
-    recentEvaluations: PlayerPortalEvaluation[];
-  } | null>(null);
-
+  const cacheKey = user ? `sportexus_player_${user.id}` : 'sportexus_player';
+  // Client-safe state initialization to prevent React hydration mismatch (#418)
+  const [cachedData, setCachedData] = useState<PlayerCacheData | null>(null);
+  const [data, setData] = useState<PlayerData | null>(null);
   const [claimTokenInput, setClaimTokenInput] = useState('');
   const [claimStatus, setClaimStatus] = useState<{
     type: 'success' | 'error';
@@ -61,8 +81,21 @@ export default function PlayerPortalPage() {
   const [qrCard, setQrCard] = useState<PlayerQrCardResponse | null>(null);
   const [showQrCardModal, setShowQrCardModal] = useState(false);
 
+  // Hydrate cache on client mount
+  useEffect(() => {
+    const cached = getStoredPlayerCache(cacheKey);
+    if (cached) {
+      setCachedData(cached);
+      if (cached.data) setData(cached.data);
+      if (cached.qrCard) setQrCard(cached.qrCard);
+      setIsLoading(false);
+    }
+  }, [cacheKey]);
+
   const loadPlayerData = React.useCallback(async () => {
-    setIsLoading(true);
+    if (!cachedData) {
+      setIsLoading(true);
+    }
     try {
       const [res, cardRes] = await Promise.all([
         apiClient.portal.getPlayerProfile(),
@@ -70,13 +103,23 @@ export default function PlayerPortalPage() {
       ]);
       setData(res);
       setQrCard(cardRes);
+
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(cacheKey, JSON.stringify({ data: res, qrCard: cardRes }));
+        } catch {
+          // Ignore
+        }
+      }
     } catch {
-      setData(null);
-      setQrCard(null);
+      if (!cachedData) {
+        setData(null);
+        setQrCard(null);
+      }
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [cacheKey, cachedData]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -96,14 +139,18 @@ export default function PlayerPortalPage() {
       const res = await apiClient.portal.redeemClaimToken(claimTokenInput.trim());
       setClaimStatus({
         type: 'success',
-        text: res.message || (ar ? 'تم ربط ملف اللاعب بحسابك بنجاح!' : 'Player profile successfully linked!'),
+        text:
+          res.message ||
+          (ar ? 'تم ربط ملف اللاعب بحسابك بنجاح!' : 'Player profile successfully linked!'),
       });
       setClaimTokenInput('');
       await loadPlayerData();
     } catch (err: unknown) {
       setClaimStatus({
         type: 'error',
-        text: (err as Error)?.message || (ar ? 'رمز المطالبة غير صالح أو منتهي الصلاحية' : 'Invalid or expired claim code'),
+        text:
+          (err as Error)?.message ||
+          (ar ? 'رمز المطالبة غير صالح أو منتهي الصلاحية' : 'Invalid or expired claim code'),
       });
     } finally {
       setIsClaiming(false);
@@ -113,14 +160,7 @@ export default function PlayerPortalPage() {
   if (authLoading || isLoading) {
     return (
       <AppShell>
-        <div className="flex h-[60vh] items-center justify-center">
-          <div className="flex flex-col items-center gap-3">
-            <RefreshCw className="h-8 w-8 animate-spin text-[var(--accent-primary)]" />
-            <p className="text-sm font-medium text-[var(--text-muted)]">
-              {ar ? 'جارٍ تحميل بوابة اللاعب الرياضي...' : 'Loading Player Portal...'}
-            </p>
-          </div>
-        </div>
+        <PageSkeleton variant="detail" />
       </AppShell>
     );
   }
@@ -130,16 +170,16 @@ export default function PlayerPortalPage() {
     return (
       <AppShell>
         <div className="py-8">
-          <div className="mx-auto max-w-xl rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-8 text-center space-y-6 shadow-sm">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--badge-bg)] text-[var(--accent-primary)]">
+          <div className="mx-auto max-w-xl rounded-2xl border border-(--border-subtle) bg-[var(--bg-surface)] p-8 text-center space-y-6 shadow-sm">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-(--badge-bg) text-[var(--accent-primary)]">
               <KeyRound className="h-8 w-8" />
             </div>
 
             <div>
-              <h1 className="text-2xl font-bold text-[var(--text-main)]">
+              <h1 className="text-2xl font-bold text-(--text-main)">
                 {ar ? 'ربط ملف اللاعب بحسابك' : 'Claim Your Player Profile'}
               </h1>
-              <p className="text-sm text-[var(--text-muted)] mt-2 leading-relaxed">
+              <p className="text-sm text-(--text-muted) mt-2 leading-relaxed">
                 {ar
                   ? 'لم يتم ربط حسابك بملف لاعب حتى الآن. يرجى إدخال رمز المطالبة (Claim Code) الممنوح لك من قِبل إدارة الأكاديمية.'
                   : 'Your account is not linked to an athlete record yet. Enter the activation token provided by the coaching staff.'}
@@ -160,7 +200,7 @@ export default function PlayerPortalPage() {
 
             <form onSubmit={handleClaimAccount} className="space-y-4 text-start">
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">
+                <label className="block text-xs font-semibold text-(--text-muted) mb-1.5">
                   {ar ? 'رمز المطالبة (Claim Code):' : 'Claim Token / Code:'}
                 </label>
                 <input
@@ -169,14 +209,14 @@ export default function PlayerPortalPage() {
                   placeholder="ACAD-A7F2"
                   value={claimTokenInput}
                   onChange={(e) => setClaimTokenInput(e.target.value)}
-                  className="w-full font-mono text-center tracking-widest text-lg font-bold rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-4 py-3 text-[var(--text-main)] placeholder:text-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:outline-none"
+                  className="w-full font-mono text-center tracking-widest text-lg font-bold rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-4 py-3 text-(--text-main) placeholder:text-(--text-muted) focus:border-(--accent-primary) focus:outline-none"
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={isClaiming}
-                className="w-full rounded-xl bg-[var(--accent-primary)] py-3 text-sm font-bold text-white hover:brightness-110 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm disabled:opacity-50"
+                className="w-full rounded-xl bg-(--accent-primary) py-3 text-sm font-bold text-white hover:brightness-110 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm disabled:opacity-50"
               >
                 {isClaiming ? (
                   <RefreshCw className="h-4 w-4 animate-spin" />
@@ -187,7 +227,7 @@ export default function PlayerPortalPage() {
               </button>
             </form>
 
-            <p className="text-xs text-[var(--text-muted)]">
+            <p className="text-xs text-(--text-muted)">
               {ar
                 ? 'للحصول على رمز المطالبة، يرجى التواصل مع إدارة فرع الأكاديمية أو المدرب المسؤول.'
                 : 'Contact your academy desk or coach to receive your secure claim code.'}
@@ -214,7 +254,7 @@ export default function PlayerPortalPage() {
       <div className="space-y-8">
         <PageHeader
           breadcrumbs={[
-            { label: ar ? 'الرئيسية' : 'Home', href: '/dashboard' },
+            { label: ar ? 'لوحة التحكم' : 'Dashboard', href: '/dashboard' },
             { label: ar ? 'بوابة اللاعب' : 'Player Portal' },
           ]}
           title={
@@ -229,7 +269,7 @@ export default function PlayerPortalPage() {
                 type="button"
                 id="btn-open-player-card"
                 onClick={() => setShowQrCardModal(true)}
-                className="flex items-center gap-2 rounded-xl bg-[var(--accent-primary)] px-4 py-2 text-xs font-bold text-white shadow-sm hover:brightness-110 transition-all cursor-pointer"
+                className="flex items-center gap-2 rounded-xl bg-(--accent-primary) px-4 py-2 text-xs font-bold text-white shadow-sm hover:brightness-110 transition-all cursor-pointer"
               >
                 <QrCode className="h-4 w-4" />
                 <span>{ar ? 'بطاقة العضوية الذكية (QR Card)' : 'Digital QR Pass'}</span>
@@ -239,37 +279,39 @@ export default function PlayerPortalPage() {
         />
 
         {/* Hero Quick KPI Card */}
-        <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-6">
+        <div className="rounded-2xl border border-(--border-subtle) bg-[var(--bg-surface)] p-6 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-4">
-            <div className="h-14 w-14 rounded-2xl bg-[var(--accent-primary)] text-white text-xl font-black flex items-center justify-center shadow-md">
+            <div className="h-14 w-14 rounded-2xl bg-(--accent-primary) text-white text-xl font-black flex items-center justify-center shadow-md">
               {profile.firstName.charAt(0).toUpperCase()}
             </div>
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-base font-bold text-[var(--text-main)]">
+                <span className="text-base font-bold text-(--text-main)">
                   {profile.firstName} {profile.lastName}
                 </span>
                 <span className="rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                   {ar ? 'لاعب نشط' : 'Active Player'}
                 </span>
               </div>
-              <p className="text-xs text-[var(--text-muted)]">
+              <p className="text-xs text-(--text-muted)">
                 {groupDisplay} • {ar ? 'تاريخ الميلاد: ' : 'Date of Birth: '}
                 {profile.dateOfBirth
                   ? new Date(profile.dateOfBirth).toLocaleDateString(ar ? 'ar-EG' : 'en-US')
-                  : ar ? 'غير محدد' : 'N/A'}
+                  : ar
+                    ? 'غير محدد'
+                    : 'N/A'}
               </p>
             </div>
           </div>
 
-          <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] p-4 text-center sm:text-end w-full sm:w-auto">
-            <span className="text-xs text-[var(--text-muted)]">
+          <div className="rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) p-4 text-center sm:text-end w-full sm:w-auto">
+            <span className="text-xs text-(--text-muted)">
               {ar ? 'نسبة الالتزام والحضور' : 'Attendance Compliance Rate'}
             </span>
             <div className="text-3xl font-extrabold text-[var(--accent-primary)] mt-0.5">
               {attendanceSummary.attendanceRate}%
             </div>
-            <span className="text-[10px] text-[var(--text-muted)] mt-1 block">
+            <span className="text-[10px] text-(--text-muted) mt-1 block">
               {profile.totalSessionsAttended} {ar ? 'حصة حضور مثبتة' : 'confirmed check-ins'}
             </span>
           </div>
@@ -277,20 +319,20 @@ export default function PlayerPortalPage() {
 
         {/* Attendance Stats Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 shadow-sm">
-            <span className="text-xs text-[var(--text-muted)]">
+          <div className="rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] p-4 shadow-sm">
+            <span className="text-xs text-(--text-muted)">
               {ar ? 'إجمالي الحصص المقررة' : 'Eligible Sessions'}
             </span>
-            <div className="text-2xl font-bold text-[var(--text-main)] mt-1">
+            <div className="text-2xl font-bold text-(--text-main) mt-1">
               {attendanceSummary.totalEligible}
             </div>
-            <span className="text-[11px] text-[var(--text-muted)] mt-1 block">
+            <span className="text-[11px] text-(--text-muted) mt-1 block">
               {ar ? 'حصة تدريبية' : 'sessions'}
             </span>
           </div>
 
-          <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 shadow-sm">
-            <span className="text-xs text-[var(--text-muted)]">
+          <div className="rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] p-4 shadow-sm">
+            <span className="text-xs text-(--text-muted)">
               {ar ? 'حضور مبكر ومنضبط' : 'On-Time Attendance'}
             </span>
             <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">
@@ -301,8 +343,8 @@ export default function PlayerPortalPage() {
             </span>
           </div>
 
-          <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 shadow-sm">
-            <span className="text-xs text-[var(--text-muted)]">
+          <div className="rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] p-4 shadow-sm">
+            <span className="text-xs text-(--text-muted)">
               {ar ? 'حضور متأخر' : 'Late Check-ins'}
             </span>
             <div className="text-2xl font-bold text-amber-600 dark:text-amber-400 mt-1">
@@ -313,10 +355,8 @@ export default function PlayerPortalPage() {
             </span>
           </div>
 
-          <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 shadow-sm">
-            <span className="text-xs text-[var(--text-muted)]">
-              {ar ? 'الغياب' : 'Absences'}
-            </span>
+          <div className="rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] p-4 shadow-sm">
+            <span className="text-xs text-(--text-muted)">{ar ? 'الغياب' : 'Absences'}</span>
             <div className="text-2xl font-bold text-rose-600 dark:text-rose-400 mt-1">
               {attendanceSummary.absent}
             </div>
@@ -330,15 +370,15 @@ export default function PlayerPortalPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Upcoming Training Sessions */}
           <div className="space-y-4">
-            <h2 className="text-lg font-bold text-[var(--text-main)] flex items-center gap-2">
+            <h2 className="text-lg font-bold text-(--text-main) flex items-center gap-2">
               <CalendarCheck className="h-5 w-5 text-[var(--accent-primary)]" />
               <span>{ar ? 'جدول الحصص التدريبية القادمة' : 'Upcoming Training Schedule'}</span>
             </h2>
 
             {upcomingSessions.length === 0 ? (
-              <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-8 text-center text-[var(--text-muted)] shadow-sm">
+              <div className="rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] p-8 text-center text-(--text-muted) shadow-sm">
                 <Clock className="h-10 w-10 text-[var(--accent-primary)] mx-auto mb-2 opacity-50" />
-                <div className="font-semibold text-[var(--text-main)]">
+                <div className="font-semibold text-(--text-main)">
                   {ar ? 'لا توجد حصص قادمة مجدولة حالياً' : 'No upcoming sessions scheduled'}
                 </div>
                 <p className="text-xs mt-1">
@@ -352,13 +392,15 @@ export default function PlayerPortalPage() {
                 {upcomingSessions.map((session) => (
                   <div
                     key={session.id}
-                    className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 hover:border-[var(--accent-primary)]/40 transition-colors flex items-center justify-between shadow-sm"
+                    className="rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] p-4 hover:border-[var(--accent-primary)]/40 transition-colors flex items-center justify-between shadow-sm"
                   >
                     <div>
-                      <h4 className="font-bold text-sm text-[var(--text-main)]">
-                        {locale === 'en' ? translateDataString(session.groupName, 'en') : session.groupName}
+                      <h4 className="font-bold text-sm text-(--text-main)">
+                        {locale === 'en'
+                          ? translateDataString(session.groupName, 'en')
+                          : session.groupName}
                       </h4>
-                      <div className="text-xs text-[var(--text-muted)] flex items-center gap-3 mt-1">
+                      <div className="text-xs text-(--text-muted) flex items-center gap-3 mt-1">
                         <span>📅 {session.sessionDate}</span>
                         <span>
                           ⏰ {session.startTime} - {session.endTime}
@@ -366,7 +408,7 @@ export default function PlayerPortalPage() {
                       </div>
                     </div>
 
-                    <div className="text-end text-xs text-[var(--accent-primary)] font-semibold bg-[var(--badge-bg)] px-3 py-1.5 rounded-lg border border-[var(--border-subtle)]">
+                    <div className="text-end text-xs text-[var(--accent-primary)] font-semibold bg-(--badge-bg) px-3 py-1.5 rounded-lg border border-(--border-subtle)">
                       {session.branchName
                         ? locale === 'en'
                           ? translateDataString(session.branchName, 'en')
@@ -381,15 +423,17 @@ export default function PlayerPortalPage() {
 
           {/* Development Evaluations & Coach Feedback */}
           <div className="space-y-4">
-            <h2 className="text-lg font-bold text-[var(--text-main)] flex items-center gap-2">
+            <h2 className="text-lg font-bold text-(--text-main) flex items-center gap-2">
               <Award className="h-5 w-5 text-[var(--accent-primary)]" />
-              <span>{ar ? 'تقييمات وتوجيهات المدربين المعتمدة' : 'Official Performance Evaluations'}</span>
+              <span>
+                {ar ? 'تقييمات وتوجيهات المدربين المعتمدة' : 'Official Performance Evaluations'}
+              </span>
             </h2>
 
             {recentEvaluations.length === 0 ? (
-              <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-8 text-center text-[var(--text-muted)] shadow-sm">
+              <div className="rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] p-8 text-center text-(--text-muted) shadow-sm">
                 <Award className="h-10 w-10 text-amber-500 mx-auto mb-2 opacity-50" />
-                <div className="font-semibold text-[var(--text-main)]">
+                <div className="font-semibold text-(--text-main)">
                   {ar ? 'لا توجد تقييمات منشورة حتى الآن' : 'No evaluations recorded yet'}
                 </div>
                 <p className="text-xs mt-1">
@@ -403,19 +447,21 @@ export default function PlayerPortalPage() {
                 {recentEvaluations.map((evalItem) => (
                   <div
                     key={evalItem.id}
-                    className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 space-y-4 hover:border-[var(--accent-primary)]/40 transition-colors shadow-sm"
+                    className="rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] p-5 space-y-4 hover:border-[var(--accent-primary)]/40 transition-colors shadow-sm"
                   >
-                    <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
+                    <div className="flex items-center justify-between border-b border-(--border-subtle) pb-3">
                       <div>
-                        <span className="text-xs text-[var(--text-muted)]">
-                          {ar ? 'تاريخ التقييم: ' : 'Date: '}{evalItem.evaluationDate}
+                        <span className="text-xs text-(--text-muted)">
+                          {ar ? 'تاريخ التقييم: ' : 'Date: '}
+                          {evalItem.evaluationDate}
                         </span>
-                        <div className="text-xs font-semibold text-[var(--text-main)] mt-0.5">
-                          {ar ? 'المدرب: ' : 'Coach: '}{evalItem.evaluatorName}
+                        <div className="text-xs font-semibold text-(--text-main) mt-0.5">
+                          {ar ? 'المدرب: ' : 'Coach: '}
+                          {evalItem.evaluatorName}
                         </div>
                       </div>
                       <div className="text-end">
-                        <span className="text-xs text-[var(--text-muted)]">
+                        <span className="text-xs text-(--text-muted)">
                           {ar ? 'الدرجة العامة:' : 'Overall Rating:'}
                         </span>
                         <div className="text-xl font-black text-[var(--accent-primary)]">
@@ -426,35 +472,35 @@ export default function PlayerPortalPage() {
 
                     {/* 4 Pillars Badges */}
                     <div className="grid grid-cols-4 gap-2 text-center text-xs">
-                      <div className="bg-[var(--bg-surface-subtle)] p-2 rounded-lg">
-                        <span className="text-[10px] text-[var(--text-muted)] block">
+                      <div className="bg-(--bg-surface-subtle) p-2 rounded-lg">
+                        <span className="text-[10px] text-(--text-muted) block">
                           {ar ? 'فني' : 'Technical'}
                         </span>
-                        <span className="font-bold text-[var(--text-main)]">
+                        <span className="font-bold text-(--text-main)">
                           {evalItem.technicalScore}
                         </span>
                       </div>
-                      <div className="bg-[var(--bg-surface-subtle)] p-2 rounded-lg">
-                        <span className="text-[10px] text-[var(--text-muted)] block">
+                      <div className="bg-(--bg-surface-subtle) p-2 rounded-lg">
+                        <span className="text-[10px] text-(--text-muted) block">
                           {ar ? 'تكتيكي' : 'Tactical'}
                         </span>
-                        <span className="font-bold text-[var(--text-main)]">
+                        <span className="font-bold text-(--text-main)">
                           {evalItem.tacticalScore}
                         </span>
                       </div>
-                      <div className="bg-[var(--bg-surface-subtle)] p-2 rounded-lg">
-                        <span className="text-[10px] text-[var(--text-muted)] block">
+                      <div className="bg-(--bg-surface-subtle) p-2 rounded-lg">
+                        <span className="text-[10px] text-(--text-muted) block">
                           {ar ? 'بدني' : 'Physical'}
                         </span>
-                        <span className="font-bold text-[var(--text-main)]">
+                        <span className="font-bold text-(--text-main)">
                           {evalItem.physicalScore}
                         </span>
                       </div>
-                      <div className="bg-[var(--bg-surface-subtle)] p-2 rounded-lg">
-                        <span className="text-[10px] text-[var(--text-muted)] block">
+                      <div className="bg-(--bg-surface-subtle) p-2 rounded-lg">
+                        <span className="text-[10px] text-(--text-muted) block">
                           {ar ? 'سلوكي' : 'Discipline'}
                         </span>
-                        <span className="font-bold text-[var(--text-main)]">
+                        <span className="font-bold text-(--text-main)">
                           {evalItem.behavioralScore}
                         </span>
                       </div>
@@ -463,31 +509,31 @@ export default function PlayerPortalPage() {
                     {/* Strengths & Improvements */}
                     <div className="space-y-2 text-xs">
                       {evalItem.strengths && (
-                        <div className="bg-[var(--bg-surface-subtle)] p-3 rounded-lg border-s-2 border-emerald-500">
+                        <div className="bg-(--bg-surface-subtle) p-3 rounded-lg border-s-2 border-emerald-500">
                           <span className="font-bold text-emerald-600 dark:text-emerald-400 block mb-0.5">
                             {ar ? 'نقاط قوتك:' : 'Key Strengths:'}
                           </span>
-                          <p className="text-[var(--text-main)]">{evalItem.strengths}</p>
+                          <p className="text-(--text-main)">{evalItem.strengths}</p>
                         </div>
                       )}
 
                       {evalItem.areasForImprovement && (
-                        <div className="bg-[var(--bg-surface-subtle)] p-3 rounded-lg border-s-2 border-amber-500">
+                        <div className="bg-(--bg-surface-subtle) p-3 rounded-lg border-s-2 border-amber-500">
                           <span className="font-bold text-amber-600 dark:text-amber-400 block mb-0.5">
                             {ar ? 'ركز على تطوير:' : 'Areas to Improve:'}
                           </span>
-                          <p className="text-[var(--text-main)]">{evalItem.areasForImprovement}</p>
+                          <p className="text-(--text-main)">{evalItem.areasForImprovement}</p>
                         </div>
                       )}
 
                       {evalItem.suggestedGoals && (
-                        <div className="bg-[var(--bg-surface-subtle)] p-3 rounded-lg border-s-2 border-sky-500 flex items-start gap-2">
+                        <div className="bg-(--bg-surface-subtle) p-3 rounded-lg border-s-2 border-sky-500 flex items-start gap-2">
                           <Target className="h-4 w-4 text-sky-500 flex-shrink-0 mt-0.5" />
                           <div>
                             <span className="font-bold text-sky-600 dark:text-sky-400 block mb-0.5">
                               {ar ? 'أهدافك القادمة:' : 'Target Milestones:'}
                             </span>
-                            <p className="text-[var(--text-main)]">{evalItem.suggestedGoals}</p>
+                            <p className="text-(--text-main)">{evalItem.suggestedGoals}</p>
                           </div>
                         </div>
                       )}

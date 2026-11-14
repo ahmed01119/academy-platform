@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { notFound } from 'next/navigation';
 import { Navbar } from '../../components/Navbar';
 import { useAuth } from '@/contexts/auth-context';
 import { api, ApiError } from '@/api/client';
@@ -39,6 +40,10 @@ interface TestLog {
 }
 
 export default function AuthTestPage() {
+  if (process.env.NODE_ENV === 'production') {
+    notFound();
+  }
+
   const {
     user,
     activeTenant,

@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useCallback, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useCallback, useEffect, useState, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { useLocale } from '@/contexts/locale-context';
 import { useTheme, type ThemeMode } from '@/contexts/theme-context';
@@ -9,13 +9,13 @@ import { translateRole } from '@/utils/data-translator';
 import { canAccessAdminRoutes, getRoleHomeRoute } from '@/utils/role-routing';
 import { AppShell } from '../../components/layout/AppShell';
 import { PageHeader } from '../../components/ui/PageHeader';
+import { PageSkeleton } from '@/components/ui/skeleton';
 import { api, apiClient } from '@/api/client';
 import type { AcademyProfile, UpdateAcademySettings } from '@academy/shared';
 import {
   Building2,
   Globe,
   Save,
-  RefreshCw,
   AlertCircle,
   CheckCircle2,
   Users,
@@ -45,14 +45,27 @@ interface StaffMemberItem {
   branch?: { id: string; name: string; code?: string | null } | null;
 }
 
-export default function SettingsPage() {
+function SettingsContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get('tab');
   const { user, activeTenant, isLoading } = useAuth();
   const { locale, setLocale, t } = useLocale();
   const { theme, setTheme } = useTheme();
   const ar = locale === 'ar';
 
-  const [activeTab, setActiveTab] = useState<'profile' | 'staff' | 'preferences'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'staff' | 'preferences'>(() => {
+    if (tabParam === 'staff' || tabParam === 'preferences' || tabParam === 'profile') {
+      return tabParam;
+    }
+    return 'profile';
+  });
+
+  useEffect(() => {
+    if (tabParam === 'staff' || tabParam === 'preferences' || tabParam === 'profile') {
+      setActiveTab(tabParam);
+    }
+  }, [tabParam]);
   const [profile, setProfile] = useState<AcademyProfile | null>(null);
   const [staffList, setStaffList] = useState<StaffMemberItem[]>([]);
   const [pendingInvitations, setPendingInvitations] = useState<
@@ -106,7 +119,10 @@ export default function SettingsPage() {
   }, [user, activeTenant, isLoading, router]);
 
   const loadData = useCallback(async () => {
-    if (!user || !activeTenant) return;
+    if (!user || !activeTenant) {
+      setIsFetching(false);
+      return;
+    }
     setIsFetching(true);
     try {
       const [profileData, staffData, invitesData] = await Promise.all([
@@ -273,12 +289,10 @@ export default function SettingsPage() {
     }
   };
 
-  if (isLoading || isFetching) {
+  if (isLoading || (!user && isFetching)) {
     return (
       <AppShell>
-        <div className="flex min-h-[50vh] items-center justify-center">
-          <RefreshCw className="h-8 w-8 animate-spin text-()" />
-        </div>
+        <PageSkeleton variant="form" hasFilters={false} />
       </AppShell>
     );
   }
@@ -292,7 +306,7 @@ export default function SettingsPage() {
       <div className="max-w-4xl space-y-6">
         <PageHeader
           breadcrumbs={[
-            { label: t('common.home', 'الرئيسية'), href: '/dashboard' },
+            { label: t('nav.dashboard', 'لوحة التحكم'), href: '/dashboard' },
             { label: t('nav.settings', 'الإعدادات') },
           ]}
           title={ar ? 'إعدادات الأكاديمية والصلاحيات' : 'Academy Settings & Permissions'}
@@ -319,14 +333,14 @@ export default function SettingsPage() {
         )}
 
         {/* Navigation Tabs */}
-        <div className="flex items-center gap-2 border-b border-() pb-1 overflow-x-auto">
+        <div className="flex items-center gap-2 border-b border-[var(--border-subtle)] pb-1 overflow-x-auto">
           <button
             type="button"
             onClick={() => setActiveTab('profile')}
             className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition-colors border-b-2 whitespace-nowrap cursor-pointer ${
               activeTab === 'profile'
-                ? 'border-() text-() bg-()'
-                : 'border-transparent text-() hover:text-()'
+                ? 'border-[var(--accent-primary)] text-[var(--accent-primary)] bg-[var(--bg-surface)]'
+                : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-main)]'
             }`}
           >
             <Building2 className="w-4 h-4" />
@@ -338,13 +352,13 @@ export default function SettingsPage() {
             onClick={() => setActiveTab('staff')}
             className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition-colors border-b-2 whitespace-nowrap cursor-pointer ${
               activeTab === 'staff'
-                ? 'border-() text-() bg-()'
-                : 'border-transparent text-() hover:text-()'
+                ? 'border-[var(--accent-primary)] text-[var(--accent-primary)] bg-[var(--bg-surface)]'
+                : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-main)]'
             }`}
           >
             <Users className="w-4 h-4" />
             <span>{ar ? 'الكادر التدريبي والصلاحيات' : 'Staff & Permissions'}</span>
-            <span className="px-1.5 py-0.2 rounded-full text-xs bg-() font-mono">
+            <span className="px-1.5 py-0.2 rounded-full text-xs bg-[var(--badge-bg)] font-mono">
               {staffList.length}
             </span>
           </button>
@@ -354,8 +368,8 @@ export default function SettingsPage() {
             onClick={() => setActiveTab('preferences')}
             className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition-colors border-b-2 whitespace-nowrap cursor-pointer ${
               activeTab === 'preferences'
-                ? 'border-() text-() bg-()'
-                : 'border-transparent text-() hover:text-()'
+                ? 'border-[var(--accent-primary)] text-[var(--accent-primary)] bg-[var(--bg-surface)]'
+                : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-main)]'
             }`}
           >
             <Palette className="w-4 h-4" />
@@ -368,33 +382,33 @@ export default function SettingsPage() {
           <>
             {profile && (
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="rounded-2xl border border-() bg-() p-3 text-center">
-                  <span className="text-[10px] text-() block">
+                <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3 text-center">
+                  <span className="text-[10px] text-[var(--text-muted)] block">
                     {ar ? 'المعرف السيادي' : 'Academy Slug'}
                   </span>
-                  <span className="text-xs font-mono font-bold text-()">
+                  <span className="text-xs font-mono font-bold text-[var(--text-main)]">
                     {profile.slug}
                   </span>
                 </div>
-                <div className="rounded-2xl border border-() bg-() p-3 text-center">
-                  <span className="text-[10px] text-() block">
+                <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3 text-center">
+                  <span className="text-[10px] text-[var(--text-muted)] block">
                     {ar ? 'العملة المعتمدة' : 'Default Currency'}
                   </span>
-                  <span className="text-xs font-bold text-()">
+                  <span className="text-xs font-bold text-[var(--accent-primary)]">
                     {profile.currency}
                   </span>
                 </div>
-                <div className="rounded-2xl border border-() bg-() p-3 text-center">
-                  <span className="text-[10px] text-() block">
+                <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3 text-center">
+                  <span className="text-[10px] text-[var(--text-muted)] block">
                     {ar ? 'حالة الأكاديمية' : 'Status'}
                   </span>
                   <span className="text-xs font-bold text-emerald-500">{profile.status}</span>
                 </div>
-                <div className="rounded-2xl border border-() bg-() p-3 text-center">
-                  <span className="text-[10px] text-() block">
+                <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3 text-center">
+                  <span className="text-[10px] text-[var(--text-muted)] block">
                     {ar ? 'تاريخ الانضمام' : 'Member Since'}
                   </span>
-                  <span className="text-xs font-mono text-()">
+                  <span className="text-xs font-mono text-[var(--text-muted)]">
                     {new Date(profile.createdAt).toLocaleDateString(ar ? 'ar-EG' : 'en-US')}
                   </span>
                 </div>
@@ -402,15 +416,15 @@ export default function SettingsPage() {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="rounded-2xl border border-() bg-() p-5 shadow-sm space-y-4">
-                <h3 className="text-sm font-bold text-() flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-()" />
+              <div className="rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-5 shadow-sm space-y-4">
+                <h3 className="text-sm font-bold text-[var(--text-main)] flex items-center gap-2">
+                  <Building2 className="h-4 w-4 text-[var(--accent-primary)]" />
                   <span>{ar ? 'المعلومات الأساسية والهوية' : 'General Academy Information'}</span>
                 </h3>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-() block">
+                    <label className="text-xs font-semibold text-[var(--text-main)] block">
                       {ar ? 'اسم الأكاديمية الرسمي *' : 'Official Academy Name *'}
                     </label>
                     <input
@@ -418,12 +432,12 @@ export default function SettingsPage() {
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       placeholder={ar ? 'أكاديمية النجوم الرياضية' : 'Stars Athletic Academy'}
-                      className="w-full rounded-xl border border-() bg-() px-3 py-2 text-xs text-() focus:outline-none focus:border-()"
+                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-main)] focus:outline-none focus:border-[var(--accent-primary)]"
                     />
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-() block">
+                    <label className="text-xs font-semibold text-[var(--text-main)] block">
                       {ar ? 'رابط الشعار الرسمي (Logo URL)' : 'Official Logo URL'}
                     </label>
                     <input
@@ -431,12 +445,12 @@ export default function SettingsPage() {
                       value={logoUrl}
                       onChange={(e) => setLogoUrl(e.target.value)}
                       placeholder="https://example.com/logo.png"
-                      className="w-full rounded-xl border border-() bg-() px-3 py-2 text-xs text-() focus:outline-none focus:border-()"
+                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-main)] focus:outline-none focus:border-[var(--accent-primary)]"
                     />
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-() block">
+                    <label className="text-xs font-semibold text-[var(--text-main)] block">
                       {ar ? 'البريد الإلكتروني الرسمي' : 'Official Contact Email'}
                     </label>
                     <input
@@ -444,12 +458,12 @@ export default function SettingsPage() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="info@academy.com"
-                      className="w-full rounded-xl border border-() bg-() px-3 py-2 text-xs text-() focus:outline-none focus:border-()"
+                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-main)] focus:outline-none focus:border-[var(--accent-primary)]"
                     />
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-() block">
+                    <label className="text-xs font-semibold text-[var(--text-main)] block">
                       {ar ? 'رقم الهاتف للتواصل' : 'Contact Phone Number'}
                     </label>
                     <input
@@ -457,12 +471,12 @@ export default function SettingsPage() {
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                       placeholder="+201000000000"
-                      className="w-full rounded-xl border border-() bg-() px-3 py-2 text-xs text-() focus:outline-none focus:border-() font-mono"
+                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-main)] focus:outline-none focus:border-[var(--accent-primary)] font-mono"
                     />
                   </div>
 
                   <div className="space-y-1.5 sm:col-span-2">
-                    <label className="text-xs font-semibold text-() block">
+                    <label className="text-xs font-semibold text-[var(--text-main)] block">
                       {ar ? 'العنوان والموقع الجغرافي للمقر الرئيسي' : 'Headquarters Location & Address'}
                     </label>
                     <input
@@ -470,27 +484,27 @@ export default function SettingsPage() {
                       value={address}
                       onChange={(e) => setAddress(e.target.value)}
                       placeholder={ar ? 'القاهرة، مصر' : 'Cairo, Egypt'}
-                      className="w-full rounded-xl border border-() bg-() px-3 py-2 text-xs text-() focus:outline-none focus:border-()"
+                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-main)] focus:outline-none focus:border-[var(--accent-primary)]"
                     />
                   </div>
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-() bg-() p-5 shadow-sm space-y-4">
-                <h3 className="text-sm font-bold text-() flex items-center gap-2">
-                  <Globe className="h-4 w-4 text-()" />
+              <div className="rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-5 shadow-sm space-y-4">
+                <h3 className="text-sm font-bold text-[var(--text-main)] flex items-center gap-2">
+                  <Globe className="h-4 w-4 text-[var(--accent-primary)]" />
                   <span>{ar ? 'المعايير الإقليمية والعملة' : 'Regional & Currency Standards'}</span>
                 </h3>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-() block">
+                    <label className="text-xs font-semibold text-[var(--text-main)] block">
                       {ar ? 'العملة الأساسية' : 'Primary Currency'}
                     </label>
                     <select
                       value={currency}
                       onChange={(e) => setCurrency(e.target.value)}
-                      className="w-full rounded-xl border border-() bg-() px-3 py-2 text-xs text-() focus:outline-none focus:border-() cursor-pointer"
+                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-main)] focus:outline-none focus:border-[var(--accent-primary)] cursor-pointer"
                     >
                       <option value="EGP">{ar ? 'جنيه مصري (EGP)' : 'Egyptian Pound (EGP)'}</option>
                       <option value="SAR">{ar ? 'ريال سعودي (SAR)' : 'Saudi Riyal (SAR)'}</option>
@@ -501,13 +515,13 @@ export default function SettingsPage() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-() block">
+                    <label className="text-xs font-semibold text-[var(--text-main)] block">
                       {ar ? 'المنطقة الزمنية' : 'Timezone'}
                     </label>
                     <select
                       value={timezone}
                       onChange={(e) => setTimezone(e.target.value)}
-                      className="w-full rounded-xl border border-() bg-() px-3 py-2 text-xs text-() focus:outline-none focus:border-() cursor-pointer"
+                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-main)] focus:outline-none focus:border-[var(--accent-primary)] cursor-pointer"
                     >
                       <option value="Africa/Cairo">{ar ? 'توقيت القاهرة (Africa/Cairo - GMT+2)' : 'Cairo Time (Africa/Cairo - GMT+2)'}</option>
                       <option value="Asia/Riyadh">{ar ? 'توقيت الرياض ومكة (Asia/Riyadh - GMT+3)' : 'Riyadh Time (Asia/Riyadh - GMT+3)'}</option>
@@ -518,11 +532,11 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-()">
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-[var(--border-subtle)]">
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="inline-flex items-center gap-2 rounded-xl bg-() px-6 py-2.5 text-xs font-semibold text-white shadow hover:brightness-110 transition-all disabled:opacity-50 cursor-pointer"
+                  className="inline-flex items-center gap-2 rounded-xl bg-[var(--accent-primary)] px-6 py-2.5 text-xs font-semibold text-white shadow hover:brightness-110 transition-all disabled:opacity-50 cursor-pointer"
                 >
                   <Save className="h-4 w-4" />
                   <span>{isSaving ? (ar ? 'جارٍ الحفظ...' : 'Saving...') : ar ? 'حفظ التعديلات' : 'Save Changes'}</span>
@@ -537,14 +551,14 @@ export default function SettingsPage() {
           <div className="space-y-4">
             {/* Invite Staff Card */}
             {isOwner && (
-              <div className="rounded-2xl border border-() bg-() p-5 shadow-sm">
+              <div className="rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-5 shadow-sm">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
-                    <h3 className="text-sm font-bold text-() flex items-center gap-2">
+                    <h3 className="text-sm font-bold text-[var(--text-main)] flex items-center gap-2">
                       <UserPlus className="h-4 w-4 text-blue-400" />
                       <span>{ar ? 'دعوة موظف جديد للانضمام' : 'Invite New Staff Member'}</span>
                     </h3>
-                    <p className="text-xs text-() mt-1">
+                    <p className="text-xs text-[var(--text-muted)] mt-1">
                       {ar
                         ? 'سيتلقى المدعو رابط دعوة عبر البريد الإلكتروني لإنشاء حساب والانضمام للأكاديمية بالدور المحدد.'
                         : 'The invitee will receive an email link to activate their membership with the assigned role.'}
@@ -565,34 +579,34 @@ export default function SettingsPage() {
               </div>
             )}
 
-            <div className="rounded-2xl border border-() bg-() p-5 shadow-sm space-y-2">
-              <h3 className="text-sm font-bold text-() flex items-center gap-2">
+            <div className="rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-5 shadow-sm space-y-2">
+              <h3 className="text-sm font-bold text-[var(--text-main)] flex items-center gap-2">
                 <ShieldCheck className="h-4 w-4 text-emerald-500" />
                 <span>{ar ? 'تفويض صلاحيات الكادر التدريبي (RBAC)' : 'Staff Role & Delegation (RBAC)'}</span>
               </h3>
-              <p className="text-xs text-()">
+              <p className="text-xs text-[var(--text-muted)]">
                 {ar
                   ? 'تتيح هذه اللوحة لمالك الأكاديمية تفويض مدربين محددين بمراجعة وقبول أو رفض طلبات انضمام اللاعبين الجدد داخل فروعهم وفرقهم الرياضية دون منحهم صلاحيات إدارية عامة.'
                   : 'Delegates player application review privileges to selected head coaches for their assigned branches without granting unrestricted admin permissions.'}
               </p>
             </div>
 
-            <div className="rounded-2xl border border-() bg-() overflow-hidden shadow-sm">
-              <div className="p-4 border-b border-() flex items-center justify-between">
-                <span className="text-xs font-bold text-()">
+            <div className="rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] overflow-hidden shadow-sm">
+              <div className="p-4 border-b border-[var(--border-subtle)] flex items-center justify-between">
+                <span className="text-xs font-bold text-[var(--text-main)]">
                   {ar ? 'قائمة الكادر والمدربين' : 'Staff Directory & Coaches'}
                 </span>
-                <span className="text-xs text-()">
+                <span className="text-xs text-[var(--text-muted)]">
                   {staffList.length} {ar ? 'أعضاء' : 'members'}
                 </span>
               </div>
 
               {staffList.length === 0 ? (
-                <div className="py-12 text-center text-xs text-()">
+                <div className="py-12 text-center text-xs text-[var(--text-muted)]">
                   {ar ? 'لا يوجد كادر مسجل حالياً.' : 'No staff members registered at this time.'}
                 </div>
               ) : (
-                <div className="divide-y divide-()">
+                <div className="divide-y divide-[var(--border-subtle)]">
                   {staffList.map((member) => {
                     const isCoach = member.role === 'COACH';
                     const canReview = Boolean(member.canReviewApplications);
@@ -600,7 +614,7 @@ export default function SettingsPage() {
                     return (
                       <div
                         key={member.id}
-                        className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-() transition-colors"
+                        className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-[var(--bg-surface-subtle)] transition-colors"
                       >
                         <div className="flex items-start gap-3">
                           <div
@@ -613,7 +627,7 @@ export default function SettingsPage() {
                             {member.user?.name ? member.user.name.slice(0, 2).toUpperCase() : 'ST'}
                           </div>
                           <div>
-                            <div className="font-semibold text-sm text-() flex items-center gap-2">
+                            <div className="font-semibold text-sm text-[var(--text-main)] flex items-center gap-2">
                               <span>{member.user?.name || (ar ? 'مستخدم بدون اسم' : 'Unnamed Staff')}</span>
                               <span
                                 className={`px-2 py-0.5 rounded text-[10px] font-bold ${
@@ -627,7 +641,7 @@ export default function SettingsPage() {
                                 {translateRole(member.role, locale)}
                               </span>
                             </div>
-                            <div className="flex items-center gap-3 mt-1 text-xs text-()">
+                            <div className="flex items-center gap-3 mt-1 text-xs text-[var(--text-muted)]">
                               <span className="flex items-center gap-1 font-mono">
                                 <Mail className="h-3 w-3" />
                                 {member.user?.email}
@@ -652,11 +666,11 @@ export default function SettingsPage() {
                               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer ${
                                 canReview
                                   ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/25'
-                                  : 'bg-() border border-() text-() hover:text-() hover:border-()'
+                                  : 'bg-[var(--bg-base)] border border-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-main)] hover:border-[var(--accent-primary)]'
                               }`}
                             >
                               <ShieldCheck
-                                className={`h-3.5 w-3.5 ${canReview ? 'text-emerald-400' : 'text-()'}`}
+                                className={`h-3.5 w-3.5 ${canReview ? 'text-emerald-400' : 'text-[var(--text-muted)]'}`}
                               />
                               <span>
                                 {delegatingId === member.id
@@ -677,13 +691,13 @@ export default function SettingsPage() {
                               className={`text-[11px] font-medium px-2 py-1 rounded-lg ${
                                 canReview
                                   ? 'text-emerald-400 bg-emerald-500/10'
-                                  : 'text-() bg-()'
+                                  : 'text-[var(--text-muted)] bg-[var(--bg-base)]'
                               }`}
                             >
                               {canReview ? (ar ? 'مفوض لمراجعة الطلبات' : 'Review Delegated') : ar ? 'مشاهدة فقط' : 'View Only'}
                             </span>
                           ) : (
-                            <span className="text-[11px] text-()">
+                            <span className="text-[11px] text-[var(--text-muted)]">
                               {member.role === 'OWNER'
                                 ? ar
                                   ? 'صلاحيات المالك كاملة'
@@ -702,20 +716,20 @@ export default function SettingsPage() {
 
               {/* Pending Invitations Section */}
               {pendingInvitations.length > 0 && (
-                <div className="mt-8 pt-6 border-t border-() space-y-4">
+                <div className="mt-8 pt-6 border-t border-[var(--border-subtle)] space-y-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Clock className="h-4 w-4 text-amber-400" />
-                      <h3 className="text-sm font-bold text-()">
+                      <h3 className="text-sm font-bold text-[var(--text-main)]">
                         {ar ? 'الدعوات المعلقة بانتظار التفعيل' : 'Pending Invitations'} ({pendingInvitations.length})
                       </h3>
                     </div>
-                    <span className="text-xs text-()">
+                    <span className="text-xs text-[var(--text-muted)]">
                       {ar ? 'تنتهي صلاحية الروابط تلقائياً بعد 7 أيام' : 'Links expire automatically in 7 days'}
                     </span>
                   </div>
 
-                  <div className="divide-y divide-() rounded-xl border border-() bg-()">
+                  <div className="divide-y divide-[var(--border-subtle)] rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)]">
                     {pendingInvitations.map((inv) => (
                       <div
                         key={inv.id}
@@ -726,18 +740,18 @@ export default function SettingsPage() {
                             <Mail className="h-4 w-4" />
                           </div>
                           <div>
-                            <div className="font-semibold text-() flex items-center gap-2">
+                            <div className="font-semibold text-[var(--text-main)] flex items-center gap-2">
                               <span>{inv.email}</span>
                               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30">
                                 {translateRole(inv.role, locale)}
                               </span>
                               {inv.branchName && (
-                                <span className="text-[10px] text-()">
+                                <span className="text-[10px] text-[var(--text-muted)]">
                                   ({inv.branchName})
                                 </span>
                               )}
                             </div>
-                            <div className="text-[11px] text-() mt-0.5 flex items-center gap-2">
+                            <div className="text-[11px] text-[var(--text-muted)] mt-0.5 flex items-center gap-2">
                               <span>
                                 {ar ? 'أُرسلت في: ' : 'Sent: '}
                                 {new Date(inv.createdAt).toLocaleDateString(ar ? 'ar-EG' : 'en-US')}
@@ -760,7 +774,7 @@ export default function SettingsPage() {
                             type="button"
                             onClick={() => void handleResendInvite(inv.id)}
                             disabled={processingInvId === inv.id}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-() bg-() text-() hover:border-blue-500 hover:text-blue-400 transition-all font-semibold disabled:opacity-50 cursor-pointer"
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[var(--text-main)] hover:border-blue-500 hover:text-blue-400 transition-all font-semibold disabled:opacity-50 cursor-pointer"
                           >
                             <RotateCw
                               className={`h-3.5 w-3.5 ${processingInvId === inv.id ? 'animate-spin' : ''}`}
@@ -790,19 +804,20 @@ export default function SettingsPage() {
         {activeTab === 'preferences' && (
           <div className="space-y-6 animate-in fade-in duration-150">
             {/* Display Language Section */}
-            <div className="rounded-2xl border border-() bg-() p-6 shadow-sm space-y-4">
+            <div className="rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-6 shadow-sm space-y-4">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-() text-()">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--badge-bg)] text-[var(--accent-primary)]">
                   <Languages className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-()">
-                    {ar ? 'لغة العرض والاتجاه' : 'Display Language & Layout'}
+                  <h3 className="text-sm font-bold text-[var(--text-main)]">
+                    {t('settings.languageSection', 'لغة العرض والاتجاه')}
                   </h3>
-                  <p className="text-xs text-() mt-0.5">
-                    {ar
-                      ? 'التبديل بين اللغتين العربية (من اليمين لليسار) والإنجليزية (من اليسار لليمين).'
-                      : 'Toggle between Arabic (Right-to-Left) and English (Left-to-Right).'}
+                  <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                    {t(
+                      'settings.languageDesc',
+                      'التبديل بين اللغتين العربية (من اليمين لليسار) والإنجليزية (من اليسار لليمين).',
+                    )}
                   </p>
                 </div>
               </div>
@@ -813,22 +828,20 @@ export default function SettingsPage() {
                   onClick={() => setLocale('ar')}
                   className={`flex items-center justify-between p-4 rounded-2xl border text-start transition-all cursor-pointer ${
                     locale === 'ar'
-                      ? 'border-() bg-()/10 ring-2 ring-()/20'
-                      : 'border-() bg-() hover:border-()/40'
+                      ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)]/10 ring-2 ring-[var(--accent-primary)]/20'
+                      : 'border-[var(--border-subtle)] bg-[var(--bg-base)] hover:border-[var(--accent-primary)]/40'
                   }`}
                 >
                   <div>
-                    <span className="font-bold text-sm text-() block">
-                      {ar ? 'العربية (Arabic)' : 'Arabic (العربية)'}
+                    <span className="font-bold text-sm text-[var(--text-main)] block">
+                      العربية (Arabic)
                     </span>
-                    <span className="text-xs text-()">
-                      {ar
-                        ? 'محاذاة من اليمين لليسار (RTL) مع خط IBM Plex Sans Arabic'
-                        : 'Right-to-Left layout (RTL) with Arabic typography'}
+                    <span className="text-xs text-[var(--text-muted)]">
+                      محاذاة من اليمين لليسار (RTL) مع خط IBM Plex Sans Arabic
                     </span>
                   </div>
                   {locale === 'ar' && (
-                    <span className="h-2 w-2 rounded-full bg-()" />
+                    <span className="h-2 w-2 rounded-full bg-[var(--accent-primary)]" />
                   )}
                 </button>
 
@@ -837,41 +850,40 @@ export default function SettingsPage() {
                   onClick={() => setLocale('en')}
                   className={`flex items-center justify-between p-4 rounded-2xl border text-start transition-all cursor-pointer ${
                     locale === 'en'
-                      ? 'border-() bg-()/10 ring-2 ring-()/20'
-                      : 'border-() bg-() hover:border-()/40'
+                      ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)]/10 ring-2 ring-[var(--accent-primary)]/20'
+                      : 'border-[var(--border-subtle)] bg-[var(--bg-base)] hover:border-[var(--accent-primary)]/40'
                   }`}
                 >
                   <div>
-                    <span className="font-bold text-sm text-() block">
+                    <span className="font-bold text-sm text-[var(--text-main)] block">
                       English
                     </span>
-                    <span className="text-xs text-()">
-                      {ar
-                        ? 'محاذاة من اليسار لليمين (LTR) مع خطوط لاتينية'
-                        : 'Left-to-Right layout (LTR) with Latin typography'}
+                    <span className="text-xs text-[var(--text-muted)]">
+                      Left-to-Right layout (LTR) with Latin typography
                     </span>
                   </div>
                   {locale === 'en' && (
-                    <span className="h-2 w-2 rounded-full bg-()" />
+                    <span className="h-2 w-2 rounded-full bg-[var(--accent-primary)]" />
                   )}
                 </button>
               </div>
             </div>
 
             {/* Display Theme Mode Section */}
-            <div className="rounded-2xl border border-() bg-() p-6 shadow-sm space-y-4">
+            <div className="rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-6 shadow-sm space-y-4">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-500">
                   <Palette className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-()">
-                    {ar ? 'مظهر واجهة المنصة (المود)' : 'Platform Appearance (Theme Mode)'}
+                  <h3 className="text-sm font-bold text-[var(--text-main)]">
+                    {t('settings.appearanceSection', 'مظهر واجهة المنصة (المود)')}
                   </h3>
-                  <p className="text-xs text-() mt-0.5">
-                    {ar
-                      ? 'اختر المظهر الملائم لطبيعة استخدامك (نهاري أو ليلي عالي التباين).'
-                      : 'Choose the theme suited for your workflow (Daylight or High-Contrast Dark).'}
+                  <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                    {t(
+                      'settings.appearanceDesc',
+                      'اختر المظهر الملائم لطبيعة استخدامك (نهاري أو ليلي عالي التباين).',
+                    )}
                   </p>
                 </div>
               </div>
@@ -909,23 +921,23 @@ export default function SettingsPage() {
                       onClick={() => setTheme(item.id)}
                       className={`flex flex-col justify-between p-4 rounded-2xl border text-start transition-all cursor-pointer ${
                         isSelected
-                          ? 'border-() bg-()/10 ring-2 ring-()/20'
-                          : 'border-() bg-() hover:border-()/40'
+                          ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)]/10 ring-2 ring-[var(--accent-primary)]/20'
+                          : 'border-[var(--border-subtle)] bg-[var(--bg-base)] hover:border-[var(--accent-primary)]/40'
                       }`}
                     >
                       <div className="flex items-center justify-between w-full mb-3">
-                        <div className={`p-2 rounded-xl bg-() ${item.iconColor}`}>
+                        <div className={`p-2 rounded-xl bg-[var(--bg-surface)] ${item.iconColor}`}>
                           <Icon className="h-5 w-5" />
                         </div>
                         {isSelected && (
-                          <span className="h-2 w-2 rounded-full bg-()" />
+                          <span className="h-2 w-2 rounded-full bg-[var(--accent-primary)]" />
                         )}
                       </div>
                       <div>
-                        <span className="font-bold text-xs text-() block mb-0.5">
+                        <span className="font-bold text-xs text-[var(--text-main)] block mb-0.5">
                           {item.title}
                         </span>
-                        <span className="text-[11px] text-() leading-relaxed">
+                        <span className="text-[11px] text-[var(--text-muted)] leading-relaxed">
                           {item.desc}
                         </span>
                       </div>
@@ -941,18 +953,18 @@ export default function SettingsPage() {
       {/* Invite Staff Modal */}
       {isInviteModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="w-full max-w-md rounded-2xl border border-() bg-() shadow-2xl animate-in zoom-in-95 duration-200 text-start">
+          <div className="w-full max-w-md rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] shadow-2xl animate-in zoom-in-95 duration-200 text-start">
             {/* Modal Header */}
-            <div className="flex items-center justify-between p-5 border-b border-()">
+            <div className="flex items-center justify-between p-5 border-b border-[var(--border-subtle)]">
               <div className="flex items-center gap-3">
                 <div className="h-9 w-9 rounded-xl bg-blue-500/15 flex items-center justify-center">
                   <UserPlus className="h-4 w-4 text-blue-400" />
                 </div>
                 <div>
-                  <div className="font-bold text-sm text-()">
+                  <div className="font-bold text-sm text-[var(--text-main)]">
                     {ar ? 'دعوة موظف جديد' : 'Invite New Staff Member'}
                   </div>
-                  <div className="text-xs text-()">
+                  <div className="text-xs text-[var(--text-muted)]">
                     {ar ? 'سيتلقى دعوة عبر البريد الإلكتروني' : 'Activation link will be emailed'}
                   </div>
                 </div>
@@ -963,7 +975,7 @@ export default function SettingsPage() {
                   setIsInviteModalOpen(false);
                   setInviteMsg(null);
                 }}
-                className="h-8 w-8 rounded-lg flex items-center justify-center text-() hover:text-() hover:bg-() transition-colors cursor-pointer"
+                className="h-8 w-8 rounded-lg flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-surface-subtle)] transition-colors cursor-pointer"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -989,30 +1001,30 @@ export default function SettingsPage() {
               )}
 
               <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-()">
+                <label className="block text-xs font-semibold text-[var(--text-main)]">
                   {ar ? 'البريد الإلكتروني للمدعو' : 'Invitee Email Address'}
                 </label>
                 <div className="relative">
-                  <Mail className="absolute inset-s-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-()" />
+                  <Mail className="absolute start-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[var(--text-muted)]" />
                   <input
                     type="email"
                     value={inviteEmail}
                     onChange={(e) => setInviteEmail(e.target.value)}
                     placeholder="email@example.com"
                     required
-                    className="w-full rounded-xl border border-() bg-() ps-9 pe-3 py-2.5 text-xs text-() placeholder:text-() focus:border-() focus:outline-none focus:ring-1 focus:ring-()/20 transition-all"
+                    className="w-full rounded-xl border border-[var(--border-app)] bg-[var(--bg-base)] ps-9 pe-3 py-2.5 text-xs text-[var(--text-main)] placeholder:text-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-primary)]/20 transition-all"
                   />
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-()">
+                <label className="block text-xs font-semibold text-[var(--text-main)]">
                   {ar ? 'الدور الوظيفي' : 'Role Assignment'}
                 </label>
                 <select
                   value={inviteRole}
                   onChange={(e) => setInviteRole(e.target.value as 'OWNER' | 'MANAGER' | 'BRANCH_MANAGER' | 'COACH' | 'RECEPTIONIST' | 'ACCOUNTANT' | 'VIEWER')}
-                  className="w-full rounded-xl border border-() bg-() px-3 py-2.5 text-xs text-() focus:border-() focus:outline-none focus:ring-1 focus:ring-()/20 transition-all cursor-pointer"
+                  className="w-full rounded-xl border border-[var(--border-app)] bg-[var(--bg-base)] px-3 py-2.5 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-primary)]/20 transition-all cursor-pointer"
                 >
                   <option value="COACH">{ar ? 'مدرب (COACH)' : 'Coach'}</option>
                   <option value="MANAGER">{ar ? 'مدير عام (MANAGER)' : 'General Manager'}</option>
@@ -1030,7 +1042,7 @@ export default function SettingsPage() {
                     setIsInviteModalOpen(false);
                     setInviteMsg(null);
                   }}
-                  className="px-4 py-2 rounded-xl border border-() text-xs font-semibold text-() hover:text-() hover:border-() transition-all cursor-pointer"
+                  className="px-4 py-2 rounded-xl border border-[var(--border-app)] text-xs font-semibold text-[var(--text-muted)] hover:text-[var(--text-main)] hover:border-[var(--text-muted)] transition-all cursor-pointer"
                 >
                   {ar ? 'إلغاء' : 'Cancel'}
                 </button>
@@ -1052,5 +1064,14 @@ export default function SettingsPage() {
         </div>
       )}
     </AppShell>
+  );
+}
+
+
+export default function SettingsPage() {
+  return (
+    <Suspense fallback={<PageSkeleton variant="form" hasFilters={false} />}>
+      <SettingsContent />
+    </Suspense>
   );
 }

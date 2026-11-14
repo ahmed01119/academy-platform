@@ -5,13 +5,10 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { useLocale } from '@/contexts/locale-context';
-import {
-  canAccessAdminRoutes,
-  canAccessCoachRoutes,
-  getRoleHomeRoute,
-} from '@/utils/role-routing';
+import { canAccessAdminRoutes, canAccessCoachRoutes, getRoleHomeRoute } from '@/utils/role-routing';
 import { AppShell } from '../../components/layout/AppShell';
 import { PageHeader, StatusBadge } from '../../components/ui';
+import { PageSkeleton, CardGridSkeleton } from '@/components/ui/skeleton';
 import { api } from '@/api/client';
 import type { BranchSummary, GroupStatus, TrainingGroupSummary } from '@academy/shared';
 import {
@@ -154,7 +151,13 @@ export default function GroupsPage() {
       await loadGroups(1);
       router.push(`/groups/${created.id}`);
     } catch (err) {
-      setCreateError(err instanceof Error ? err.message : locale === 'ar' ? 'فشل إنشاء المجموعة التدريبية' : 'Failed to create training group');
+      setCreateError(
+        err instanceof Error
+          ? err.message
+          : locale === 'ar'
+            ? 'فشل إنشاء المجموعة التدريبية'
+            : 'Failed to create training group',
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -162,12 +165,9 @@ export default function GroupsPage() {
 
   if (isLoading || !user) {
     return (
-      <div className="min-h-screen bg-[var(--bg-base)] flex items-center justify-center text-[var(--text-muted)]">
-        <div className="flex flex-col items-center gap-3">
-          <RefreshCw className="h-8 w-8 animate-spin text-[var(--accent-primary)]" />
-          <p className="text-sm font-medium">{t('common.loading')}</p>
-        </div>
-      </div>
+      <AppShell>
+        <PageSkeleton variant="cards" hasFilters />
+      </AppShell>
     );
   }
 
@@ -198,14 +198,14 @@ export default function GroupsPage() {
         />
 
         {/* Filter Bar */}
-        <div className="rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-4 shadow-sm">
+        <div className="rounded-2xl border border-(--border-app) bg-[var(--bg-surface)] p-4 shadow-sm">
           <form
             onSubmit={handleSearchSubmit}
             className="flex flex-col md:flex-row items-center gap-3"
           >
             {/* Search Input */}
             <div className="relative flex-1 w-full">
-              <Search className="absolute start-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--text-muted)] pointer-events-none" />
+              <Search className="absolute inset-s-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-(--text-muted) pointer-events-none" />
               <input
                 type="text"
                 id="input-search-groups"
@@ -216,13 +216,13 @@ export default function GroupsPage() {
                     ? 'البحث باسم المجموعة أو الوصف...'
                     : 'Search group name or description...'
                 }
-                className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] ps-10 pe-9 py-2.5 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:bg-[var(--bg-surface)] transition-all outline-none"
+                className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) ps-10 pe-9 py-2.5 text-xs text-(--text-main) placeholder-(--text-muted) focus:border-(--accent-primary) focus:bg-[var(--bg-surface)] transition-all outline-none"
               />
               {searchTerm && (
                 <button
                   type="button"
                   onClick={() => setSearchTerm('')}
-                  className="absolute end-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-main)]"
+                  className="absolute end-3 top-1/2 -translate-y-1/2 text-(--text-muted) hover:text-(--text-main)"
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
@@ -235,7 +235,7 @@ export default function GroupsPage() {
                 id="select-filter-branch"
                 value={selectedBranchId}
                 onChange={(e) => setSelectedBranchId(e.target.value)}
-                className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:bg-[var(--bg-surface)] transition-all outline-none"
+                className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:bg-[var(--bg-surface)] transition-all outline-none"
               >
                 <option value="">{locale === 'ar' ? 'جميع الفروع' : 'All Branches'}</option>
                 {branches.map((b) => (
@@ -252,7 +252,7 @@ export default function GroupsPage() {
                 id="select-filter-status"
                 value={selectedStatus}
                 onChange={(e) => setSelectedStatus(e.target.value as GroupStatus | '')}
-                className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:bg-[var(--bg-surface)] transition-all outline-none"
+                className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:bg-[var(--bg-surface)] transition-all outline-none"
               >
                 <option value="">{locale === 'ar' ? 'جميع الحالات' : 'All Statuses'}</option>
                 <option value="ACTIVE">{locale === 'ar' ? 'نشطة' : 'Active'}</option>
@@ -266,7 +266,7 @@ export default function GroupsPage() {
               <button
                 type="submit"
                 id="btn-filter-submit"
-                className="flex-1 md:flex-initial flex items-center justify-center gap-1.5 rounded-xl bg-[var(--accent-primary)] px-4 py-2.5 text-xs font-bold text-white hover:brightness-110 transition-all cursor-pointer shadow-sm"
+                className="flex-1 md:flex-initial flex items-center justify-center gap-1.5 rounded-xl bg-(--accent-primary) px-4 py-2.5 text-xs font-bold text-white hover:brightness-110 transition-all cursor-pointer shadow-sm"
               >
                 <Filter className="h-3.5 w-3.5" />
                 <span>{t('common.filter')}</span>
@@ -281,7 +281,7 @@ export default function GroupsPage() {
                   setSelectedStatus('');
                   void loadGroups(1);
                 }}
-                className="p-2.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer"
+                className="p-2.5 rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) text-(--text-muted) hover:text-(--text-main) transition-colors cursor-pointer"
                 title={t('common.refresh')}
               >
                 <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
@@ -292,20 +292,15 @@ export default function GroupsPage() {
 
         {/* Groups Grid */}
         {isFetching && groups.length === 0 ? (
-          <div className="rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-12 text-center text-[var(--text-muted)] shadow-sm">
-            <RefreshCw className="h-8 w-8 animate-spin mx-auto text-[var(--accent-primary)] mb-3" />
-            <p className="text-sm font-medium">{t('common.loading')}</p>
-          </div>
+          <CardGridSkeleton count={6} cols={3} />
         ) : groups.length === 0 ? (
-          <div className="rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-12 text-center text-[var(--text-muted)] space-y-3 shadow-sm">
-            <div className="h-12 w-12 rounded-2xl bg-[var(--badge-bg)] text-[var(--accent-primary)] flex items-center justify-center mx-auto">
+          <div className="rounded-2xl border border-(--border-app) bg-[var(--bg-surface)] p-12 text-center text-(--text-muted) space-y-3 shadow-sm">
+            <div className="h-12 w-12 rounded-2xl bg-(--badge-bg) text-[var(--accent-primary)] flex items-center justify-center mx-auto">
               <Layers className="h-6 w-6" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-[var(--text-main)]">
-                {t('common.noResults')}
-              </h3>
-              <p className="text-xs text-[var(--text-muted)] mt-1">
+              <h3 className="text-base font-bold text-(--text-main)">{t('common.noResults')}</h3>
+              <p className="text-xs text-(--text-muted) mt-1">
                 {locale === 'ar'
                   ? 'قم بإضافة مجموعة تدريبية جديدة لتوزيع اللاعبين وجدولة الحصص التدريبية.'
                   : 'Add a training group to organize players and set training schedules.'}
@@ -314,7 +309,7 @@ export default function GroupsPage() {
             <button
               type="button"
               onClick={() => setIsCreateModalOpen(true)}
-              className="inline-flex items-center gap-2 rounded-xl bg-[var(--accent-primary)] px-4 py-2 text-xs font-bold text-white hover:brightness-110 transition-all cursor-pointer mt-2"
+              className="inline-flex items-center gap-2 rounded-xl bg-(--accent-primary) px-4 py-2 text-xs font-bold text-white hover:brightness-110 transition-all cursor-pointer mt-2"
             >
               <Plus className="h-4 w-4" />
               <span>{locale === 'ar' ? 'إضافة مجموعة الآن' : 'Create Group'}</span>
@@ -333,7 +328,7 @@ export default function GroupsPage() {
                 <div
                   key={group.id}
                   id={`group-card-${group.id}`}
-                  className="rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-5 flex flex-col justify-between hover:border-[var(--accent-primary)]/50 transition-all shadow-sm hover:shadow-md"
+                  className="rounded-2xl border border-(--border-app) bg-[var(--bg-surface)] p-5 flex flex-col justify-between hover:border-[var(--accent-primary)]/50 transition-all shadow-sm hover:shadow-md"
                 >
                   <div className="space-y-4">
                     {/* Header */}
@@ -357,43 +352,43 @@ export default function GroupsPage() {
                             }
                           />
                           {group.ageCategory && (
-                            <span className="rounded-full bg-[var(--bg-surface-subtle)] px-2 py-0.5 text-[10px] font-bold text-[var(--text-muted)] border border-[var(--border-subtle)]">
+                            <span className="rounded-full bg-(--bg-surface-subtle) px-2 py-0.5 text-[10px] font-bold text-(--text-muted) border border-(--border-subtle)">
                               {group.ageCategory}
                             </span>
                           )}
                         </div>
-                        <h3 className="text-base font-bold text-[var(--text-main)] mt-2 truncate">
+                        <h3 className="text-base font-bold text-(--text-main) mt-2 truncate">
                           {group.name}
                         </h3>
                       </div>
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--badge-bg)] text-[var(--accent-primary)]">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-(--badge-bg) text-[var(--accent-primary)]">
                         <Trophy className="h-5 w-5" />
                       </div>
                     </div>
 
                     {/* Branch & Description */}
                     <div className="space-y-1.5 text-xs">
-                      <div className="flex items-center gap-1.5 text-[var(--text-muted)]">
+                      <div className="flex items-center gap-1.5 text-(--text-muted)">
                         <Building2 className="h-3.5 w-3.5 text-[var(--accent-primary)]" />
                         <span className="font-medium truncate">
                           {t('common.branch')}: {group.branchName}
                         </span>
                       </div>
                       {group.description && (
-                        <p className="text-[var(--text-muted)] line-clamp-2 text-xs leading-relaxed">
+                        <p className="text-(--text-muted) line-clamp-2 text-xs leading-relaxed">
                           {group.description}
                         </p>
                       )}
                     </div>
 
                     {/* Capacity Bar */}
-                    <div className="rounded-xl bg-[var(--bg-surface-subtle)] p-3 border border-[var(--border-subtle)] space-y-2">
+                    <div className="rounded-xl bg-(--bg-surface-subtle) p-3 border border-(--border-subtle) space-y-2">
                       <div className="flex items-center justify-between text-xs">
-                        <span className="text-[var(--text-muted)] flex items-center gap-1">
+                        <span className="text-(--text-muted) flex items-center gap-1">
                           <Users className="h-3.5 w-3.5 text-[var(--accent-primary)]" />
                           {locale === 'ar' ? 'قوام اللاعبين' : 'Squad Size'}
                         </span>
-                        <span className="font-bold text-[var(--text-main)]">
+                        <span className="font-bold text-(--text-main)">
                           {group.memberCount}{' '}
                           {capacity
                             ? `/ ${capacity} (${fillPercentage}%)`
@@ -420,29 +415,25 @@ export default function GroupsPage() {
 
                     {/* Coaches & Schedules Count */}
                     <div className="grid grid-cols-2 gap-2 text-xs">
-                      <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3 py-2 flex items-center justify-between">
-                        <span className="text-[var(--text-muted)]">{t('common.coach')}</span>
-                        <span className="font-bold text-[var(--text-main)]">
-                          {group.coachCount}
-                        </span>
+                      <div className="rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3 py-2 flex items-center justify-between">
+                        <span className="text-(--text-muted)">{t('common.coach')}</span>
+                        <span className="font-bold text-(--text-main)">{group.coachCount}</span>
                       </div>
-                      <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3 py-2 flex items-center justify-between">
-                        <span className="text-[var(--text-muted)]">
+                      <div className="rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3 py-2 flex items-center justify-between">
+                        <span className="text-(--text-muted)">
                           {locale === 'ar' ? 'المواعيد' : 'Schedules'}
                         </span>
-                        <span className="font-bold text-[var(--text-main)]">
-                          {group.scheduleCount}
-                        </span>
+                        <span className="font-bold text-(--text-main)">{group.scheduleCount}</span>
                       </div>
                     </div>
                   </div>
 
                   {/* Actions */}
-                  <div className="pt-4 mt-4 border-t border-[var(--border-subtle)] flex items-center justify-between gap-2.5">
+                  <div className="pt-4 mt-4 border-t border-(--border-subtle) flex items-center justify-between gap-2.5">
                     <Link
                       href={`/groups/${group.id}`}
                       id={`btn-view-group-${group.id}`}
-                      className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3 py-2 text-xs font-semibold text-[var(--text-main)] hover:border-[var(--accent-primary)] hover:text-[var(--accent-primary)] transition-all"
+                      className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3 py-2 text-xs font-semibold text-(--text-main) hover:border-[var(--accent-primary)] hover:text-(--accent-primary) transition-all"
                     >
                       <span>{locale === 'ar' ? 'إدارة المجموعة' : 'Manage Squad'}</span>
                       <DirectionIcon className="h-3.5 w-3.5" />
@@ -451,7 +442,7 @@ export default function GroupsPage() {
                     <Link
                       href={`/sessions?groupId=${group.id}&branchId=${group.branchId}`}
                       id={`btn-group-sessions-${group.id}`}
-                      className="flex items-center gap-1 rounded-xl bg-[var(--badge-bg)] px-3 py-2 text-xs font-bold text-[var(--badge-fg)] border border-[var(--badge-border)] hover:brightness-95 transition-all"
+                      className="flex items-center gap-1 rounded-xl bg-(--badge-bg) px-3 py-2 text-xs font-bold text-(--badge-fg) border border-(--badge-border) hover:brightness-95 transition-all"
                       title={t('nav.sessions')}
                     >
                       <CalendarCheck className="h-4 w-4" />
@@ -466,17 +457,17 @@ export default function GroupsPage() {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between border-t border-[var(--border-subtle)] pt-4 text-xs text-[var(--text-muted)]">
+          <div className="flex items-center justify-between border-t border-(--border-subtle) pt-4 text-xs text-(--text-muted)">
             <div>
               {locale === 'ar' ? (
                 <>
-                  صفحة <span className="font-bold text-[var(--text-main)]">{page}</span> من{' '}
-                  <span className="font-bold text-[var(--text-main)]">{totalPages}</span>
+                  صفحة <span className="font-bold text-(--text-main)">{page}</span> من{' '}
+                  <span className="font-bold text-(--text-main)">{totalPages}</span>
                 </>
               ) : (
                 <>
-                  Page <span className="font-bold text-[var(--text-main)]">{page}</span> of{' '}
-                  <span className="font-bold text-[var(--text-main)]">{totalPages}</span>
+                  Page <span className="font-bold text-(--text-main)">{page}</span> of{' '}
+                  <span className="font-bold text-(--text-main)">{totalPages}</span>
                 </>
               )}
             </div>
@@ -486,7 +477,7 @@ export default function GroupsPage() {
                 id="btn-page-prev"
                 disabled={page <= 1}
                 onClick={() => void loadGroups(page - 1)}
-                className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-1.5 text-xs font-semibold text-[var(--text-main)] hover:border-[var(--accent-primary)] disabled:opacity-40 transition-colors"
+                className="rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] px-3 py-1.5 text-xs font-semibold text-(--text-main) hover:border-[var(--accent-primary)] disabled:opacity-40 transition-colors"
               >
                 {t('common.back')}
               </button>
@@ -495,7 +486,7 @@ export default function GroupsPage() {
                 id="btn-page-next"
                 disabled={page >= totalPages}
                 onClick={() => void loadGroups(page + 1)}
-                className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-1.5 text-xs font-semibold text-[var(--text-main)] hover:border-[var(--accent-primary)] disabled:opacity-40 transition-colors"
+                className="rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] px-3 py-1.5 text-xs font-semibold text-(--text-main) hover:border-[var(--accent-primary)] disabled:opacity-40 transition-colors"
               >
                 {t('common.next')}
               </button>
@@ -510,13 +501,13 @@ export default function GroupsPage() {
           id="modal-create-group"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto"
         >
-          <div className="w-full max-w-lg rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-6 shadow-2xl relative space-y-5 animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-4">
+          <div className="w-full max-w-lg rounded-2xl border border-(--border-app) bg-[var(--bg-surface)] p-6 shadow-2xl relative space-y-5 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-(--border-subtle) pb-4">
               <div className="flex items-center gap-2.5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--badge-bg)] text-[var(--accent-primary)]">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-(--badge-bg) text-[var(--accent-primary)]">
                   <Plus className="h-5 w-5" />
                 </div>
-                <h2 className="text-base font-bold text-[var(--text-main)]">
+                <h2 className="text-base font-bold text-(--text-main)">
                   {locale === 'ar' ? 'إضافة مجموعة تدريبية جديدة' : 'Add New Training Group'}
                 </h2>
               </div>
@@ -524,7 +515,7 @@ export default function GroupsPage() {
                 type="button"
                 id="btn-close-create-modal"
                 onClick={() => setIsCreateModalOpen(false)}
-                className="rounded-lg p-1.5 text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-surface-subtle)] transition-colors"
+                className="rounded-lg p-1.5 text-(--text-muted) hover:text-(--text-main) hover:bg-(--bg-surface-subtle) transition-colors"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -541,7 +532,7 @@ export default function GroupsPage() {
               <div>
                 <label
                   htmlFor="create-group-name"
-                  className="block text-xs font-bold text-[var(--text-main)] mb-1.5"
+                  className="block text-xs font-bold text-(--text-main) mb-1.5"
                 >
                   {locale === 'ar' ? 'اسم المجموعة / الفريق' : 'Group Name'}{' '}
                   <span className="text-[var(--accent-primary)]">*</span>
@@ -555,7 +546,7 @@ export default function GroupsPage() {
                     locale === 'ar' ? 'مثال: فريق النمور U14 (أ)' : 'e.g. U14 Tigers (A)'
                   }
                   required
-                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:bg-[var(--bg-surface)] transition-all outline-none"
+                  className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3.5 py-2.5 text-xs text-(--text-main) placeholder-(--text-muted) focus:border-(--accent-primary) focus:bg-[var(--bg-surface)] transition-all outline-none"
                 />
               </div>
 
@@ -563,7 +554,7 @@ export default function GroupsPage() {
                 <div>
                   <label
                     htmlFor="create-group-branch"
-                    className="block text-xs font-bold text-[var(--text-main)] mb-1.5"
+                    className="block text-xs font-bold text-(--text-main) mb-1.5"
                   >
                     {t('common.branch')} <span className="text-[var(--accent-primary)]">*</span>
                   </label>
@@ -572,7 +563,7 @@ export default function GroupsPage() {
                     value={createForm.branchId}
                     onChange={(e) => setCreateForm({ ...createForm, branchId: e.target.value })}
                     required
-                    className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:bg-[var(--bg-surface)] transition-all outline-none"
+                    className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:bg-[var(--bg-surface)] transition-all outline-none"
                   >
                     <option value="" disabled>
                       {locale === 'ar' ? 'اختر الفرع...' : 'Select branch...'}
@@ -588,7 +579,7 @@ export default function GroupsPage() {
                 <div>
                   <label
                     htmlFor="create-group-age"
-                    className="block text-xs font-bold text-[var(--text-main)] mb-1.5"
+                    className="block text-xs font-bold text-(--text-main) mb-1.5"
                   >
                     {locale === 'ar' ? 'الفئة العمرية' : 'Age Category'}
                   </label>
@@ -598,7 +589,7 @@ export default function GroupsPage() {
                     value={createForm.ageCategory}
                     onChange={(e) => setCreateForm({ ...createForm, ageCategory: e.target.value })}
                     placeholder={locale === 'ar' ? 'مثال: U12 أو U14' : 'e.g. U12, U14'}
-                    className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:bg-[var(--bg-surface)] transition-all outline-none"
+                    className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3.5 py-2.5 text-xs text-(--text-main) placeholder-(--text-muted) focus:border-(--accent-primary) focus:bg-[var(--bg-surface)] transition-all outline-none"
                   />
                 </div>
               </div>
@@ -606,7 +597,7 @@ export default function GroupsPage() {
               <div>
                 <label
                   htmlFor="create-group-capacity"
-                  className="block text-xs font-bold text-[var(--text-main)] mb-1.5"
+                  className="block text-xs font-bold text-(--text-main) mb-1.5"
                 >
                   {locale === 'ar' ? 'الاستيعاب الأقصى (اختياري)' : 'Max Capacity'}
                 </label>
@@ -618,14 +609,14 @@ export default function GroupsPage() {
                   placeholder="25"
                   min="1"
                   max="100"
-                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:bg-[var(--bg-surface)] transition-all outline-none"
+                  className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3.5 py-2.5 text-xs text-(--text-main) placeholder-(--text-muted) focus:border-(--accent-primary) focus:bg-[var(--bg-surface)] transition-all outline-none"
                 />
               </div>
 
               <div>
                 <label
                   htmlFor="create-group-desc"
-                  className="block text-xs font-bold text-[var(--text-main)] mb-1.5"
+                  className="block text-xs font-bold text-(--text-main) mb-1.5"
                 >
                   {locale === 'ar' ? 'وصف تفصيلي' : 'Description'}
                 </label>
@@ -634,15 +625,15 @@ export default function GroupsPage() {
                   value={createForm.description}
                   onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })}
                   rows={2}
-                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:bg-[var(--bg-surface)] transition-all outline-none resize-none"
+                  className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3.5 py-2.5 text-xs text-(--text-main) placeholder-(--text-muted) focus:border-(--accent-primary) focus:bg-[var(--bg-surface)] transition-all outline-none resize-none"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-[var(--border-subtle)]">
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-(--border-subtle)">
                 <button
                   type="button"
                   onClick={() => setIsCreateModalOpen(false)}
-                  className="px-4 py-2 text-xs font-semibold text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors"
+                  className="px-4 py-2 text-xs font-semibold text-(--text-muted) hover:text-(--text-main) transition-colors"
                 >
                   {t('common.cancel')}
                 </button>
@@ -650,7 +641,7 @@ export default function GroupsPage() {
                   type="submit"
                   id="btn-submit-create-group"
                   disabled={isSubmitting}
-                  className="rounded-xl bg-[var(--accent-primary)] px-5 py-2.5 text-xs font-bold text-white hover:brightness-110 disabled:opacity-50 transition-all shadow-md"
+                  className="rounded-xl bg-(--accent-primary) px-5 py-2.5 text-xs font-bold text-white hover:brightness-110 disabled:opacity-50 transition-all shadow-md"
                 >
                   {isSubmitting
                     ? t('common.loading')

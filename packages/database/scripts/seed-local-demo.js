@@ -586,6 +586,74 @@ async function main() {
     console.log('[Seed] Created Tomorrow Training Session (SCHEDULED) with 2 player records');
   }
 
+  // Session 3: Past completed session with Cashier Closing
+  const twoDaysAgo = new Date(Date.now() - 2 * 86400000);
+  twoDaysAgo.setHours(0, 0, 0, 0);
+
+  let sessionPast = await prisma.attendanceSession.findFirst({
+    where: {
+      tenantId: tenant.id,
+      groupId: groupU11.id,
+      sessionDate: twoDaysAgo,
+    },
+  });
+
+  if (!sessionPast) {
+    sessionPast = await prisma.attendanceSession.create({
+      data: {
+        tenantId: tenant.id,
+        branchId: branchMain.id,
+        groupId: groupU11.id,
+        coachUserId: coachUser.id,
+        sport: 'FOOTBALL',
+        groupName: groupU11.name,
+        sessionDate: twoDaysAgo,
+        startTime: '16:30',
+        endTime: '18:00',
+        status: 'CLOSED',
+      },
+    });
+
+    for (let i = 0; i < 3; i++) {
+      await prisma.attendanceRecord.create({
+        data: {
+          tenantId: tenant.id,
+          sessionId: sessionPast.id,
+          playerId: seededPlayers[i].id,
+          status: i === 2 ? 'EXCUSED' : 'PRESENT',
+          checkInTime: new Date(twoDaysAgo.getTime() + 16.5 * 3600000),
+          markedByUserId: coachUser.id,
+          remarks: i === 2 ? 'غياب بعذر مسبق' : 'حضور والتزام كامل',
+        },
+      });
+    }
+
+    // Cashier closing for this past session
+    await prisma.sessionCashierClosing.upsert({
+      where: { sessionId: sessionPast.id },
+      update: {},
+      create: {
+        tenantId: tenant.id,
+        branchId: branchMain.id,
+        sessionId: sessionPast.id,
+        closedByUserId: adminUser.id,
+        totalAttendees: 2,
+        totalAbsent: 0,
+        totalLate: 0,
+        totalActiveSubscribers: 2,
+        totalOverdueSubscribers: 1,
+        totalCashCollected: 650,
+        totalElectronicCollected: 350,
+        totalExpenses: 120,
+        netCashMovement: 530,
+        isReconciled: true,
+        reconciledAt: new Date(twoDaysAgo.getTime() + 18.5 * 3600000),
+        notes: 'تم إغلاق الصندوق ومطابقة الكاش مع الإيصالات الورقية والشبكة بنجاح',
+      },
+    });
+    console.log('[Seed] Created Past Training Session (CLOSED) with Cashier Closing');
+  }
+
   // 12. Platform Super Admin User
   const superAdminRawPassword = process.env.SUPERADMIN_INITIAL_PASSWORD || 'SuperAdmin123!';
   const superAdminPasswordHash = await hashPassword(superAdminRawPassword);
@@ -613,6 +681,29 @@ async function main() {
     console.log('[Seed] Updated Super Admin User:', superAdminUser.email);
   }
 
+  // Super Admin Membership in Stars Academy (allows Super Admin to also inspect and operate the demo academy directly)
+  await prisma.tenantMembership.upsert({
+    where: {
+      tenantId_userId: {
+        tenantId: tenant.id,
+        userId: superAdminUser.id,
+      },
+    },
+    update: {
+      role: 'OWNER',
+      status: 'ACTIVE',
+      branchId: branchMain.id,
+    },
+    create: {
+      tenantId: tenant.id,
+      userId: superAdminUser.id,
+      role: 'OWNER',
+      status: 'ACTIVE',
+      branchId: branchMain.id,
+    },
+  });
+  console.log('[Seed] Super Admin Membership configured in Stars Academy (OWNER)');
+
   // 13. Player User (Omar Al-Ghamdi)
   const playerPasswordHash = await hashPassword('PlayerPass123!');
   let playerUser = await prisma.user.findUnique({
@@ -631,8 +722,16 @@ async function main() {
     console.log('[Seed] Created Player User:', playerUser.email);
   }
 
-  // Link Omar's player record to playerUser
+  // Link Omar's player record to playerUser (idempotent)
   if (seededPlayers[0]) {
+    await prisma.player.updateMany({
+      where: {
+        userId: playerUser.id,
+        id: { not: seededPlayers[0].id },
+      },
+      data: { userId: null },
+    });
+
     await prisma.player.update({
       where: { id: seededPlayers[0].id },
       data: { userId: playerUser.id },
@@ -879,6 +978,56 @@ async function main() {
       },
     });
 
+    // Khaled evaluation
+    if (seededPlayers[3]) {
+      await prisma.playerEvaluation.create({
+        data: {
+          tenantId: tenant.id,
+          playerId: seededPlayers[3].id,
+          evaluatorUserId: coachUser.id,
+          templateId: defaultTemplate.id,
+          evaluationDate: date2,
+          technicalScore: 8.8,
+          tacticalScore: 8.5,
+          physicalScore: 9.0,
+          behavioralScore: 9.2,
+          overallScore: 8.88,
+          metrics: { passing: 8.8, dribbling: 8.5, speed: 9.0, discipline: 9.2 },
+          strengths: 'صلابة دفاعية ممتازة وتفوق واضح في الكرات العالية والالتحامات',
+          areasForImprovement: 'بناء الهجمة تحت الضغط العالي',
+          privateCoachNotes: 'قائد خط الدفاع للمستقبل، حضور بدني وشخصية قيادية قوية',
+          guardianFeedback: 'خالد سعيد جداً بالتدريبات ومتحمس للمباريات القادمة',
+          suggestedGoals: 'تمارين التمرير الطويل الدقيق للتحول السريع',
+          isPublished: true,
+        },
+      });
+    }
+
+    // Rayan evaluation
+    if (seededPlayers[4]) {
+      await prisma.playerEvaluation.create({
+        data: {
+          tenantId: tenant.id,
+          playerId: seededPlayers[4].id,
+          evaluatorUserId: coachUser.id,
+          templateId: defaultTemplate.id,
+          evaluationDate: date2,
+          technicalScore: 9.1,
+          tacticalScore: 8.9,
+          physicalScore: 8.7,
+          behavioralScore: 9.6,
+          overallScore: 9.08,
+          metrics: { passing: 9.2, dribbling: 9.0, speed: 8.7, discipline: 9.6 },
+          strengths: 'حارس مرمى متميز، ردة فعل استثنائية وتوجيه دائم لزملائه في الدفاع',
+          areasForImprovement: 'الخروج لالتقاط الكرات العرضية خارج منطقة الست ياردات',
+          privateCoachNotes: 'موهبة حراسة واعدة ومستوى يفوق سنه بكثير',
+          guardianFeedback: 'شكراً للمدرب على التوجيه المستمر والاهتمام',
+          suggestedGoals: 'تمارين المرونة وسرعة رد الفعل بالقدمين',
+          isPublished: true,
+        },
+      });
+    }
+
     console.log('[Seed] Seeded realistic performance evaluations for demo players');
   }
 
@@ -1035,6 +1184,247 @@ async function main() {
     });
     console.log('[Seed] Seeded session expense: 120 SAR for hydration');
   }
+
+  // 16. SaaS Platform Plans & Subscriptions (for Super Admin Platform Overview)
+  const saasPlansData = [
+    {
+      code: 'STARTER',
+      name: 'باقة الانطلاق (Starter)',
+      description: 'مثالية للأكاديميات الناشئة فرع واحد حتى 50 لاعباً',
+      priceMonthly: 299,
+      priceYearly: 2990,
+      currency: 'SAR',
+      maxBranches: 1,
+      maxPlayers: 50,
+      maxCoaches: 3,
+      features: { qrAttendance: true, basicReports: true, finance: false },
+    },
+    {
+      code: 'PRO',
+      name: 'الباقة المتقدمة (Pro)',
+      description: 'للأكاديميات سريعة النمو مع إدارة الفروع والتحصيل وإغلاق الخزينة',
+      priceMonthly: 799,
+      priceYearly: 7990,
+      currency: 'SAR',
+      maxBranches: 3,
+      maxPlayers: 250,
+      maxCoaches: 12,
+      features: { qrAttendance: true, fullFinance: true, cashierClosing: true, evaluations: true },
+    },
+    {
+      code: 'ENTERPRISE',
+      name: 'باقة النخبة (Enterprise)',
+      description: 'للأندية الكبرى والمجمعات الرياضية متعددة الفروع والرياضات',
+      priceMonthly: 1999,
+      priceYearly: 19990,
+      currency: 'SAR',
+      maxBranches: 10,
+      maxPlayers: 1500,
+      maxCoaches: 50,
+      features: { customBranding: true, unlimitedBranches: true, dedicatedSupport: true },
+    },
+  ];
+
+  for (const sp of saasPlansData) {
+    await prisma.saaSPlan.upsert({
+      where: { code: sp.code },
+      update: {
+        name: sp.name,
+        priceMonthly: sp.priceMonthly,
+        priceYearly: sp.priceYearly,
+        currency: sp.currency,
+        maxBranches: sp.maxBranches,
+        maxPlayers: sp.maxPlayers,
+        maxCoaches: sp.maxCoaches,
+      },
+      create: sp,
+    });
+  }
+  console.log('[Seed] Configured SaaS Plans (STARTER, PRO, ENTERPRISE)');
+
+  // Tenant Subscription linking Stars Academy to PRO plan
+  const renewalDate = new Date(Date.now() + 28 * 86400000);
+  const tenantSub = await prisma.tenantSubscription.upsert({
+    where: { tenantId: tenant.id },
+    update: {
+      planCode: 'PRO',
+      status: 'ACTIVE',
+      renewalDate,
+    },
+    create: {
+      tenantId: tenant.id,
+      planCode: 'PRO',
+      status: 'ACTIVE',
+      billingCycle: 'MONTHLY',
+      negotiatedPrice: 799,
+      currency: 'SAR',
+      renewalDate,
+      autoRenew: true,
+    },
+  });
+
+  // SaaS Invoice for Stars Academy
+  const existingInvoice = await prisma.saaSInvoice.findFirst({
+    where: { tenantId: tenant.id, invoiceNumber: 'INV-SAAS-2026-001' },
+  });
+  if (!existingInvoice) {
+    await prisma.saaSInvoice.create({
+      data: {
+        tenantId: tenant.id,
+        subscriptionId: tenantSub.id,
+        invoiceNumber: 'INV-SAAS-2026-001',
+        amount: 799,
+        currency: 'SAR',
+        status: 'PAID',
+        dueDate: new Date(),
+        paidAt: new Date(),
+        paymentMethod: 'ONLINE_CARD',
+        notes: 'سداد رسوم باقة PRO الشهرية عبر بوابة الدفع الإلكتروني',
+      },
+    });
+    console.log('[Seed] Seeded SaaS Invoice for Tenant (PAID 799 SAR)');
+  }
+
+  // 17. Platform Announcements
+  const announcementsData = [
+    {
+      title: 'إطلاق نظام التحضير الذكي عبر الـ QR Code',
+      message: 'يمكن للمدربين الآن تحضير اللاعبين تلقائياً ومسح البطاقات عبر كاميرا الهاتف مع دعم كامل للعمل أوفلاين.',
+      type: 'INFO',
+      targetRole: 'ALL',
+      isActive: true,
+    },
+    {
+      title: 'صيانة وتحديث خوادم المنصة الدورية',
+      message: 'ستخضع خوادم النسخ الاحتياطي لصيانة مجدولة فجر الجمعة القادم لمدة 15 دقيقة دون تأثير على بيانات الحضور.',
+      type: 'MAINTENANCE',
+      targetRole: 'ACADEMY_ADMIN',
+      isActive: true,
+    },
+  ];
+
+  for (const ann of announcementsData) {
+    const existingAnn = await prisma.platformAnnouncement.findFirst({
+      where: { title: ann.title },
+    });
+    if (!existingAnn) {
+      await prisma.platformAnnouncement.create({ data: ann });
+    }
+  }
+  console.log('[Seed] Seeded Platform Announcements');
+
+  // 18. Academy Applications (Public onboarding applications awaiting platform review)
+  const applicationsData = [
+    {
+      applicantUserId: coachUser.id,
+      academyName: 'أكاديمية المستقبل الرياضية',
+      academySlug: 'future-champions',
+      sport: 'FOOTBALL',
+      city: 'الدمام',
+      contactPhone: '+966544433221',
+      contactEmail: 'contact@future-academy.sa',
+      notes: 'أكاديمية تدريب كرة قدم للفئات السنية من 6 إلى 16 سنة في المنطقة الشرقية.',
+      status: 'PENDING_REVIEW',
+    },
+    {
+      applicantUserId: adminUser.id,
+      academyName: 'أكاديمية أبطال الخليج',
+      academySlug: 'gulf-champions',
+      sport: 'FOOTBALL',
+      city: 'الخبر',
+      contactPhone: '+966555544332',
+      contactEmail: 'info@gulf-academy.sa',
+      notes: 'تمت مراجعة الوثائق والاعتماد المبدئي للفرع الرئيسي.',
+      status: 'APPROVED',
+      reviewNotes: 'تم التحقق من السجل التجاري واعتماد الطلب.',
+      reviewedByUserId: superAdminUser.id,
+      reviewedAt: new Date(Date.now() - 3 * 86400000),
+    },
+  ];
+
+  for (const app of applicationsData) {
+    const existingApp = await prisma.academyApplication.findFirst({
+      where: { academySlug: app.academySlug },
+    });
+    if (!existingApp) {
+      await prisma.academyApplication.create({ data: app });
+    }
+  }
+  console.log('[Seed] Seeded Academy Applications (Pending & Approved)');
+
+  // 19. Player Registration Requests (Join requests awaiting academy review)
+  const joinRequestsData = [
+    {
+      tenantId: tenant.id,
+      applicantUserId: guardianUser.id,
+      playerName: 'تميم بن سلطان',
+      contactEmail: 'tamim.parent@example.com',
+      contactPhone: '+966559988776',
+      dateOfBirth: new Date('2015-03-10'),
+      guardianName: 'سلطان بن فهد',
+      status: 'PENDING_REVIEW',
+      reviewNotes: 'طلب انضمام لفريق البراعم U-11 عبر الموقع التعريفي',
+    },
+    {
+      tenantId: tenant.id,
+      applicantUserId: guardianUser.id,
+      playerName: 'زياد الحربي',
+      contactEmail: 'ziad.parent@example.com',
+      contactPhone: '+966558877665',
+      dateOfBirth: new Date('2012-09-18'),
+      guardianName: 'عبدالرحمن الحربي',
+      status: 'PENDING_REVIEW',
+      reviewNotes: 'طلب انضمام لفريق الناشئين U-14',
+    },
+  ];
+
+  for (const jr of joinRequestsData) {
+    const existingJr = await prisma.playerRegistrationRequest.findFirst({
+      where: { tenantId: tenant.id, playerName: jr.playerName },
+    });
+    if (!existingJr) {
+      await prisma.playerRegistrationRequest.create({ data: jr });
+    }
+  }
+  console.log('[Seed] Seeded Player Registration Requests (Join Requests)');
+
+  // 20. App Notifications
+  const notificationsData = [
+    {
+      userId: adminUser.id,
+      tenantId: tenant.id,
+      type: 'PLAYER_REGISTRATION',
+      title: 'طلب انضمام لاعب جديد',
+      body: 'قدم ولي الأمر سلطان بن فهد طلب انضمام للابن "تميم بن سلطان" وهو بانتظار المراجعة والقبول.',
+      href: '/players',
+    },
+    {
+      userId: adminUser.id,
+      tenantId: tenant.id,
+      type: 'EXPENSE_APPROVAL',
+      title: 'إشعار إغلاق الخزينة اليومية',
+      body: 'تم اعتماد إغلاق الخزينة بنجاح للحصة التدريبية السابقة بمبلغ 530 ريال صافي كاش.',
+      href: '/finance',
+    },
+    {
+      userId: coachUser.id,
+      tenantId: tenant.id,
+      type: 'EVALUATION_PUBLISHED',
+      title: 'تم نشر تقرير التقييم الفني',
+      body: 'تم نشر نتائج التقييم الفني للاعب "عمر الغامدي" بنجاح، ويمكن لولي الأمر الاطلاع عليها.',
+      href: '/evaluations',
+    },
+  ];
+
+  for (const notif of notificationsData) {
+    const existingNotif = await prisma.appNotification.findFirst({
+      where: { userId: notif.userId, title: notif.title },
+    });
+    if (!existingNotif) {
+      await prisma.appNotification.create({ data: notif });
+    }
+  }
+  console.log('[Seed] Seeded In-App Notifications');
 
   console.log('\n=========================================');
   console.log(' Academy Platform — 5-Role Demo Ready! ');

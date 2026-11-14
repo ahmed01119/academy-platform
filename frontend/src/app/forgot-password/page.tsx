@@ -6,7 +6,18 @@ import { useRouter } from 'next/navigation';
 import { Navbar } from '../../components/Navbar';
 import { useLocale } from '@/contexts/locale-context';
 import { api } from '@/api/client';
-import { KeyRound, Mail, AlertCircle, CheckCircle2, ArrowRight, Loader2, Copy, Lock, Eye, EyeOff } from 'lucide-react';
+import {
+  KeyRound,
+  Mail,
+  AlertCircle,
+  CheckCircle2,
+  ArrowRight,
+  Loader2,
+  Copy,
+  Lock,
+  Eye,
+  EyeOff,
+} from 'lucide-react';
 
 // Security guard: debug OTP is ONLY shown when accessed via localhost/127.0.0.1.
 const isLocalDevAccess =
@@ -84,9 +95,7 @@ export default function ForgotPasswordPage() {
       return;
     }
     if (newPassword !== confirmPassword) {
-      setError(
-        locale === 'ar' ? 'كلمتا المرور غير متطابقتين.' : 'Passwords do not match.',
-      );
+      setError(locale === 'ar' ? 'كلمتا المرور غير متطابقتين.' : 'Passwords do not match.');
       return;
     }
     if (newPassword.length < 8) {
@@ -141,9 +150,7 @@ export default function ForgotPasswordPage() {
       }
       setCooldown(60);
     } catch (err: unknown) {
-      setError(
-        err instanceof Error ? err.message : 'Failed to resend code.',
-      );
+      setError(err instanceof Error ? err.message : 'Failed to resend code.');
     } finally {
       setIsSubmitting(false);
     }
@@ -151,27 +158,27 @@ export default function ForgotPasswordPage() {
 
   return (
     <div
-      className="min-h-screen bg-[var(--bg-base)] text-[var(--text-main)] flex flex-col transition-colors overflow-x-hidden animate-fade-in"
+      className="min-h-screen bg-(--bg-base) text-(--text-main) flex flex-col transition-colors overflow-x-hidden animate-fade-in"
       dir={locale === 'ar' ? 'rtl' : 'ltr'}
     >
       <Navbar />
 
       <main className="flex-1 flex items-center justify-center p-3 sm:p-6 lg:p-8">
         <div className="w-full max-w-md mx-auto">
-          <div className="rounded-3xl border border-[var(--border-app)] bg-[var(--bg-surface)]/95 p-5 sm:p-8 shadow-float backdrop-blur-xl relative overflow-hidden animate-scale-up">
+          <div className="rounded-3xl border border-(--border-app) bg-(--bg-surface)/95 p-5 sm:p-8 shadow-float backdrop-blur-xl relative overflow-hidden animate-scale-up">
             {/* Ambient glows */}
-            <div className="absolute -top-16 -right-16 h-40 w-40 rounded-full bg-[var(--accent-blue)]/20 blur-3xl pointer-events-none" />
-            <div className="absolute -bottom-16 -left-16 h-40 w-40 rounded-full bg-[var(--accent-primary)]/10 blur-3xl pointer-events-none" />
+            <div className="absolute -top-16 -right-16 h-40 w-40 rounded-full bg-(--accent-blue)/20 blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-16 -left-16 h-40 w-40 rounded-full bg-(--accent-primary)/10 blur-3xl pointer-events-none" />
 
             {/* Header */}
             <div className="text-center mb-8 relative z-10 flex flex-col items-center">
-              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-[#0A3BFF] to-[#00D6FF] shadow-lg shadow-blue-600/25">
+              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-linear-to-tr from-[#0A3BFF] to-[#00D6FF] shadow-lg shadow-blue-600/25">
                 <KeyRound className="h-6 w-6 text-white" />
               </div>
-              <h1 className="text-2xl font-bold tracking-tight text-[var(--text-main)]">
+              <h1 className="text-2xl font-bold tracking-tight text-(--text-main)">
                 {locale === 'ar' ? 'استعادة كلمة المرور' : 'Reset Password'}
               </h1>
-              <p className="mt-2 text-sm text-[var(--text-muted)]">
+              <p className="mt-2 text-sm text-(--text-muted)">
                 {step === 'email'
                   ? locale === 'ar'
                     ? 'أدخل بريدك الإلكتروني وسنرسل لك رمز تحقق مكوّن من 6 أرقام'
@@ -184,8 +191,12 @@ export default function ForgotPasswordPage() {
 
             {/* Progress indicator */}
             <div className="flex gap-2 mb-6 relative z-10">
-              <div className={`h-1 flex-1 rounded-full transition-colors ${step === 'email' ? 'bg-[var(--accent-primary)]' : 'bg-[var(--accent-primary)]'}`} />
-              <div className={`h-1 flex-1 rounded-full transition-colors ${step === 'otp' ? 'bg-[var(--accent-primary)]' : 'bg-[var(--border-app)]'}`} />
+              <div
+                className={`h-1 flex-1 rounded-full transition-colors ${step === 'email' ? 'bg-(--accent-primary)' : 'bg-(--accent-primary)'}`}
+              />
+              <div
+                className={`h-1 flex-1 rounded-full transition-colors ${step === 'otp' ? 'bg-(--accent-primary)' : 'bg-(--border-app)'}`}
+              />
             </div>
 
             {/* Error */}
@@ -212,7 +223,10 @@ export default function ForgotPasswordPage() {
             {step === 'email' && (
               <form onSubmit={handleSendCode} className="space-y-5 relative z-10">
                 <div>
-                  <label className="block text-xs font-semibold text-[var(--text-sub)] mb-1.5" htmlFor="email">
+                  <label
+                    className="block text-xs font-semibold text-(--text-sub) mb-1.5"
+                    htmlFor="email"
+                  >
                     {locale === 'ar' ? 'البريد الإلكتروني' : 'Email Address'}
                   </label>
                   <div className="relative">
@@ -224,16 +238,16 @@ export default function ForgotPasswordPage() {
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="user@example.com"
                       dir="ltr"
-                      className="w-full rounded-xl border border-[var(--border-app)] bg-[var(--bg-surface-subtle)] py-2.5 px-4 ps-10 text-sm text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:ring-1 focus:ring-[var(--accent-primary)] outline-none transition-all"
+                      className="w-full rounded-xl border border-(--border-app) bg-(--bg-surface-subtle) py-2.5 px-4 ps-10 text-sm text-(--text-main) placeholder-(--text-muted) focus:border-(--accent-primary) focus:ring-1 focus:ring-(--accent-primary) outline-none transition-all"
                     />
-                    <Mail className="absolute start-3 top-3 h-4 w-4 text-slate-500" />
+                    <Mail className="absolute inset-s-3 top-3 h-4 w-4 text-(--text-muted)" />
                   </div>
                 </div>
 
                 <button
                   type="submit"
                   disabled={isSubmitting || cooldown > 0}
-                  className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#0A3BFF] via-[#0077FF] to-[#00D6FF] py-3 text-sm font-bold text-white shadow-lg shadow-blue-600/30 hover:brightness-110 active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  className="w-full flex items-center justify-center gap-2 rounded-xl bg-linear-to-r from-[#0A3BFF] via-[#0077FF] to-[#00D6FF] py-3 text-sm font-bold text-white shadow-lg shadow-blue-600/30 hover:brightness-110 active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                 >
                   {isSubmitting ? (
                     <>
@@ -263,14 +277,30 @@ export default function ForgotPasswordPage() {
                 {debugOtp && isLocalDevAccess && (
                   <div className="rounded-xl border border-amber-600/30 bg-amber-500/10 p-4 text-xs space-y-2">
                     <div className="flex items-center justify-between text-amber-400">
-                      <span className="font-semibold">🔒 {locale === 'ar' ? 'للتطوير المحلي فقط' : 'Local Dev Only'}</span>
-                      <button type="button" onClick={handleCopy} className="flex items-center gap-1 text-[var(--accent-primary)] hover:underline">
+                      <span className="font-semibold">
+                        🔒 {locale === 'ar' ? 'للتطوير المحلي فقط' : 'Local Dev Only'}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleCopy}
+                        className="flex items-center gap-1 text-(--accent-primary) hover:underline"
+                      >
                         <Copy className="h-3 w-3" />
-                        <span>{copied ? (locale === 'ar' ? 'تم!' : 'Copied!') : (locale === 'ar' ? 'نسخ' : 'Copy')}</span>
+                        <span>
+                          {copied
+                            ? locale === 'ar'
+                              ? 'تم!'
+                              : 'Copied!'
+                            : locale === 'ar'
+                              ? 'نسخ'
+                              : 'Copy'}
+                        </span>
                       </button>
                     </div>
                     <div className="text-center py-2">
-                      <span className="font-mono text-2xl font-bold tracking-[0.5em] text-amber-300">{debugOtp}</span>
+                      <span className="font-mono text-2xl font-bold tracking-[0.5em] text-amber-300">
+                        {debugOtp}
+                      </span>
                     </div>
                     <p className="text-amber-300/70 text-[10px]">
                       {locale === 'ar'
@@ -282,7 +312,10 @@ export default function ForgotPasswordPage() {
 
                 {/* OTP input */}
                 <div>
-                  <label className="block text-xs font-semibold text-[var(--text-sub)] mb-1.5" htmlFor="otp">
+                  <label
+                    className="block text-xs font-semibold text-(--text-sub) mb-1.5"
+                    htmlFor="otp"
+                  >
                     {locale === 'ar' ? 'رمز التحقق (6 أرقام)' : 'Verification Code (6 digits)'}
                   </label>
                   <input
@@ -296,28 +329,35 @@ export default function ForgotPasswordPage() {
                     onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
                     placeholder="000000"
                     dir="ltr"
-                    className="w-full rounded-xl border border-[var(--border-app)] bg-[var(--bg-surface-subtle)] py-3 px-4 text-center text-xl font-mono font-bold tracking-[0.5em] text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:ring-1 focus:ring-[var(--accent-primary)] outline-none transition-all"
+                    className="w-full rounded-xl border border-(--border-app) bg-(--bg-surface-subtle) py-3 px-4 text-center text-xl font-mono font-bold tracking-[0.5em] text-(--text-main) placeholder-(--text-muted) focus:border-(--accent-primary) focus:ring-1 focus:ring-(--accent-primary) outline-none transition-all"
                   />
                   <div className="mt-1 flex items-center justify-between">
-                    <p className="text-xs text-[var(--text-muted)]">
+                    <p className="text-xs text-(--text-muted)">
                       {locale === 'ar' ? `أُرسل إلى ${email}` : `Sent to ${email}`}
                     </p>
                     <button
                       type="button"
                       onClick={handleResendCode}
                       disabled={cooldown > 0 || isSubmitting}
-                      className="text-xs text-[var(--accent-primary)] hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="text-xs text-(--accent-primary) hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {cooldown > 0
-                        ? locale === 'ar' ? `إعادة الإرسال بعد ${cooldown}s` : `Resend in ${cooldown}s`
-                        : locale === 'ar' ? 'إعادة إرسال الرمز' : 'Resend code'}
+                        ? locale === 'ar'
+                          ? `إعادة الإرسال بعد ${cooldown}s`
+                          : `Resend in ${cooldown}s`
+                        : locale === 'ar'
+                          ? 'إعادة إرسال الرمز'
+                          : 'Resend code'}
                     </button>
                   </div>
                 </div>
 
                 {/* New password */}
                 <div>
-                  <label className="block text-xs font-semibold text-[var(--text-sub)] mb-1.5" htmlFor="newPassword">
+                  <label
+                    className="block text-xs font-semibold text-(--text-sub) mb-1.5"
+                    htmlFor="newPassword"
+                  >
                     {locale === 'ar' ? 'كلمة المرور الجديدة' : 'New Password'}
                   </label>
                   <div className="relative">
@@ -328,15 +368,17 @@ export default function ForgotPasswordPage() {
                       minLength={8}
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
-                      placeholder={locale === 'ar' ? 'كلمة مرور قوية (8+ أحرف)' : 'Strong password (8+ chars)'}
+                      placeholder={
+                        locale === 'ar' ? 'كلمة مرور قوية (8+ أحرف)' : 'Strong password (8+ chars)'
+                      }
                       dir="ltr"
-                      className="w-full rounded-xl border border-[var(--border-app)] bg-[var(--bg-surface-subtle)] py-2.5 px-4 ps-10 text-sm text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:ring-1 focus:ring-[var(--accent-primary)] outline-none transition-all"
+                      className="w-full rounded-xl border border-(--border-app) bg-(--bg-surface-subtle) py-2.5 px-4 ps-10 text-sm text-(--text-main) placeholder-(--text-muted) focus:border-(--accent-primary) focus:ring-1 focus:ring-(--accent-primary) outline-none transition-all"
                     />
-                    <Lock className="absolute start-3 top-3 h-4 w-4 text-slate-500" />
+                    <Lock className="absolute inset-s-3 top-3 h-4 w-4 text-(--text-muted)" />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute end-3 top-3 text-slate-400 hover:text-[var(--text-main)]"
+                      className="absolute inset-e-3 top-3 text-(--text-muted) hover:text-(--text-main)"
                     >
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
@@ -345,7 +387,10 @@ export default function ForgotPasswordPage() {
 
                 {/* Confirm password */}
                 <div>
-                  <label className="block text-xs font-semibold text-[var(--text-sub)] mb-1.5" htmlFor="confirmPassword">
+                  <label
+                    className="block text-xs font-semibold text-(--text-sub) mb-1.5"
+                    htmlFor="confirmPassword"
+                  >
                     {locale === 'ar' ? 'تأكيد كلمة المرور' : 'Confirm Password'}
                   </label>
                   <input
@@ -356,14 +401,14 @@ export default function ForgotPasswordPage() {
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder={locale === 'ar' ? 'أعد كتابة كلمة المرور' : 'Re-enter password'}
                     dir="ltr"
-                    className="w-full rounded-xl border border-[var(--border-app)] bg-[var(--bg-surface-subtle)] py-2.5 px-4 text-sm text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:ring-1 focus:ring-[var(--accent-primary)] outline-none transition-all"
+                    className="w-full rounded-xl border border-(--border-app) bg-(--bg-surface-subtle) py-2.5 px-4 text-sm text-(--text-main) placeholder-(--text-muted) focus:border-(--accent-primary) focus:ring-1 focus:ring-(--accent-primary) outline-none transition-all"
                   />
                 </div>
 
                 <button
                   type="submit"
                   disabled={isResetting}
-                  className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#0A3BFF] via-[#0077FF] to-[#00D6FF] py-3 text-sm font-bold text-white shadow-lg shadow-blue-600/30 hover:brightness-110 active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  className="w-full flex items-center justify-center gap-2 rounded-xl bg-linear-to-r from-[#0A3BFF] via-[#0077FF] to-[#00D6FF] py-3 text-sm font-bold text-white shadow-lg shadow-blue-600/30 hover:brightness-110 active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                 >
                   {isResetting ? (
                     <>
@@ -372,7 +417,9 @@ export default function ForgotPasswordPage() {
                     </>
                   ) : (
                     <>
-                      <span>{locale === 'ar' ? 'تأكيد وإعادة التعيين' : 'Confirm & Reset Password'}</span>
+                      <span>
+                        {locale === 'ar' ? 'تأكيد وإعادة التعيين' : 'Confirm & Reset Password'}
+                      </span>
                       <ArrowRight className={`h-4 w-4 ${locale === 'ar' ? 'rotate-180' : ''}`} />
                     </>
                   )}
@@ -380,18 +427,22 @@ export default function ForgotPasswordPage() {
 
                 <button
                   type="button"
-                  onClick={() => { setStep('email'); setError(null); setOtp(''); }}
-                  className="w-full text-xs text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors"
+                  onClick={() => {
+                    setStep('email');
+                    setError(null);
+                    setOtp('');
+                  }}
+                  className="w-full text-xs text-(--text-muted) hover:text-(--text-main) transition-colors"
                 >
                   {locale === 'ar' ? '← تغيير البريد الإلكتروني' : '← Change email address'}
                 </button>
               </form>
             )}
 
-            <div className="mt-8 border-t border-[var(--border-subtle)] pt-6 text-center text-xs text-[var(--text-muted)] relative z-10">
+            <div className="mt-8 border-t border-(--border-subtle) pt-6 text-center text-xs text-(--text-muted) relative z-10">
               <Link
                 href="/login"
-                className="font-semibold text-[var(--accent-primary)] hover:underline transition-colors"
+                className="font-semibold text-(--accent-primary) hover:underline transition-colors"
               >
                 {locale === 'ar' ? 'العودة إلى صفحة تسجيل الدخول' : 'Back to sign in'}
               </Link>

@@ -53,7 +53,11 @@ export class AuthController {
     @Inject(AppConfigService) private readonly config: AppConfigService,
   ) {}
 
-  private setAuthCookies(res: Response, tokens: { accessToken: string; refreshToken: string }) {
+  private setAuthCookies(
+    res: Response,
+    tokens: { accessToken: string; refreshToken: string },
+    rememberMe = false,
+  ) {
     const isProduction = this.config.cookieSecure;
 
     res.cookie('access_token', tokens.accessToken, {
@@ -64,13 +68,22 @@ export class AuthController {
       maxAge: 15 * 60 * 1000, // 15 mins
     });
 
-    res.cookie('refresh_token', tokens.refreshToken, {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: 'lax',
-      path: '/v1/auth',
-      maxAge: this.config.refreshTokenExpiresDays * 24 * 60 * 60 * 1000,
-    });
+    if (rememberMe) {
+      res.cookie('refresh_token', tokens.refreshToken, {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: 'lax',
+        path: '/v1/auth',
+        maxAge: this.config.refreshTokenExpiresDays * 24 * 60 * 60 * 1000,
+      });
+    } else {
+      res.cookie('refresh_token', tokens.refreshToken, {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: 'lax',
+        path: '/v1/auth',
+      });
+    }
   }
 
   private clearAuthCookies(res: Response) {
@@ -124,7 +137,7 @@ export class AuthController {
       userAgent,
       activeTenantId,
     );
-    this.setAuthCookies(res, rawTokens);
+    this.setAuthCookies(res, rawTokens, Boolean(dto.rememberMe));
 
     return response;
   }

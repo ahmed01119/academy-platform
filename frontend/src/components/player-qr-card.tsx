@@ -79,13 +79,16 @@ export function PlayerQrCard({ card, isAdmin = false, onCardUpdated, onClose }: 
       setShowRotateConfirm(false);
       setStatusMessage({
         type: 'success',
-        text: ar ? 'تم استبدال وتدوير رمز البطاقة بنجاح' : 'Card QR rotated and renewed successfully',
+        text: ar
+          ? 'تم استبدال وتدوير رمز البطاقة بنجاح'
+          : 'Card QR rotated and renewed successfully',
       });
       onCardUpdated?.(updated);
     } catch (err: unknown) {
       setStatusMessage({
         type: 'error',
-        text: (err as Error)?.message || (ar ? 'فشل تدوير رمز البطاقة' : 'Failed to rotate QR card'),
+        text:
+          (err as Error)?.message || (ar ? 'فشل تدوير رمز البطاقة' : 'Failed to rotate QR card'),
       });
     } finally {
       setIsRotating(false);
@@ -151,7 +154,7 @@ export function PlayerQrCard({ card, isAdmin = false, onCardUpdated, onClose }: 
         {/* Card Header: Academy Branding */}
         <div className="flex items-center justify-between border-b border-[#1e3a5f] pb-4 print:border-gray-300">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-[#0a3bff] to-[#00d6ff] text-white font-black text-lg shadow-md print:bg-gray-200">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-linear-to-tr from-[#0a3bff] to-[#00d6ff] text-white font-black text-lg shadow-md print:bg-gray-200">
               ⚽
             </div>
             <div>
@@ -181,7 +184,7 @@ export function PlayerQrCard({ card, isAdmin = false, onCardUpdated, onClose }: 
 
         {/* Player Profile & Details */}
         <div className="mt-5 flex items-center gap-4">
-          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#0d1f3c] to-[#0a1628] border border-[#0A3BFF]/40 text-xl font-bold text-[#00D6FF] shadow-inner print:border-gray-400 print:text-black">
+          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-linear-to-br from-[#0d1f3c] to-[#0a1628] border border-[#0A3BFF]/40 text-xl font-bold text-[#00D6FF] shadow-inner print:border-gray-400 print:text-black">
             {card.photoUrl ? (
               <img
                 src={card.photoUrl}

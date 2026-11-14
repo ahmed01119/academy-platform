@@ -4,6 +4,7 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
+    "predev": "rimraf .next",
     "dev": "next dev --port 3000",
     "prebuild": "node ../scripts/generate-version.js",
     "build": "next build",

@@ -120,7 +120,12 @@ function QuickAttendanceContent() {
         // Cache for offline resilience
         await offlineStore.cacheSessionRoster(data);
       } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : locale === 'ar' ? 'تعذر تحميل كشف الحضور' : 'Failed to load attendance roster';
+        const msg =
+          err instanceof Error
+            ? err.message
+            : locale === 'ar'
+              ? 'تعذر تحميل كشف الحضور'
+              : 'Failed to load attendance roster';
         toast.error(msg);
       } finally {
         setIsLoadingRoster(false);
@@ -184,7 +189,9 @@ function QuickAttendanceContent() {
           deviceObservedTime: new Date().toISOString(),
           reason: `Quick marking: ${status}`,
         });
-        toast.info(locale === 'ar' ? 'تم الحفظ محلياً (وضع غير متصل)' : 'Saved locally (offline mode)');
+        toast.info(
+          locale === 'ar' ? 'تم الحفظ محلياً (وضع غير متصل)' : 'Saved locally (offline mode)',
+        );
       } else {
         await api.attendance.recordAttendance({
           sessionId: selectedSessionId,
@@ -194,7 +201,12 @@ function QuickAttendanceContent() {
         });
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : locale === 'ar' ? 'فشل تسجيل الحضور' : 'Failed to record attendance';
+      const msg =
+        err instanceof Error
+          ? err.message
+          : locale === 'ar'
+            ? 'فشل تسجيل الحضور'
+            : 'Failed to record attendance';
       toast.error(msg);
       // Rollback roster
       loadRoster(selectedSessionId);
@@ -215,7 +227,11 @@ function QuickAttendanceContent() {
     const unmarkedOrAbsent = sessionDetails.roster.filter((r) => r.status !== 'PRESENT');
 
     if (unmarkedOrAbsent.length === 0) {
-      toast.info(locale === 'ar' ? 'جميع اللاعبين مسجلين حضور بالفعل' : 'All players are already marked as present');
+      toast.info(
+        locale === 'ar'
+          ? 'جميع اللاعبين مسجلين حضور بالفعل'
+          : 'All players are already marked as present',
+      );
       setIsBulkMarking(false);
       return;
     }
@@ -229,10 +245,19 @@ function QuickAttendanceContent() {
           status: 'PRESENT' as const,
         })),
       });
-      toast.success(locale === 'ar' ? `تم تحضير ${unmarkedOrAbsent.length} لاعب بنجاح` : `${unmarkedOrAbsent.length} players marked as present`);
+      toast.success(
+        locale === 'ar'
+          ? `تم تحضير ${unmarkedOrAbsent.length} لاعب بنجاح`
+          : `${unmarkedOrAbsent.length} players marked as present`,
+      );
       loadRoster(selectedSessionId);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : locale === 'ar' ? 'فشل التحضير الجماعي' : 'Bulk attendance marking failed';
+      const msg =
+        err instanceof Error
+          ? err.message
+          : locale === 'ar'
+            ? 'فشل التحضير الجماعي'
+            : 'Bulk attendance marking failed';
       toast.error(msg);
     } finally {
       setIsBulkMarking(false);
@@ -253,19 +278,20 @@ function QuickAttendanceContent() {
     <AppShell>
       <div className="space-y-6">
         <PageHeader
-          breadcrumbs={[
-            { label: locale === 'ar' ? 'الرئيسية' : 'Home', href: '/dashboard' },
-            { label: locale === 'ar' ? 'إدارة الحضور' : 'Attendance', href: '/attendance' },
-            { label: locale === 'ar' ? 'التحضير السريع الميداني' : 'Quick Field Attendance' },
-          ]}
           title={locale === 'ar' ? 'التحضير السريع (Quick Attendance)' : 'Quick Attendance'}
-          description={locale === 'ar' ? 'تسجيل فوري لحضور اللاعبين بنقرة واحدة، ودعم كامل للعمل دون اتصال بالإنترنت.' : 'Instant one-tap player attendance recording with full offline support.'}
+          description={
+            locale === 'ar'
+              ? 'تسجيل فوري لحضور اللاعبين بنقرة واحدة، ودعم كامل للعمل دون اتصال بالإنترنت.'
+              : 'Instant one-tap player attendance recording with full offline support.'
+          }
           actions={
             <div className="flex items-center gap-2.5">
               {!isOnline && (
                 <span className="flex items-center gap-1.5 rounded-full bg-amber-500/15 px-3 py-1 text-xs font-bold text-amber-600 border border-amber-500/20">
                   <WifiOff className="h-3.5 w-3.5" />
-                  <span>{locale === 'ar' ? 'أوفلاين (يتم الحفظ محلياً)' : 'Offline (saving locally)'}</span>
+                  <span>
+                    {locale === 'ar' ? 'أوفلاين (يتم الحفظ محلياً)' : 'Offline (saving locally)'}
+                  </span>
                 </span>
               )}
               {selectedSessionId && (
@@ -280,7 +306,7 @@ function QuickAttendanceContent() {
               {selectedSessionId && (
                 <Link
                   href={`/attendance/sessions/${selectedSessionId}`}
-                  className="flex items-center gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-2 text-xs font-semibold text-[var(--text-main)] hover:border-[var(--accent-primary)] transition-all cursor-pointer"
+                  className="flex items-center gap-2 rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] px-4 py-2 text-xs font-semibold text-(--text-main) hover:border-[var(--accent-primary)] transition-all cursor-pointer"
                 >
                   <span>{locale === 'ar' ? 'الكشف الكامل والمالية' : 'Full Roster & Finance'}</span>
                   <ArrowIcon className="h-3.5 w-3.5" />
@@ -291,11 +317,11 @@ function QuickAttendanceContent() {
         />
 
         {/* Session Selector Strip */}
-        <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 shadow-sm space-y-4">
+        <div className="rounded-2xl border border-(--border-subtle) bg-[var(--bg-surface)] p-5 shadow-sm space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-2.5">
               <Zap className="h-5 w-5 text-emerald-500" />
-              <label htmlFor="session-select" className="text-sm font-bold text-[var(--text-main)]">
+              <label htmlFor="session-select" className="text-sm font-bold text-(--text-main)">
                 {locale === 'ar' ? 'اختر الحصة التدريبية:' : 'Select Training Session:'}
               </label>
             </div>
@@ -305,12 +331,14 @@ function QuickAttendanceContent() {
                 id="session-select"
                 value={selectedSessionId}
                 onChange={(e) => setSelectedSessionId(e.target.value)}
-                className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2 text-xs font-semibold text-[var(--text-main)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
+                className="rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3.5 py-2 text-xs font-semibold text-(--text-main) focus:outline-none focus:ring-2 focus:ring-(--accent-primary)"
               >
                 {isLoadingSessions ? (
                   <option>{locale === 'ar' ? 'جارٍ تحميل الحصص...' : 'Loading sessions...'}</option>
                 ) : sessions.length === 0 ? (
-                  <option>{locale === 'ar' ? 'لا توجد حصص مجدولة اليوم' : 'No sessions scheduled today'}</option>
+                  <option>
+                    {locale === 'ar' ? 'لا توجد حصص مجدولة اليوم' : 'No sessions scheduled today'}
+                  </option>
                 ) : (
                   sessions.map((s) => (
                     <option key={s.id} value={s.id}>
@@ -323,7 +351,7 @@ function QuickAttendanceContent() {
               <button
                 type="button"
                 onClick={() => selectedSessionId && loadRoster(selectedSessionId)}
-                className="p-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] text-[var(--text-muted)] hover:text-[var(--text-main)] hover:border-[var(--accent-primary)] transition-all cursor-pointer"
+                className="p-2 rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) text-(--text-muted) hover:text-(--text-main) hover:border-[var(--accent-primary)] transition-all cursor-pointer"
                 title={locale === 'ar' ? 'تحديث الكشف' : 'Refresh Roster'}
               >
                 <RefreshCw className={`h-4 w-4 ${isLoadingRoster ? 'animate-spin' : ''}`} />
@@ -333,33 +361,43 @@ function QuickAttendanceContent() {
 
           {/* KPI Counters Strip */}
           {sessionDetails && (
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-3 border-t border-[var(--border-subtle)]">
-              <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] p-3 text-center">
-                <span className="text-[11px] text-[var(--text-muted)] block mb-0.5">{locale === 'ar' ? 'الإجمالي' : 'Total'}</span>
-                <span className="text-lg font-black text-[var(--text-main)]">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-3 border-t border-(--border-subtle)">
+              <div className="rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) p-3 text-center">
+                <span className="text-[11px] text-(--text-muted) block mb-0.5">
+                  {locale === 'ar' ? 'الإجمالي' : 'Total'}
+                </span>
+                <span className="text-lg font-black text-(--text-main)">
                   {sessionDetails.roster?.length || 0}
                 </span>
               </div>
               <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3 text-center">
-                <span className="text-[11px] text-emerald-600 font-bold block mb-0.5">{locale === 'ar' ? 'حاضر' : 'Present'}</span>
+                <span className="text-[11px] text-emerald-600 font-bold block mb-0.5">
+                  {locale === 'ar' ? 'حاضر' : 'Present'}
+                </span>
                 <span className="text-lg font-black text-emerald-600">
                   {sessionDetails.totalPresent}
                 </span>
               </div>
               <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-center">
-                <span className="text-[11px] text-amber-600 font-bold block mb-0.5">{locale === 'ar' ? 'متأخر' : 'Late'}</span>
+                <span className="text-[11px] text-amber-600 font-bold block mb-0.5">
+                  {locale === 'ar' ? 'متأخر' : 'Late'}
+                </span>
                 <span className="text-lg font-black text-amber-600">
                   {sessionDetails.totalLate}
                 </span>
               </div>
               <div className="rounded-xl border border-rose-500/20 bg-rose-500/5 p-3 text-center">
-                <span className="text-[11px] text-rose-600 font-bold block mb-0.5">{locale === 'ar' ? 'غائب' : 'Absent'}</span>
+                <span className="text-[11px] text-rose-600 font-bold block mb-0.5">
+                  {locale === 'ar' ? 'غائب' : 'Absent'}
+                </span>
                 <span className="text-lg font-black text-rose-600">
                   {sessionDetails.totalAbsent}
                 </span>
               </div>
               <div className="rounded-xl border border-slate-500/20 bg-slate-500/5 p-3 text-center">
-                <span className="text-[11px] text-slate-500 font-bold block mb-0.5">{locale === 'ar' ? 'غير محدد' : 'Unmarked'}</span>
+                <span className="text-[11px] text-slate-500 font-bold block mb-0.5">
+                  {locale === 'ar' ? 'غير محدد' : 'Unmarked'}
+                </span>
                 <span className="text-lg font-black text-slate-600 dark:text-slate-300">
                   {sessionDetails.totalUnmarked}
                 </span>
@@ -373,18 +411,18 @@ function QuickAttendanceContent() {
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
             <div className="flex items-center gap-3 w-full sm:w-auto">
               <div className="relative flex-1 sm:w-64">
-                <Search className="absolute right-3 rtl:right-3 ltr:left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--text-muted)] pointer-events-none" />
+                <Search className="absolute right-3 rtl:right-3 ltr:left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-(--text-muted) pointer-events-none" />
                 <input
                   type="text"
                   placeholder={locale === 'ar' ? 'بحث باسم اللاعب...' : 'Search by player name...'}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] py-2 pr-9 rtl:pr-9 ltr:pl-9 pl-3 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
+                  className="w-full rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] py-2 pr-9 rtl:pr-9 ltr:pl-9 pl-3 text-xs text-(--text-main) placeholder-(--text-muted) focus:outline-none focus:ring-2 focus:ring-(--accent-primary)"
                 />
               </div>
 
               {/* Status Filter Pills */}
-              <div className="flex items-center gap-1 overflow-x-auto p-1 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)]">
+              <div className="flex items-center gap-1 overflow-x-auto p-1 rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)]">
                 {(['ALL', 'UNMARKED', 'PRESENT', 'LATE', 'ABSENT'] as const).map((st) => (
                   <button
                     key={st}
@@ -392,19 +430,29 @@ function QuickAttendanceContent() {
                     onClick={() => setStatusFilter(st)}
                     className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition-all cursor-pointer ${
                       statusFilter === st
-                        ? 'bg-[var(--accent-primary)] text-white shadow-sm'
-                        : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                        ? 'bg-(--accent-primary) text-white shadow-sm'
+                        : 'text-(--text-muted) hover:text-(--text-main)'
                     }`}
                   >
                     {st === 'ALL'
-                      ? locale === 'ar' ? 'الكل' : 'All'
+                      ? locale === 'ar'
+                        ? 'الكل'
+                        : 'All'
                       : st === 'UNMARKED'
-                        ? locale === 'ar' ? 'غير محدد' : 'Unmarked'
+                        ? locale === 'ar'
+                          ? 'غير محدد'
+                          : 'Unmarked'
                         : st === 'PRESENT'
-                          ? locale === 'ar' ? 'حاضر' : 'Present'
+                          ? locale === 'ar'
+                            ? 'حاضر'
+                            : 'Present'
                           : st === 'LATE'
-                            ? locale === 'ar' ? 'متأخر' : 'Late'
-                            : locale === 'ar' ? 'غائب' : 'Absent'}
+                            ? locale === 'ar'
+                              ? 'متأخر'
+                              : 'Late'
+                            : locale === 'ar'
+                              ? 'غائب'
+                              : 'Absent'}
                   </button>
                 ))}
               </div>
@@ -419,23 +467,35 @@ function QuickAttendanceContent() {
               className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50 transition-all cursor-pointer w-full sm:w-auto justify-center"
             >
               <CheckCircle2 className="h-4 w-4" />
-              <span>{isBulkMarking ? (locale === 'ar' ? 'جارٍ التحضير...' : 'Marking...') : (locale === 'ar' ? 'تحضير الكل كحاضر (1-Tap)' : 'Mark All Present (1-Tap)')}</span>
+              <span>
+                {isBulkMarking
+                  ? locale === 'ar'
+                    ? 'جارٍ التحضير...'
+                    : 'Marking...'
+                  : locale === 'ar'
+                    ? 'تحضير الكل كحاضر (1-Tap)'
+                    : 'Mark All Present (1-Tap)'}
+              </span>
             </button>
           </div>
         )}
 
         {/* Rapid Roster Grid */}
         {isLoadingRoster ? (
-          <div className="py-20 text-center text-xs text-[var(--text-muted)]">
+          <div className="py-20 text-center text-xs text-(--text-muted)">
             {locale === 'ar' ? 'جارٍ تحميل كشف الحضور...' : 'Loading attendance roster...'}
           </div>
         ) : !sessionDetails ? (
-          <div className="py-20 text-center text-xs text-[var(--text-muted)]">
-            {locale === 'ar' ? 'يرجى اختيار حصة تدريبية لعرض الكشف.' : 'Please select a training session to view the roster.'}
+          <div className="py-20 text-center text-xs text-(--text-muted)">
+            {locale === 'ar'
+              ? 'يرجى اختيار حصة تدريبية لعرض الكشف.'
+              : 'Please select a training session to view the roster.'}
           </div>
         ) : filteredRoster.length === 0 ? (
-          <div className="py-16 text-center text-xs text-[var(--text-muted)] rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)]">
-            {locale === 'ar' ? 'لا يوجد لاعبين مطابقين للبحث أو الفلتر.' : 'No players match your search or filter.'}
+          <div className="py-16 text-center text-xs text-(--text-muted) rounded-2xl border border-(--border-subtle) bg-[var(--bg-surface)]">
+            {locale === 'ar'
+              ? 'لا يوجد لاعبين مطابقين للبحث أو الفلتر.'
+              : 'No players match your search or filter.'}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -455,17 +515,16 @@ function QuickAttendanceContent() {
                           ? 'border-rose-500/30 bg-rose-500/5'
                           : player.status === 'EXCUSED'
                             ? 'border-sky-500/30 bg-sky-500/5'
-                            : 'border-[var(--border-subtle)] bg-[var(--bg-surface)]'
+                            : 'border-(--border-subtle) bg-[var(--bg-surface)]'
                   }`}
                 >
                   <div className="flex items-center justify-between">
                     <div>
-                      <h4 className="text-sm font-bold text-[var(--text-main)]">
-                        {player.playerName}
-                      </h4>
+                      <h4 className="text-sm font-bold text-(--text-main)">{player.playerName}</h4>
                       {player.jerseyNumber && (
-                        <span className="text-[11px] text-[var(--text-muted)]">
-                          {locale === 'ar' ? 'رقم: #' : 'No. #'}{player.jerseyNumber}
+                        <span className="text-[11px] text-(--text-muted)">
+                          {locale === 'ar' ? 'رقم: #' : 'No. #'}
+                          {player.jerseyNumber}
                         </span>
                       )}
                     </div>
@@ -484,19 +543,29 @@ function QuickAttendanceContent() {
                       }`}
                     >
                       {player.status === 'PRESENT'
-                        ? locale === 'ar' ? 'حاضر' : 'Present'
+                        ? locale === 'ar'
+                          ? 'حاضر'
+                          : 'Present'
                         : player.status === 'LATE'
-                          ? locale === 'ar' ? 'متأخر' : 'Late'
+                          ? locale === 'ar'
+                            ? 'متأخر'
+                            : 'Late'
                           : player.status === 'ABSENT'
-                            ? locale === 'ar' ? 'غائب' : 'Absent'
+                            ? locale === 'ar'
+                              ? 'غائب'
+                              : 'Absent'
                             : player.status === 'EXCUSED'
-                              ? locale === 'ar' ? 'معذور' : 'Excused'
-                              : locale === 'ar' ? 'غير محدد' : 'Unmarked'}
+                              ? locale === 'ar'
+                                ? 'معذور'
+                                : 'Excused'
+                              : locale === 'ar'
+                                ? 'غير محدد'
+                                : 'Unmarked'}
                     </span>
                   </div>
 
                   {/* 4 Large 1-Tap Toggle Buttons */}
-                  <div className="grid grid-cols-4 gap-1.5 pt-2 border-t border-[var(--border-subtle)]">
+                  <div className="grid grid-cols-4 gap-1.5 pt-2 border-t border-(--border-subtle)">
                     <button
                       type="button"
                       disabled={isPending || isClosed}

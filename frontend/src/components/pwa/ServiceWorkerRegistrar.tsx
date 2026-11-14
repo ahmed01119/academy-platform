@@ -180,31 +180,56 @@ export function ServiceWorkerRegistrar() {
 
     let cancelled = false;
 
-    // 1. Service worker lifecycle management (in production or supported envs)
-    if ('serviceWorker' in navigator && process.env.NODE_ENV !== 'development') {
-      void navigator.serviceWorker
-        .register('/sw.js', { scope: '/' })
-        .then((registration) => {
-          if (cancelled) return;
-          registrationRef.current = registration;
-          if (registration.waiting) {
-            setWaitingWorker(registration.waiting);
-            setUpdateAvailable(true);
+    // 1. Service worker lifecycle management
+    if ('serviceWorker' in navigator) {
+      const isLocalhost =
+        window.location.hostname === 'localhost' ||
+        window.location.hostname === '127.0.0.1' ||
+        window.location.hostname === '[::1]' ||
+        process.env.NODE_ENV === 'development';
+
+      if (isLocalhost) {
+        // In local environments, unregister any active service worker and clear static caches
+        // to prevent stale chunk 404s, nosniff MIME type mismatches, and offline intercepts
+        void navigator.serviceWorker.getRegistrations().then((registrations) => {
+          for (const registration of registrations) {
+            void registration.unregister();
           }
-          registration.addEventListener('updatefound', () => {
-            const installing = registration.installing;
-            if (!installing) return;
-            installing.addEventListener('statechange', () => {
-              if (installing.state === 'installed' && navigator.serviceWorker.controller) {
-                setWaitingWorker(registration.waiting);
-                setUpdateAvailable(true);
-              }
-            });
-          });
-        })
-        .catch((err) => {
-          console.error('Service worker registration failed', err);
         });
+        if ('caches' in window) {
+          void caches.keys().then((keys) => {
+            for (const key of keys) {
+              if (key.startsWith('sportexus-')) {
+                void caches.delete(key);
+              }
+            }
+          });
+        }
+      } else {
+        void navigator.serviceWorker
+          .register('/sw.js', { scope: '/' })
+          .then((registration) => {
+            if (cancelled) return;
+            registrationRef.current = registration;
+            if (registration.waiting) {
+              setWaitingWorker(registration.waiting);
+              setUpdateAvailable(true);
+            }
+            registration.addEventListener('updatefound', () => {
+              const installing = registration.installing;
+              if (!installing) return;
+              installing.addEventListener('statechange', () => {
+                if (installing.state === 'installed' && navigator.serviceWorker.controller) {
+                  setWaitingWorker(registration.waiting);
+                  setUpdateAvailable(true);
+                }
+              });
+            });
+          })
+          .catch((err) => {
+            console.error('Service worker registration failed', err);
+          });
+      }
     }
 
     // 2. Initial version check
@@ -301,11 +326,11 @@ export function ServiceWorkerRegistrar() {
 
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-4 z-50 flex justify-center px-4">
-      <div className="pointer-events-auto max-w-lg rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-4 shadow-2xl space-y-3">
+      <div className="pointer-events-auto max-w-lg rounded-2xl border border-(--border-app) bg-[var(--bg-surface)] p-4 shadow-2xl space-y-3">
         <div className="flex items-start gap-3">
           <div className="flex-1">
-            <p className="text-sm font-semibold text-[var(--text-main)]">{title}</p>
-            <p className="mt-1 text-xs text-[var(--text-muted)] leading-relaxed">{body}</p>
+            <p className="text-sm font-semibold text-(--text-main)">{title}</p>
+            <p className="mt-1 text-xs text-(--text-muted) leading-relaxed">{body}</p>
           </div>
           {isUpdating && (
             <div
@@ -325,7 +350,7 @@ export function ServiceWorkerRegistrar() {
           <button
             type="button"
             disabled={isUpdating}
-            className="rounded-xl border border-[var(--border-app)] px-3 py-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            className="rounded-xl border border-(--border-app) px-3 py-1.5 text-xs text-(--text-muted) hover:text-(--text-main) transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={() => setDismissed(true)}
           >
             {later}
@@ -333,7 +358,7 @@ export function ServiceWorkerRegistrar() {
           <button
             type="button"
             disabled={isUpdating}
-            className="rounded-xl bg-[var(--accent-primary)] px-4 py-1.5 text-xs font-semibold text-white shadow-md hover:opacity-90 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+            className="rounded-xl bg-(--accent-primary) px-4 py-1.5 text-xs font-semibold text-white shadow-md hover:opacity-90 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
             onClick={() => void handleApplyUpdate()}
           >
             {isUpdating && (

@@ -64,7 +64,13 @@ const nextConfig: NextConfig = {
     return [];
   },
   async redirects() {
-    return [];
+    return [
+      {
+        source: '/',
+        destination: '/dashboard',
+        permanent: false,
+      },
+    ];
   },
 };
 

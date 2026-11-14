@@ -233,8 +233,8 @@ export class AuthService {
       });
     }
 
-    // Reset rate limit counter upon successful credentials verification
-    await this.redisService.resetRateLimit(rateLimitKey);
+    // Reset rate limit counter asynchronously upon successful credentials verification
+    void this.redisService.resetRateLimit(rateLimitKey).catch(() => undefined);
 
     if (user.isSuspended) {
       throw new UnauthorizedException({
@@ -331,15 +331,19 @@ export class AuthService {
       user.isPlatformOwner,
     );
 
-    await this.auditService.logEvent({
-      tenantId: activeTenant?.tenantId,
-      actorUserId: user.id,
-      action: 'AUTH_LOGIN_SUCCESS',
-      resourceType: 'Auth',
-      resourceId: user.id,
-      ipAddress,
-      userAgent,
-    });
+    void this.auditService
+      .logEvent({
+        tenantId: activeTenant?.tenantId,
+        actorUserId: user.id,
+        action: 'AUTH_LOGIN_SUCCESS',
+        resourceType: 'Auth',
+        resourceId: user.id,
+        ipAddress,
+        userAgent,
+      })
+      .catch((err) => {
+        this.logger.warn(`Failed to log auth login event asynchronously: ${err?.message}`);
+      });
 
     const userSummary: UserSummary = {
       id: user.id,
