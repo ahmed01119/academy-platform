@@ -102,8 +102,13 @@ tokens, registration) — these touch the non-RLS tables `users`/`refresh_tokens
 - **Auth state**: `contexts/auth-context.tsx` — state machine, cross-tab sync
   (`BroadcastChannel('sportexus_auth_sync')` + storage events). Tokens live in httpOnly cookies;
   only the active tenant id is kept in `localStorage` (`academy_active_tenant_id`).
-- **API client** (`api/client.ts`): browser always calls relative `/v1`; adds `x-tenant-id`;
-  on 401 runs a **single-flight** `/auth/refresh` and retries once.
+- **API client**: transport in `lib/http/` (`request.ts` — browser always calls relative `/v1`,
+  adds `x-tenant-id`, 25 s GET cache + in-flight de-dup cleared by any mutation, on 401 runs a
+  **single-flight** `/auth/refresh` and retries once; `api-error.ts`; `active-tenant.ts`; `auth-events.ts`).
+  Endpoints live per domain in `features/<domain>/api.ts`; `api/client.ts` composes them into the
+  `api` object (shape pinned by `api/client.contract.test.ts`). Config in `config/env.ts` and `config/constants.ts`.
+- **Confirmations**: `components/ui/ConfirmDialog.tsx` (`ConfirmProvider` in the root layout, `useConfirm()`);
+  native `confirm()` is no longer used.
 - **Access control in UI**: `utils/role-routing.ts` (`getRoleHomeRoute`, `canAccessAdminRoutes`, ...).
   Each page checks auth itself and `router.push`es away; there is no `middleware.ts`.
   `components/layout/AuthGuard.tsx` exists but is not used by any page yet. UI checks are

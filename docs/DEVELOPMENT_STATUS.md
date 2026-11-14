@@ -135,9 +135,32 @@ Frontend findings (in addition to K14):
 - F9 Currency label hard-coded "SAR/ر.س" in finance/attendance UI (business decision pending — K4).
 - Good: no `any`, no XSS sinks except the two static theme/locale init scripts in `app/layout.tsx`; tokens are httpOnly cookies (only user summary + tenant id in `localStorage`); all HTTP goes through the API client.
 
+### Phase 1 progress
+
+| Step | Status | Commit |
+|---|---|---|
+| 0 — checkpoint of prior WIP (sensitive `academy_platform_mysql.sql` excluded, left untracked) | ✅ | `64c3adc` |
+| 0 — Prettier-only formatting commit (frontend) | ✅ | `0553112` |
+| Fix — restore 258 erased CSS-variable classes on `attendance/sessions/[id]` (damage from `1e77d5a`) | ✅ | `402c5df` |
+| 1 — foundation: `config/`, `lib/http/`, `features/<domain>/api.ts`, `api/client.ts` facade, contract test, `ConfirmProvider`/`useConfirm` replacing 8 native `confirm()`, dev-only QR simulator | ✅ | `9dcc3ad` |
+| 2 — shell & guards (`AuthGuard` adoption, AppShell K14) | ⏳ next | |
+| 3–13 | pending | |
+
+Step 1 verification: typecheck ✅, lint ✅ (0 errors), Prettier ✅, tests ✅ 108/108 (15 files; +24 new),
+production build ✅; simulator strings absent from `.next` output (verified by grep); production server smoke test:
+all 33 page routes 200, `/`→`/dashboard` and `/scanner`→`/attendance/scanner` 307, `/auth-test` 404;
+`/v1/health` proxied to the local API 200. Authenticated end-to-end flow **not verified** — the local DB's demo
+account password differs from the seed default; needs a test account from the owner.
+
+New findings during Phase 1:
+- F10 `--brand-surface` CSS variable is used (`attendance/sessions/[id]`, `components/finance/PlansTab.tsx`) but never defined in `globals.css` → transparent background. Pre-existing; not changed.
+- F11 Many files still use the legacy `[var(--x)]` Tailwind syntax (editor suggests `(--x)`); both work in Tailwind v4. Not changed (cosmetic, high churn).
+- Rule for dev-only UI: guard with inline `process.env.NODE_ENV === 'development'` at the call site; an imported constant is not folded across modules and ships to production (verified).
+
 ## 10. Change log
 
 | Date | Change | Files |
 |---|---|---|
 | 2026-11-14 | Initial knowledge baseline: created the five core docs; no application code modified. | `docs/PROJECT_OVERVIEW.md`, `docs/SYSTEM_ARCHITECTURE.md`, `docs/BUSINESS_LOGIC.md`, `docs/TECHNOLOGY_STACK.md`, `docs/DEVELOPMENT_STATUS.md` |
 | 2026-11-14 | Phase 1 frontend analysis + verification baseline (§9); proposal pending approval. | `docs/DEVELOPMENT_STATUS.md` |
+| 2026-11-14 | Phase 1 Steps 0–1 + session-page CSS repair (see §9 progress). No backend, API contract or currency changes. | `frontend/src/{config,lib/http,features/*/api.ts,api/client.ts,components/ui/ConfirmDialog.tsx,features/attendance/components/QrCheckInSimulator.tsx}`, 5 pages (confirm dialogs), `app/layout.tsx` |
