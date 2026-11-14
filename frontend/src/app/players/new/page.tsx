@@ -8,13 +8,14 @@ import { useAccessGuard } from '@/hooks/useAccessGuard';
 import { useLocale } from '@/contexts/locale-context';
 import { AppShell } from '../../../components/layout/AppShell';
 import { PageHeader } from '../../../components/ui/PageHeader';
-import { api } from '@/api/client';
-import type {
-  BranchSummary,
-  CreatePlayerRequest,
-  GuardianRelationship,
-  PlayerGender,
-} from '@academy/shared';
+import { api, getErrorMessage } from '@/api/client';
+import { PageSkeleton } from '@/components/ui/skeleton';
+import {
+  buildCreatePlayerPayload,
+  validateNewPlayerForm,
+  type NewPlayerFormValues,
+} from '@/features/players/new-player-form';
+import type { BranchSummary, GuardianRelationship, PlayerGender } from '@academy/shared';
 import { UserPlus, AlertCircle, Save, User, Heart, Users, GitBranch } from 'lucide-react';
 
 export default function NewPlayerPage() {
@@ -71,112 +72,51 @@ export default function NewPlayerPage() {
     e.preventDefault();
     setErrorMessage(null);
 
-    const effectiveDob = useBirthYearOnly
-      ? birthYear.trim()
-        ? `${birthYear.trim()}-01-01`
-        : ''
-      : dateOfBirth;
-
-    if (!firstName.trim() || !lastName.trim() || !effectiveDob) {
-      setErrorMessage(
-        locale === 'ar'
-          ? useBirthYearOnly
-            ? 'يرجى ملء بيانات الاسم الأول واسم العائلة وسنة الميلاد'
-            : 'يرجى ملء بيانات الاسم الأول واسم العائلة وتاريخ الميلاد'
-          : useBirthYearOnly
-            ? 'Please fill in first name, last name, and birth year'
-            : 'Please fill in first name, last name, and date of birth',
-      );
+    const values: NewPlayerFormValues = {
+      firstName,
+      lastName,
+      gender,
+      dateOfBirth,
+      useBirthYearOnly,
+      birthYear,
+      jerseyNumber,
+      nationalId,
+      emergencyContactName,
+      emergencyContactPhone,
+      medicalNotes,
+      guardianName,
+      guardianRelationship,
+      guardianPhone,
+      guardianEmail,
+      branchId,
+    };
+    const lang = locale === 'ar' ? 'ar' : 'en';
+    const validationError = validateNewPlayerForm(values, lang);
+    if (validationError) {
+      setErrorMessage(validationError);
       return;
     }
-
-    if (useBirthYearOnly) {
-      const parsedYear = parseInt(birthYear.trim(), 10);
-      const currentYear = new Date().getFullYear();
-      if (isNaN(parsedYear) || parsedYear < 1950 || parsedYear > currentYear) {
-        setErrorMessage(
-          locale === 'ar'
-            ? `يرجى إدخال سنة ميلاد صحيحة بين 1950 و ${currentYear}`
-            : `Please enter a valid birth year between 1950 and ${currentYear}`,
-        );
-        return;
-      }
-    }
-
-    if (!emergencyContactName.trim() || !emergencyContactPhone.trim()) {
-      setErrorMessage(
-        locale === 'ar'
-          ? 'يرجى ملء اسم ورقم هاتف الطوارئ'
-          : 'Please fill in emergency contact name and phone',
-      );
-      return;
-    }
-
-    if (!guardianName.trim() || !guardianPhone.trim()) {
-      setErrorMessage(
-        locale === 'ar'
-          ? 'يرجى ملء اسم ورقم هاتف ولي الأمر'
-          : 'Please fill in guardian name and phone number',
-      );
-      return;
-    }
-
-    if (!branchId) {
-      setErrorMessage(
-        locale === 'ar'
-          ? 'يرجى اختيار الفرع المراد قيد اللاعب به'
-          : 'Please select a branch to enroll the player in',
-      );
-      return;
-    }
-
-    const guardianParts = guardianName.trim().split(/\s+/);
-    const guardianFirstName = guardianParts[0] || (locale === 'ar' ? 'ولي' : 'Guardian');
-    const guardianLastName =
-      guardianParts.slice(1).join(' ') || (locale === 'ar' ? 'أمر' : 'Contact');
 
     setIsSubmitting(true);
     try {
-      const payload: CreatePlayerRequest = {
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        gender,
-        dateOfBirth: effectiveDob,
-        birthYear: useBirthYearOnly ? parseInt(birthYear.trim(), 10) : undefined,
-        jerseyNumber: jerseyNumber.trim() ? parseInt(jerseyNumber.trim(), 10) : undefined,
-        nationalId: nationalId.trim() || undefined,
-        emergencyContactName: emergencyContactName.trim(),
-        emergencyContactPhone: emergencyContactPhone.trim(),
-        medicalNotes: medicalNotes.trim() || undefined,
-        initialBranchId: branchId,
-        sport: 'FOOTBALL',
-        primaryGuardian: {
-          firstName: guardianFirstName,
-          lastName: guardianLastName,
-          relationship: guardianRelationship,
-          phone: guardianPhone.trim(),
-          email: guardianEmail.trim() || undefined,
-          isPrimary: true,
-        },
-      };
-
+      const payload = buildCreatePlayerPayload(values, lang);
       const created = await api.players.create(payload);
       router.push(`/players/${created.id}`);
     } catch (err: unknown) {
-      const msg =
-        err instanceof Error
-          ? err.message
-          : locale === 'ar'
-            ? 'فشل في تسجيل اللاعب'
-            : 'Failed to enroll player';
-      setErrorMessage(msg);
+      setErrorMessage(
+        getErrorMessage(err, locale === 'ar' ? 'فشل في تسجيل اللاعب' : 'Failed to enroll player'),
+      );
     } finally {
       setIsSubmitting(false);
     }
   };
 
   if (isLoading) {
-    return null;
+    return (
+      <AppShell>
+        <PageSkeleton variant="detail" />
+      </AppShell>
+    );
   }
 
   return (

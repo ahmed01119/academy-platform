@@ -145,7 +145,41 @@ Frontend findings (in addition to K14):
 | 1 — foundation: `config/`, `lib/http/`, `features/<domain>/api.ts`, `api/client.ts` facade, contract test, `ConfirmProvider`/`useConfirm` replacing 8 native `confirm()`, dev-only QR simulator | ✅ | `9dcc3ad` |
 | 2 — shell & guards: `resolveAccess` + `useAccessGuard` replace 20 inline guards; `AuthGuard` rebuilt on the same hook; AppShell K14 fixed | ✅ | see change log |
 | 3 — auth & public pages (login, register, forgot/reset password, verify email, accept invite, landing) + 8 typo fixes (F12) | ✅ | see change log |
-| 4–13 | pending (awaiting owner review of Step 3) | |
+| F17 notice — join form tells applicants which fields are not submitted/saved (generated from the pending-field list) | ✅ | `7ce0fac` |
+| 4 — players (`/players`, `/players/new`, `/players/[id]`, `components/player-qr-card.tsx`) | ✅ awaiting owner review | see change log |
+| 5–13 | pending (awaiting owner review of Step 4) | |
+
+Step 4 details:
+- `features/players/`: `player-permissions.ts` (`players.sensitive.read` / `players.delete` via shared `hasPermission`,
+  replacing hard-coded role lists — proven identical for all 7 roles), `player-profile.ts` (transfer validation, update
+  payload, bilingual labels), `new-player-form.ts` (create validation + payload, moved verbatim),
+  `hooks/usePlayerProfile.ts`, `hooks/usePlayersList.ts`, components `TransferBranchModal`, `EditPlayerModal`,
+  `ArchivePlayerModal`. Shared hook `hooks/useDebouncedValue.ts`.
+- Bugs fixed: **players list pagination** (clicking Next loaded page 2, then the effect reloaded page 1 — users could
+  not leave page 1); list **load failures** were only `console.error`ed (looked like "no players") — now an alert with
+  Retry; search fired one request **per keystroke** and branches were re-fetched on every filter change — search now
+  debounced 300 ms (still live), branches load once; out-of-order responses ignored; detail page **swallowed load
+  errors** (e.g. 403 branch restriction showed only "does not exist") — reason now shown; create page rendered a
+  **blank page** while auth loaded — skeleton now.
+- i18n: ~40 Arabic-only strings on `/players/[id]` (header, sections, all three modals, archive impact report, back
+  link) now bilingual; existing Arabic text unchanged.
+- a11y: modals have `role="dialog"`, `aria-modal`, `aria-labelledby`, named close buttons, `label`↔`input` links;
+  clear-search button named; alerts use `role="alert"`/`"status"`.
+- Errors: players pages and the shared QR card show only API messages (`getErrorMessage`).
+- Unchanged: API calls/bodies, validation rules, role rules (QR card manage buttons still follow the previous
+  `canViewSensitive` rule), Tailwind tokens/design.
+
+New findings (documented, not changed):
+- F21 `/players/new` shows an **"Enrollment Start Date"** field, but `CreatePlayerSchema` has no such field and the
+  page never sends it — the enrollment always starts on the server's current date. Same class as F17; decide: send it
+  (backend support), add a notice, or remove the field.
+- F22 The players **list** shows `nationalId` to every role that can open it (OWNER, MANAGER, BRANCH_MANAGER,
+  ACCOUNTANT, RECEPTIONIST + super admins) because the API returns it unmasked (K7); the detail page masks it for roles
+  without `players.sensitive.read`. Recommended: mask in the API (backend phase) and hide the column for those roles in
+  the UI now — needs owner approval (changes what Accountant/Receptionist see).
+
+Outstanding (unchanged): **real authenticated testing with an actual account**. Step 4 browser checks used an
+in-browser mocked API (no backend/DB contact); authentication is **not** considered verified.
 
 Step 3 details:
 - New `features/auth/`: `AuthPageLayout`/`AuthPageSuspense`, `AuthCard`/`BackToSignInLink`, `AuthAlert`
@@ -259,6 +293,7 @@ with e-mail verification, so invitees can accept invitations.
 |---|---|---|
 | 2026-11-14 | Initial knowledge baseline: created the five core docs; no application code modified. | `docs/PROJECT_OVERVIEW.md`, `docs/SYSTEM_ARCHITECTURE.md`, `docs/BUSINESS_LOGIC.md`, `docs/TECHNOLOGY_STACK.md`, `docs/DEVELOPMENT_STATUS.md` |
 | 2026-11-14 | Phase 1 frontend analysis + verification baseline (§9); proposal pending approval. | `docs/DEVELOPMENT_STATUS.md` |
+| 2026-11-14 | Phase 1 Step 4: players feature (`features/players/**`), pagination/search/error-state fixes, bilingual + accessible player profile and modals; F17 applicant notice (`7ce0fac`). No backend/API/DB/currency changes. | `frontend/src/app/players/{page,new/page,[id]/page}.tsx`, `frontend/src/components/player-qr-card.tsx`, `frontend/src/features/players/**`, `frontend/src/hooks/useDebouncedValue.ts` (+2 test files) |
 | 2026-11-14 | Step 3 follow-up: F14 safe return path implemented; F17 explicit contract mapping (fields kept, pending list); F16/F17/F19 backend requirements documented (§10). No backend/API/DB changes. | `frontend/src/lib/auth/safe-return-path.ts`, `frontend/src/hooks/useSafeReturnPath.ts`, `frontend/src/app/{login,register,accept-invite}/page.tsx`, `frontend/src/features/landing/{player-join-request.ts,components/PlayerJoinRequestModal.tsx}` (+2 test files) |
 | 2026-11-14 | Phase 1 Step 3: auth & public pages restructured onto `features/auth` + `features/landing`; error-message hardening; 8 typo fixes. No API, validation-rule, backend or currency changes. | `frontend/src/app/{login,register,forgot-password,reset-password,verify-email,accept-invite,landing,offline}/page.tsx`, `frontend/src/components/platform/CoOwnerTab.tsx`, `frontend/src/features/{auth,landing}/**`, `frontend/src/hooks/{useCooldown,useDelayedRedirect}.ts` (+6 test files) |
 | 2026-11-14 | Phase 1 Step 2: shared access guard, AuthGuard rebuilt, AppShell text colour fixed. No permission, API or backend changes. | `frontend/src/lib/auth/access-rules.ts`, `frontend/src/hooks/useAccessGuard.ts`, `frontend/src/components/layout/{AuthGuard,AppShell}.tsx`, 20 pages under `frontend/src/app/` (+3 test files) |

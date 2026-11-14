@@ -1,17 +1,17 @@
 'use client';
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { useAccessGuard } from '@/hooks/useAccessGuard';
+import { usePlayersList } from '@/features/players/hooks/usePlayersList';
 import { useLocale } from '@/contexts/locale-context';
 import { AppShell } from '../../components/layout/AppShell';
 import { PageHeader, StatusBadge } from '../../components/ui';
 import { PageSkeleton, TableSkeleton } from '@/components/ui/skeleton';
-import { api } from '@/api/client';
 import { PlayerJoinRequestsTab } from '../../components/dashboard/PlayerJoinRequestsTab';
-import type { BranchSummary, PlayerStatus, PlayerSummary } from '@academy/shared';
+import type { PlayerStatus } from '@academy/shared';
 import {
   Users,
   Search,
@@ -29,62 +29,20 @@ import {
 function PlayersPageContent() {
   const searchParams = useSearchParams();
   const requestedTab = searchParams.get('tab') === 'applications' ? 'applications' : 'roster';
-  const { user, activeTenant, isLoading } = useAuth();
+  const { user, isLoading } = useAuth();
   const { t, locale, isRtl } = useLocale();
 
   const [activeTab, setActiveTab] = useState<'roster' | 'applications'>(requestedTab);
-  const [players, setPlayers] = useState<PlayerSummary[]>([]);
-  const [branches, setBranches] = useState<BranchSummary[]>([]);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-
-  // Filters
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedBranchId, setSelectedBranchId] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState<PlayerStatus | ''>('');
-  const [isFetching, setIsFetching] = useState(false);
-
   useAccessGuard('admin');
 
-  const loadPlayers = useCallback(
-    async (currentPage = page) => {
-      if (!user || !activeTenant) return;
-      setIsFetching(true);
-      try {
-        const res = await api.players.list({
-          page: currentPage,
-          limit: 15,
-          search: searchTerm.trim() || undefined,
-          branchId: selectedBranchId || undefined,
-          status: (selectedStatus as PlayerStatus) || undefined,
-        });
-        setPlayers(res.items);
-        setTotal(res.total);
-        setPage(res.page);
-        setTotalPages(res.totalPages || 1);
-      } catch (err) {
-        console.error('Failed to load players:', err);
-      } finally {
-        setIsFetching(false);
-      }
-    },
-    [user, activeTenant, page, searchTerm, selectedBranchId, selectedStatus],
+  const list = usePlayersList(
+    locale === 'ar' ? 'فشل تحميل قائمة اللاعبين' : 'Failed to load players',
   );
-
-  useEffect(() => {
-    if (user && activeTenant) {
-      void api.branches
-        .list()
-        .then(setBranches)
-        .catch(() => []);
-      void loadPlayers(1);
-    }
-  }, [user, activeTenant, selectedBranchId, selectedStatus, loadPlayers]);
+  const { players, branches, total, page, totalPages, isFetching, filters, setFilter } = list;
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    void loadPlayers(1);
+    list.submitSearch();
   };
 
   if (isLoading) {
@@ -175,8 +133,8 @@ function PlayersPageContent() {
                   <input
                     type="text"
                     id="input-search-players"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    value={filters.searchTerm}
+                    onChange={(e) => setFilter('searchTerm', e.target.value)}
                     placeholder={
                       locale === 'ar'
                         ? 'بحث بالاسم أو الرقم القومي...'
@@ -184,13 +142,14 @@ function PlayersPageContent() {
                     }
                     className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) ps-10 pe-9 py-2.5 text-xs text-(--text-main) placeholder-(--text-muted) focus:border-(--accent-primary) focus:bg-[var(--bg-surface)] transition-all outline-none"
                   />
-                  {searchTerm && (
+                  {filters.searchTerm && (
                     <button
                       type="button"
-                      onClick={() => setSearchTerm('')}
+                      onClick={() => setFilter('searchTerm', '')}
+                      aria-label={locale === 'ar' ? 'مسح البحث' : 'Clear search'}
                       className="absolute end-3 top-1/2 -translate-y-1/2 text-(--text-muted) hover:text-(--text-main)"
                     >
-                      <X className="h-3.5 w-3.5" />
+                      <X aria-hidden="true" className="h-3.5 w-3.5" />
                     </button>
                   )}
                 </div>
@@ -199,8 +158,8 @@ function PlayersPageContent() {
                 <div>
                   <select
                     id="select-filter-branch"
-                    value={selectedBranchId}
-                    onChange={(e) => setSelectedBranchId(e.target.value)}
+                    value={filters.branchId}
+                    onChange={(e) => setFilter('branchId', e.target.value)}
                     className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:bg-[var(--bg-surface)] transition-all outline-none"
                   >
                     <option value="">{locale === 'ar' ? 'كل الفروع' : 'All Branches'}</option>
@@ -216,8 +175,8 @@ function PlayersPageContent() {
                 <div>
                   <select
                     id="select-filter-status"
-                    value={selectedStatus}
-                    onChange={(e) => setSelectedStatus(e.target.value as PlayerStatus | '')}
+                    value={filters.status}
+                    onChange={(e) => setFilter('status', e.target.value as PlayerStatus | '')}
                     className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:bg-[var(--bg-surface)] transition-all outline-none"
                   >
                     <option value="">{locale === 'ar' ? 'كل الحالات' : 'All Statuses'}</option>
@@ -245,12 +204,7 @@ function PlayersPageContent() {
                   <button
                     type="button"
                     id="btn-refresh-players"
-                    onClick={() => {
-                      setSearchTerm('');
-                      setSelectedBranchId('');
-                      setSelectedStatus('');
-                      void loadPlayers(1);
-                    }}
+                    onClick={list.resetAndReload}
                     className="inline-flex items-center justify-center rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) p-2.5 text-(--text-muted) hover:text-(--text-main) transition-colors cursor-pointer"
                     title={t('common.refresh')}
                   >
@@ -259,6 +213,23 @@ function PlayersPageContent() {
                 </div>
               </form>
             </div>
+
+            {/* Load error (previously only logged to the console) */}
+            {list.error && (
+              <div
+                role="alert"
+                className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-xs text-red-500 flex items-center gap-3"
+              >
+                <span className="flex-1 font-medium">{list.error}</span>
+                <button
+                  type="button"
+                  onClick={list.retry}
+                  className="rounded-lg border border-red-500/40 px-3 py-1.5 font-semibold hover:bg-red-500/10 transition-colors cursor-pointer"
+                >
+                  {locale === 'ar' ? 'إعادة المحاولة' : 'Retry'}
+                </button>
+              </div>
+            )}
 
             {/* Players Table Container */}
             <div className="rounded-2xl border border-(--border-app) bg-[var(--bg-surface)] overflow-hidden shadow-sm">
@@ -418,7 +389,7 @@ function PlayersPageContent() {
                       type="button"
                       id="btn-prev-page"
                       disabled={page <= 1}
-                      onClick={() => void loadPlayers(page - 1)}
+                      onClick={() => list.goToPage(page - 1)}
                       className="inline-flex items-center gap-1 rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3 py-1.5 font-semibold text-(--text-main) disabled:opacity-40 disabled:cursor-not-allowed hover:border-[var(--accent-primary)] transition-colors"
                     >
                       <PrevIcon className="h-4 w-4" />
@@ -428,7 +399,7 @@ function PlayersPageContent() {
                       type="button"
                       id="btn-next-page"
                       disabled={page >= totalPages}
-                      onClick={() => void loadPlayers(page + 1)}
+                      onClick={() => list.goToPage(page + 1)}
                       className="inline-flex items-center gap-1 rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3 py-1.5 font-semibold text-(--text-main) disabled:opacity-40 disabled:cursor-not-allowed hover:border-[var(--accent-primary)] transition-colors"
                     >
                       <span>{t('common.next')}</span>

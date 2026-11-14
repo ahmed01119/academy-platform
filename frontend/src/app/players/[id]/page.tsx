@@ -1,21 +1,11 @@
 'use client';
 
-import React, { useCallback, useEffect, useState, use } from 'react';
+import React, { use } from 'react';
 import Link from 'next/link';
-import { useAuth } from '@/contexts/auth-context';
 import { useAccessGuard } from '@/hooks/useAccessGuard';
 import { useLocale } from '@/contexts/locale-context';
 import { AppShell } from '../../../components/layout/AppShell';
 import { PageSkeleton } from '@/components/ui/skeleton';
-import { api } from '@/api/client';
-import type {
-  BranchSummary,
-  PlayerDetails,
-  PlayerStatus,
-  UpdatePlayerRequest,
-  PlayerQrCardResponse,
-  PlayerDeletionImpact,
-} from '@academy/shared';
 import {
   GitBranch,
   Phone,
@@ -27,242 +17,34 @@ import {
   AlertCircle,
   CheckCircle2,
   Users,
-  X,
-  Save,
   QrCode,
-  Trash2,
   Archive,
-  ShieldAlert,
 } from 'lucide-react';
 import { PlayerQrCard } from '../../../components/player-qr-card';
+import { usePlayerProfile } from '@/features/players/hooks/usePlayerProfile';
+import {
+  pastEnrollmentStatusLabel,
+  playerGenderLabel,
+  playerStatusLabel,
+  playerStatusTone,
+} from '@/features/players/player-profile';
+import { TransferBranchModal } from '@/features/players/components/TransferBranchModal';
+import { EditPlayerModal } from '@/features/players/components/EditPlayerModal';
+import { ArchivePlayerModal } from '@/features/players/components/ArchivePlayerModal';
+
+const CARD = 'rounded-2xl border border-(--border-subtle) bg-(--bg-surface) p-6 shadow-sm';
 
 export default function PlayerProfilePage({ params }: { params: Promise<{ id: string }> }) {
-  const resolvedParams = use(params);
-  const playerId = resolvedParams.id;
-
-  const { user, activeTenant, isLoading } = useAuth();
+  const { id: playerId } = use(params);
   const { t, locale } = useLocale();
   const isAr = locale === 'ar';
-
-  const canViewSensitive =
-    activeTenant?.role === 'OWNER' ||
-    activeTenant?.role === 'MANAGER' ||
-    activeTenant?.role === 'BRANCH_MANAGER';
-
-  const [player, setPlayer] = useState<PlayerDetails | null>(null);
-  const [branches, setBranches] = useState<BranchSummary[]>([]);
-  const [isFetching, setIsFetching] = useState(true);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-
-  // Transfer Modal State
-  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
-  const [targetBranchId, setTargetBranchId] = useState('');
-  const [transferDate, setTransferDate] = useState(new Date().toISOString().slice(0, 10));
-  const [transferNotes, setTransferNotes] = useState('');
-  const [isTransferring, setIsTransferring] = useState(false);
-
-  // Edit Player Modal State
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editFirstName, setEditFirstName] = useState('');
-  const [editLastName, setEditLastName] = useState('');
-  const [editEmergencyName, setEditEmergencyName] = useState('');
-  const [editEmergencyPhone, setEditEmergencyPhone] = useState('');
-  const [editMedicalNotes, setEditMedicalNotes] = useState('');
-  const [editStatus, setEditStatus] = useState<PlayerStatus>('ACTIVE');
-  const [isUpdating, setIsUpdating] = useState(false);
-
-  // QR Membership Card State
-  const [qrCard, setQrCard] = useState<PlayerQrCardResponse | null>(null);
-  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
-  const [isLoadingQrCard, setIsLoadingQrCard] = useState(false);
-
-  const handleOpenQrCardModal = async () => {
-    setIsLoadingQrCard(true);
-    setErrorMessage(null);
-    try {
-      const cardData = await api.players.getQrCard(playerId);
-      setQrCard(cardData);
-      setIsQrModalOpen(true);
-    } catch (err: unknown) {
-      setErrorMessage(
-        (err as Error)?.message ||
-          (isAr ? 'فشل تحميل بطاقة العضوية' : 'Failed to load membership QR card'),
-      );
-    } finally {
-      setIsLoadingQrCard(false);
-    }
-  };
-
-  // Safe Deletion / Archive Modal State
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [isFetchingImpact, setIsFetchingImpact] = useState(false);
-  const [deletionImpact, setDeletionImpact] = useState<PlayerDeletionImpact | null>(null);
-  const [isDeletingPlayer, setIsDeletingPlayer] = useState(false);
-
-  const canDeletePlayer = activeTenant?.role === 'OWNER';
-
-  const handleOpenDeleteModal = async () => {
-    setIsFetchingImpact(true);
-    setErrorMessage(null);
-    try {
-      const impact = await api.players.getDeletionImpact(playerId);
-      setDeletionImpact(impact);
-      setIsDeleteModalOpen(true);
-    } catch (err: unknown) {
-      setErrorMessage(
-        (err as Error)?.message ||
-          (isAr ? 'فشل في احتساب تقرير أرشفة اللاعب' : 'Failed to compute archive impact report'),
-      );
-    } finally {
-      setIsFetchingImpact(false);
-    }
-  };
-
-  const handleConfirmDelete = async () => {
-    setIsDeletingPlayer(true);
-    setErrorMessage(null);
-    try {
-      const res = await api.players.safeDelete(playerId);
-      setSuccessMessage(res.message);
-      setIsDeleteModalOpen(false);
-      await loadPlayerData();
-    } catch (err: unknown) {
-      setErrorMessage(
-        (err as Error)?.message || (isAr ? 'فشل في أرشفة اللاعب' : 'Failed to archive athlete'),
-      );
-    } finally {
-      setIsDeletingPlayer(false);
-    }
-  };
+  const lang = isAr ? 'ar' : 'en';
 
   useAccessGuard('authenticated');
+  const profile = usePlayerProfile(playerId, lang);
+  const { player, permissions, transfer, edit, qr, archive } = profile;
 
-  const loadPlayerData = useCallback(async () => {
-    if (!user || !activeTenant || !playerId) return;
-    setIsFetching(true);
-    try {
-      const [playerData, branchList] = await Promise.all([
-        api.players.get(playerId),
-        api.branches.list().catch(() => []),
-      ]);
-      setPlayer(playerData);
-      setBranches(branchList);
-
-      // Pre-fill edit form
-      setEditFirstName(playerData.firstName);
-      setEditLastName(playerData.lastName);
-      setEditEmergencyName(playerData.emergencyContactName);
-      setEditEmergencyPhone(playerData.emergencyContactPhone);
-      setEditMedicalNotes(playerData.medicalNotes || '');
-      setEditStatus(playerData.status);
-    } catch (err: unknown) {
-      const msg =
-        err instanceof Error
-          ? err.message
-          : isAr
-            ? 'فشل تحميل بيانات اللاعب'
-            : 'Failed to load athlete profile';
-      setErrorMessage(msg);
-    } finally {
-      setIsFetching(false);
-    }
-  }, [user, activeTenant, playerId, isAr]);
-
-  useEffect(() => {
-    void loadPlayerData();
-  }, [loadPlayerData]);
-
-  const handleTransferSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMessage(null);
-    setSuccessMessage(null);
-
-    const activeEnrollment = player?.enrollments.find((en) => en.status === 'ACTIVE');
-    if (!activeEnrollment) {
-      setErrorMessage(
-        isAr ? 'لا يوجد اشتراك نشط حالياً لنقله' : 'No active branch enrollment to transfer',
-      );
-      return;
-    }
-
-    if (!targetBranchId) {
-      setErrorMessage(isAr ? 'يرجى اختيار الفرع المستهدف' : 'Please select target branch');
-      return;
-    }
-
-    if (targetBranchId === activeEnrollment.branchId) {
-      setErrorMessage(
-        isAr ? 'اللاعب مسجل بالفعل في هذا الفرع' : 'Athlete is already enrolled in this branch',
-      );
-      return;
-    }
-
-    setIsTransferring(true);
-    try {
-      await api.enrollments.transfer(activeEnrollment.id, {
-        targetBranchId,
-        effectiveDate: transferDate || undefined,
-        notes: transferNotes.trim() || undefined,
-      });
-
-      setSuccessMessage(
-        isAr
-          ? 'تم نقل اللاعب إلى الفرع الجديد بنجاح'
-          : 'Athlete transferred to new branch successfully',
-      );
-      setIsTransferModalOpen(false);
-      setTransferNotes('');
-      await loadPlayerData();
-    } catch (err: unknown) {
-      const msg =
-        err instanceof Error
-          ? err.message
-          : isAr
-            ? 'فشل في نقل اللاعب'
-            : 'Failed to transfer athlete';
-      setErrorMessage(msg);
-    } finally {
-      setIsTransferring(false);
-    }
-  };
-
-  const handleUpdatePlayerSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMessage(null);
-    setSuccessMessage(null);
-
-    setIsUpdating(true);
-    try {
-      const updatePayload: UpdatePlayerRequest = {
-        firstName: editFirstName.trim(),
-        lastName: editLastName.trim(),
-        emergencyContactName: editEmergencyName.trim(),
-        emergencyContactPhone: editEmergencyPhone.trim(),
-        status: editStatus,
-        ...(canViewSensitive ? { medicalNotes: editMedicalNotes.trim() || null } : {}),
-      };
-
-      await api.players.update(playerId, updatePayload);
-      setSuccessMessage(
-        isAr ? 'تم تحديث بيانات اللاعب بنجاح' : 'Athlete profile updated successfully',
-      );
-      setIsEditModalOpen(false);
-      await loadPlayerData();
-    } catch (err: unknown) {
-      const msg =
-        err instanceof Error
-          ? err.message
-          : isAr
-            ? 'فشل في تحديث بيانات اللاعب'
-            : 'Failed to update athlete profile';
-      setErrorMessage(msg);
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
-  if (isLoading || isFetching) {
+  if (profile.isLoading) {
     return (
       <AppShell>
         <PageSkeleton variant="detail" />
@@ -274,15 +56,20 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
     return (
       <AppShell>
         <div className="py-20 text-center">
-          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-3" />
+          <AlertCircle aria-hidden="true" className="h-12 w-12 text-red-500 mx-auto mb-3" />
           <p className="text-(--text-main) font-bold">
             {isAr ? 'اللاعب غير موجود أو تم حذفه' : 'Athlete does not exist or has been removed'}
           </p>
+          {profile.errorMessage && (
+            <p role="alert" className="mt-2 text-xs text-red-500">
+              {profile.errorMessage}
+            </p>
+          )}
           <Link
             href="/players"
-            className="mt-4 inline-block text-xs text-[var(--accent-primary)] hover:underline"
+            className="mt-4 inline-block text-xs text-(--accent-primary) hover:underline"
           >
-            العودة لقائمة اللاعبين
+            {isAr ? 'العودة لقائمة اللاعبين' : 'Back to athletes list'}
           </Link>
         </div>
       </AppShell>
@@ -291,6 +78,7 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
 
   const activeEnrollment = player.enrollments.find((en) => en.status === 'ACTIVE');
   const pastEnrollments = player.enrollments.filter((en) => en.status !== 'ACTIVE');
+  const sep = ' • ';
 
   return (
     <AppShell
@@ -301,25 +89,37 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
     >
       <div className="space-y-6">
         {/* Alerts */}
-        {errorMessage && (
-          <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-xs text-red-500 flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 shrink-0 text-red-500" />
-            <div className="flex-1 font-medium">{errorMessage}</div>
+        {profile.errorMessage && (
+          <div
+            role="alert"
+            className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-xs text-red-500 flex items-start gap-3"
+          >
+            <AlertCircle aria-hidden="true" className="h-5 w-5 shrink-0 text-red-500" />
+            <div className="flex-1 font-medium">{profile.errorMessage}</div>
           </div>
         )}
 
-        {successMessage && (
-          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-4 text-xs text-emerald-600 dark:text-emerald-400 flex items-start gap-3">
-            <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
-            <div className="flex-1 font-medium">{successMessage}</div>
+        {profile.successMessage && (
+          <div
+            role="status"
+            className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-4 text-xs text-emerald-600 dark:text-emerald-400 flex items-start gap-3"
+          >
+            <CheckCircle2
+              aria-hidden="true"
+              className="h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400"
+            />
+            <div className="flex-1 font-medium">{profile.successMessage}</div>
           </div>
         )}
 
         {/* Player Profile Header Card */}
-        <div className="rounded-2xl border border-(--border-subtle) bg-[var(--bg-surface)] p-6 sm:p-8 shadow-sm relative overflow-hidden">
+        <div className="rounded-2xl border border-(--border-subtle) bg-(--bg-surface) p-6 sm:p-8 shadow-sm relative overflow-hidden">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
             <div className="flex items-center gap-5">
-              <div className="flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-2xl bg-(--accent-primary) text-white text-2xl sm:text-3xl font-extrabold shadow-sm">
+              <div
+                aria-hidden="true"
+                className="flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-2xl bg-(--accent-primary) text-white text-2xl sm:text-3xl font-extrabold shadow-sm"
+              >
                 {player.firstName.charAt(0)}
               </div>
               <div>
@@ -328,41 +128,34 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
                     {player.firstName} {player.lastName}
                   </h1>
                   <span
-                    className={`inline-flex items-center rounded-full px-3 py-0.5 text-xs font-bold ${
-                      player.status === 'ACTIVE'
-                        ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
-                        : player.status === 'SUSPENDED'
-                          ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30'
-                          : 'bg-red-500/10 text-red-500 border border-red-500/30'
-                    }`}
+                    className={`inline-flex items-center rounded-full px-3 py-0.5 text-xs font-bold ${playerStatusTone(player.status)}`}
                   >
-                    {player.status === 'ACTIVE'
-                      ? 'نشط'
-                      : player.status === 'SUSPENDED'
-                        ? 'موقوف'
-                        : 'غير نشط'}
+                    {playerStatusLabel(player.status, lang)}
                   </span>
                 </div>
                 <p className="text-xs text-(--text-muted)">
-                  تاريخ الميلاد:{' '}
+                  {isAr ? 'تاريخ الميلاد:' : 'Date of birth:'}{' '}
                   <span className="text-(--text-main) font-mono">
                     {player.dateOfBirth.slice(0, 10)}
-                  </span>{' '}
-                  • الجنس:{' '}
+                  </span>
+                  {sep}
+                  {isAr ? 'الجنس:' : 'Gender:'}{' '}
                   <span className="text-(--text-main)">
-                    {player.gender === 'MALE' ? 'ذكر' : 'أنثى'}
+                    {playerGenderLabel(player.gender, lang)}
                   </span>
                   {player.nationalId ? (
                     <>
-                      {' '}
-                      • الرقم القومي:{' '}
+                      {sep}
+                      {isAr ? 'الرقم القومي:' : 'National ID:'}{' '}
                       <span className="text-(--text-main) font-mono">{player.nationalId}</span>
                     </>
-                  ) : !canViewSensitive ? (
+                  ) : !permissions.canViewSensitive ? (
                     <>
-                      {' '}
-                      • الرقم القومي:{' '}
-                      <span className="text-(--text-muted) italic text-[11px]">محجوب للخصوصية</span>
+                      {sep}
+                      {isAr ? 'الرقم القومي:' : 'National ID:'}{' '}
+                      <span className="text-(--text-muted) italic text-[11px]">
+                        {isAr ? 'محجوب للخصوصية' : 'Hidden for privacy'}
+                      </span>
                     </>
                   ) : null}
                 </p>
@@ -374,14 +167,17 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
               <button
                 type="button"
                 id="btn-player-qr-card"
-                onClick={handleOpenQrCardModal}
-                disabled={isLoadingQrCard}
-                className="inline-flex items-center gap-2 rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-4 py-2.5 text-xs font-semibold text-(--text-main) hover:border-[var(--accent-primary)] transition-colors cursor-pointer disabled:opacity-50"
+                onClick={qr.open}
+                disabled={qr.isLoading}
+                className="inline-flex items-center gap-2 rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-4 py-2.5 text-xs font-semibold text-(--text-main) hover:border-(--accent-primary) transition-colors cursor-pointer disabled:opacity-50"
               >
-                {isLoadingQrCard ? (
-                  <RefreshCw className="h-4 w-4 animate-spin text-[var(--accent-primary)]" />
+                {qr.isLoading ? (
+                  <RefreshCw
+                    aria-hidden="true"
+                    className="h-4 w-4 animate-spin text-(--accent-primary)"
+                  />
                 ) : (
-                  <QrCode className="h-4 w-4 text-[var(--accent-primary)]" />
+                  <QrCode aria-hidden="true" className="h-4 w-4 text-(--accent-primary)" />
                 )}
                 <span>{isAr ? 'بطاقة العضوية (QR Card)' : 'Membership QR Card'}</span>
               </button>
@@ -389,35 +185,35 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
               <button
                 type="button"
                 id="btn-edit-player"
-                onClick={() => setIsEditModalOpen(true)}
-                className="inline-flex items-center gap-2 rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-4 py-2.5 text-xs font-medium text-(--text-main) hover:border-[var(--accent-primary)] transition-colors cursor-pointer"
+                onClick={edit.open}
+                className="inline-flex items-center gap-2 rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-4 py-2.5 text-xs font-medium text-(--text-main) hover:border-(--accent-primary) transition-colors cursor-pointer"
               >
-                <Edit3 className="h-4 w-4 text-[var(--accent-primary)]" />
+                <Edit3 aria-hidden="true" className="h-4 w-4 text-(--accent-primary)" />
                 <span>{isAr ? 'تعديل البيانات' : 'Edit Profile'}</span>
               </button>
 
               <button
                 type="button"
                 id="btn-transfer-branch"
-                onClick={() => setIsTransferModalOpen(true)}
+                onClick={transfer.open}
                 className="inline-flex items-center gap-2 rounded-xl bg-(--accent-primary) text-white px-4 py-2.5 text-xs font-semibold shadow-sm hover:brightness-110 transition-all cursor-pointer"
               >
-                <ArrowRightLeft className="h-4 w-4" />
+                <ArrowRightLeft aria-hidden="true" className="h-4 w-4" />
                 <span>{isAr ? 'نقل لفرع آخر' : 'Transfer Branch'}</span>
               </button>
 
-              {canDeletePlayer && player.status !== 'INACTIVE' && (
+              {permissions.canDelete && player.status !== 'INACTIVE' && (
                 <button
                   type="button"
                   id="btn-archive-player"
-                  onClick={handleOpenDeleteModal}
-                  disabled={isFetchingImpact}
+                  onClick={archive.open}
+                  disabled={archive.isLoadingImpact}
                   className="inline-flex items-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-xs font-semibold text-rose-500 hover:bg-rose-500/20 transition-colors cursor-pointer disabled:opacity-50"
                 >
-                  {isFetchingImpact ? (
-                    <RefreshCw className="h-4 w-4 animate-spin text-rose-500" />
+                  {archive.isLoadingImpact ? (
+                    <RefreshCw aria-hidden="true" className="h-4 w-4 animate-spin text-rose-500" />
                   ) : (
-                    <Archive className="h-4 w-4 text-rose-500" />
+                    <Archive aria-hidden="true" className="h-4 w-4 text-rose-500" />
                   )}
                   <span>{isAr ? 'أرشفة اللاعب' : 'Archive Athlete'}</span>
                 </button>
@@ -431,15 +227,17 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
           {/* Col 1 & 2: Branch Enrollments & History */}
           <div className="lg:col-span-2 space-y-6">
             {/* Active Branch Enrollment */}
-            <div className="rounded-2xl border border-(--border-subtle) bg-[var(--bg-surface)] p-6 shadow-sm space-y-4">
+            <section className={`${CARD} space-y-4`}>
               <div className="flex items-center justify-between border-b border-(--border-subtle) pb-3">
                 <div className="flex items-center gap-2">
-                  <GitBranch className="h-5 w-5 text-blue-500" />
-                  <h2 className="text-base font-bold text-(--text-main)">الفرع الحالي المقيد به</h2>
+                  <GitBranch aria-hidden="true" className="h-5 w-5 text-blue-500" />
+                  <h2 className="text-base font-bold text-(--text-main)">
+                    {isAr ? 'الفرع الحالي المقيد به' : 'Current Enrolled Branch'}
+                  </h2>
                 </div>
                 {activeEnrollment && (
                   <span className="rounded-full bg-blue-500/10 px-2.5 py-0.5 text-xs font-semibold text-blue-500 border border-blue-500/30">
-                    قيد فعّال
+                    {isAr ? 'قيد فعّال' : 'Active Enrollment'}
                   </span>
                 )}
               </div>
@@ -460,10 +258,10 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
                     </div>
                     <button
                       type="button"
-                      onClick={() => setIsTransferModalOpen(true)}
-                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--accent-primary)] hover:underline cursor-pointer"
+                      onClick={transfer.open}
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-(--accent-primary) hover:underline cursor-pointer"
                     >
-                      <ArrowRightLeft className="h-3.5 w-3.5" />
+                      <ArrowRightLeft aria-hidden="true" className="h-3.5 w-3.5" />
                       <span>{isAr ? 'نقل إلى فرع آخر' : 'Transfer to Another Branch'}</span>
                     </button>
                   </div>
@@ -478,9 +276,11 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
                       </span>
                     </div>
                     <div>
-                      <span className="block text-[11px]">ملاحظات القيد:</span>
+                      <span className="block text-[11px]">
+                        {isAr ? 'ملاحظات القيد:' : 'Enrollment Notes:'}
+                      </span>
                       <span className="text-(--text-main)">
-                        {activeEnrollment.notes || 'لا توجد'}
+                        {activeEnrollment.notes || (isAr ? 'لا توجد' : 'None')}
                       </span>
                     </div>
                   </div>
@@ -492,12 +292,12 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
                     : 'Athlete does not have an active enrollment in any branch.'}
                 </div>
               )}
-            </div>
+            </section>
 
             {/* Branch Enrollment History */}
-            <div className="rounded-2xl border border-(--border-subtle) bg-[var(--bg-surface)] p-6 shadow-sm space-y-4">
+            <section className={`${CARD} space-y-4`}>
               <div className="flex items-center gap-2 border-b border-(--border-subtle) pb-3">
-                <Calendar className="h-5 w-5 text-[var(--accent-primary)]" />
+                <Calendar aria-hidden="true" className="h-5 w-5 text-(--accent-primary)" />
                 <h2 className="text-base font-bold text-(--text-main)">
                   {isAr
                     ? `سجل التنقلات والاشتراكات السابقة (${pastEnrollments.length})`
@@ -512,9 +312,9 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
                     : 'No previous branch transfers recorded for this athlete.'}
                 </p>
               ) : (
-                <div className="space-y-3">
+                <ul className="space-y-3">
                   {pastEnrollments.map((en) => (
-                    <div
+                    <li
                       key={en.id}
                       className="rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) p-3.5 flex items-center justify-between text-xs"
                     >
@@ -529,34 +329,30 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
                           <div className="text-[11px] text-(--text-muted) mt-1">{en.notes}</div>
                         )}
                       </div>
-                      <span className="rounded bg-[var(--bg-surface)] px-2 py-0.5 text-[10px] text-(--text-muted) border border-(--border-subtle)">
-                        {en.status === 'TRANSFERRED'
-                          ? 'تم النقل'
-                          : en.status === 'COMPLETED'
-                            ? 'مكتمل'
-                            : 'ملغي'}
+                      <span className="rounded bg-(--bg-surface) px-2 py-0.5 text-[10px] text-(--text-muted) border border-(--border-subtle)">
+                        {pastEnrollmentStatusLabel(en.status, lang)}
                       </span>
-                    </div>
+                    </li>
                   ))}
-                </div>
+                </ul>
               )}
-            </div>
+            </section>
           </div>
 
           {/* Col 3: Guardians & Emergency Contacts */}
           <div className="space-y-6">
             {/* Guardians Card */}
-            <div className="rounded-2xl border border-(--border-subtle) bg-[var(--bg-surface)] p-6 shadow-sm space-y-4">
+            <section className={`${CARD} space-y-4`}>
               <div className="flex items-center gap-2 border-b border-(--border-subtle) pb-3">
-                <Users className="h-5 w-5 text-[var(--accent-primary)]" />
+                <Users aria-hidden="true" className="h-5 w-5 text-(--accent-primary)" />
                 <h2 className="text-base font-bold text-(--text-main)">
                   {isAr ? 'أولياء الأمور' : 'Guardians & Family'}
                 </h2>
               </div>
 
-              <div className="space-y-3">
+              <ul className="space-y-3">
                 {player.guardians.map((g) => (
-                  <div
+                  <li
                     key={g.id}
                     className="rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) p-3.5 space-y-2"
                   >
@@ -566,26 +362,26 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
                       </span>
                       {g.isPrimary && (
                         <span className="rounded bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
-                          ولي أمر رئيسي
+                          {isAr ? 'ولي أمر رئيسي' : 'Primary Guardian'}
                         </span>
                       )}
                     </div>
                     <div className="text-xs text-(--text-muted) space-y-1">
                       <div className="flex items-center gap-1.5">
-                        <Phone className="h-3.5 w-3.5 text-[var(--accent-primary)]" />
+                        <Phone aria-hidden="true" className="h-3.5 w-3.5 text-(--accent-primary)" />
                         <span className="font-mono text-(--text-main)">{g.phone}</span>
                       </div>
                       {g.email && <div className="text-[11px] truncate">{g.email}</div>}
                     </div>
-                  </div>
+                  </li>
                 ))}
-              </div>
-            </div>
+              </ul>
+            </section>
 
             {/* Emergency & Health Card */}
-            <div className="rounded-2xl border border-(--border-subtle) bg-[var(--bg-surface)] p-6 shadow-sm space-y-4">
+            <section className={`${CARD} space-y-4`}>
               <div className="flex items-center gap-2 border-b border-(--border-subtle) pb-3">
-                <Heart className="h-5 w-5 text-red-500" />
+                <Heart aria-hidden="true" className="h-5 w-5 text-red-500" />
                 <h2 className="text-base font-bold text-(--text-main)">
                   {isAr ? 'الطوارئ والصحة' : 'Emergency & Health'}
                 </h2>
@@ -597,8 +393,8 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
                     {isAr ? 'جهة اتصال الطوارئ:' : 'Emergency Contact:'}
                   </span>
                   <div className="font-bold text-(--text-main)">{player.emergencyContactName}</div>
-                  <div className="font-mono text-[var(--accent-primary)] mt-0.5 flex items-center gap-1">
-                    <Phone className="h-3 w-3" /> {player.emergencyContactPhone}
+                  <div className="font-mono text-(--accent-primary) mt-0.5 flex items-center gap-1">
+                    <Phone aria-hidden="true" className="h-3 w-3" /> {player.emergencyContactPhone}
                   </div>
                 </div>
 
@@ -607,386 +403,50 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
                     {isAr ? 'الملاحظات الطبية:' : 'Medical Notes:'}
                   </span>
                   <div className="text-(--text-main)">
-                    {canViewSensitive
-                      ? player.medicalNotes || 'لا توجد ملاحظات طبية أو حساسية مسجلة'
-                      : 'محجوبة (لا تملك صلاحية الاطلاع على البيانات الحساسة)'}
+                    {permissions.canViewSensitive
+                      ? player.medicalNotes ||
+                        (isAr
+                          ? 'لا توجد ملاحظات طبية أو حساسية مسجلة'
+                          : 'No medical notes or allergies recorded')
+                      : isAr
+                        ? 'محجوبة (لا تملك صلاحية الاطلاع على البيانات الحساسة)'
+                        : 'Hidden (you do not have permission to view sensitive data)'}
                   </div>
                 </div>
               </div>
-            </div>
+            </section>
           </div>
         </div>
 
-        {/* Transfer Branch Modal */}
-        {isTransferModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-            <div className="w-full max-w-md rounded-2xl border border-(--border-subtle) bg-[var(--bg-surface)] p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
-              <div className="flex items-center justify-between border-b border-(--border-subtle) pb-3 mb-4">
-                <h3 className="font-bold text-(--text-main) text-base flex items-center gap-2">
-                  <ArrowRightLeft className="h-5 w-5 text-[var(--accent-primary)]" />
-                  نقل اللاعب إلى فرع آخر
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => setIsTransferModalOpen(false)}
-                  className="rounded-lg p-1 text-(--text-muted) hover:bg-(--bg-surface-subtle) hover:text-(--text-main) transition-colors cursor-pointer"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
+        <TransferBranchModal
+          transfer={transfer}
+          branches={profile.branches}
+          currentBranchId={activeEnrollment?.branchId}
+          isAr={isAr}
+        />
 
-              <form onSubmit={handleTransferSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold text-(--text-muted) mb-1.5">
-                    الفرع المستهدف *
-                  </label>
-                  <select
-                    required
-                    id="select-target-branch"
-                    value={targetBranchId}
-                    onChange={(e) => setTargetBranchId(e.target.value)}
-                    className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors"
-                  >
-                    <option value="">
-                      {isAr ? 'اختر الفرع الجديد...' : 'Select target branch...'}
-                    </option>
-                    {branches
-                      .filter((b) => b.id !== activeEnrollment?.branchId)
-                      .map((b) => (
-                        <option key={b.id} value={b.id}>
-                          {b.name} {b.city ? `(${b.city})` : ''}
-                        </option>
-                      ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-(--text-muted) mb-1.5">
-                    تاريخ النقل الفعلي
-                  </label>
-                  <input
-                    type="date"
-                    id="input-transfer-date"
-                    value={transferDate}
-                    onChange={(e) => setTransferDate(e.target.value)}
-                    className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-(--text-muted) mb-1.5">
-                    سبب أو ملاحظات النقل
-                  </label>
-                  <textarea
-                    rows={2}
-                    id="textarea-transfer-notes"
-                    value={transferNotes}
-                    onChange={(e) => setTransferNotes(e.target.value)}
-                    placeholder={
-                      isAr
-                        ? 'مثال: بناءً على طلب ولي الأمر بسبب تغيير مكان السكن'
-                        : 'e.g. Relocation requested by guardian'
-                    }
-                    className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors"
-                  />
-                </div>
-
-                <div className="flex items-center justify-end gap-2 pt-3 border-t border-(--border-subtle)">
-                  <button
-                    type="button"
-                    onClick={() => setIsTransferModalOpen(false)}
-                    className="rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-4 py-2 text-xs font-medium text-(--text-muted) hover:text-(--text-main) transition-colors cursor-pointer"
-                  >
-                    {isAr ? 'إلغاء' : 'Cancel'}
-                  </button>
-                  <button
-                    type="submit"
-                    id="btn-confirm-transfer"
-                    disabled={isTransferring}
-                    className="rounded-xl bg-(--accent-primary) text-white px-5 py-2 text-xs font-semibold shadow hover:brightness-110 disabled:opacity-50 cursor-pointer"
-                  >
-                    {isTransferring
-                      ? isAr
-                        ? 'جارٍ النقل...'
-                        : 'Transferring...'
-                      : isAr
-                        ? 'تأكيد النقل'
-                        : 'Confirm Transfer'}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* Edit Player Modal */}
-        {isEditModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-            <div className="w-full max-w-lg rounded-2xl border border-(--border-subtle) bg-[var(--bg-surface)] p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
-              <div className="flex items-center justify-between border-b border-(--border-subtle) pb-3 mb-4">
-                <h3 className="font-bold text-(--text-main) text-base flex items-center gap-2">
-                  <Edit3 className="h-5 w-5 text-[var(--accent-primary)]" />
-                  تعديل بيانات اللاعب
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => setIsEditModalOpen(false)}
-                  className="rounded-lg p-1 text-(--text-muted) hover:bg-(--bg-surface-subtle) hover:text-(--text-main) transition-colors cursor-pointer"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-
-              <form onSubmit={handleUpdatePlayerSubmit} className="space-y-4">
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-semibold text-(--text-muted) mb-1">
-                      الاسم الأول
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={editFirstName}
-                      onChange={(e) => setEditFirstName(e.target.value)}
-                      className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3.5 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-(--text-muted) mb-1">
-                      اسم العائلة
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={editLastName}
-                      onChange={(e) => setEditLastName(e.target.value)}
-                      className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3.5 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-semibold text-(--text-muted) mb-1">
-                      جهة اتصال الطوارئ
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={editEmergencyName}
-                      onChange={(e) => setEditEmergencyName(e.target.value)}
-                      className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3.5 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-(--text-muted) mb-1">
-                      هاتف الطوارئ
-                    </label>
-                    <input
-                      type="tel"
-                      required
-                      value={editEmergencyPhone}
-                      onChange={(e) => setEditEmergencyPhone(e.target.value)}
-                      className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3.5 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors font-mono"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-(--text-muted) mb-1">
-                    حالة اللاعب
-                  </label>
-                  <select
-                    value={editStatus}
-                    onChange={(e) => setEditStatus(e.target.value as PlayerStatus)}
-                    className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3.5 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors"
-                  >
-                    <option value="ACTIVE">{isAr ? 'نشط (Active)' : 'Active'}</option>
-                    <option value="INACTIVE">{isAr ? 'غير نشط (Inactive)' : 'Inactive'}</option>
-                    <option value="SUSPENDED">{isAr ? 'موقوف (Suspended)' : 'Suspended'}</option>
-                  </select>
-                </div>
-
-                {canViewSensitive ? (
-                  <div>
-                    <label className="block text-xs font-semibold text-(--text-muted) mb-1">
-                      الملاحظات الطبية
-                    </label>
-                    <textarea
-                      rows={2}
-                      value={editMedicalNotes}
-                      onChange={(e) => setEditMedicalNotes(e.target.value)}
-                      className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3.5 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors"
-                    />
-                  </div>
-                ) : (
-                  <div className="rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) p-3 text-[11px] text-(--text-muted)">
-                    {isAr
-                      ? 'الملاحظات الطبية محجوبة ولا يمكن تعديلها إلا من قِبل مديري الأكاديمية أو الفروع.'
-                      : 'Medical notes are restricted and can only be updated by academy or branch managers.'}
-                  </div>
-                )}
-
-                <div className="flex items-center justify-end gap-2 pt-3 border-t border-(--border-subtle)">
-                  <button
-                    type="button"
-                    onClick={() => setIsEditModalOpen(false)}
-                    className="rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-4 py-2 text-xs font-medium text-(--text-muted) hover:text-(--text-main) transition-colors cursor-pointer"
-                  >
-                    {isAr ? 'إلغاء' : 'Cancel'}
-                  </button>
-                  <button
-                    type="submit"
-                    id="btn-confirm-update-player"
-                    disabled={isUpdating}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-(--accent-primary) text-white px-5 py-2 text-xs font-semibold shadow hover:brightness-110 disabled:opacity-50 cursor-pointer"
-                  >
-                    <Save className="h-4 w-4" />
-                    <span>
-                      {isUpdating
-                        ? isAr
-                          ? 'جارٍ الحفظ...'
-                          : 'Saving...'
-                        : isAr
-                          ? 'حفظ التعديلات'
-                          : 'Save Changes'}
-                    </span>
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
+        <EditPlayerModal edit={edit} canViewSensitive={permissions.canViewSensitive} isAr={isAr} />
 
         {/* QR Membership Card Modal */}
-        {isQrModalOpen && qrCard && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm overflow-y-auto">
+        {qr.isOpen && qr.card && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm overflow-y-auto"
+            role="dialog"
+            aria-modal="true"
+            aria-label={isAr ? 'بطاقة العضوية' : 'Membership card'}
+          >
             <div className="relative w-full max-w-md my-8">
               <PlayerQrCard
-                card={qrCard}
-                isAdmin={canViewSensitive}
-                onCardUpdated={(newCard) => setQrCard(newCard)}
-                onClose={() => setIsQrModalOpen(false)}
+                card={qr.card}
+                isAdmin={permissions.canViewSensitive}
+                onCardUpdated={qr.setCard}
+                onClose={qr.close}
               />
             </div>
           </div>
         )}
 
-        {/* Safe Deletion / Archive Confirmation Modal */}
-        {isDeleteModalOpen && deletionImpact && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm overflow-y-auto">
-            <div className="relative w-full max-w-lg rounded-2xl border border-rose-500/30 bg-[var(--bg-surface)] p-6 shadow-2xl space-y-5 my-8">
-              <div className="flex items-center justify-between border-b border-(--border-subtle) pb-4">
-                <div className="flex items-center gap-2.5 text-rose-500 font-bold text-base">
-                  <ShieldAlert className="h-5 w-5" />
-                  <span>
-                    {isAr
-                      ? 'تأكيد أرشفة اللاعب (Safe Player Archive)'
-                      : 'Confirm Athlete Safe Archive'}
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsDeleteModalOpen(false)}
-                  className="rounded-lg p-1.5 text-(--text-muted) hover:bg-(--bg-surface-subtle)"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-
-              <div className="space-y-4 text-xs">
-                <p className="text-(--text-muted) leading-relaxed">
-                  أنت على وشك أرشفة اللاعب{' '}
-                  <strong className="text-(--text-main)">{deletionImpact.playerName}</strong>. تحافظ
-                  هذه العملية على سلامة الحضور، السجلات المالية، والتقييمات دون حذفها من قاعدة
-                  البيانات.
-                </p>
-
-                {/* Impact Summary Badges */}
-                <div className="rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) p-4 space-y-3">
-                  <h4 className="font-bold text-(--text-main)">
-                    {isAr ? 'تقرير الأثر والبيانات المرتبطة:' : 'Impact Report & Linked Records:'}
-                  </h4>
-                  <div className="grid grid-cols-2 gap-2 text-[11px]">
-                    <div className="rounded-lg bg-[var(--bg-surface)] p-2.5 border border-(--border-subtle)">
-                      <span className="text-(--text-muted) block">تسجيلات الفروع النشطة:</span>
-                      <strong className="text-amber-500 text-sm">
-                        {deletionImpact.activeEnrollments} (سيتم إلغاؤها)
-                      </strong>
-                    </div>
-                    <div className="rounded-lg bg-[var(--bg-surface)] p-2.5 border border-(--border-subtle)">
-                      <span className="text-(--text-muted) block">المجموعات التدريبية:</span>
-                      <strong className="text-amber-500 text-sm">
-                        {deletionImpact.activeGroupMemberships} (سيتم إيقافها)
-                      </strong>
-                    </div>
-                    <div className="rounded-lg bg-[var(--bg-surface)] p-2.5 border border-(--border-subtle)">
-                      <span className="text-(--text-muted) block">سجلات الحضور المحفوظة:</span>
-                      <strong className="text-emerald-500 text-sm">
-                        {deletionImpact.attendanceRecordsCount} حصة
-                      </strong>
-                    </div>
-                    <div className="rounded-lg bg-[var(--bg-surface)] p-2.5 border border-(--border-subtle)">
-                      <span className="text-(--text-muted) block">
-                        {isAr ? 'المعاملات المالية المحفوظة:' : 'Preserved Financial Ledgers:'}
-                      </span>
-                      <strong className="text-emerald-500 text-sm">
-                        {deletionImpact.financialTransactionsCount}{' '}
-                        {isAr ? 'معاملة' : 'transactions'}
-                      </strong>
-                    </div>
-                  </div>
-                </div>
-
-                {deletionImpact.warnings.length > 0 && (
-                  <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 space-y-1">
-                    <span className="font-bold text-amber-500 block">
-                      {isAr ? 'ملاحظات الأمان:' : 'Safety Notes:'}
-                    </span>
-                    <ul className="list-disc list-inside space-y-0.5 text-amber-600 dark:text-amber-400 text-[11px]">
-                      {deletionImpact.warnings.map((w, idx) => (
-                        <li key={idx}>{w}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-(--border-subtle)">
-                <button
-                  type="button"
-                  onClick={() => setIsDeleteModalOpen(false)}
-                  disabled={isDeletingPlayer}
-                  className="rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-4 py-2 text-xs font-medium text-(--text-muted) hover:text-(--text-main) cursor-pointer"
-                >
-                  {isAr ? 'إلغاء' : 'Cancel'}
-                </button>
-                <button
-                  type="button"
-                  id="btn-confirm-safe-delete"
-                  onClick={handleConfirmDelete}
-                  disabled={isDeletingPlayer}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white px-5 py-2 text-xs font-semibold shadow disabled:opacity-50 cursor-pointer"
-                >
-                  {isDeletingPlayer ? (
-                    <RefreshCw className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Trash2 className="h-4 w-4" />
-                  )}
-                  <span>
-                    {isDeletingPlayer
-                      ? isAr
-                        ? 'جارٍ الأرشفة...'
-                        : 'Archiving...'
-                      : isAr
-                        ? 'تأكيد الأرشفة الآمنة'
-                        : 'Confirm Safe Archive'}
-                  </span>
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        <ArchivePlayerModal archive={archive} isAr={isAr} />
       </div>
     </AppShell>
   );

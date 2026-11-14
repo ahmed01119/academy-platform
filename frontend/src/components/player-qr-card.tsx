@@ -14,7 +14,7 @@ import {
   ShieldAlert,
 } from 'lucide-react';
 import type { PlayerQrCardResponse } from '@academy/shared';
-import { apiClient } from '@/api/client';
+import { apiClient, getErrorMessage } from '@/api/client';
 import { useLocale } from '@/contexts/locale-context';
 
 interface PlayerQrCardProps {
@@ -87,8 +87,7 @@ export function PlayerQrCard({ card, isAdmin = false, onCardUpdated, onClose }: 
     } catch (err: unknown) {
       setStatusMessage({
         type: 'error',
-        text:
-          (err as Error)?.message || (ar ? 'فشل تدوير رمز البطاقة' : 'Failed to rotate QR card'),
+        text: getErrorMessage(err, ar ? 'فشل تدوير رمز البطاقة' : 'Failed to rotate QR card'),
       });
     } finally {
       setIsRotating(false);
@@ -115,7 +114,7 @@ export function PlayerQrCard({ card, isAdmin = false, onCardUpdated, onClose }: 
     } catch (err: unknown) {
       setStatusMessage({
         type: 'error',
-        text: (err as Error)?.message || (ar ? 'فشل إلغاء البطاقة' : 'Failed to revoke card'),
+        text: getErrorMessage(err, ar ? 'فشل إلغاء البطاقة' : 'Failed to revoke card'),
       });
     } finally {
       setIsRevoking(false);
