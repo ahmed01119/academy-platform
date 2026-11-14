@@ -8,20 +8,9 @@ import { useLocale } from '@/contexts/locale-context';
 import { getRoleHomeRoute } from '@/utils/role-routing';
 import { Navbar } from '../../components/Navbar';
 import { SportexusLogo } from '../../components/brand/SportexusLogo';
-import { LoginRequestSchema } from '@academy/shared';
-import { validateWithSchema } from '@/utils/validation';
-import { ApiError } from '@/api/client';
-import {
-  Mail,
-  Lock,
-  Eye,
-  EyeOff,
-  AlertCircle,
-  ArrowRight,
-  ShieldCheck,
-  Loader2,
-  Sparkles,
-} from 'lucide-react';
+import { resolveLoginError, validateLoginForm, type LoginValues } from '@/features/auth/login-form';
+import { PasswordVisibilityToggle } from '@/features/auth/components/PasswordVisibilityToggle';
+import { Mail, Lock, AlertCircle, ArrowRight, ShieldCheck, Loader2, Sparkles } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -38,52 +27,7 @@ export default function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const validate = useCallback(
-    (values: { email: string; password: string }) => {
-      const trimmedEmail = values.email.trim();
-      const validation = validateWithSchema(LoginRequestSchema, {
-        email: trimmedEmail,
-        password: values.password,
-        rememberMe,
-      });
-
-      const errors: { email?: string; password?: string } = {};
-
-      if (!validation.success && validation.errors) {
-        if (validation.errors.email) {
-          if (!trimmedEmail) {
-            errors.email =
-              locale === 'ar' ? 'يرجى إدخال البريد الإلكتروني' : 'Email address is required';
-          } else {
-            errors.email =
-              locale === 'ar'
-                ? 'يرجى إدخال بريد إلكتروني صالح (مثال: user@example.com)'
-                : 'Please enter a valid email address';
-          }
-        }
-
-        if (validation.errors.password) {
-          errors.password = locale === 'ar' ? 'يرجى إدخال كلمة المرور' : 'Password is required';
-        }
-      }
-
-      // Additional UI helper check: password minimum security length
-      if (values.password && values.password.length < 8) {
-        errors.password =
-          locale === 'ar'
-            ? 'كلمة المرور يجب ألا تقل عن 8 أحرف'
-            : 'Password must be at least 8 characters';
-      }
-
-      // Additional UI helper check: password length
-      if (values.password && values.password.length > 128) {
-        errors.password =
-          locale === 'ar'
-            ? 'كلمة المرور لا يمكن أن تتجاوز 128 حرفاً'
-            : 'Password cannot exceed 128 characters';
-      }
-
-      return errors;
-    },
+    (values: LoginValues) => validateLoginForm(values, rememberMe, locale),
     [locale, rememberMe],
   );
 
@@ -141,81 +85,9 @@ export default function LoginPage() {
       // Use fresh data from response, not stale React state
       router.push(getRoleHomeRoute(freshUser, freshTenant));
     } catch (err: unknown) {
-      if (err instanceof ApiError) {
-        const details = err.details as Record<string, unknown> | undefined;
-
-        // Map backend validation errors into field errors
-        if (err.statusCode === 400 && (err.code === 'VALIDATION_ERROR' || details?.issues)) {
-          const backendIssues = (details?.issues ||
-            (details?.error as Record<string, unknown>)?.details ||
-            []) as Array<{
-            field?: string;
-            path?: (string | number)[];
-            message?: string;
-          }>;
-          const mappedErrors: { email?: string; password?: string } = {};
-
-          for (const issue of backendIssues) {
-            const field = issue.field || (Array.isArray(issue.path) ? String(issue.path[0]) : '');
-            if (field === 'email') {
-              mappedErrors.email =
-                locale === 'ar'
-                  ? 'صيغة البريد الإلكتروني غير صالحة'
-                  : issue.message || 'Invalid email address';
-            }
-            if (field === 'password') {
-              mappedErrors.password =
-                locale === 'ar' ? 'كلمة المرور مطلوبة' : issue.message || 'Password is required';
-            }
-          }
-
-          if (Object.keys(mappedErrors).length > 0) {
-            setFieldErrors(mappedErrors);
-            setError(
-              locale === 'ar'
-                ? 'يرجى مراجعة وتصحيح البيانات المدخلة أدناه.'
-                : 'Please review and correct the errors below.',
-            );
-            return;
-          }
-        }
-
-        // Credentials failure
-        if (err.statusCode === 401) {
-          setError(
-            locale === 'ar'
-              ? 'البريد الإلكتروني أو كلمة المرور غير صحيحة.'
-              : 'Invalid email address or password.',
-          );
-          return;
-        }
-
-        // Specific business errors (e.g., account suspended, pending approval)
-        if (err.message && err.message !== 'Unauthorized') {
-          setError(err.message);
-          return;
-        }
-      }
-
-      let message =
-        locale === 'ar'
-          ? 'فشل تسجيل الدخول. يرجى التحقق من بياناتك والمحاولة مرة أخرى.'
-          : 'Login failed. Please check your credentials and try again.';
-
-      if (err instanceof Error) {
-        if (
-          err.message.toLowerCase().includes('fetch') ||
-          err.message.toLowerCase().includes('network')
-        ) {
-          message =
-            locale === 'ar'
-              ? 'تعذر الاتصال بالخادم. يرجى التحقق من اتصالك بالإنترنت والمحاولة مجدداً.'
-              : 'Could not connect to server. Please check your network connection and try again.';
-        } else if (err.message) {
-          message = err.message;
-        }
-      }
-      setError(message);
+      const { formError, fieldErrors: mapped } = resolveLoginError(err, locale);
+      if (mapped) setFieldErrors(mapped);
+      setError(formError);
     } finally {
       setIsSubmitting(false);
     }
@@ -246,7 +118,10 @@ export default function LoginPage() {
 
             {/* Error Message */}
             {error && (
-              <div className="mb-6 flex items-start gap-3 rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4 text-xs text-rose-500 dark:text-rose-400 relative z-10">
+              <div
+                role="alert"
+                className="mb-6 flex items-start gap-3 rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4 text-xs text-rose-500 dark:text-rose-400 relative z-10"
+              >
                 <AlertCircle className="h-5 w-5 shrink-0 text-rose-500 mt-0.5" />
                 <div className="leading-relaxed font-medium">{error}</div>
               </div>
@@ -335,22 +210,12 @@ export default function LoginPage() {
                     <Lock
                       className={`absolute left-3 top-3 h-4 w-4 ${touched.password && fieldErrors.password ? 'text-rose-500' : 'text-(--text-muted)'}`}
                     />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
+                    <PasswordVisibilityToggle
+                      visible={showPassword}
+                      onToggle={() => setShowPassword(!showPassword)}
+                      controls="password"
                       className="absolute right-3 top-3 text-(--text-muted) hover:text-(--text-main) transition-colors p-0.5 focus:outline-none"
-                      title={
-                        showPassword
-                          ? locale === 'ar'
-                            ? 'إخفاء كلمة المرور'
-                            : 'Hide password'
-                          : locale === 'ar'
-                            ? 'إظهار كلمة المرور'
-                            : 'Show password'
-                      }
-                    >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
+                    />
                   </div>
                   {touched.password && fieldErrors.password && (
                     <p

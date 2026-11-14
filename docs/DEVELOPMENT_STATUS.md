@@ -144,8 +144,36 @@ Frontend findings (in addition to K14):
 | Fix — restore 258 erased CSS-variable classes on `attendance/sessions/[id]` (damage from `1e77d5a`) | ✅ | `402c5df` |
 | 1 — foundation: `config/`, `lib/http/`, `features/<domain>/api.ts`, `api/client.ts` facade, contract test, `ConfirmProvider`/`useConfirm` replacing 8 native `confirm()`, dev-only QR simulator | ✅ | `9dcc3ad` |
 | 2 — shell & guards: `resolveAccess` + `useAccessGuard` replace 20 inline guards; `AuthGuard` rebuilt on the same hook; AppShell K14 fixed | ✅ | see change log |
-| 3 — auth & public pages | ⏳ next | |
-| 4–13 | pending | |
+| 3 — auth & public pages (login, register, forgot/reset password, verify email, accept invite, landing) + 8 typo fixes (F12) | ✅ | see change log |
+| 4–13 | pending (awaiting owner review of Step 3) | |
+
+Step 3 details:
+- New `features/auth/`: `AuthPageLayout`/`AuthPageSuspense`, `AuthCard`/`BackToSignInLink`, `AuthAlert`
+  (`role="alert"`/`"status"`), `PasswordVisibilityToggle` (aria-label/pressed/controls), `OtpCodeField`,
+  `PasswordField`, `auth-styles.ts`; pure modules `login-form.ts`, `register-form.ts`,
+  `password-reset-validation.ts` (rules moved verbatim). Shared hooks `useCooldown`, `useDelayedRedirect`.
+- `features/landing/components/PlayerJoinRequestModal.tsx` extracted (landing page 1,280 → ~745 lines); form state
+  still survives close/re-open.
+- Security: auth/public pages now show only API (`ApiError`) messages; raw runtime error text is never displayed
+  (generic localized fallback). Network failures on login keep the "could not connect" message.
+- Fixes: delayed `/login` redirect after password reset is cancelled on unmount; 8 missing-space class typos (F12 — resolved);
+  forgot-password success alert now uses the shared success colours (text green-300 → #4ADE80, same as other pages).
+- Unchanged by request: validation rules, API calls/bodies, `debugOtp` localhost-only display, SAR labels,
+  `--brand-surface`, legacy `[var(--x)]` syntax.
+
+New findings (documented, not changed — need owner decision):
+- F14 `/accept-invite` sends signed-out users to `/login?redirect=…` / `/register?redirect=…`, but neither page reads
+  `redirect`; after signing in the user lands on their role home, not back on the invitation. Honouring it needs an
+  allow-list (open-redirect protection).
+- F15 Login error mapping checks `code === 'VALIDATION_ERROR'`; the API emits `VALIDATION_FAILED`. Field mapping still
+  works via `details.issues`.
+- F16 The API returns **401** for pending-approval, rejected, rate-limited and suspended logins; the login page maps every
+  401 to "Invalid email or password", so these users never see the real reason.
+- F17 The landing "player join" form collects gender, jersey number, national ID, emergency contact, medical notes and
+  guardian relationship, but the API contract accepts only name, email, phone, DOB and guardian name — the rest is
+  silently discarded (sensitive data collected without purpose).
+- F18 `/forgot-password` step 2 only checks password length ≥ 8 while `/reset-password` enforces every strength rule
+  (both end at the same backend policy). Kept as-is.
 
 Step 2 details:
 - Guard inventory (corrected): **20** page guards, not 21 — `forgot-password`/`reset-password` only redirect to
@@ -181,5 +209,6 @@ New findings during Phase 1:
 |---|---|---|
 | 2026-11-14 | Initial knowledge baseline: created the five core docs; no application code modified. | `docs/PROJECT_OVERVIEW.md`, `docs/SYSTEM_ARCHITECTURE.md`, `docs/BUSINESS_LOGIC.md`, `docs/TECHNOLOGY_STACK.md`, `docs/DEVELOPMENT_STATUS.md` |
 | 2026-11-14 | Phase 1 frontend analysis + verification baseline (§9); proposal pending approval. | `docs/DEVELOPMENT_STATUS.md` |
+| 2026-11-14 | Phase 1 Step 3: auth & public pages restructured onto `features/auth` + `features/landing`; error-message hardening; 8 typo fixes. No API, validation-rule, backend or currency changes. | `frontend/src/app/{login,register,forgot-password,reset-password,verify-email,accept-invite,landing,offline}/page.tsx`, `frontend/src/components/platform/CoOwnerTab.tsx`, `frontend/src/features/{auth,landing}/**`, `frontend/src/hooks/{useCooldown,useDelayedRedirect}.ts` (+6 test files) |
 | 2026-11-14 | Phase 1 Step 2: shared access guard, AuthGuard rebuilt, AppShell text colour fixed. No permission, API or backend changes. | `frontend/src/lib/auth/access-rules.ts`, `frontend/src/hooks/useAccessGuard.ts`, `frontend/src/components/layout/{AuthGuard,AppShell}.tsx`, 20 pages under `frontend/src/app/` (+3 test files) |
 | 2026-11-14 | Phase 1 Steps 0–1 + session-page CSS repair (see §9 progress). No backend, API contract or currency changes. | `frontend/src/{config,lib/http,features/*/api.ts,api/client.ts,components/ui/ConfirmDialog.tsx,features/attendance/components/QrCheckInSimulator.tsx}`, 5 pages (confirm dialogs), `app/layout.tsx` |

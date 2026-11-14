@@ -5,9 +5,15 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { useLocale } from '@/contexts/locale-context';
-import { RegisterRequestSchema } from '@academy/shared';
-import { validateWithSchema } from '@/utils/validation';
 import { PasswordStrengthMeter } from '@/components/ui/PasswordStrengthMeter';
+import {
+  firstInvalidField,
+  resolveRegisterError,
+  validateRegisterForm,
+  type RegisterField,
+  type RegisterFieldErrors,
+} from '@/features/auth/register-form';
+import { PasswordVisibilityToggle } from '@/features/auth/components/PasswordVisibilityToggle';
 import { Navbar } from '../../components/Navbar';
 import { SportexusLogo } from '../../components/brand/SportexusLogo';
 import {
@@ -16,8 +22,6 @@ import {
   Mail,
   Lock,
   Phone,
-  Eye,
-  EyeOff,
   AlertCircle,
   ArrowRight,
   ShieldCheck,
@@ -55,7 +59,7 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [fieldErrors, setFieldErrors] = useState<RegisterFieldErrors>({});
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -78,68 +82,27 @@ export default function RegisterPage() {
     }
   }, [user, router]);
 
+  const fieldRefs: Record<RegisterField, React.RefObject<HTMLInputElement | null>> = {
+    academyName: academyNameRef,
+    ownerName: ownerNameRef,
+    email: emailRef,
+    phone: phoneRef,
+    password: passwordRef,
+    confirmPassword: confirmPasswordRef,
+  };
+
   const validateForm = (): boolean => {
-    const errors: Record<string, string> = {};
-    const isAr = locale === 'ar';
-
-    const result = validateWithSchema(RegisterRequestSchema, {
-      name: ownerName.trim(),
-      email: email.trim().toLowerCase(),
-      password,
-      phone: phone.trim() ? phone.trim().replace(/[\s-]/g, '') : undefined,
-      city: city.trim() || undefined,
-      academyName: academyName.trim(),
-      sport,
-    });
-
-    if (!result.success && result.errors) {
-      if (result.errors.academyName) {
-        errors.academyName = isAr
-          ? 'اسم الأكاديمية يجب أن يحتوي على حرفين على الأقل.'
-          : result.errors.academyName;
-      }
-      if (result.errors.name) {
-        errors.ownerName = isAr
-          ? 'اسم المالك يجب أن يحتوي على حرفين على الأقل.'
-          : result.errors.name;
-      }
-      if (result.errors.email) {
-        errors.email = isAr ? 'البريد الإلكتروني غير صحيح.' : result.errors.email;
-      }
-      if (result.errors.phone) {
-        errors.phone = isAr ? 'رقم الهاتف غير صحيح.' : result.errors.phone;
-      }
-      if (result.errors.password) {
-        errors.password = isAr
-          ? 'كلمة المرور يجب أن تحتوي على 8 أحرف على الأقل، وحرف كبير وصغير ورقم.'
-          : result.errors.password;
-      }
-    }
-
-    if (!confirmPassword) {
-      errors.confirmPassword = isAr ? 'يرجى تأكيد كلمة المرور.' : 'Please confirm your password.';
-    } else if (password !== confirmPassword) {
-      errors.confirmPassword = isAr ? 'كلمتا المرور غير متطابقتين.' : 'Passwords do not match.';
-    }
-
+    const errors = validateRegisterForm(
+      { academyName, sport, city, ownerName, email, phone, password, confirmPassword },
+      locale,
+    );
     setFieldErrors(errors);
 
     // Auto-focus the first invalid field
-    if (errors.academyName) {
-      academyNameRef.current?.focus();
-    } else if (errors.ownerName) {
-      ownerNameRef.current?.focus();
-    } else if (errors.email) {
-      emailRef.current?.focus();
-    } else if (errors.phone) {
-      phoneRef.current?.focus();
-    } else if (errors.password) {
-      passwordRef.current?.focus();
-    } else if (errors.confirmPassword) {
-      confirmPasswordRef.current?.focus();
-    }
+    const first = firstInvalidField(errors);
+    if (first) fieldRefs[first].current?.focus();
 
-    return Object.keys(errors).length === 0;
+    return first === null;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -174,36 +137,12 @@ export default function RegisterPage() {
         router.push('/dashboard');
       }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : '';
-      const isAr = locale === 'ar';
-
-      if (
-        message.includes('already exists') ||
-        message.includes('already registered') ||
-        message.includes('Email')
-      ) {
-        setFieldErrors((prev) => ({
-          ...prev,
-          email: isAr
-            ? 'هذا البريد الإلكتروني مسجل بالفعل لدى أكاديمية أخرى أو مستخدم.'
-            : 'This email address is already registered.',
-        }));
-        emailRef.current?.focus();
-      } else if (message.includes('slug') || message.includes('Academy name')) {
-        setFieldErrors((prev) => ({
-          ...prev,
-          academyName: isAr
-            ? 'اسم الأكاديمية هذا مسجل بالفعل، يرجى اختيار اسم آخر.'
-            : 'An academy with this name already exists.',
-        }));
-        academyNameRef.current?.focus();
+      const resolution = resolveRegisterError(err, locale);
+      if (resolution.kind === 'field') {
+        setFieldErrors((prev) => ({ ...prev, [resolution.field]: resolution.message }));
+        fieldRefs[resolution.field].current?.focus();
       } else {
-        setError(
-          message ||
-            (isAr
-              ? 'فشل تسجيل الأكاديمية. يرجى مراجعة البيانات والمحاولة مجدداً.'
-              : 'Registration failed. Please review your details and try again.'),
-        );
+        setError(resolution.message);
       }
     } finally {
       setIsSubmitting(false);
@@ -211,7 +150,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-(--bg-base)text-(--text-main) flex flex-col transition-colors overflow-x-hidden animate-fade-in">
+    <div className="min-h-screen bg-(--bg-base) text-(--text-main) flex flex-col transition-colors overflow-x-hidden animate-fade-in">
       <Navbar />
 
       <main className="flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-8">
@@ -334,7 +273,10 @@ export default function RegisterPage() {
 
                 {/* Error Message */}
                 {error && (
-                  <div className="mb-6 flex items-start gap-3 rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-xs text-rose-300">
+                  <div
+                    role="alert"
+                    className="mb-6 flex items-start gap-3 rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-xs text-rose-300"
+                  >
                     <AlertCircle className="h-5 w-5 shrink-0 text-rose-400 mt-0.5" />
                     <div className="leading-relaxed">{error}</div>
                   </div>
@@ -587,26 +529,12 @@ export default function RegisterPage() {
                             }`}
                           />
                           <Lock className="absolute left-3 top-3 h-4 w-4 text-(--text-muted)" />
-                          <button
-                            type="button"
-                            onClick={() => setShowPassword(!showPassword)}
+                          <PasswordVisibilityToggle
+                            visible={showPassword}
+                            onToggle={() => setShowPassword(!showPassword)}
+                            controls="password"
                             className="absolute right-3 top-3 text-(--text-muted) hover:text-(--text-main) transition-colors p-0.5 focus:outline-none"
-                            title={
-                              showPassword
-                                ? locale === 'ar'
-                                  ? 'إخفاء كلمة المرور'
-                                  : 'Hide password'
-                                : locale === 'ar'
-                                  ? 'إظهار كلمة المرور'
-                                  : 'Show password'
-                            }
-                          >
-                            {showPassword ? (
-                              <EyeOff className="h-4 w-4" />
-                            ) : (
-                              <Eye className="h-4 w-4" />
-                            )}
-                          </button>
+                          />
                         </div>
                         {fieldErrors.password && (
                           <p className="mt-1.5 text-xs text-rose-400 flex items-center gap-1 animate-in fade-in duration-150">

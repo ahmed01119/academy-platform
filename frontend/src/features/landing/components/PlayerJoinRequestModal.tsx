@@ -1,0 +1,584 @@
+'use client';
+
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  AlertCircle,
+  Building2,
+  CheckCircle2,
+  Heart,
+  Save,
+  User,
+  UserPlus,
+  Users,
+  X,
+} from 'lucide-react';
+import { useLocale } from '@/contexts/locale-context';
+import { getErrorMessage } from '@/lib/http/api-error';
+import { portalApi } from '@/features/portal/api';
+
+export interface PlayerJoinRequestModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+/**
+ * Public "join an academy" request form (landing page). Moved verbatim from app/landing/page.tsx.
+ * Stays mounted while closed so typed values survive close/re-open, as before.
+ *
+ * NOTE (F17): the form collects more fields (gender, jersey, national ID, emergency contact,
+ * medical notes, relationship) than the API contract accepts; only the fields below are sent.
+ */
+export function PlayerJoinRequestModal({ isOpen, onClose }: PlayerJoinRequestModalProps) {
+  const { locale } = useLocale();
+  const [publicAcademies, setPublicAcademies] = useState<
+    Array<{ id: string; name: string; slug: string }>
+  >([]);
+  const [isLoadingAcademies, setIsLoadingAcademies] = useState(false);
+  const [joinTenantId, setJoinTenantId] = useState('');
+  // Section 1: Athlete Personal Information
+  const [joinFirstName, setJoinFirstName] = useState('');
+  const [joinLastName, setJoinLastName] = useState('');
+  const [joinGender, setJoinGender] = useState<'MALE' | 'FEMALE'>('MALE');
+  const [joinBirthYearOnly, setJoinBirthYearOnly] = useState(false);
+  const [joinBirthYear, setJoinBirthYear] = useState('');
+  const [joinDob, setJoinDob] = useState('');
+  const [joinJerseyNumber, setJoinJerseyNumber] = useState('');
+  const [joinNationalId, setJoinNationalId] = useState('');
+  // Section 2: Emergency & Health
+  const [joinEmergencyName, setJoinEmergencyName] = useState('');
+  const [joinEmergencyPhone, setJoinEmergencyPhone] = useState('');
+  const [joinMedicalNotes, setJoinMedicalNotes] = useState('');
+  // Section 3: Primary Guardian
+  const [joinGuardianName, setJoinGuardianName] = useState('');
+  const [joinGuardianRelationship, setJoinGuardianRelationship] = useState('FATHER');
+  const [joinPhone, setJoinPhone] = useState('');
+  const [joinEmail, setJoinEmail] = useState('');
+  // Submission Status
+  const [isSubmittingJoin, setIsSubmittingJoin] = useState(false);
+  const [joinSubmitted, setJoinSubmitted] = useState(false);
+  const [joinError, setJoinError] = useState<string | null>(null);
+
+  // On each open: clear previous result/error and load academies if not loaded yet.
+  const wasOpenRef = useRef(false);
+  useEffect(() => {
+    const justOpened = isOpen && !wasOpenRef.current;
+    wasOpenRef.current = isOpen;
+    if (!justOpened) return;
+
+    setJoinSubmitted(false);
+    setJoinError(null);
+    if (publicAcademies.length > 0) return;
+
+    let cancelled = false;
+    setIsLoadingAcademies(true);
+    portalApi
+      .listPublicAcademies()
+      .then((list) => {
+        if (cancelled) return;
+        setPublicAcademies(list);
+        const first = list[0];
+        if (first) setJoinTenantId((current) => current || first.id);
+      })
+      .catch(() => {
+        // Fallback gracefully
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingAcademies(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, publicAcademies.length]);
+
+  const handlePlayerJoinSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!joinTenantId) {
+      setJoinError(
+        locale === 'ar' ? 'يرجى اختيار الأكاديمية الرياضية' : 'Please select an academy',
+      );
+      return;
+    }
+
+    const fullName = `${joinFirstName.trim()} ${joinLastName.trim()}`.trim();
+    if (!fullName) {
+      setJoinError(
+        locale === 'ar'
+          ? 'يرجى ملء الاسم الأول واسم العائلة للاعب'
+          : 'Please enter player first and last name',
+      );
+      return;
+    }
+
+    if (!joinGuardianName.trim()) {
+      setJoinError(
+        locale === 'ar' ? 'يرجى ملء اسم ولي الأمر الأساسي' : 'Please enter guardian name',
+      );
+      return;
+    }
+
+    if (!joinEmail.trim()) {
+      setJoinError(
+        locale === 'ar'
+          ? 'يرجى إدخال البريد الإلكتروني للتواصل'
+          : 'Please enter contact email address',
+      );
+      return;
+    }
+
+    const calculatedDob = joinBirthYearOnly
+      ? joinBirthYear.trim()
+        ? `${joinBirthYear.trim()}-01-01`
+        : undefined
+      : joinDob || undefined;
+
+    setIsSubmittingJoin(true);
+    setJoinError(null);
+    try {
+      await portalApi.submitPlayerJoinRequest({
+        tenantId: joinTenantId,
+        playerName: fullName,
+        contactEmail: joinEmail.trim(),
+        contactPhone: joinPhone.trim() || joinEmergencyPhone.trim() || undefined,
+        dateOfBirth: calculatedDob,
+        guardianName: joinGuardianName.trim() || undefined,
+      });
+      setJoinSubmitted(true);
+    } catch (err: unknown) {
+      setJoinError(getErrorMessage(err, 'Failed to submit player join request'));
+    } finally {
+      setIsSubmittingJoin(false);
+    }
+  };
+
+  return (
+    <>
+      {isOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="w-full max-w-3xl rounded-3xl border border-(--border-app) bg-[var(--bg-surface)] shadow-2xl p-4 sm:p-6 sm:p-8 space-y-6 max-h-[92vh] overflow-y-auto">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-(--border-subtle) pb-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-(--accent-primary)/10 text-[var(--accent-primary)]">
+                  <UserPlus className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg sm:text-xl font-extrabold text-(--text-main)">
+                    {locale === 'ar'
+                      ? 'استمارة طلب انضمام لاعب جديد'
+                      : 'New Player Join Request Form'}
+                  </h3>
+                  <p className="text-xs text-(--text-muted)">
+                    {locale === 'ar'
+                      ? 'تسجيل بيانات اللاعب الرياضية ومعلومات ولي الأمر لإرسالها لإدارة الأكاديمية فوراً.'
+                      : 'Fill in athlete sports details and guardian contact to submit your application.'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => onClose()}
+                className="rounded-xl p-2 text-(--text-muted) hover:bg-(--bg-surface-subtle) hover:text-(--text-main) transition-colors cursor-pointer"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {joinSubmitted ? (
+              <div className="text-center py-8 space-y-4">
+                <CheckCircle2 className="h-16 w-16 text-emerald-500 mx-auto" />
+                <h4 className="text-xl font-extrabold text-(--text-main)">
+                  {locale === 'ar'
+                    ? 'تم إرسال طلب الانضمام بنجاح!'
+                    : 'Join Request Submitted Successfully!'}
+                </h4>
+                <p className="text-sm text-(--text-muted) max-w-md mx-auto leading-relaxed">
+                  {locale === 'ar'
+                    ? 'سيقوم الجهاز الإداري للأكاديمية بمراجعة طلبك وتسكين اللاعب في المجموعة والفرع المناسب وتوليد بطاقة العضوية الذكية.'
+                    : 'The academy administration will review your request, assign the appropriate team and branch, and issue the digital membership pass.'}
+                </p>
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={() => onClose()}
+                    className="rounded-xl bg-(--accent-primary) px-8 py-2.5 text-xs font-bold text-white shadow-md hover:brightness-110 transition-all cursor-pointer"
+                  >
+                    {locale === 'ar' ? 'حسناً، تم' : 'Done'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={handlePlayerJoinSubmit} className="space-y-6">
+                {joinError && (
+                  <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-3.5 text-xs text-red-500 flex items-start gap-2.5">
+                    <AlertCircle className="h-4 w-4 shrink-0 text-red-500 mt-0.5" />
+                    <span className="font-medium">{joinError}</span>
+                  </div>
+                )}
+
+                {/* Section 1: Target Sports Academy */}
+                <div className="rounded-2xl border border-(--border-subtle) bg-(--bg-surface-subtle)/40 p-5 shadow-xs space-y-4">
+                  <div className="flex items-center gap-2 border-b border-(--border-subtle) pb-3 text-sm font-bold text-(--text-main)">
+                    <Building2 className="h-4 w-4 text-[var(--accent-primary)]" />
+                    <span>
+                      {locale === 'ar'
+                        ? '1. الأكاديمية الرياضية المستهدفة'
+                        : '1. Target Sports Academy'}
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-(--text-muted) mb-1.5">
+                      {locale === 'ar'
+                        ? 'اختر الأكاديمية المراد الانضمام إليها *'
+                        : 'Select Target Academy *'}
+                    </label>
+                    {isLoadingAcademies ? (
+                      <div className="text-xs text-(--text-muted) py-2">
+                        {locale === 'ar'
+                          ? 'جارٍ تحميل الأكاديميات المتاحة...'
+                          : 'Loading academies...'}
+                      </div>
+                    ) : publicAcademies.length === 0 ? (
+                      <div className="text-xs text-amber-500 py-1">
+                        {locale === 'ar'
+                          ? 'لا توجد أكاديميات نشطة متاحة حالياً'
+                          : 'No active academies available at the moment'}
+                      </div>
+                    ) : (
+                      <select
+                        value={joinTenantId}
+                        onChange={(e) => setJoinTenantId(e.target.value)}
+                        required
+                        className="w-full rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors"
+                      >
+                        {publicAcademies.map((ac) => (
+                          <option key={ac.id} value={ac.id}>
+                            {ac.name} ({ac.slug})
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                </div>
+
+                {/* Section 2: Athlete Personal Information */}
+                <div className="rounded-2xl border border-(--border-subtle) bg-(--bg-surface-subtle)/40 p-5 shadow-xs space-y-4">
+                  <div className="flex items-center gap-2 border-b border-(--border-subtle) pb-3 text-sm font-bold text-(--text-main)">
+                    <User className="h-4 w-4 text-[var(--accent-primary)]" />
+                    <span>
+                      {locale === 'ar'
+                        ? '2. البيانات الشخصية للاعب'
+                        : '2. Athlete Personal Information'}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-(--text-muted) mb-1.5">
+                        {locale === 'ar' ? 'الاسم الأول *' : 'First Name *'}
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={joinFirstName}
+                        onChange={(e) => setJoinFirstName(e.target.value)}
+                        placeholder={locale === 'ar' ? 'مثال: يوسف' : 'e.g. Youssef'}
+                        className="w-full rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-(--text-muted) mb-1.5">
+                        {locale === 'ar' ? 'اسم العائلة *' : 'Last Name *'}
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={joinLastName}
+                        onChange={(e) => setJoinLastName(e.target.value)}
+                        placeholder={locale === 'ar' ? 'مثال: الشريف' : 'e.g. El-Sharif'}
+                        className="w-full rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-(--text-muted) mb-1.5">
+                        {locale === 'ar' ? 'الجنس *' : 'Gender *'}
+                      </label>
+                      <select
+                        value={joinGender}
+                        onChange={(e) => setJoinGender(e.target.value as 'MALE' | 'FEMALE')}
+                        className="w-full rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors"
+                      >
+                        <option value="MALE">{locale === 'ar' ? 'ذكر' : 'Male'}</option>
+                        <option value="FEMALE">{locale === 'ar' ? 'أنثى' : 'Female'}</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="block text-xs font-semibold text-(--text-muted)">
+                          {joinBirthYearOnly
+                            ? locale === 'ar'
+                              ? 'سنة الميلاد *'
+                              : 'Birth Year *'
+                            : locale === 'ar'
+                              ? 'تاريخ الميلاد *'
+                              : 'Date of Birth *'}
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setJoinBirthYearOnly(!joinBirthYearOnly)}
+                          className="text-[11px] text-[var(--accent-primary)] hover:underline font-medium cursor-pointer"
+                        >
+                          {joinBirthYearOnly
+                            ? locale === 'ar'
+                              ? 'استخدام تاريخ كامل'
+                              : 'Use Full Date'
+                            : locale === 'ar'
+                              ? 'سنة الميلاد فقط'
+                              : 'Year Only'}
+                        </button>
+                      </div>
+                      {joinBirthYearOnly ? (
+                        <input
+                          type="number"
+                          required
+                          min="1950"
+                          max={new Date().getFullYear()}
+                          value={joinBirthYear}
+                          onChange={(e) => setJoinBirthYear(e.target.value)}
+                          placeholder={locale === 'ar' ? 'مثال: 2015' : 'e.g. 2015'}
+                          className="w-full rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors"
+                        />
+                      ) : (
+                        <input
+                          type="date"
+                          required
+                          value={joinDob}
+                          onChange={(e) => setJoinDob(e.target.value)}
+                          className="w-full rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors"
+                        />
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-(--text-muted) mb-1.5">
+                        {locale === 'ar'
+                          ? 'رقم القميص المفضل (اختياري)'
+                          : 'Jersey Number (Optional)'}
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="99"
+                        value={joinJerseyNumber}
+                        onChange={(e) => setJoinJerseyNumber(e.target.value)}
+                        placeholder={locale === 'ar' ? 'مثال: 10' : 'e.g. 10'}
+                        className="w-full rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-(--text-muted) mb-1.5">
+                        {locale === 'ar'
+                          ? 'الرقم القومي / جواز السفر (اختياري)'
+                          : 'National ID / Passport (Optional)'}
+                      </label>
+                      <input
+                        type="text"
+                        value={joinNationalId}
+                        onChange={(e) => setJoinNationalId(e.target.value)}
+                        placeholder={
+                          locale === 'ar' ? '14 رقم للرقم القومي' : 'National ID or Passport number'
+                        }
+                        className="w-full rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors font-mono"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Section 3: Emergency & Health */}
+                <div className="rounded-2xl border border-(--border-subtle) bg-(--bg-surface-subtle)/40 p-5 shadow-xs space-y-4">
+                  <div className="flex items-center gap-2 border-b border-(--border-subtle) pb-3 text-sm font-bold text-(--text-main)">
+                    <Heart className="h-4 w-4 text-red-500" />
+                    <span>
+                      {locale === 'ar'
+                        ? '3. بيانات الطوارئ والملاحظات الطبية'
+                        : '3. Emergency & Medical Information'}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-(--text-muted) mb-1.5">
+                        {locale === 'ar' ? 'اسم جهة الاتصال للطوارئ' : 'Emergency Contact Name'}
+                      </label>
+                      <input
+                        type="text"
+                        value={joinEmergencyName}
+                        onChange={(e) => setJoinEmergencyName(e.target.value)}
+                        placeholder={
+                          locale === 'ar'
+                            ? 'مثال: أحمد الشريف (الأب)'
+                            : 'e.g. Ahmed El-Sharif (Father)'
+                        }
+                        className="w-full rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-(--text-muted) mb-1.5">
+                        {locale === 'ar' ? 'هاتف الطوارئ' : 'Emergency Phone'}
+                      </label>
+                      <input
+                        type="tel"
+                        value={joinEmergencyPhone}
+                        onChange={(e) => setJoinEmergencyPhone(e.target.value)}
+                        placeholder={locale === 'ar' ? 'مثال: +201012345678' : 'e.g. +201012345678'}
+                        className="w-full rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors font-mono"
+                      />
+                    </div>
+
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-semibold text-(--text-muted) mb-1.5">
+                        {locale === 'ar'
+                          ? 'ملاحظات طبية أو حساسية (اختياري)'
+                          : 'Medical Notes or Allergies (Optional)'}
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={joinMedicalNotes}
+                        onChange={(e) => setJoinMedicalNotes(e.target.value)}
+                        placeholder={
+                          locale === 'ar'
+                            ? 'أي حساسيات أو حالات صحية ينبغي للمدربين مراعاتها...'
+                            : 'Any medical conditions, allergies, or notes for coaches...'
+                        }
+                        className="w-full rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Section 4: Primary Guardian Information */}
+                <div className="rounded-2xl border border-(--border-subtle) bg-(--bg-surface-subtle)/40 p-5 shadow-xs space-y-4">
+                  <div className="flex items-center gap-2 border-b border-(--border-subtle) pb-3 text-sm font-bold text-(--text-main)">
+                    <Users className="h-4 w-4 text-[var(--accent-primary)]" />
+                    <span>
+                      {locale === 'ar'
+                        ? '4. بيانات ولي الأمر الأساسي'
+                        : '4. Primary Guardian Information'}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-(--text-muted) mb-1.5">
+                        {locale === 'ar' ? 'الاسم الكامل لولي الأمر *' : 'Guardian Full Name *'}
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={joinGuardianName}
+                        onChange={(e) => setJoinGuardianName(e.target.value)}
+                        placeholder={
+                          locale === 'ar' ? 'الاسم الثلاثي لولي الأمر' : 'Guardian full name'
+                        }
+                        className="w-full rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-(--text-muted) mb-1.5">
+                        {locale === 'ar' ? 'صلة القرابة *' : 'Relationship *'}
+                      </label>
+                      <select
+                        value={joinGuardianRelationship}
+                        onChange={(e) => setJoinGuardianRelationship(e.target.value)}
+                        className="w-full rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors"
+                      >
+                        <option value="FATHER">{locale === 'ar' ? 'الأب' : 'Father'}</option>
+                        <option value="MOTHER">{locale === 'ar' ? 'الأم' : 'Mother'}</option>
+                        <option value="GUARDIAN">
+                          {locale === 'ar' ? 'وصي قانوني' : 'Legal Guardian'}
+                        </option>
+                        <option value="RELATIVE">{locale === 'ar' ? 'أقارب' : 'Relative'}</option>
+                        <option value="OTHER">{locale === 'ar' ? 'أخرى' : 'Other'}</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-(--text-muted) mb-1.5">
+                        {locale === 'ar' ? 'رقم الهاتف / الواتساب *' : 'Phone / WhatsApp *'}
+                      </label>
+                      <input
+                        type="tel"
+                        required
+                        value={joinPhone}
+                        onChange={(e) => setJoinPhone(e.target.value)}
+                        placeholder={
+                          locale === 'ar'
+                            ? 'رقم الهاتف المحمول لولي الأمر'
+                            : 'Guardian mobile number'
+                        }
+                        className="w-full rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors font-mono"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-(--text-muted) mb-1.5">
+                        {locale === 'ar' ? 'البريد الإلكتروني للتواصل *' : 'Contact Email *'}
+                      </label>
+                      <input
+                        type="email"
+                        required
+                        value={joinEmail}
+                        onChange={(e) => setJoinEmail(e.target.value)}
+                        placeholder="parent@example.com"
+                        className="w-full rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors font-mono"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Actions Bar */}
+                <div className="flex items-center justify-end gap-3 pt-4 border-t border-(--border-subtle)">
+                  <button
+                    type="button"
+                    onClick={() => onClose()}
+                    className="rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-5 py-2.5 text-xs font-semibold text-(--text-muted) hover:text-(--text-main) transition-colors cursor-pointer"
+                  >
+                    {locale === 'ar' ? 'إلغاء' : 'Cancel'}
+                  </button>
+
+                  <button
+                    type="submit"
+                    disabled={isSubmittingJoin || !joinTenantId}
+                    className="inline-flex items-center gap-2 rounded-xl bg-(--accent-primary) text-white px-6 py-2.5 text-xs font-semibold shadow-sm hover:brightness-110 transition-all disabled:opacity-50 cursor-pointer"
+                  >
+                    <Save className="h-4 w-4" />
+                    <span>
+                      {isSubmittingJoin
+                        ? locale === 'ar'
+                          ? 'جارٍ الإرسال...'
+                          : 'Submitting...'
+                        : locale === 'ar'
+                          ? 'إرسال طلب الانضمام'
+                          : 'Submit Join Application'}
+                    </span>
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}

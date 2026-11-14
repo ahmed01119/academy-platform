@@ -1,22 +1,28 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Navbar } from '../../components/Navbar';
 import { useLocale } from '@/contexts/locale-context';
 import { useAuth } from '@/contexts/auth-context';
-import { api } from '@/api/client';
+import { api, getErrorMessage } from '@/api/client';
+import { AuthPageLayout, AuthPageSuspense } from '@/features/auth/components/AuthPageLayout';
+import { AuthCard, BackToSignInLink } from '@/features/auth/components/AuthCard';
+import { AuthAlert } from '@/features/auth/components/AuthAlert';
 import {
-  Users,
-  CheckCircle2,
-  AlertCircle,
-  ArrowRight,
-  Loader2,
-  Building2,
-  LogIn,
-  UserPlus,
-} from 'lucide-react';
+  AUTH_LABEL,
+  AUTH_PRIMARY_ACTION,
+  AUTH_TOKEN_INPUT,
+} from '@/features/auth/components/auth-styles';
+import { Users, ArrowRight, Loader2, Building2, LogIn, UserPlus } from 'lucide-react';
+
+/**
+ * Builds the sign-in / register links that carry the invitation back.
+ * NOTE: `/login` and `/register` currently ignore `?redirect=` (documented as F14).
+ */
+function withInviteRedirect(base: '/login' | '/register', token: string): string {
+  return `${base}?redirect=${encodeURIComponent(`/accept-invite?token=${token}`)}`;
+}
 
 function AcceptInviteContent() {
   const searchParams = useSearchParams();
@@ -59,206 +65,159 @@ function AcceptInviteContent() {
       );
       await refreshUser();
     } catch (err: unknown) {
-      const msg =
-        err instanceof Error
-          ? err.message
-          : locale === 'ar'
+      setError(
+        getErrorMessage(
+          err,
+          locale === 'ar'
             ? 'فشل قبول الدعوة. قد يكون الرمز منتهي الصلاحية أو مستخدماً بالفعل.'
-            : 'Failed to accept invitation. The token may be expired or already used.';
-      setError(msg);
+            : 'Failed to accept invitation. The token may be expired or already used.',
+        ),
+      );
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const loginRedirectUrl = `/login?redirect=${encodeURIComponent(`/accept-invite?token=${token}`)}`;
-  const registerRedirectUrl = `/register?redirect=${encodeURIComponent(`/accept-invite?token=${token}`)}`;
-
   return (
-    <div className="w-full max-w-md mx-auto">
-      <div className="rounded-3xl border border-(--border-app) bg-(--bg-surface)/95 p-5 sm:p-8 shadow-float backdrop-blur-xl relative overflow-hidden animate-scale-up">
-        {/* Sportexus ambient glows */}
-        <div className="absolute -top-16 -right-16 h-40 w-40 rounded-full bg-(--accent-blue)/20 blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-16 -left-16 h-40 w-40 rounded-full bg-(--accent-primary)/10 blur-3xl pointer-events-none" />
-
-        <div className="text-center mb-8 relative z-10">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-linear-to-tr from-[#0A3BFF] to-[#00D6FF] shadow-lg shadow-blue-600/25">
-            <Users className="h-6 w-6 text-white" />
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight text-(--text-main)">
-            {locale === 'ar' ? 'دعوة للانضمام إلى أكاديمية' : 'Academy Staff Invitation'}
-          </h1>
-          <p className="mt-2 text-sm text-(--text-muted)">
-            {locale === 'ar'
-              ? 'تفعيل عضويتك والانضمام إلى فريق عمل الأكاديمية'
-              : 'Activate your membership and join the academy staff'}
+    <AuthCard
+      icon={Users}
+      title={locale === 'ar' ? 'دعوة للانضمام إلى أكاديمية' : 'Academy Staff Invitation'}
+      subtitle={
+        locale === 'ar'
+          ? 'تفعيل عضويتك والانضمام إلى فريق عمل الأكاديمية'
+          : 'Activate your membership and join the academy staff'
+      }
+      footer={
+        <BackToSignInLink label={locale === 'ar' ? 'العودة إلى تسجيل الدخول' : 'Back to sign in'} />
+      }
+    >
+      {/* Loading auth state */}
+      {isAuthLoading && (
+        <div
+          role="status"
+          className="my-8 flex flex-col items-center justify-center gap-3 text-center relative z-10"
+        >
+          <Loader2 aria-hidden="true" className="h-8 w-8 animate-spin text-(--accent-primary)" />
+          <p className="text-xs text-(--text-muted)">
+            {locale === 'ar' ? 'جارٍ التحقق من بيانات الحساب...' : 'Checking session status...'}
           </p>
         </div>
+      )}
 
-        {/* Loading auth state */}
-        {isAuthLoading && (
-          <div className="my-8 flex flex-col items-center justify-center gap-3 text-center relative z-10">
-            <Loader2 className="h-8 w-8 animate-spin text-[var(--accent-primary)]" />
-            <p className="text-xs text-(--text-muted)">
-              {locale === 'ar' ? 'جارٍ التحقق من بيانات الحساب...' : 'Checking session status...'}
-            </p>
-          </div>
-        )}
-
-        {/* Success State */}
-        {successMessage && (
-          <div className="space-y-6 relative z-10">
-            <div className="flex items-start gap-3 rounded-xl border border-[#22C55E]/30 bg-[#22C55E]/10 p-5 text-sm text-[#4ADE80]">
-              <CheckCircle2 className="h-6 w-6 shrink-0 text-[#22C55E] mt-0.5" />
-              <div>
-                <h3 className="font-bold text-[#4ADE80]">
-                  {locale === 'ar' ? 'تهانينا! تم تفعيل العضوية بنجاح' : 'Membership Activated!'}
-                </h3>
-                <p className="mt-1 text-xs text-[#86EFAC] leading-relaxed">{successMessage}</p>
-              </div>
-            </div>
-
-            <Link
-              href="/dashboard"
-              className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#0A3BFF] via-[#0077FF] to-[#00D6FF] py-3 text-sm font-bold text-white shadow-lg shadow-blue-600/30 hover:brightness-110 active:scale-[0.99] transition-all"
-            >
-              <Building2 className="h-4 w-4" />
-              <span>{locale === 'ar' ? 'الدخول إلى لوحة التحكم' : 'Go to Dashboard'}</span>
-              <ArrowRight className="h-4 w-4 rotate-180" />
-            </Link>
-          </div>
-        )}
-
-        {/* Not Logged In State */}
-        {!isAuthLoading && !successMessage && !user && (
-          <div className="space-y-6 relative z-10">
-            <div className="rounded-xl border border-(--border-app) bg-(--bg-surface-subtle) p-4 text-xs text-(--text-muted) leading-relaxed">
-              <p>
-                {locale === 'ar'
-                  ? 'لقبول هذه الدعوة، يرجى تسجيل الدخول أو إنشاء حساب بالبريد الإلكتروني الذي استلمت عليه الدعوة.'
-                  : 'To accept this invitation, please sign in or register with the email address that received the invitation.'}
-              </p>
-            </div>
-
-            <div className="flex flex-col gap-3">
-              <Link
-                href={loginRedirectUrl}
-                className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#0A3BFF] to-[#00D6FF] py-3 text-sm font-bold text-white shadow-lg shadow-blue-600/30 hover:brightness-110 active:scale-[0.99] transition-all"
-              >
-                <LogIn className="h-4 w-4" />
-                <span>{locale === 'ar' ? 'تسجيل الدخول بحسابي' : 'Sign In to Accept'}</span>
-              </Link>
-
-              <Link
-                href={registerRedirectUrl}
-                className="w-full flex items-center justify-center gap-2 rounded-xl border border-(--border-app) bg-(--bg-surface-subtle) py-2.5 text-xs font-semibold text-(--text-main) hover:bg-[var(--bg-surface)] transition-all"
-              >
-                <UserPlus className="h-4 w-4 text-[var(--accent-primary)]" />
-                <span>{locale === 'ar' ? 'إنشاء حساب جديد' : 'Create New Account'}</span>
-              </Link>
-            </div>
-          </div>
-        )}
-
-        {/* Logged In State -> Ready to Accept */}
-        {!isAuthLoading && !successMessage && user && (
-          <form onSubmit={handleAccept} className="space-y-6 relative z-10">
-            {error && (
-              <div className="flex items-start gap-3 rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-xs text-rose-300">
-                <AlertCircle className="h-5 w-5 shrink-0 text-rose-400 mt-0.5" />
-                <div>{error}</div>
-              </div>
-            )}
-
-            <div className="rounded-xl border border-(--border-app) bg-(--bg-surface-subtle) p-4 space-y-2 text-xs">
-              <div className="text-(--text-muted)">
-                {locale === 'ar' ? 'الحساب المسجل حالياً:' : 'Current signed-in account:'}
-              </div>
-              <div className="font-semibold text-(--text-main) font-mono break-all">
-                {user.email}
-              </div>
-              <p className="text-[11px] text-(--text-muted) pt-1">
-                {locale === 'ar'
-                  ? 'يجب أن يطابق بريدك الحالي البريد الذي أُرسلت إليه الدعوة.'
-                  : 'Your signed-in email must match the recipient of this invitation.'}
-              </p>
-            </div>
-
-            <div>
-              <label
-                className="block text-xs font-semibold text-(--text-sub) mb-1.5"
-                htmlFor="token"
-              >
-                {locale === 'ar' ? 'رمز الدعوة (Invitation Token)' : 'Invitation Token'}
-              </label>
-              <input
-                id="token"
-                type="text"
-                required
-                value={token}
-                onChange={(e) => setToken(e.target.value)}
-                placeholder={locale === 'ar' ? 'أدخل رمز الدعوة...' : 'Enter invitation token...'}
-                dir="ltr"
-                className="w-full rounded-xl border border-(--border-app) bg-(--bg-surface-subtle) py-2.5 px-3 text-xs font-mono text-(--text-main) placeholder-(--text-muted) focus:border-(--accent-primary) focus:ring-1 focus:ring-(--accent-primary) outline-none transition-all"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={isSubmitting || !token.trim()}
-              className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#0A3BFF] via-[#0077FF] to-[#00D6FF] py-3 text-sm font-bold text-white shadow-lg shadow-blue-600/30 hover:brightness-110 active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>{locale === 'ar' ? 'جارٍ الانضمام...' : 'Accepting...'}</span>
-                </>
-              ) : (
-                <>
-                  <span>
-                    {locale === 'ar' ? 'قبول الدعوة وتفعيل العضوية' : 'Accept Invitation & Join'}
-                  </span>
-                  <ArrowRight className="h-4 w-4 rotate-180" />
-                </>
-              )}
-            </button>
-          </form>
-        )}
-
-        <div className="mt-8 border-t border-(--border-subtle) pt-6 text-center text-xs text-(--text-muted) relative z-10">
-          <Link
-            href="/login"
-            className="font-semibold text-[var(--accent-primary)] hover:underline transition-colors"
+      {/* Success State */}
+      {successMessage && (
+        <div className="space-y-6 relative z-10">
+          <AuthAlert
+            tone="success"
+            size="panel"
+            title={locale === 'ar' ? 'تهانينا! تم تفعيل العضوية بنجاح' : 'Membership Activated!'}
           >
-            {locale === 'ar' ? 'العودة إلى تسجيل الدخول' : 'Back to sign in'}
+            {successMessage}
+          </AuthAlert>
+
+          <Link href="/dashboard" className={AUTH_PRIMARY_ACTION}>
+            <Building2 aria-hidden="true" className="h-4 w-4" />
+            <span>{locale === 'ar' ? 'الدخول إلى لوحة التحكم' : 'Go to Dashboard'}</span>
+            <ArrowRight aria-hidden="true" className="h-4 w-4 rotate-180" />
           </Link>
         </div>
-      </div>
-    </div>
-  );
-}
+      )}
 
-function AcceptInviteLoadingFallback() {
-  const { locale } = useLocale();
-  return <span>{locale === 'ar' ? 'جارٍ تحميل الصفحة...' : 'Loading page...'}</span>;
+      {/* Not Logged In State */}
+      {!isAuthLoading && !successMessage && !user && (
+        <div className="space-y-6 relative z-10">
+          <div className="rounded-xl border border-(--border-app) bg-(--bg-surface-subtle) p-4 text-xs text-(--text-muted) leading-relaxed">
+            <p>
+              {locale === 'ar'
+                ? 'لقبول هذه الدعوة، يرجى تسجيل الدخول أو إنشاء حساب بالبريد الإلكتروني الذي استلمت عليه الدعوة.'
+                : 'To accept this invitation, please sign in or register with the email address that received the invitation.'}
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <Link
+              href={withInviteRedirect('/login', token)}
+              className="w-full flex items-center justify-center gap-2 rounded-xl bg-linear-to-r from-[#0A3BFF] to-[#00D6FF] py-3 text-sm font-bold text-white shadow-lg shadow-blue-600/30 hover:brightness-110 active:scale-[0.99] transition-all"
+            >
+              <LogIn aria-hidden="true" className="h-4 w-4" />
+              <span>{locale === 'ar' ? 'تسجيل الدخول بحسابي' : 'Sign In to Accept'}</span>
+            </Link>
+
+            <Link
+              href={withInviteRedirect('/register', token)}
+              className="w-full flex items-center justify-center gap-2 rounded-xl border border-(--border-app) bg-(--bg-surface-subtle) py-2.5 text-xs font-semibold text-(--text-main) hover:bg-(--bg-surface) transition-all"
+            >
+              <UserPlus aria-hidden="true" className="h-4 w-4 text-(--accent-primary)" />
+              <span>{locale === 'ar' ? 'إنشاء حساب جديد' : 'Create New Account'}</span>
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {/* Logged In State -> Ready to Accept */}
+      {!isAuthLoading && !successMessage && user && (
+        <form onSubmit={handleAccept} className="space-y-6 relative z-10">
+          {error && <AuthAlert tone="error">{error}</AuthAlert>}
+
+          <div className="rounded-xl border border-(--border-app) bg-(--bg-surface-subtle) p-4 space-y-2 text-xs">
+            <div className="text-(--text-muted)">
+              {locale === 'ar' ? 'الحساب المسجل حالياً:' : 'Current signed-in account:'}
+            </div>
+            <div className="font-semibold text-(--text-main) font-mono break-all">{user.email}</div>
+            <p className="text-[11px] text-(--text-muted) pt-1">
+              {locale === 'ar'
+                ? 'يجب أن يطابق بريدك الحالي البريد الذي أُرسلت إليه الدعوة.'
+                : 'Your signed-in email must match the recipient of this invitation.'}
+            </p>
+          </div>
+
+          <div>
+            <label className={AUTH_LABEL} htmlFor="token">
+              {locale === 'ar' ? 'رمز الدعوة (Invitation Token)' : 'Invitation Token'}
+            </label>
+            <input
+              id="token"
+              type="text"
+              required
+              value={token}
+              onChange={(e) => setToken(e.target.value)}
+              placeholder={locale === 'ar' ? 'أدخل رمز الدعوة...' : 'Enter invitation token...'}
+              dir="ltr"
+              className={AUTH_TOKEN_INPUT}
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={isSubmitting || !token.trim()}
+            className={AUTH_PRIMARY_ACTION}
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
+                <span>{locale === 'ar' ? 'جارٍ الانضمام...' : 'Accepting...'}</span>
+              </>
+            ) : (
+              <>
+                <span>
+                  {locale === 'ar' ? 'قبول الدعوة وتفعيل العضوية' : 'Accept Invitation & Join'}
+                </span>
+                <ArrowRight aria-hidden="true" className="h-4 w-4 rotate-180" />
+              </>
+            )}
+          </button>
+        </form>
+      )}
+    </AuthCard>
+  );
 }
 
 export default function AcceptInvitePage() {
   return (
-    <div className="min-h-screen bg-(--bg-base)text-(--text-main) flex flex-col overflow-x-hidden animate-fade-in">
-      <Navbar />
-      <main className="flex-1 flex items-center justify-center p-3 sm:p-6 lg:p-8">
-        <Suspense
-          fallback={
-            <div className="flex items-center gap-2 text-sm text-(--text-muted)">
-              <Loader2 className="h-5 w-5 animate-spin text-[var(--accent-primary)]" />
-              <AcceptInviteLoadingFallback />
-            </div>
-          }
-        >
-          <AcceptInviteContent />
-        </Suspense>
-      </main>
-    </div>
+    <AuthPageLayout>
+      <AuthPageSuspense>
+        <AcceptInviteContent />
+      </AuthPageSuspense>
+    </AuthPageLayout>
   );
 }

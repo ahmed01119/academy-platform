@@ -237,7 +237,7 @@ export function CoOwnerTab() {
                     className={`rounded-xl border p-3 text-start transition-all ${
                       inviteRole === 'PLATFORM_CO_OWNER'
                         ? 'border-amber-500 bg-amber-500/10 text-amber-300 ring-2 ring-amber-500/30'
-                        : 'border-(--border-app) bg-(--bg-base)text-(--text-muted) hover:border-(--border-subtle)'
+                        : 'border-(--border-app) bg-(--bg-base) text-(--text-muted) hover:border-(--border-subtle)'
                     }`}
                   >
                     <div className="flex items-center gap-1.5 font-bold text-xs">
@@ -255,7 +255,7 @@ export function CoOwnerTab() {
                     className={`rounded-xl border p-3 text-start transition-all ${
                       inviteRole === 'SUPER_ADMIN'
                         ? 'border-blue-500 bg-blue-500/10 text-blue-300 ring-2 ring-blue-500/30'
-                        : 'border-(--border-app) bg-(--bg-base)text-(--text-muted) hover:border-(--border-subtle)'
+                        : 'border-(--border-app) bg-(--bg-base) text-(--text-muted) hover:border-(--border-subtle)'
                     }`}
                   >
                     <div className="flex items-center gap-1.5 font-bold text-xs">
