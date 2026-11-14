@@ -44,6 +44,16 @@ export const JOIN_FIELDS_PENDING_BACKEND_SUPPORT = [
 
 export type PendingJoinField = (typeof JOIN_FIELDS_PENDING_BACKEND_SUPPORT)[number];
 
+/** Form labels of the pending fields (same wording as the form), used by the applicant notice. */
+export const PENDING_JOIN_FIELD_LABELS: Record<PendingJoinField, { ar: string; en: string }> = {
+  gender: { ar: 'الجنس', en: 'Gender' },
+  jerseyNumber: { ar: 'رقم القميص المفضل', en: 'Preferred jersey number' },
+  nationalId: { ar: 'الرقم القومي / جواز السفر', en: 'National ID / Passport' },
+  emergencyContactName: { ar: 'اسم جهة الاتصال للطوارئ', en: 'Emergency contact name' },
+  medicalNotes: { ar: 'الملاحظات الطبية أو الحساسية', en: 'Medical notes / allergies' },
+  guardianRelationship: { ar: 'صلة القرابة', en: 'Relationship' },
+};
+
 /** Sensitive fields that need protected storage and role-based access in the backend phase. */
 export const SENSITIVE_JOIN_FIELDS: readonly PendingJoinField[] = ['nationalId', 'medicalNotes'];
 

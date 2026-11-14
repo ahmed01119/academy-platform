@@ -20,6 +20,7 @@ import {
   validatePlayerJoinForm,
   type PlayerJoinFormValues,
 } from '@/features/landing/player-join-request';
+import { UnsavedFieldsNotice } from './UnsavedFieldsNotice';
 
 export interface PlayerJoinRequestModalProps {
   isOpen: boolean;
@@ -208,6 +209,9 @@ export function PlayerJoinRequestModal({ isOpen, onClose }: PlayerJoinRequestMod
                     <span className="font-medium">{joinError}</span>
                   </div>
                 )}
+
+                {/* F17: fields that are not submitted/saved yet — shown before the applicant types */}
+                <UnsavedFieldsNotice locale={locale === 'ar' ? 'ar' : 'en'} />
 
                 {/* Section 1: Target Sports Academy */}
                 <div className="rounded-2xl border border-(--border-subtle) bg-(--bg-surface-subtle)/40 p-5 shadow-xs space-y-4">
