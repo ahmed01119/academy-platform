@@ -162,16 +162,29 @@ Step 3 details:
   `--brand-surface`, legacy `[var(--x)]` syntax.
 
 New findings (documented, not changed — need owner decision):
-- F14 `/accept-invite` sends signed-out users to `/login?redirect=…` / `/register?redirect=…`, but neither page reads
-  `redirect`; after signing in the user lands on their role home, not back on the invitation. Honouring it needs an
-  allow-list (open-redirect protection).
+- F14 ✅ **Resolved (follow-up commit after Step 3).** `/login` and `/register` now honour `?redirect=` through
+  `lib/auth/safe-return-path.ts`: strict allow-list (`/accept-invite`, `/auth/accept-invite`), query preserved, fragment
+  dropped; rejects external/protocol-relative URLs, other schemes, backslashes, encoded separators, dot-segments,
+  control characters, credentials and > 2048 chars. Invalid/missing → existing default (login: role home; register:
+  `/dashboard`). Return path is carried across the login ↔ register links. Tests: 45 unit cases + 21 browser checks.
 - F15 Login error mapping checks `code === 'VALIDATION_ERROR'`; the API emits `VALIDATION_FAILED`. Field mapping still
   works via `details.issues`.
-- F16 The API returns **401** for pending-approval, rejected, rate-limited and suspended logins; the login page maps every
-  401 to "Invalid email or password", so these users never see the real reason.
-- F17 The landing "player join" form collects gender, jersey number, national ID, emergency contact, medical notes and
-  guardian relationship, but the API contract accepts only name, email, phone, DOB and guardian name — the rest is
-  silently discarded (sensitive data collected without purpose).
+- F16 ⏸ **Deferred to the backend phase (owner decision).** The API returns **401** for pending-approval, rejected,
+  rate-limited and suspended logins; the login page maps every 401 to "Invalid email or password". Frontend keeps this
+  generic behaviour and does not infer account status from a 401. Required work — see §10 "Backend-phase requirements".
+- F17 ⏸ **Fields kept; backend support required (owner decision, updated).** The landing "player join" form keeps all
+  fields. The API contract accepts only name, email, phone, DOB and guardian name, so the frontend now builds the request
+  through `features/landing/player-join-request.ts`, which returns the contract `payload` **and** an explicit
+  `pendingBackendSupport` object (gender, jersey number, national ID, emergency contact name, medical notes, guardian
+  relationship) — nothing is dropped implicitly, and the pending fields are deliberately not sent (the API would strip
+  them). Tests pin both sets and fail if the contract changes. Required work — see §10.
+- F19 Invitees have no staff sign-up path: `/accept-invite` → "Create New Account" opens `/register`, which registers an
+  **academy** (application `PENDING_REVIEW`). That user's login is then blocked as pending, so they can never accept the
+  invitation (acceptance also requires a verified account). Needs a product/backend decision (invite-based sign-up).
+- F20 The repository lives in a OneDrive-synced folder. OneDrive converts Next.js runtime cache files
+  (`.next/server/route-cache`) into cloud placeholders (reparse points), which makes the next `next build` fail with
+  `EINVAL readlink`. Workaround: delete `.next/server/route-cache` (or exclude `.next`/`node_modules` from OneDrive sync,
+  or move the repo outside OneDrive).
 - F18 `/forgot-password` step 2 only checks password length ≥ 8 while `/reset-password` enforces every strength rule
   (both end at the same backend policy). Kept as-is.
 
@@ -203,12 +216,50 @@ New findings during Phase 1:
 - F11 Many files still use the legacy `[var(--x)]` Tailwind syntax (editor suggests `(--x)`); both work in Tailwind v4. Not changed (cosmetic, high churn).
 - Rule for dev-only UI: guard with inline `process.env.NODE_ENV === 'development'` at the call site; an imported constant is not folded across modules and ships to production (verified).
 
-## 10. Change log
+## 10. Backend-phase requirements (recorded by owner decisions — not started)
+
+### BR-1 (F16) Distinguishable login failures without account enumeration
+Current API: every failure below is HTTP 401 (`UnauthorizedException`). Order in `AuthService.login`: rate limit →
+password verification → suspension → pending/rejected application or join request.
+
+| Situation | Checked | Current | Required status + `code` | Frontend message (to implement then) |
+|---|---|---|---|---|
+| Wrong email or password | — | 401 `INVALID_CREDENTIALS` | keep 401 `INVALID_CREDENTIALS` | generic "Invalid email or password" |
+| Too many attempts | before password | 401 `RATE_LIMIT_EXCEEDED` | 429 `RATE_LIMIT_EXCEEDED` (+ retry-after seconds) | "Too many attempts, try again in N min" |
+| Account suspended | after password | 401 `FORBIDDEN` | 403 `ACCOUNT_SUSPENDED` (new code) | "Account suspended — contact support" |
+| Academy application pending / more info | after password | 401 `ACADEMY_PENDING_APPROVAL` | 403 `ACADEMY_PENDING_APPROVAL` | "Your academy application is under review" |
+| Academy application rejected | after password | 401 `ACADEMY_REJECTED` | 403 `ACADEMY_REJECTED` | "Your academy application was not approved" |
+| Player join request pending | after password | 401 `PLAYER_PENDING_APPROVAL` | 403 `PLAYER_PENDING_APPROVAL` | "Your join request is under review" |
+| Player join request rejected | after password | 401 `PLAYER_REJECTED` | 403 `PLAYER_REJECTED` | "Your join request was not approved" |
+
+Rules: account-specific codes only **after** successful password verification (already true), so they reveal nothing
+to someone without the password; add the new codes to `packages/shared` `ErrorCode`; the frontend maps on `code`
+(never on message text or bare status) inside `features/auth/login-form.ts` `resolveLoginError`, with localized copy;
+unknown codes keep the generic message. Also fix F15 (`VALIDATION_ERROR` → `VALIDATION_FAILED`) at the same time.
+
+### BR-2 (F17) Persist all player join-request fields
+- Schema/migration: add to `player_registration_requests` — `gender`, `jersey_number`, `national_id`,
+  `emergency_contact_name`, `emergency_contact_phone`, `medical_notes`, `guardian_relationship` (nullable; reversible migration;
+  existing rows untouched).
+- Contract: extend `CreatePlayerJoinRequestSchema` (optional fields, lengths/enums matching `CreatePlayerRequestSchema`
+  and `GuardianRelationship`), DTOs, service and the approval flow (copy into `players` / `guardians` instead of the
+  current defaults gender MALE / placeholders).
+- Protection: `national_id` and `medical_notes` readable only with `players.sensitive.read` (same as player records);
+  masked in list endpoints; excluded from notifications, e-mails and audit metadata; RLS unchanged (tenant-scoped).
+- Frontend then: send `pendingBackendSupport` fields (remove them from `JOIN_FIELDS_PENDING_BACKEND_SUPPORT`; the
+  contract-drift test will flag the change).
+
+### BR-3 (F19) Invite-based staff sign-up
+Product decision needed: a staff sign-up that creates an account bound to the invitation email (no academy application),
+with e-mail verification, so invitees can accept invitations.
+
+## 11. Change log
 
 | Date | Change | Files |
 |---|---|---|
 | 2026-11-14 | Initial knowledge baseline: created the five core docs; no application code modified. | `docs/PROJECT_OVERVIEW.md`, `docs/SYSTEM_ARCHITECTURE.md`, `docs/BUSINESS_LOGIC.md`, `docs/TECHNOLOGY_STACK.md`, `docs/DEVELOPMENT_STATUS.md` |
 | 2026-11-14 | Phase 1 frontend analysis + verification baseline (§9); proposal pending approval. | `docs/DEVELOPMENT_STATUS.md` |
+| 2026-11-14 | Step 3 follow-up: F14 safe return path implemented; F17 explicit contract mapping (fields kept, pending list); F16/F17/F19 backend requirements documented (§10). No backend/API/DB changes. | `frontend/src/lib/auth/safe-return-path.ts`, `frontend/src/hooks/useSafeReturnPath.ts`, `frontend/src/app/{login,register,accept-invite}/page.tsx`, `frontend/src/features/landing/{player-join-request.ts,components/PlayerJoinRequestModal.tsx}` (+2 test files) |
 | 2026-11-14 | Phase 1 Step 3: auth & public pages restructured onto `features/auth` + `features/landing`; error-message hardening; 8 typo fixes. No API, validation-rule, backend or currency changes. | `frontend/src/app/{login,register,forgot-password,reset-password,verify-email,accept-invite,landing,offline}/page.tsx`, `frontend/src/components/platform/CoOwnerTab.tsx`, `frontend/src/features/{auth,landing}/**`, `frontend/src/hooks/{useCooldown,useDelayedRedirect}.ts` (+6 test files) |
 | 2026-11-14 | Phase 1 Step 2: shared access guard, AuthGuard rebuilt, AppShell text colour fixed. No permission, API or backend changes. | `frontend/src/lib/auth/access-rules.ts`, `frontend/src/hooks/useAccessGuard.ts`, `frontend/src/components/layout/{AuthGuard,AppShell}.tsx`, 20 pages under `frontend/src/app/` (+3 test files) |
 | 2026-11-14 | Phase 1 Steps 0–1 + session-page CSS repair (see §9 progress). No backend, API contract or currency changes. | `frontend/src/{config,lib/http,features/*/api.ts,api/client.ts,components/ui/ConfirmDialog.tsx,features/attendance/components/QrCheckInSimulator.tsx}`, 5 pages (confirm dialogs), `app/layout.tsx` |

@@ -14,6 +14,8 @@ import {
   type RegisterFieldErrors,
 } from '@/features/auth/register-form';
 import { PasswordVisibilityToggle } from '@/features/auth/components/PasswordVisibilityToggle';
+import { readReturnPath, withReturnPath } from '@/lib/auth/safe-return-path';
+import { useSafeReturnPath } from '@/hooks/useSafeReturnPath';
 import { Navbar } from '../../components/Navbar';
 import { SportexusLogo } from '../../components/brand/SportexusLogo';
 import {
@@ -76,9 +78,13 @@ export default function RegisterPage() {
     city: string;
   } | null>(null);
 
+  // Validated `?redirect=` for links; redirects below re-read it at call time to avoid a
+  // race with the initial render (a signed-in user may already be present on mount).
+  const returnPath = useSafeReturnPath();
+
   useEffect(() => {
     if (user) {
-      router.push('/dashboard');
+      router.push(readReturnPath(window.location.search) ?? '/dashboard');
     }
   }, [user, router]);
 
@@ -134,7 +140,7 @@ export default function RegisterPage() {
           city: city.trim() || (locale === 'ar' ? 'غير محددة' : 'Unspecified'),
         });
       } else {
-        router.push('/dashboard');
+        router.push(readReturnPath(window.location.search) ?? '/dashboard');
       }
     } catch (err: unknown) {
       const resolution = resolveRegisterError(err, locale);
@@ -239,7 +245,7 @@ export default function RegisterPage() {
                 {/* Actions */}
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-4">
                   <Link
-                    href="/login"
+                    href={withReturnPath('/login', returnPath)}
                     className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#0A3BFF] to-[#00D6FF] px-6 py-3 text-sm font-bold text-white shadow-lg shadow-blue-600/20 hover:brightness-110 transition-all"
                   >
                     <LogIn className="h-4 w-4" />
@@ -623,7 +629,7 @@ export default function RegisterPage() {
                       : 'Already have an account? '}
                   </span>
                   <Link
-                    href="/login"
+                    href={withReturnPath('/login', returnPath)}
                     className="font-semibold text-[var(--accent-primary)] hover:underline transition-colors"
                   >
                     {locale === 'ar' ? 'تسجيل الدخول إلى حسابك' : 'Sign in to your account'}

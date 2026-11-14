@@ -15,6 +15,11 @@ import {
 import { useLocale } from '@/contexts/locale-context';
 import { getErrorMessage } from '@/lib/http/api-error';
 import { portalApi } from '@/features/portal/api';
+import {
+  buildPlayerJoinRequest,
+  validatePlayerJoinForm,
+  type PlayerJoinFormValues,
+} from '@/features/landing/player-join-request';
 
 export interface PlayerJoinRequestModalProps {
   isOpen: boolean;
@@ -25,8 +30,9 @@ export interface PlayerJoinRequestModalProps {
  * Public "join an academy" request form (landing page). Moved verbatim from app/landing/page.tsx.
  * Stays mounted while closed so typed values survive close/re-open, as before.
  *
- * NOTE (F17): the form collects more fields (gender, jersey, national ID, emergency contact,
- * medical notes, relationship) than the API contract accepts; only the fields below are sent.
+ * F17 (owner decision 2026-11-14): all fields are kept. Fields the API does not accept yet
+ * are listed in `JOIN_FIELDS_PENDING_BACKEND_SUPPORT` (features/landing/player-join-request.ts)
+ * and will be supported in the backend phase; until then only the contract payload is sent.
  */
 export function PlayerJoinRequestModal({ isOpen, onClose }: PlayerJoinRequestModalProps) {
   const { locale } = useLocale();
@@ -92,56 +98,39 @@ export function PlayerJoinRequestModal({ isOpen, onClose }: PlayerJoinRequestMod
 
   const handlePlayerJoinSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!joinTenantId) {
-      setJoinError(
-        locale === 'ar' ? 'يرجى اختيار الأكاديمية الرياضية' : 'Please select an academy',
-      );
+    const values: PlayerJoinFormValues = {
+      tenantId: joinTenantId,
+      firstName: joinFirstName,
+      lastName: joinLastName,
+      gender: joinGender,
+      birthYearOnly: joinBirthYearOnly,
+      birthYear: joinBirthYear,
+      dateOfBirth: joinDob,
+      jerseyNumber: joinJerseyNumber,
+      nationalId: joinNationalId,
+      emergencyContactName: joinEmergencyName,
+      emergencyContactPhone: joinEmergencyPhone,
+      medicalNotes: joinMedicalNotes,
+      guardianName: joinGuardianName,
+      guardianRelationship: joinGuardianRelationship,
+      phone: joinPhone,
+      email: joinEmail,
+    };
+
+    const validationError = validatePlayerJoinForm(values, locale);
+    if (validationError) {
+      setJoinError(validationError);
       return;
     }
 
-    const fullName = `${joinFirstName.trim()} ${joinLastName.trim()}`.trim();
-    if (!fullName) {
-      setJoinError(
-        locale === 'ar'
-          ? 'يرجى ملء الاسم الأول واسم العائلة للاعب'
-          : 'Please enter player first and last name',
-      );
-      return;
-    }
-
-    if (!joinGuardianName.trim()) {
-      setJoinError(
-        locale === 'ar' ? 'يرجى ملء اسم ولي الأمر الأساسي' : 'Please enter guardian name',
-      );
-      return;
-    }
-
-    if (!joinEmail.trim()) {
-      setJoinError(
-        locale === 'ar'
-          ? 'يرجى إدخال البريد الإلكتروني للتواصل'
-          : 'Please enter contact email address',
-      );
-      return;
-    }
-
-    const calculatedDob = joinBirthYearOnly
-      ? joinBirthYear.trim()
-        ? `${joinBirthYear.trim()}-01-01`
-        : undefined
-      : joinDob || undefined;
+    // F17: `pendingBackendSupport` (gender, jersey, national ID, emergency contact name,
+    // medical notes, relationship) is intentionally not sent until the API supports it.
+    const { payload } = buildPlayerJoinRequest(values);
 
     setIsSubmittingJoin(true);
     setJoinError(null);
     try {
-      await portalApi.submitPlayerJoinRequest({
-        tenantId: joinTenantId,
-        playerName: fullName,
-        contactEmail: joinEmail.trim(),
-        contactPhone: joinPhone.trim() || joinEmergencyPhone.trim() || undefined,
-        dateOfBirth: calculatedDob,
-        guardianName: joinGuardianName.trim() || undefined,
-      });
+      await portalApi.submitPlayerJoinRequest(payload);
       setJoinSubmitted(true);
     } catch (err: unknown) {
       setJoinError(getErrorMessage(err, 'Failed to submit player join request'));

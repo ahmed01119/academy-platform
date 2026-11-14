@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { useLocale } from '@/contexts/locale-context';
 import { getRoleHomeRoute } from '@/utils/role-routing';
+import { readReturnPath, withReturnPath } from '@/lib/auth/safe-return-path';
+import { useSafeReturnPath } from '@/hooks/useSafeReturnPath';
 import { Navbar } from '../../components/Navbar';
 import { SportexusLogo } from '../../components/brand/SportexusLogo';
 import { resolveLoginError, validateLoginForm, type LoginValues } from '@/features/auth/login-form';
@@ -25,6 +27,8 @@ export default function LoginPage() {
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
   const [touched, setTouched] = useState<{ email?: boolean; password?: boolean }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Validated `?redirect=` (e.g. back to an invitation); null when absent or unsafe.
+  const returnPath = useSafeReturnPath();
 
   const validate = useCallback(
     (values: LoginValues) => validateLoginForm(values, rememberMe, locale),
@@ -82,8 +86,11 @@ export default function LoginPage() {
         password,
         rememberMe,
       });
-      // Use fresh data from response, not stale React state
-      router.push(getRoleHomeRoute(freshUser, freshTenant));
+      // Safe return path first (re-read at submit time); otherwise the role home, computed
+      // from the fresh response rather than stale React state.
+      router.push(
+        readReturnPath(window.location.search) ?? getRoleHomeRoute(freshUser, freshTenant),
+      );
     } catch (err: unknown) {
       const { formError, fieldErrors: mapped } = resolveLoginError(err, locale);
       if (mapped) setFieldErrors(mapped);
@@ -274,7 +281,7 @@ export default function LoginPage() {
                 {locale === 'ar' ? 'ليس لديك أكاديمية مسجلة بعد؟ ' : "Don't have an academy yet? "}
               </span>
               <Link
-                href="/register"
+                href={withReturnPath('/register', returnPath)}
                 className="font-bold text-[var(--accent-primary)] hover:underline"
               >
                 {locale === 'ar' ? 'سجّل أكاديميتك الآن' : 'Register your academy'}

@@ -14,14 +14,12 @@ import {
   AUTH_PRIMARY_ACTION,
   AUTH_TOKEN_INPUT,
 } from '@/features/auth/components/auth-styles';
+import { invitationPath, withReturnPath } from '@/lib/auth/safe-return-path';
 import { Users, ArrowRight, Loader2, Building2, LogIn, UserPlus } from 'lucide-react';
 
-/**
- * Builds the sign-in / register links that carry the invitation back.
- * NOTE: `/login` and `/register` currently ignore `?redirect=` (documented as F14).
- */
+/** Sign-in / register link that returns the user to this invitation afterwards (F14). */
 function withInviteRedirect(base: '/login' | '/register', token: string): string {
-  return `${base}?redirect=${encodeURIComponent(`/accept-invite?token=${token}`)}`;
+  return withReturnPath(base, invitationPath(token));
 }
 
 function AcceptInviteContent() {
