@@ -130,10 +130,12 @@ BEGIN
     -- Explicitly excludes: onboarding_token, onboarding_expires_at,
     -- redemption_challenge, redemption_expires_at, is_email_verified,
     -- email_verification_token, email_verification_expires_at,
-    -- password_reset_token, password_reset_expires_at
+    -- password_reset_token, password_reset_expires_at, password_reset_link_token
+    -- session_version (K13b, migration 20261116090000): password change, suspension and session revocation
+    -- increment it. The REVOKE ALL above would otherwise drop the grant made by that migration.
     GRANT UPDATE (
       name, phone, password_hash, must_reset_password, is_suspended,
-      suspended_reason, is_platform_super_admin, is_platform_owner, updated_at
+      suspended_reason, is_platform_super_admin, is_platform_owner, session_version, updated_at
     ) ON TABLE public.users TO sportexus_app;
 
     REVOKE TRUNCATE ON TABLE public.users FROM sportexus_app;
