@@ -205,7 +205,7 @@ export default function PlayerPortalPage() {
                 <input
                   type="text"
                   required
-                  placeholder="ACAD-A7F2"
+                  placeholder="ACAD-XXXXXXXXXX"
                   value={claimTokenInput}
                   onChange={(e) => setClaimTokenInput(e.target.value)}
                   className="w-full font-mono text-center tracking-widest text-lg font-bold rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-4 py-3 text-(--text-main) placeholder:text-(--text-muted) focus:border-(--accent-primary) focus:outline-none"
