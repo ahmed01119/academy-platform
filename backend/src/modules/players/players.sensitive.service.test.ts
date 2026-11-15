@@ -191,4 +191,139 @@ describe('PlayersService — F21/F22', () => {
     expect(startDate.getTime()).toBeGreaterThanOrEqual(before - 1000);
     expect(startDate.getTime()).toBeLessThanOrEqual(Date.now() + 1000);
   });
+
+  // ─── F23: duplicate national ID must not be confirmed to restricted roles ─────
+  const errorBody = async (p: Promise<unknown>) => {
+    try {
+      await p;
+    } catch (err) {
+      const e = err as {
+        getStatus: () => number;
+        getResponse: () => { code: string; message: string };
+      };
+      return { status: e.getStatus(), ...e.getResponse() };
+    }
+    throw new Error('expected the call to fail');
+  };
+  const p2002 = (target: unknown) =>
+    Object.assign(new Error('Unique constraint failed'), { code: 'P2002', meta: { target } });
+
+  it('F23 create (pre-check): RECEPTIONIST gets a generic 400 that never mentions the national ID', async () => {
+    player.findFirst.mockResolvedValue({ id: 'other-player' }); // ID already registered
+    const body = await errorBody(service.createPlayer(restricted, dto()));
+    expect(body.status).toBe(400);
+    expect(body.code).toBe('VALIDATION_FAILED');
+    expect(body.message).not.toMatch(/national|id|already|exist|registered/i);
+    expect(player.create).not.toHaveBeenCalled(); // unique rule still enforced
+  });
+
+  it('F23 create (pre-check): MANAGER still gets the specific 409 duplicate message', async () => {
+    player.findFirst.mockResolvedValue({ id: 'other-player' });
+    const body = await errorBody(service.createPlayer(privileged, dto()));
+    expect(body).toMatchObject({
+      status: 409,
+      code: 'CONFLICT',
+      message: 'A player with this National ID is already registered in this academy',
+    });
+  });
+
+  it.each([[['tenant_id', 'national_id']], ['unique_player_national_id_per_tenant']])(
+    'F23 create (DB race, target %j): restricted → generic 400, privileged → 409',
+    async (target) => {
+      player.create.mockRejectedValue(p2002(target));
+      expect(await errorBody(service.createPlayer(restricted, dto()))).toMatchObject({
+        status: 400,
+        code: 'VALIDATION_FAILED',
+      });
+      player.create.mockRejectedValue(p2002(target));
+      expect(await errorBody(service.createPlayer(privileged, dto()))).toMatchObject({
+        status: 409,
+        code: 'CONFLICT',
+      });
+    },
+  );
+
+  it('F23 create: unrelated unique violations are not rewritten', async () => {
+    const other = p2002(['qr_card_code']);
+    player.create.mockRejectedValue(other);
+    await expect(service.createPlayer(restricted, dto())).rejects.toBe(other);
+  });
+
+  // ─── F24: sensitive fields are write-protected on update ─────────────────────
+  const stored = {
+    ...listedPlayer,
+    nationalId: NATIONAL_ID,
+    medicalNotes: 'Asthma',
+    enrollments: [{ id: 'en1', branchId: 'branch-1', status: 'ACTIVE' }],
+  };
+  const arrangeUpdate = () => {
+    player.findUnique.mockResolvedValue(stored);
+    player.update = vi.fn().mockResolvedValue({ ...stored, guardians: [], enrollments: [] });
+  };
+
+  it.each([
+    ['a new national ID', { nationalId: '30001011234567' }, /national ID/],
+    ['the SAME national ID (no confirm-by-guess)', { nationalId: NATIONAL_ID }, /national ID/],
+    ['clearing the national ID', { nationalId: null }, /national ID/],
+    ['new medical notes', { medicalNotes: 'None' }, /medical notes/],
+    ['the SAME medical notes (no confirm-by-guess)', { medicalNotes: 'Asthma' }, /medical notes/],
+  ])(
+    'F24 update: RECEPTIONIST sending %s → 403, nothing looked up or written',
+    async (_case, patch, msg) => {
+      arrangeUpdate();
+      const body = await errorBody(service.updatePlayer(restricted, 'player-1', patch as never));
+      expect(body.status).toBe(403);
+      expect(body.code).toBe('FORBIDDEN');
+      expect(body.message).toMatch(msg);
+      expect(player.findFirst).not.toHaveBeenCalled(); // no duplicate probe
+      expect(player.update).not.toHaveBeenCalled();
+    },
+  );
+
+  it('F24 update: RECEPTIONIST may still update non-sensitive fields', async () => {
+    arrangeUpdate();
+    await service.updatePlayer(restricted, 'player-1', { firstName: 'Tsubasa2' });
+    expect(player.update).toHaveBeenCalledTimes(1);
+    const data = player.update.mock.calls[0]?.[0]?.data;
+    expect(data).toMatchObject({ firstName: 'Tsubasa2' });
+    expect(data).not.toHaveProperty('nationalId');
+    expect(data).not.toHaveProperty('medicalNotes');
+  });
+
+  it('F24 update: MANAGER may change the national ID and medical notes', async () => {
+    arrangeUpdate();
+    player.findFirst.mockResolvedValue(null);
+    await service.updatePlayer(privileged, 'player-1', {
+      nationalId: '30001011234567',
+      medicalNotes: 'None',
+    });
+    expect(player.update.mock.calls[0]?.[0]?.data).toMatchObject({
+      nationalId: '30001011234567',
+      medicalNotes: 'None',
+    });
+  });
+
+  it('F23 update: MANAGER duplicate → 409; DB race → same mapped response', async () => {
+    arrangeUpdate();
+    player.findFirst.mockResolvedValue({ id: 'other-player' });
+    expect(
+      await errorBody(
+        service.updatePlayer(privileged, 'player-1', { nationalId: '30001011234567' }),
+      ),
+    ).toMatchObject({ status: 409, code: 'CONFLICT' });
+
+    arrangeUpdate();
+    player.findFirst.mockResolvedValue(null);
+    player.update = vi.fn().mockRejectedValue(p2002(['tenant_id', 'national_id']));
+    expect(
+      await errorBody(
+        service.updatePlayer(privileged, 'player-1', { nationalId: '30001011234567' }),
+      ),
+    ).toMatchObject({ status: 409, code: 'CONFLICT' });
+  });
+
+  it('create: RECEPTIONIST may still enter a national ID for a new player (owner decision)', async () => {
+    await service.createPlayer(restricted, dto());
+    expect(player.create.mock.calls[0]?.[0]?.data?.nationalId).toBe(NATIONAL_ID);
+  });
 });

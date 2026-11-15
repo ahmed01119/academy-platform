@@ -2,7 +2,6 @@ import { EmailService } from '../email/email.service';
 import crypto from 'node:crypto';
 import {
   BadRequestException,
-  ConflictException,
   ForbiddenException,
   Inject,
   Injectable,
@@ -13,7 +12,13 @@ import {
 import { PrismaService } from '../database/prisma.service';
 import type { Prisma } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
-import { buildPlayerSearchConditions, canViewSensitivePlayerData } from './player-sensitive-data';
+import {
+  assertMaySetSensitiveFieldsOnUpdate,
+  buildPlayerSearchConditions,
+  canViewSensitivePlayerData,
+  duplicateNationalIdError,
+  isNationalIdUniqueViolation,
+} from './player-sensitive-data';
 import {
   ErrorCode,
   type CreatePlayerRequest,
@@ -365,10 +370,8 @@ export class PlayersService {
             },
           });
           if (existingNationalId) {
-            throw new ConflictException({
-              code: ErrorCode.CONFLICT,
-              message: 'A player with this National ID is already registered in this academy',
-            });
+            // F23: specific message only for actors allowed to read national IDs
+            throw duplicateNationalIdError(hasSensitivePerm);
           }
         }
 
@@ -387,22 +390,28 @@ export class PlayersService {
             : dto.membershipNumber?.trim() || null;
 
         // 1. Create player
-        const player = await tx.player.create({
-          data: {
-            tenantId: tenantContext.tenantId,
-            firstName: dto.firstName.trim(),
-            lastName: dto.lastName.trim(),
-            gender: dto.gender,
-            dateOfBirth: new Date(birthDateStr),
-            membershipNumber,
-            nationalId: dto.nationalId?.trim() || null,
-            photoUrl: dto.photoUrl?.trim() || null,
-            emergencyContactName: dto.emergencyContactName.trim(),
-            emergencyContactPhone: dto.emergencyContactPhone.trim(),
-            medicalNotes: dto.medicalNotes?.trim() || null,
-            status: 'ACTIVE',
-          },
-        });
+        const player = await tx.player
+          .create({
+            data: {
+              tenantId: tenantContext.tenantId,
+              firstName: dto.firstName.trim(),
+              lastName: dto.lastName.trim(),
+              gender: dto.gender,
+              dateOfBirth: new Date(birthDateStr),
+              membershipNumber,
+              nationalId: dto.nationalId?.trim() || null,
+              photoUrl: dto.photoUrl?.trim() || null,
+              emergencyContactName: dto.emergencyContactName.trim(),
+              emergencyContactPhone: dto.emergencyContactPhone.trim(),
+              medicalNotes: dto.medicalNotes?.trim() || null,
+              status: 'ACTIVE',
+            },
+          })
+          .catch((err: unknown) => {
+            // F23: a concurrent insert can pass the pre-check; never leak the constraint.
+            if (isNationalIdUniqueViolation(err)) throw duplicateNationalIdError(hasSensitivePerm);
+            throw err;
+          });
 
         // 2. Create primary guardian
         const guardian = await tx.guardian.create({
@@ -590,16 +599,9 @@ export class PlayersService {
 
         const hasSensitivePerm = canViewSensitivePlayerData(tenantContext);
 
-        if (
-          dto.medicalNotes !== undefined &&
-          dto.medicalNotes !== existing.medicalNotes &&
-          !hasSensitivePerm
-        ) {
-          throw new ForbiddenException({
-            code: ErrorCode.FORBIDDEN,
-            message: 'You do not have permission to modify sensitive medical notes',
-          });
-        }
+        // F24: actors without players.sensitive.read may not change national ID or medical notes.
+        // Checked before any lookup so neither the stored value nor a duplicate can be probed.
+        assertMaySetSensitiveFieldsOnUpdate(dto, hasSensitivePerm);
 
         if (dto.nationalId && dto.nationalId.trim() !== (existing.nationalId || '')) {
           const collision = await tx.player.findFirst({
@@ -610,10 +612,7 @@ export class PlayersService {
             },
           });
           if (collision) {
-            throw new ConflictException({
-              code: ErrorCode.CONFLICT,
-              message: 'A player with this National ID is already registered in this academy',
-            });
+            throw duplicateNationalIdError(hasSensitivePerm);
           }
         }
 
@@ -635,34 +634,40 @@ export class PlayersService {
         }
         if (dto.status !== undefined) updateData.status = dto.status;
 
-        const updated = await tx.player.update({
-          where: {
-            tenantId_id: {
-              tenantId: tenantContext.tenantId,
-              id: playerId,
+        const updated = await tx.player
+          .update({
+            where: {
+              tenantId_id: {
+                tenantId: tenantContext.tenantId,
+                id: playerId,
+              },
             },
-          },
-          data: updateData,
-          include: {
-            guardians: {
-              where: { isPrimary: true },
-              take: 1,
-            },
-            enrollments: {
-              where: { status: 'ACTIVE' },
-              include: {
-                branch: {
-                  select: {
-                    id: true,
-                    name: true,
-                    code: true,
+            data: updateData,
+            include: {
+              guardians: {
+                where: { isPrimary: true },
+                take: 1,
+              },
+              enrollments: {
+                where: { status: 'ACTIVE' },
+                include: {
+                  branch: {
+                    select: {
+                      id: true,
+                      name: true,
+                      code: true,
+                    },
                   },
                 },
+                take: 1,
               },
-              take: 1,
             },
-          },
-        });
+          })
+          .catch((err: unknown) => {
+            // F23: concurrent duplicate — same response as the pre-check, never the raw constraint.
+            if (isNationalIdUniqueViolation(err)) throw duplicateNationalIdError(hasSensitivePerm);
+            throw err;
+          });
 
         await this.auditService.logEvent(
           {

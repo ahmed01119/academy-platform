@@ -1,5 +1,11 @@
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  type HttpException,
+} from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
-import { hasPermission, Permission, type TenantContext } from '@academy/shared';
+import { ErrorCode, hasPermission, Permission, type TenantContext } from '@academy/shared';
 
 /**
  * Server-side protection of sensitive player data (national ID, medical notes).
@@ -44,4 +50,74 @@ export function buildPlayerSearchConditions(
       },
     },
   ];
+}
+
+// ─── F23: duplicate national ID without an existence oracle ─────────────────────────
+
+/** Generic message for actors who may not read national IDs (reveals nothing about existence). */
+export const GENERIC_PLAYER_SAVE_ERROR =
+  'The player could not be saved. Please review the entered details and try again.';
+
+/**
+ * Error for a national ID that is already registered in the tenant.
+ * - With `players.sensitive.read`: 409 CONFLICT with the specific duplicate message (unchanged).
+ * - Without it: a generic 400 VALIDATION_FAILED that does not mention the national ID.
+ */
+export function duplicateNationalIdError(canViewSensitive: boolean): HttpException {
+  if (canViewSensitive) {
+    return new ConflictException({
+      code: ErrorCode.CONFLICT,
+      message: 'A player with this National ID is already registered in this academy',
+    });
+  }
+  return new BadRequestException({
+    code: ErrorCode.VALIDATION_FAILED,
+    message: GENERIC_PLAYER_SAVE_ERROR,
+  });
+}
+
+/** Name of the partial unique index on (tenant_id, national_id) — see migration 20261021040000. */
+const NATIONAL_ID_UNIQUE_INDEX = 'unique_player_national_id_per_tenant';
+
+/**
+ * True for a Prisma unique-constraint violation (P2002) on the per-tenant national ID index.
+ * Covers the race where two writes pass the pre-check; without this, the global filter would
+ * answer `409 "A record with this tenant_id, national_id already exists"` to any role.
+ */
+export function isNationalIdUniqueViolation(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false;
+  const e = err as { code?: unknown; meta?: { target?: unknown } };
+  if (e.code !== 'P2002') return false;
+  const target = e.meta?.target;
+  const parts = Array.isArray(target) ? target.map(String) : [String(target ?? '')];
+  return parts.some(
+    (t) => t === NATIONAL_ID_UNIQUE_INDEX || t === 'national_id' || t === 'nationalId',
+  );
+}
+
+// ─── F24: sensitive fields are write-protected on update ─────────────────────────────
+
+/**
+ * Rejects any attempt by an actor without `players.sensitive.read` to change national ID or
+ * medical notes. Presence-based on purpose: comparing with the stored value would let a caller
+ * confirm a guess (request succeeds only when the guess matches).
+ * Creating a player with a national ID stays allowed (owner decision 2026-11-15).
+ */
+export function assertMaySetSensitiveFieldsOnUpdate(
+  dto: { nationalId?: unknown; medicalNotes?: unknown },
+  canViewSensitive: boolean,
+): void {
+  if (canViewSensitive) return;
+  if (dto.nationalId !== undefined) {
+    throw new ForbiddenException({
+      code: ErrorCode.FORBIDDEN,
+      message: 'You do not have permission to modify the national ID',
+    });
+  }
+  if (dto.medicalNotes !== undefined) {
+    throw new ForbiddenException({
+      code: ErrorCode.FORBIDDEN,
+      message: 'You do not have permission to modify sensitive medical notes',
+    });
+  }
 }
