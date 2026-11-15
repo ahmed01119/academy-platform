@@ -184,11 +184,24 @@ New findings (documented, not changed):
   roles (closes an existence/enumeration oracle; count and results share the filter). UI: the list hides the line and
   the search placeholder reads "Search name or phone…" for those roles. **Behaviour change (approved):** Accountant,
   Receptionist (and any role without the permission) no longer see or search by national ID in the roster.
-- F23 (remaining, not changed) Duplicate-check message on create/update ("A player with this National ID is already
-  registered in this academy") still tells a Receptionist — who may record but not read national IDs — that an ID
-  exists. Uniqueness is a business rule; changing the message/flow needs a decision.
-- F24 (remaining, not changed) Roles without `players.sensitive.read` but with `players.update` (Receptionist) can still
-  *write* `nationalId` on update (the UI does not expose it). Write-without-read is existing behaviour; confirm intent.
+- F23 ✅ **Resolved (backend `6efea56`).** Without `players.sensitive.read`, a duplicate national ID on
+  `POST /players` or `PATCH /players/:id` now returns a generic `400 VALIDATION_FAILED` ("The player could not be
+  saved. Please review the entered details and try again.") instead of `409 "A player with this National ID is already
+  registered…"`. Actors with the permission keep the specific 409. A concurrent duplicate that slips past the pre-check
+  (Prisma `P2002` on `unique_player_national_id_per_tenant`) is mapped to the same responses — previously the global
+  filter answered every role with `409 "A record with this tenant_id, national_id already exists"`. The partial unique
+  index is unchanged. **Residual (inherent):** the request still *fails* when the ID exists, so a restricted user who
+  tries to create a player can infer a collision from the failure itself; the message no longer confirms it, and it
+  is indistinguishable from other validation failures. Fully hiding the signal would require a different product flow
+  (e.g. staff review of duplicates) — not implemented.
+- F24 ✅ **Resolved (backend `6efea56`).** `PATCH /players/:id` now returns `403` whenever `nationalId` or `medicalNotes`
+  is present in the body from an actor without `players.sensitive.read` — checked before any lookup. The previous
+  medical-notes rule compared with the stored value, so a caller could confirm a guess (request succeeded only when the
+  guess matched); that oracle is closed for both fields. Creating a player with a national ID stays allowed for these
+  roles (owner decision). Frontend unchanged (it never sent these fields for restricted roles); a contract test now pins
+  that.
+- Enrollment start date (owner decision 2026-11-15): keep the calendar-date validation; past, present and future dates
+  are allowed; no further restriction without a confirmed business requirement.
 - `database/repositories/player.repository.ts` still contains a national-ID search, but no service uses the repository
   layer yet (unused code; to be aligned when repositories are adopted).
 
@@ -264,6 +277,19 @@ New findings during Phase 1:
 - F11 Many files still use the legacy `[var(--x)]` Tailwind syntax (editor suggests `(--x)`); both work in Tailwind v4. Not changed (cosmetic, high churn).
 - Rule for dev-only UI: guard with inline `process.env.NODE_ENV === 'development'` at the call site; an imported constant is not folded across modules and ships to production (verified).
 
+## 9b. Pre-existing quality issues (documented only — no unrelated cleanup, owner decision 2026-11-15)
+
+Found during F21–F24 verification; all predate this work (they come from the checkpointed WIP `64c3adc`).
+
+| Area | Issue | Files |
+|---|---|---|
+| Backend formatting | Real Prettier drift (not only CRLF) in 16 files | `common/filters/global-exception.filter{,.test}.ts`, `modules/attendance/{attendance-roster.service,attendance.service}.ts`, `modules/auth/auth.service.ts`, `modules/database/repositories/{attendance,base,finance,index,player,tenant,user}.repository.ts` + `repositories.test.ts`, `modules/finance/finance-plans.service.ts`, `modules/platform/{platform-metrics.service,platform.service}.ts` |
+| Backend lint | 2 errors `@typescript-eslint/consistent-type-imports` | `common/filters/global-exception.filter.test.ts:4`, `modules/database/repositories/base.repository.ts:2` |
+| Backend lint | ~104 warnings (mostly `no-explicit-any`) | across modules |
+| Working tree | CRLF vs LF: `core.autocrlf=true` makes Prettier report every file on Windows checkouts; the repository itself stores LF | repo-wide |
+
+CI impact: `pnpm lint` (2 errors) and `pnpm format:check` (16 files) would fail on these until cleaned up in a dedicated change.
+
 ## 10. Backend requirements (recorded by owner decisions)
 
 **Workflow (owner direction 2026-11-15):** frontend issues whose root cause is in the backend are now fixed across both
@@ -312,6 +338,7 @@ with e-mail verification, so invitees can accept invitations.
 |---|---|---|
 | 2026-11-14 | Initial knowledge baseline: created the five core docs; no application code modified. | `docs/PROJECT_OVERVIEW.md`, `docs/SYSTEM_ARCHITECTURE.md`, `docs/BUSINESS_LOGIC.md`, `docs/TECHNOLOGY_STACK.md`, `docs/DEVELOPMENT_STATUS.md` |
 | 2026-11-14 | Phase 1 frontend analysis + verification baseline (§9); proposal pending approval. | `docs/DEVELOPMENT_STATUS.md` |
+| 2026-11-15 | F23 + F24. **Backend `6efea56`:** generic 400 for duplicate national ID without `players.sensitive.read` (specific 409 kept for permitted roles); P2002 race mapped; presence-based 403 for `nationalId`/`medicalNotes` on update. **Frontend:** contract test only. Docs: §9b pre-existing issues. No migration; API error responses changed for restricted roles only. | `backend/src/modules/players/{players.service.ts,player-sensitive-data.ts}` (+2 test files), `frontend/src/features/players/players-logic.test.ts` |
 | 2026-11-15 | F22 + F21 full-stack. **Backend `f1ddeca`:** `players/player-sensitive-data.ts` (single sensitive-data rule), list/create responses mask `nationalId`/`medicalNotes`, list search excludes national ID without `players.sensitive.read`; `CreatePlayerSchema.initialEnrollmentStartDate` (optional) + `isCalendarDate`; `createPlayer` uses it. **Frontend:** create form sends the start date; roster hides national ID + adjusts search placeholder by permission. No migration; no breaking API change. | `backend/src/modules/players/{players.service.ts,player-sensitive-data.ts}` (+2 test files), `packages/shared/src/schemas/player.ts` (+test), `frontend/src/features/players/new-player-form.ts`, `frontend/src/app/players/{page,new/page}.tsx` |
 | 2026-11-14 | Phase 1 Step 4: players feature (`features/players/**`), pagination/search/error-state fixes, bilingual + accessible player profile and modals; F17 applicant notice (`7ce0fac`). No backend/API/DB/currency changes. | `frontend/src/app/players/{page,new/page,[id]/page}.tsx`, `frontend/src/components/player-qr-card.tsx`, `frontend/src/features/players/**`, `frontend/src/hooks/useDebouncedValue.ts` (+2 test files) |
 | 2026-11-14 | Step 3 follow-up: F14 safe return path implemented; F17 explicit contract mapping (fields kept, pending list); F16/F17/F19 backend requirements documented (§10). No backend/API/DB changes. | `frontend/src/lib/auth/safe-return-path.ts`, `frontend/src/hooks/useSafeReturnPath.ts`, `frontend/src/app/{login,register,accept-invite}/page.tsx`, `frontend/src/features/landing/{player-join-request.ts,components/PlayerJoinRequestModal.tsx}` (+2 test files) |

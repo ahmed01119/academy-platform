@@ -89,6 +89,15 @@ describe('buildPlayerUpdatePayload', () => {
     expect(editFormFromPlayer(player).medicalNotes).toBe('');
   });
 
+  it('F24 contract: never sends nationalId, and medicalNotes only with sensitive access', () => {
+    // The API now rejects these fields (403) for roles without players.sensitive.read whenever
+    // they are present, so a restricted user's edit must not contain them at all.
+    for (const canViewSensitive of [true, false]) {
+      expect(buildPlayerUpdatePayload(form, canViewSensitive)).not.toHaveProperty('nationalId');
+    }
+    expect(Object.keys(buildPlayerUpdatePayload(form, false))).not.toContain('medicalNotes');
+  });
+
   it('includes medical notes only for users with sensitive access', () => {
     expect(buildPlayerUpdatePayload(form, true)).toEqual({
       firstName: 'Omar',

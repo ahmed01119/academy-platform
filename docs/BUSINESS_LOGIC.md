@@ -124,7 +124,11 @@ Permissions are a static map (`ROLE_PERMISSIONS`). Current code:
   (`backend/src/modules/players/player-sensitive-data.ts`).
 - **Initial enrollment start date**: `POST /players` accepts optional `initialEnrollmentStartDate`
   (YYYY-MM-DD, real calendar date); omitted → the enrollment starts today.
-- **Update**: same branch and sensitive-data rules as create.
+- **Update**: same branch rules as create. Without `players.sensitive.read`, any `nationalId` or `medicalNotes` in the
+  body is rejected with 403 (regardless of value). Creating a player with a national ID is allowed for these roles.
+- **Duplicate national ID** (unique per academy, enforced by the `unique_player_national_id_per_tenant` partial index):
+  permitted roles get `409` "A player with this National ID is already registered in this academy"; other roles get a
+  generic `400 VALIDATION_FAILED` that does not confirm the ID exists.
 - **QR card**: get / rotate (new code, old one invalid) / revoke; revoked cards are refused at scan time.
 - **Delete** (`players.delete`): `deletion-impact` previews linked records; `DELETE` performs a **safe archive**
   ("history preserved"), not a hard delete — active enrollments become CANCELLED and active group
