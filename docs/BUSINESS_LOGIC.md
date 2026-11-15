@@ -96,20 +96,34 @@ Permissions are a static map (`ROLE_PERMISSIONS`). Current code:
 
 ### 2.2 Authentication & session
 
+- **Client IP** (used by every IP-based limit and audit entry): attested by the web proxy (S1, see
+  SYSTEM_ARCHITECTURE §5); client-supplied `X-Forwarded-For` is never trusted on its own. IPv6 limits apply per /64.
 - **Login**: rate limit 5 attempts / 15 min per (IP, email) in Redis; constant-time dummy hash when user is missing;
   generic `INVALID_CREDENTIALS`; suspended users rejected; failures audited.
   Memberships are discovered only after password verification. Active tenant = requested id if valid, else first ACTIVE membership.
 - **Tokens**: access JWT (`JWT_EXPIRES_IN`, default 15 m) carries `sub, email, tenantId, role, branchId, platform flags`.
   Refresh token = 40 random bytes, stored SHA-256 hashed, `familyId` for rotation.
+- **Session version** (K13b): `users.session_version` is stamped into each access token (`sv`) and refresh token.
+  Password reset, password change, platform "revoke sessions" and user suspension increment it, so every access
+  token and refresh token issued before is refused at once (access tokens no longer live out their 15 minutes).
 - **Refresh**: each use revokes the old token and issues a new one in the same family. Re-use of a revoked token, or
-  a lost race, **revokes the whole family** (theft detection).
+  a lost race, **revokes the whole family** (theft detection). A refresh token whose session version is stale is
+  refused as "session ended", not treated as theft. Rotation locks the user row (`FOR SHARE`), so it can never race a
+  password change into a token for the new version.
 - **Logout**: revokes the refresh-token family.
-- **Forgot password**: 60 s cooldown per email, 3 requests / 15 min per (IP, email); 6-digit OTP (crypto RNG),
-  stored hashed, 5-minute expiry, emailed (link + code). Response is always neutral; in `development` it includes `debugOtp`.
-- **Reset password**: submits `{ token, newPassword }` (token = OTP or link token); on success **all refresh tokens of the user are revoked**
-  and a "password changed" email is sent.
+- **Forgot password** (K1): limits 10 / hour per IP; per email a 60 s cooldown (5 min after 3 requests in an hour);
+  3 / 15 min per (IP, email). The limits apply whether or not the address is registered. Each request issues a
+  6-digit code and a 256-bit link token (crypto RNG), both stored only as SHA-256 hashes, valid 5 minutes, single use.
+  The email carries the code and a link with the token in the URL fragment (never sent to servers or logs). A new
+  request replaces the previous code and link. Response is always neutral; in `development` it includes `debugOtp`.
+- **Reset password** (K1): `{ token, newPassword, email? }`. A 6-digit code is accepted only **with its email**; the
+  link token alone is enough. 5 wrong codes cancel the code; 10 failed codes per account in 24 h suspend code entry
+  (the emailed link still works, so guessing cannot lock the owner out). 30 attempts / 15 min per IP. Every failure
+  returns the same "invalid or expired" error. Token consumption, the password update and the session-version bump
+  happen in one database statement; then all refresh tokens are revoked and a "password changed" email is sent.
 - **Email verification**: 24 h token, resend limited to 3 / 15 min.
-- **Change password** (authenticated): current password required; new must differ; email notification. (Does not revoke other sessions.)
+- **Change password** (authenticated): current password required; new must differ; email notification. Ends every
+  other session (K13): session version bumped, refresh tokens revoked; the caller receives fresh cookies.
 - **Tenant switch**: `POST /tenants/switch` requires an ACTIVE membership in the target tenant.
 
 ### 2.3 Staff invitation

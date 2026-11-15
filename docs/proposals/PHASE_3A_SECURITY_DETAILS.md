@@ -266,15 +266,19 @@ make M2 run in the same file as a re-statement. Not needed.
 
 ### B.4 Rollback per migration
 
-Rollback runs in reverse order (M3 → M2 → M1) and takes one statement block each, all included in the migration
-files' headers. The last resort is the owner's Neon branch, or the verified `pg_dump`.
+> **Revision 4 (2026-11-15, owner rules):** a rollback is a **new forward migration**; `_prisma_migrations` is never
+> edited directly, and the `session_version` columns are never dropped (that would revive invalidated sessions). The
+> table below is updated accordingly.
+
+Rollback runs in reverse order (M3 → M2 → M1), each as a forward migration whose SQL is in the migration file's
+header. The last resort is the owner's Neon branch, or the verified logical backup.
 
 | Migration                        | Rollback                                                                                                                                                                                                   |
 | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `20261104105500` (resolved only) | `DELETE FROM _prisma_migrations WHERE migration_name = '20261104105500_academy_applications_insert_rls';` (nothing was executed)                                                                           |
-| M3                               | revoke `INSERT` on tenants and `UPDATE (session_version)` from runtime roles; drop `platform_create_user`                                                                                                  |
+| `20261104105500` (resolved only) | Nothing to roll back: no DDL ran. It stays recorded as an intentional baseline exception (DEVELOPMENT_STATUS §9c); M2 supersedes it.                                                                       |
+| M3                               | revoke `INSERT` on tenants from runtime roles; drop `platform_create_user`. `UPDATE (session_version)` stays granted (M1 needs it)                                                                         |
 | M2                               | drop `academy_applications_insert` and `player_registration_requests_applicant`; drop the 6 new functions; restore `search_path` defaults on the helpers. The applicant SELECT policy stays as it is today |
-| M1                               | drop the new functions; re-create `complete_password_reset` from `20261021040000`; drop the 3 new columns                                                                                                  |
+| M1                               | drop the new functions; re-create `complete_password_reset` from `20261021040000`; clear `password_reset_link_token`. **Keep both `session_version` columns**                                              |
 
 ---
 

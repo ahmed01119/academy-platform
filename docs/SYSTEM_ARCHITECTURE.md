@@ -13,7 +13,7 @@ with Row-Level Security; Redis for rate limiting.
 Browser (Next.js client components, PWA service worker, IndexedDB offline queue)
    │  fetch('/v1/...')  same-origin, credentials: 'include', x-tenant-id header
    ▼
-Next.js server  ── app/v1/[...path]/route.ts  (runtime reverse proxy → INTERNAL_API_URL)
+Next.js server  ── app/v1/[...path]/route.ts  (runtime reverse proxy → INTERNAL_API_URL; attests client IP)
    ▼
 NestJS API  /v1   (Express; cookie-parser; correlation id; security headers; CORS; CSRF guard)
    │  Guards: JwtAuthGuard → TenantGuard → PermissionsGuard (+ Platform guards)
@@ -132,6 +132,15 @@ tokens, registration) — these touch the non-RLS tables `users`/`refresh_tokens
 - Auth: cookies `access_token` (15 min) and `refresh_token` (`REFRESH_TOKEN_EXPIRES_DAYS`, default 7);
   `secure` controlled by `COOKIE_SECURE` (mandatory in production).
 - Tenant selection: `x-tenant-id` header (preferred), branch override `x-branch-id` (only for non-branch-scoped roles).
+- Access tokens carry the user's session version (`sv`); `JwtStrategy` rejects a token whose version is older than
+  `users.session_version` (K13b).
+- **Client IP (S1)**: the web proxy (`frontend/src/lib/http/proxy-forwarding.ts`) removes client-supplied
+  `x-sportexus-*` and forwarding headers, takes the client address from `X-Forwarded-For` counted from the right by
+  `WEB_TRUSTED_PROXY_HOPS` (the number of reverse proxies in front of the web app), and sends it as
+  `x-sportexus-client-ip` with `x-sportexus-proxy-auth: INTERNAL_PROXY_SECRET`. The API middleware
+  (`backend/src/common/client-ip.ts`, registered first) accepts that header only on a constant-time secret match,
+  otherwise uses Express `trust proxy` = `TRUST_PROXY_HOPS`. It deletes both headers and sets `req.clientIp`. The secret
+  is server-only (never `NEXT_PUBLIC_*`), at least 32 characters, and required in production on both services.
 - Error body: `{ statusCode, code (ErrorCode), message, ... }`.
 
 ### Endpoint map (controller → prefix)
@@ -182,13 +191,16 @@ lookups (`tenantId_id`). Monetary columns are `Float` (double precision).
 
 ### 6.2 Security features in SQL
 
-- **RLS** enabled/forced on every tenant table (all models except `users`, `refresh_tokens`);
-  policies key on `current_setting('app.tenant_id')` / actor / super-admin context.
+- **RLS** is enabled on 31 of 34 tables and forced on 21 (verified on the development database, 2026-11-15); policies
+  key on `current_setting('app.tenant_id')` / actor / super-admin context. RLS binds only roles without `BYPASSRLS`;
+  the API currently connects as the database owner (finding S3, Phase 3A.2).
 - **Append-only** triggers on `audit_logs` (blocks UPDATE/DELETE) and attendance corrections.
 - **Least-privilege runtime role** (`academy_runtime_ci` in CI, e.g. `sportexus_app` in prod;
   `infrastructure/postgres/01-runtime-role.sql`): column-restricted updates on `users`;
   production env validation refuses admin DB users (`postgres`, `academy`, `root`).
-- **SECURITY DEFINER** functions for token flows: `request_password_reset`, `complete_password_reset`,
+- **SECURITY DEFINER** functions for token flows: `request_password_reset`, `request_password_reset_with_link`,
+  `complete_password_reset_for_email`, `complete_password_reset_by_link`, `invalidate_password_reset_code_for_email`,
+  `complete_password_reset` (legacy link fallback),
   `verify_user_email`, `request_email_verification`, invitation redemption / onboarding.
 - SQL test suites: `packages/database/tests/*.sql` (run in CI).
 

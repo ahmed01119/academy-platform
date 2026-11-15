@@ -10,13 +10,17 @@
 
 | Measure                                 | Count                                                                  |
 | --------------------------------------- | ---------------------------------------------------------------------- |
-| Frontend API methods                    | 123                                                                    |
-| Backend routes                          | 132                                                                    |
+| Frontend API methods                    | 122                                                                    |
+| Backend routes                          | 131                                                                    |
 | Frontend calls with no backend route    | 0                                                                      |
-| Frontend methods not called by any page | 19 (listed below)                                                      |
+| Frontend methods not called by any page | 18 (listed below)                                                      |
 | Backend routes with no frontend method  | 9: health checks, the refresh call made by the HTTP core, alias routes |
 
 ## Integration gaps
+
+> **2026-11-15 (Phase 3A.1, S5):** the anonymous `POST /platform/applications/public` route and its unused frontend
+> method `platform.submitAcademyApplication` were retired (former recommendation 13). Registration uses
+> `/auth/register` only. The `POST /auth/reset-password` contract also changed (K1): see the auth section below.
 
 ### Backend features with no reachable UI
 
@@ -54,11 +58,10 @@ Phase 5 builds approved screens on the shared data-loading and error states from
 | 10  | Session evaluations list                           | `evaluations.read`                               | **Build**: an evaluations tab on the session page                                                                                                                                                                                           | Low      |                                                                                                                                             |
 | 11  | Platform announcements                             | platform admin                                   | **Decide**: announcements are stored but **never delivered**. No notification is created and no screen shows them. Either build the console _and_ delivery (a banner or notification for the targeted academies), or retire both endpoints. | Decision | A console alone would publish messages nobody sees.                                                                                         |
 | 12  | `tenancy.getMyMemberships`, `tenancy.listBranches` | signed in / tenant member                        | **Keep** the endpoints; drop the unused frontend wrappers when the tenancy feature is refactored (Phase 4C)                                                                                                                                 | Low      | The auth context gets memberships through `/auth/me`.                                                                                       |
-| 13  | `platform.submitAcademyApplication`                | public                                           | **Decide**: registration uses `/auth/register`. Confirm whether a separate public application form is still wanted.                                                                                                                         | Low      |                                                                                                                                             |
 
 ### Frontend methods not called by any page
 
-`attendance.correctAttendance`, `branches.get`, `branches.getDeletionImpact`, `branches.archive`, `enrollments.list`, `enrollments.create`, `evaluations.createTemplate`, `evaluations.listSessionEvaluations`, `finance.getPlayerSubscription`, `groups.update`, `platform.getAcademyDeletionImpact`, `platform.archiveAcademy`, `platform.listAnnouncements`, `platform.createAnnouncement`, `platform.submitAcademyApplication`, `portal.generateClaimToken`, `tenancy.getMyMemberships`, `tenancy.listBranches`, `tenancy.revokeMembership`
+`attendance.correctAttendance`, `branches.get`, `branches.getDeletionImpact`, `branches.archive`, `enrollments.list`, `enrollments.create`, `evaluations.createTemplate`, `evaluations.listSessionEvaluations`, `finance.getPlayerSubscription`, `groups.update`, `platform.getAcademyDeletionImpact`, `platform.archiveAcademy`, `platform.listAnnouncements`, `platform.createAnnouncement`, `portal.generateClaimToken`, `tenancy.getMyMemberships`, `tenancy.listBranches`, `tenancy.revokeMembership`
 
 ### Backend routes with no frontend method
 
@@ -98,6 +101,15 @@ Phase 5 builds approved screens on the shared data-loading and error states from
 | `auth.getMe`              | GET   | `/auth/me`                  | signed in      | /auth-test, contexts/auth-context.tsx         |
 | `auth.changePassword`     | POST  | `/auth/change-password`     | signed in      | /account                                      |
 | `auth.updateProfile`      | PATCH | `/auth/profile`             | signed in      | /account                                      |
+
+Contract changes in Phase 3A.1 (2026-11-15):
+
+- `POST /auth/reset-password` takes `{ token, newPassword, email? }`. A 6-digit code requires `email`; a 64-hex link
+  token does not. Every failure returns the same `400 TOKEN_INVALID` message.
+- `POST /auth/change-password` now also sets fresh auth cookies: the call ends every other session, including the
+  caller's previous tokens.
+- Access tokens carry a session version (`sv`). After a password reset, a password change, a platform "revoke sessions"
+  or a suspension, older access tokens get `401 TOKEN_INVALID` and older refresh tokens are refused.
 
 ### branches
 
@@ -193,7 +205,6 @@ Phase 5 builds approved screens on the shared data-loading and error states from
 | `platform.updateTenantSubscription`  | PATCH | `/platform/academies/:id/subscription`    | platform admin | /platform                                                                            |
 | `platform.listAnnouncements`         | GET   | `/platform/announcements`                 | platform admin | _not called_                                                                         |
 | `platform.createAnnouncement`        | POST  | `/platform/announcements`                 | platform admin | _not called_                                                                         |
-| `platform.submitAcademyApplication`  | POST  | `/platform/applications/public`           | public         | _not called_                                                                         |
 | `platform.listAcademyApplications`   | GET   | `/platform/applications`                  | platform admin | /dashboard, /platform                                                                |
 | `platform.reviewAcademyApplication`  | POST  | `/platform/applications/:id/review`       | platform admin | components/platform/ApplicationsTab.tsx                                              |
 | `platform.getStorageMetrics`         | GET   | `/platform/storage/metrics`               | platform admin | components/platform/StorageTab.tsx                                                   |

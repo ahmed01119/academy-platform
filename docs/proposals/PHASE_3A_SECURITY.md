@@ -5,8 +5,18 @@
 > finding S5) and adds the S3/S4 details, migration safety, test strategy and session-invalidation analysis. Where the two
 > differ, the addendum takes precedence.
 
-> **Status: proposal, awaiting owner approval. Nothing is implemented, and no migration has been created in the
-> repository or applied.**
+> **Revision 4 (2026-11-15): 3A.1 implemented.** K1, K13, K13b, S1 and the S5 retirement are in commits `45624c2`,
+> `faa7e69`, `a421c15`, `1e31a60` and `fb0ccad`. M1 is applied to the Neon development database (see
+> `docs/DEVELOPMENT_STATUS.md` §9c). The rollback rules changed on the owner's instruction:
+>
+> - `_prisma_migrations` is never edited directly. A rollback is a new forward migration.
+> - The `session_version` columns are never dropped: dropping them would make invalidated sessions valid again.
+> - Migration `20261104105500_academy_applications_insert_rls` was recorded as applied without being run (an
+>   intentional baseline exception, because it contains the S4 policy). M2 replaces it.
+>
+> S2, S3 and S4 (3A.2 and 3A.3) are still proposals awaiting approval.
+
+> **Original status (revision 2):** proposal, awaiting owner approval. Nothing was implemented at the time.
 > Revision 2 (2026-11-15) replaces revision 1 and includes the owner's review decisions.
 > Branch: `frontend-architecture-uiux-audit` (not pushed).
 
@@ -164,8 +174,8 @@ wording and layout do not change.
 
 ### Rollback
 
-`git revert` of the 3A.1 commits, plus the M1 rollback block. Codes and links issued in between become invalid; users
-simply request a new email.
+`git revert` of the 3A.1 commits, plus a forward migration that follows the M1 rollback rules (revision 4). Codes and
+links issued in between become invalid; users simply request a new email.
 
 ---
 
@@ -240,7 +250,8 @@ simply request a new email.
 
 ### Rollback
 
-Revert the code. The column is harmless if left in place; dropping it is in the M1 rollback block.
+Revert the code and **keep the columns** (revision 4). Dropping `session_version` would reset every user to version 0
+and make already-invalidated access tokens (which carry `sv`) or refresh tokens valid again.
 
 ---
 
@@ -811,14 +822,14 @@ BEGIN
   END LOOP;
 END $$;
 
--- Rollback:
+-- Rollback (revision 4), as a NEW forward migration, never by editing _prisma_migrations:
 --   DROP FUNCTION IF EXISTS public.request_password_reset_with_link(text, text, text, timestamptz);
 --   DROP FUNCTION IF EXISTS public.complete_password_reset_for_email(text, text, text);
 --   DROP FUNCTION IF EXISTS public.complete_password_reset_by_link(text, text);
 --   DROP FUNCTION IF EXISTS public.invalidate_password_reset_code_for_email(text);
 --   Re-create complete_password_reset(text, text) from 20261021040000 (without the two new SET lines).
---   ALTER TABLE public.users DROP COLUMN IF EXISTS password_reset_link_token, DROP COLUMN IF EXISTS session_version;
---   DELETE FROM _prisma_migrations WHERE migration_name = '<M1 name>';
+--   UPDATE public.users SET password_reset_link_token = NULL;   -- the column itself may stay
+--   Keep users.session_version and refresh_tokens.session_version: dropping them would revive invalidated sessions.
 ```
 
 **Note on `ADD COLUMN … NOT NULL DEFAULT 0`:** on PostgreSQL 11+ this is a metadata-only change (no table rewrite).
