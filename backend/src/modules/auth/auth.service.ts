@@ -261,10 +261,14 @@ export class AuthService {
         orderBy: { createdAt: 'desc' },
       });
       if (application) {
-        if (application.status === 'PENDING_REVIEW' || application.status === 'MORE_INFO_REQUESTED') {
+        if (
+          application.status === 'PENDING_REVIEW' ||
+          application.status === 'MORE_INFO_REQUESTED'
+        ) {
           throw new UnauthorizedException({
             code: 'ACADEMY_PENDING_APPROVAL',
-            message: 'طلب تسجيل الأكاديمية قيد المراجعة حالياً من قبل إدارة المنصة. ستصلك رسالة تأكيد عبر البريد الإلكتروني فور الموافقة.',
+            message:
+              'طلب تسجيل الأكاديمية قيد المراجعة حالياً من قبل إدارة المنصة. ستصلك رسالة تأكيد عبر البريد الإلكتروني فور الموافقة.',
           });
         }
         if (application.status === 'REJECTED') {
@@ -578,7 +582,8 @@ export class AuthService {
       `;
       throw new BadRequestException({
         code: ErrorCode.TOKEN_INVALID,
-        message: 'تم تجاوز الحد الأقصى للمحاولات (5 محاولات). تم إلغاء صلاحية هذا الرمز، يرجى طلب رمز جديد (Too many failed attempts. Code has been invalidated).',
+        message:
+          'تم تجاوز الحد الأقصى للمحاولات (5 محاولات). تم إلغاء صلاحية هذا الرمز، يرجى طلب رمز جديد (Too many failed attempts. Code has been invalidated).',
       });
     }
 

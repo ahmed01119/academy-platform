@@ -57,6 +57,7 @@ docs/                    this documentation set + ADRs, audits, QA reports
 ## 3. Backend architecture
 
 ### 3.1 Request pipeline
+
 1. Express middleware: JSON/urlencoded (10 MB), `cookie-parser`, correlation id, security headers.
 2. CORS: comma-separated `CORS_ORIGIN`, supports exact origins and `*.suffix` wildcards; credentials enabled.
 3. **Guards are declared per controller** with `@UseGuards(...)` — there is **no global guard**.
@@ -74,21 +75,23 @@ docs/                    this documentation set + ADRs, audits, QA reports
 5. Errors → `GlobalExceptionFilter` (unified contract with `code`, `message`, request id).
 
 ### 3.2 Layering
+
 - Controllers are thin (parse + delegate). Business rules live in services.
 - Services access Prisma **directly** inside transaction helpers; the new `database/repositories/*`
   classes are registered in `DatabaseModule` but are an in-progress refactor (see status doc).
 - Cross-module calls: services inject `AuditService`, `EmailService`, `NotificationsService`, `RedisService`.
 
 ### 3.3 Data-access & tenant isolation
+
 `packages/database/src/tenant-transaction.ts` wraps every query in an interactive transaction
 (maxWait 15 s, timeout 30 s) and sets **transaction-local** PostgreSQL settings used by RLS policies:
 
-| Helper | Settings | Used for |
-|---|---|---|
-| `withTenantTransaction` | `app.tenant_id`, `app.current_tenant_id`, `app.actor_user_id` | All tenant-owned data |
-| `withAuthLookupTransaction` | `app.auth_context`, `app.actor_user_id` | Membership discovery at login/refresh/me, invitation lookup |
-| `withPlatformAdminTransaction` | `app.actor_user_id` (policies check super-admin flag) | Platform console |
-| `withPortalUserTransaction` | `app.actor_user_id` | Player/guardian self-service |
+| Helper                         | Settings                                                      | Used for                                                    |
+| ------------------------------ | ------------------------------------------------------------- | ----------------------------------------------------------- |
+| `withTenantTransaction`        | `app.tenant_id`, `app.current_tenant_id`, `app.actor_user_id` | All tenant-owned data                                       |
+| `withAuthLookupTransaction`    | `app.auth_context`, `app.actor_user_id`                       | Membership discovery at login/refresh/me, invitation lookup |
+| `withPlatformAdminTransaction` | `app.actor_user_id` (policies check super-admin flag)         | Platform console                                            |
+| `withPortalUserTransaction`    | `app.actor_user_id`                                           | Player/guardian self-service                                |
 
 Some code paths use the raw `PrismaService` without a helper (e.g. login user lookup, refresh
 tokens, registration) — these touch the non-RLS tables `users`/`refresh_tokens` or rely on
@@ -133,21 +136,21 @@ tokens, registration) — these touch the non-RLS tables `users`/`refresh_tokens
 
 ### Endpoint map (controller → prefix)
 
-| Prefix | Guarding | Highlights |
-|---|---|---|
-| `/auth` | public + CSRF; `me`, `change-password`, `profile` need JWT | register, login, refresh, logout, forgot/reset password, verify/resend email |
-| `/tenants` | JWT (+Tenant+Permissions per route) | my-memberships, switch, invitations (CRUD, accept, resend), memberships revoke, coach-delegation, staff, branches, profile |
-| `/branches` | JWT+Tenant+Perm+CSRF | list/get/create/update, deletion-impact, DELETE = archive |
-| `/players` | JWT+Tenant+Perm+CSRF | CRUD, qr-card (get/rotate/revoke), registration-requests (+ `join-requests` aliases) review, deletion-impact, DELETE = safe archive |
-| `/enrollments` | JWT+Tenant+Perm+CSRF | list, create, `:id/transfer` |
-| `/groups` | JWT+Tenant+Perm+CSRF | CRUD, coaches, members, schedules |
-| `/attendance` | JWT+Tenant+Perm+CSRF | sessions (create/list/get/close/qr/checkin-qr/scan-player-qr/offline-sync/events), records, records/bulk, corrections, reports |
-| `/evaluations` | JWT+Tenant+Perm+CSRF | templates, create, player list/profile, session list, rankings |
-| `/finance` | JWT+Tenant+Perm+CSRF | subscription, player-plans, player-subscriptions, payments/collect, transactions/:id/reverse, sessions/:id/cashier|expense|close, expenses/:id/approve|reject, dashboard |
-| `/portal` | mixed | player/me, player/qr-card, guardian/me, claim (JWT); claim-token (staff); **public** player-join-requests, academies |
-| `/notifications` | JWT+CSRF (no tenant guard) | list, unread-count, :id/read, mark-all-read |
-| `/platform` | JWT+PlatformSuperAdmin+CSRF (+PlatformOwner on some) | metrics, academies, users, saas-plans, announcements, audit-logs, security-events, applications (public submit), super-admin invite/role, storage |
-| `/health` | public | liveness, `/ready` (Postgres + Redis) |
+| Prefix           | Guarding                                                   | Highlights                                                                                                                                        |
+| ---------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/auth`          | public + CSRF; `me`, `change-password`, `profile` need JWT | register, login, refresh, logout, forgot/reset password, verify/resend email                                                                      |
+| `/tenants`       | JWT (+Tenant+Permissions per route)                        | my-memberships, switch, invitations (CRUD, accept, resend), memberships revoke, coach-delegation, staff, branches, profile                        |
+| `/branches`      | JWT+Tenant+Perm+CSRF                                       | list/get/create/update, deletion-impact, DELETE = archive                                                                                         |
+| `/players`       | JWT+Tenant+Perm+CSRF                                       | CRUD, qr-card (get/rotate/revoke), registration-requests (+ `join-requests` aliases) review, deletion-impact, DELETE = safe archive               |
+| `/enrollments`   | JWT+Tenant+Perm+CSRF                                       | list, create, `:id/transfer`                                                                                                                      |
+| `/groups`        | JWT+Tenant+Perm+CSRF                                       | CRUD, coaches, members, schedules                                                                                                                 |
+| `/attendance`    | JWT+Tenant+Perm+CSRF                                       | sessions (create/list/get/close/qr/checkin-qr/scan-player-qr/offline-sync/events), records, records/bulk, corrections, reports                    |
+| `/evaluations`   | JWT+Tenant+Perm+CSRF                                       | templates, create, player list/profile, session list, rankings                                                                                    |
+| `/finance`       | JWT+Tenant+Perm+CSRF                                       | subscription, player-plans, player-subscriptions, payments/collect, transactions/:id/reverse, sessions/:id/cashier                                | expense | close, expenses/:id/approve | reject, dashboard |
+| `/portal`        | mixed                                                      | player/me, player/qr-card, guardian/me, claim (JWT); claim-token (staff); **public** player-join-requests, academies                              |
+| `/notifications` | JWT+CSRF (no tenant guard)                                 | list, unread-count, :id/read, mark-all-read                                                                                                       |
+| `/platform`      | JWT+PlatformSuperAdmin+CSRF (+PlatformOwner on some)       | metrics, academies, users, saas-plans, announcements, audit-logs, security-events, applications (public submit), super-admin invite/role, storage |
+| `/health`        | public                                                     | liveness, `/ready` (Postgres + Redis)                                                                                                             |
 
 ## 6. Database architecture
 
@@ -178,6 +181,7 @@ Composite uniques `(tenant_id, id)` exist on most tenant tables to support tenan
 lookups (`tenantId_id`). Monetary columns are `Float` (double precision).
 
 ### 6.2 Security features in SQL
+
 - **RLS** enabled/forced on every tenant table (all models except `users`, `refresh_tokens`);
   policies key on `current_setting('app.tenant_id')` / actor / super-admin context.
 - **Append-only** triggers on `audit_logs` (blocks UPDATE/DELETE) and attendance corrections.
@@ -190,12 +194,12 @@ lookups (`tenantId_id`). Monetary columns are `Float` (double precision).
 
 ## 7. Deployment topologies
 
-| Topology | File | Components |
-|---|---|---|
-| Local dev | `docker-compose.yml` | Postgres 16 + Redis 7 (apps run via `pnpm dev`) |
-| Local no-Docker | `packages/database/scripts/start-local-pg.js` | embedded-postgres |
-| Production VPS | `docker-compose.prod.yml`, `deploy-vps.sh` | postgres, redis, migrate (one-shot), api, web, caddy (TLS) |
-| Self-host | `docker-compose.selfhost.yml` | + nginx + cloudflared tunnel |
-| PaaS | `render.yaml` | Render blueprint |
+| Topology        | File                                          | Components                                                 |
+| --------------- | --------------------------------------------- | ---------------------------------------------------------- |
+| Local dev       | `docker-compose.yml`                          | Postgres 16 + Redis 7 (apps run via `pnpm dev`)            |
+| Local no-Docker | `packages/database/scripts/start-local-pg.js` | embedded-postgres                                          |
+| Production VPS  | `docker-compose.prod.yml`, `deploy-vps.sh`    | postgres, redis, migrate (one-shot), api, web, caddy (TLS) |
+| Self-host       | `docker-compose.selfhost.yml`                 | + nginx + cloudflared tunnel                               |
+| PaaS            | `render.yaml`                                 | Render blueprint                                           |
 
 Runbooks: `docs/operations/*`, `docs/deployment/*`.

@@ -12,7 +12,13 @@ export class AttendanceRosterService {
   async listSessions(
     tenantContext: TenantContext,
     query?: SessionQuery,
-  ): Promise<{ items: SessionSummary[]; total: number; page: number; limit: number; totalPages: number }> {
+  ): Promise<{
+    items: SessionSummary[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }> {
     const effectiveBranchId = tenantContext.branchId || query?.branchId;
 
     return this.prisma.withTenantTransaction(
@@ -110,4 +116,3 @@ export class AttendanceRosterService {
     );
   }
 }
-

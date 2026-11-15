@@ -3,19 +3,21 @@
 > **Platform:** Sportexus Academy Platform Monorepo  
 > **Backend Framework:** NestJS 11, TypeScript 5, Prisma 6.19, PostgreSQL (Neon Serverless with PgBouncer), Redis  
 > **Lead Architect & Security Engineer:** Antigravity AI Engineering  
-> **Status:** Completed & Verified  
+> **Status:** Completed & Verified
 
 ---
 
 ## 1. Current Architecture
 
 The Sportexus backend operates within a high-performance TypeScript monorepo using pnpm workspaces:
+
 - `backend/`: NestJS application serving REST APIs under the global `/v1` prefix.
 - `packages/database/`: Encapsulated Prisma ORM client with customized PostgreSQL Row-Level Security (RLS) connection wrappers (`withTenantTransaction`, `withAuthLookupTransaction`, `withPlatformAdminTransaction`, `withPortalUserTransaction`).
 - `packages/shared/`: Shared TypeScript domain models, Zod validation schemas, API contracts, and bilingual error types.
 - `frontend/`: Next.js 15 client communicating through authenticated HTTP proxies.
 
 The backend is modularized across domain contexts:
+
 - **Authentication & Security:** JWT tokens (short-lived access + rotated refresh tokens), Argon2id password hashing, CSRF double-submit cookies, Rate limiting.
 - **Tenancy:** Multi-tenant architecture isolating academies, branches, and sport disciplines.
 - **Operations:** Players, Attendance (sessions, rosters, offline QR check-ins), Groups, Evaluations, Branches.
@@ -34,7 +36,7 @@ flowchart TD
     Security --> Filter["GlobalExceptionFilter (Uniform Error Contracts)"]
     Filter --> Controllers["NestJS Controllers (HTTP / Routing Only)"]
     Controllers --> FacadeServices["Domain Services / Facades (Business Invariants)"]
-    
+
     subgraph DecomposedServices["Decomposed Sub-Services"]
         FacadeServices --> PlatformMetricsService["PlatformMetricsService (MRR & Analytics Caching)"]
         FacadeServices --> FinancePlansService["FinancePlansService (Plan Provisioning)"]
@@ -54,6 +56,7 @@ flowchart TD
 ```
 
 Key Architectural Principles Applied:
+
 1. **Controllers** contain zero business logic and zero direct database queries; they validate payloads, unpack user claims, and call domain services.
 2. **Services** coordinate workflows, enforce business rules, and delegate data fetching/mutations to Repositories. Large legacy services have been decomposed into focused sub-services while preserving facade signatures for zero breaking changes.
 3. **Repositories** encapsulate entity queries and accept optional transactional clients (`tx?: TenantTransactionClient`) to seamlessly support isolated RLS transactions.
@@ -63,19 +66,20 @@ Key Architectural Principles Applied:
 
 ## 3. Existing Problems Identified & Resolved
 
-| Problem ID | Component | Severity | Root Cause | Architectural Resolution |
-| :--- | :--- | :--- | :--- | :--- |
-| **ERR-01** | `tenant-transaction.ts` | **Critical** | Prisma interactive transaction default timeout was 5000ms. Aggregations on the SaaS overview dashboard exceeded 5000ms, throwing `P2028: Transaction already closed`. | Configured `TransactionExecutionOptions` with `maxWait: 15000ms` and `timeout: 30000ms`. Added 15-second in-memory metrics caching. |
-| **ERR-02** | Neon Connection Pooling | **High** | Direct connection drops and prepared statement collisions occurred during rapid concurrent requests through serverless pooler endpoints. | Added `&pgbouncer=true&connect_timeout=30&pool_timeout=30` to connection strings in `.env` and `backend/.env`. |
-| **ERR-03** | Error Handling | **Medium** | Exceptions previously returned heterogeneous JSON structures; unhandled errors could expose database internals or raw stack traces. | Built `GlobalExceptionFilter` normalizing Zod, Prisma (P2002, P2025, P2028), and HTTP exceptions into a uniform, safe API contract. |
-| **ERR-04** | Service Bloat | **Medium** | `PlatformService` (1900+ lines), `FinanceService` (1400+ lines), and `AttendanceService` (1900+ lines) were accumulating multiple responsibilities. | Extracted `PlatformMetricsService`, `FinancePlansService`, and `AttendanceRosterService` as focused sub-services with backward-compatible facades. |
-| **ERR-05** | Repository Absence | **Medium** | Direct database model access was spread across services without a consistent abstraction for entity operations. | Implemented `BaseRepository`, `UserRepository`, `TenantRepository`, `PlayerRepository`, `FinanceRepository`, and `AttendanceRepository`. |
+| Problem ID | Component               | Severity     | Root Cause                                                                                                                                                            | Architectural Resolution                                                                                                                           |
+| :--------- | :---------------------- | :----------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **ERR-01** | `tenant-transaction.ts` | **Critical** | Prisma interactive transaction default timeout was 5000ms. Aggregations on the SaaS overview dashboard exceeded 5000ms, throwing `P2028: Transaction already closed`. | Configured `TransactionExecutionOptions` with `maxWait: 15000ms` and `timeout: 30000ms`. Added 15-second in-memory metrics caching.                |
+| **ERR-02** | Neon Connection Pooling | **High**     | Direct connection drops and prepared statement collisions occurred during rapid concurrent requests through serverless pooler endpoints.                              | Added `&pgbouncer=true&connect_timeout=30&pool_timeout=30` to connection strings in `.env` and `backend/.env`.                                     |
+| **ERR-03** | Error Handling          | **Medium**   | Exceptions previously returned heterogeneous JSON structures; unhandled errors could expose database internals or raw stack traces.                                   | Built `GlobalExceptionFilter` normalizing Zod, Prisma (P2002, P2025, P2028), and HTTP exceptions into a uniform, safe API contract.                |
+| **ERR-04** | Service Bloat           | **Medium**   | `PlatformService` (1900+ lines), `FinanceService` (1400+ lines), and `AttendanceService` (1900+ lines) were accumulating multiple responsibilities.                   | Extracted `PlatformMetricsService`, `FinancePlansService`, and `AttendanceRosterService` as focused sub-services with backward-compatible facades. |
+| **ERR-05** | Repository Absence      | **Medium**   | Direct database model access was spread across services without a consistent abstraction for entity operations.                                                       | Implemented `BaseRepository`, `UserRepository`, `TenantRepository`, `PlayerRepository`, `FinanceRepository`, and `AttendanceRepository`.           |
 
 ---
 
 ## 4. Refactored Modules
 
 ### 4.1 Database & Repositories (`backend/src/modules/database/`)
+
 - Created `BaseRepository` with `getClient(tx)` helper to seamlessly switch between standalone Prisma calls and transactional clients.
 - Implemented:
   - `UserRepository`: normalized email lookups, password updates, status changes, and user profile management.
@@ -86,14 +90,17 @@ Key Architectural Principles Applied:
 - Exported all repositories through global `DatabaseModule`.
 
 ### 4.2 Platform Module (`backend/src/modules/platform/`)
+
 - Created `PlatformMetricsService`: extracted MRR calculations, subscription status counts, and invoice aggregations with a 15-second in-memory cache to prevent repeated database bombardment.
 - Refactored `PlatformService`: injected `PlatformMetricsService` with backward-compatible fallback for unit tests.
 
 ### 4.3 Finance Module (`backend/src/modules/finance/`)
+
 - Created `FinancePlansService`: decoupled plan listing and creation from transaction ledger and cashier closing workflows.
 - Refactored `FinanceService`: injected `FinancePlansService` with backward-compatible fallback.
 
 ### 4.4 Attendance Module (`backend/src/modules/attendance/`)
+
 - Created `AttendanceRosterService`: encapsulated session search, filtering, and summary statistics.
 - Refactored `AttendanceService`: injected `AttendanceRosterService` with backward-compatible fallback.
 
@@ -135,6 +142,7 @@ Key Architectural Principles Applied:
 ## 8. Global Error-Handling Implementation
 
 Created `GlobalExceptionFilter` in `backend/src/common/filters/global-exception.filter.ts`:
+
 - **Zod Validation Errors:** Mapped to HTTP 400 with `code: 'VALIDATION_ERROR'` and structured issues array.
 - **Prisma P2002 (Unique Constraint Violation):** Mapped to HTTP 409 Conflict.
 - **Prisma P2025 (Record Not Found):** Mapped to HTTP 404 Not Found.
@@ -161,6 +169,7 @@ Created `GlobalExceptionFilter` in `backend/src/common/filters/global-exception.
 ## 10. API Contract Stability
 
 All refactorings were executed with **zero breaking changes** to existing API contracts:
+
 - Controller routes, HTTP methods, and parameter shapes remain 100% intact.
 - Response payloads remain backward-compatible with the frontend API client (`frontend/src/api/client.ts`).
 - Service public method signatures remain intact via facade delegation.
@@ -170,6 +179,7 @@ All refactorings were executed with **zero breaking changes** to existing API co
 ## 11. Modified & Created Files
 
 ### Created Files:
+
 - `backend/src/common/filters/global-exception.filter.ts`
 - `backend/src/common/filters/global-exception.filter.test.ts`
 - `backend/src/modules/database/repositories/base.repository.ts`
@@ -186,6 +196,7 @@ All refactorings were executed with **zero breaking changes** to existing API co
 - `docs/backend/BACKEND_ARCHITECTURE_AUDIT.md`
 
 ### Modified Files:
+
 - `packages/database/src/tenant-transaction.ts` (timeouts & PgBouncer options)
 - `packages/database/src/index.ts` (re-export model types)
 - `backend/src/main.ts` (filter registration & body limits)
@@ -204,6 +215,7 @@ All refactorings were executed with **zero breaking changes** to existing API co
 ## 12. Migration Details
 
 No destructive database schema migrations were applied:
+
 - Existing tables, constraints, foreign keys, and RLS policies remain unaltered.
 - Production data is completely preserved.
 - The repository layer seamlessly maps to the existing Prisma schema models.
@@ -213,11 +225,13 @@ No destructive database schema migrations were applied:
 ## 13. Test Results
 
 ### Backend Test Suite (`vitest run`):
+
 ```text
 Test Suites: 22 passed, 22 total
 Tests:       227 passed, 227 total (100% Pass)
 Duration:    20.03s
 ```
+
 - Repositories: 6 unit tests passed.
 - Global Exception Filter: 4 unit tests passed.
 - Auth & Password (Argon2id): 24 unit tests passed.
@@ -228,6 +242,7 @@ Duration:    20.03s
 - Health, Redis, Email: 34 unit tests passed.
 
 ### Frontend Test Suite (`vitest run`):
+
 ```text
 Test Suites: 12 passed, 12 total
 Tests:       84 passed, 84 total (100% Pass)
@@ -235,6 +250,7 @@ Duration:    5.34s
 ```
 
 ### TypeScript Typecheck:
+
 - Backend (`pnpm --filter @academy/api run typecheck`): **0 errors (Exit Code 0)**.
 - Frontend (`pnpm --filter @academy/web run typecheck`): **0 errors (Exit Code 0)**.
 - Database Package (`pnpm --filter @academy/database exec tsc -p tsconfig.json`): **0 errors (Exit Code 0)**.
@@ -250,12 +266,12 @@ Duration:    5.34s
 
 ## 15. Manual Testing Checklist
 
-| Test Scenario | Steps | Expected Outcome |
-| :--- | :--- | :--- |
-| **SaaS Metrics Overview** | Login as Super Admin, load `/platform` overview. | Metrics render immediately; repeated refreshes within 15s hit memory cache without query overhead. |
-| **Transaction Concurrency** | Record attendance and player payment simultaneously on the same session. | Both operations succeed; cashier totals reconcile cleanly. |
-| **Fail-Closed Tenant Isolation** | Attempt to fetch player ID belonging to another academy via API with valid token for Academy A. | Returns HTTP 404 or 403; no data leak across tenant boundaries. |
-| **Error Contract Validation** | Trigger validation error by submitting empty JSON to `POST /v1/auth/login`. | Returns uniform JSON with `code: 'VALIDATION_ERROR'` and issues array. |
+| Test Scenario                    | Steps                                                                                           | Expected Outcome                                                                                   |
+| :------------------------------- | :---------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------- |
+| **SaaS Metrics Overview**        | Login as Super Admin, load `/platform` overview.                                                | Metrics render immediately; repeated refreshes within 15s hit memory cache without query overhead. |
+| **Transaction Concurrency**      | Record attendance and player payment simultaneously on the same session.                        | Both operations succeed; cashier totals reconcile cleanly.                                         |
+| **Fail-Closed Tenant Isolation** | Attempt to fetch player ID belonging to another academy via API with valid token for Academy A. | Returns HTTP 404 or 403; no data leak across tenant boundaries.                                    |
+| **Error Contract Validation**    | Trigger validation error by submitting empty JSON to `POST /v1/auth/login`.                     | Returns uniform JSON with `code: 'VALIDATION_ERROR'` and issues array.                             |
 
 ---
 
@@ -276,4 +292,3 @@ Duration:    5.34s
 - [x] **Completed:** Phase 6 (Unit Tests, Integration Tests, Typecheck, 100% Pass Rate)
 - [x] **Completed:** Phase 17 (Comprehensive Documentation in `docs/backend/BACKEND_ARCHITECTURE_AUDIT.md`)
 - [ ] **Requires Manual Verification:** Visual staging verification of Super Admin platform dashboard and cashier closing.
-

@@ -4,7 +4,13 @@
  */
 
 // If running on local development/host, self-unregister immediately to prevent stale chunk 404s
-if (typeof self !== 'undefined' && self.location && (self.location.hostname === 'localhost' || self.location.hostname === '127.0.0.1' || self.location.hostname === '[::1]')) {
+if (
+  typeof self !== 'undefined' &&
+  self.location &&
+  (self.location.hostname === 'localhost' ||
+    self.location.hostname === '127.0.0.1' ||
+    self.location.hostname === '[::1]')
+) {
   if (self.registration && typeof self.registration.unregister === 'function') {
     self.registration.unregister();
   }

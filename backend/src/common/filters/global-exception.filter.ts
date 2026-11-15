@@ -178,4 +178,3 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     return err.name === 'PrismaClientKnownRequestError' && typeof err.code === 'string';
   }
 }
-

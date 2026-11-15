@@ -17,7 +17,10 @@ function loadEnv() {
         const [key, ...vals] = trimmed.split('=');
         if (key && !process.env[key.trim()]) {
           let val = vals.join('=').trim();
-          if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+          if (
+            (val.startsWith('"') && val.endsWith('"')) ||
+            (val.startsWith("'") && val.endsWith("'"))
+          ) {
             val = val.slice(1, -1);
           }
           process.env[key.trim()] = val;
@@ -76,7 +79,9 @@ async function main() {
 
     let resultUser;
     if (existingUser) {
-      console.log(`User ${TARGET_EMAIL} already exists (ID: ${existingUser.id}). Promoting to Super Admin & Platform Owner...`);
+      console.log(
+        `User ${TARGET_EMAIL} already exists (ID: ${existingUser.id}). Promoting to Super Admin & Platform Owner...`,
+      );
       resultUser = await prisma.user.update({
         where: { email: TARGET_EMAIL },
         data: {

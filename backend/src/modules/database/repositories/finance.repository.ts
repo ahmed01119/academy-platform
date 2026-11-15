@@ -81,4 +81,3 @@ export class FinanceRepository extends BaseRepository {
     });
   }
 }
-

@@ -18,11 +18,7 @@ export class PlayerRepository extends BaseRepository {
     });
   }
 
-  async findWithDetails(
-    tenantId: string,
-    id: string,
-    tx?: TenantTransactionClient,
-  ) {
+  async findWithDetails(tenantId: string, id: string, tx?: TenantTransactionClient) {
     return this.getClient(tx).player.findFirst({
       where: {
         id,
@@ -106,4 +102,3 @@ export class PlayerRepository extends BaseRepository {
     });
   }
 }
-

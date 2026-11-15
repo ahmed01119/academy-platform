@@ -61,7 +61,9 @@ export class PlatformService {
     @Inject(NotificationsService) private readonly notificationsService: NotificationsService,
     @Inject(EmailService) private readonly emailService: EmailService,
     @Optional() @Inject(RedisService) private readonly redisService?: RedisService,
-    @Optional() @Inject(PlatformMetricsService) private readonly metricsService?: PlatformMetricsService,
+    @Optional()
+    @Inject(PlatformMetricsService)
+    private readonly metricsService?: PlatformMetricsService,
   ) {}
 
   /**

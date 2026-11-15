@@ -1,10 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { BaseRepository } from './base.repository';
-import type {
-  AttendanceSession,
-  AttendanceRecord,
-  AttendanceStatus,
-} from '@academy/database';
+import type { AttendanceSession, AttendanceRecord, AttendanceStatus } from '@academy/database';
 import type { TenantTransactionClient } from '@academy/database';
 
 @Injectable()
@@ -73,4 +69,3 @@ export class AttendanceRepository extends BaseRepository {
     });
   }
 }
-

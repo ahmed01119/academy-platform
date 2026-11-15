@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { GlobalExceptionFilter } from './global-exception.filter';
 import { HttpException, HttpStatus } from '@nestjs/common';
-import { ZodError, z } from 'zod';
+import { z, type ZodError } from 'zod';
 import type { ArgumentsHost } from '@nestjs/common';
 
 describe('GlobalExceptionFilter', () => {
@@ -95,4 +95,3 @@ describe('GlobalExceptionFilter', () => {
     expect(sent.code).toBe('INTERNAL_SERVER_ERROR');
   });
 });
-

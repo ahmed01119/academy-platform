@@ -38,7 +38,9 @@ export class AttendanceService {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(AuditService) private readonly auditService: AuditService,
-    @Optional() @Inject(AttendanceRosterService) private readonly rosterService?: AttendanceRosterService,
+    @Optional()
+    @Inject(AttendanceRosterService)
+    private readonly rosterService?: AttendanceRosterService,
   ) {}
 
   /**

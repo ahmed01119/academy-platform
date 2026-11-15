@@ -14,16 +14,16 @@
 
 ## 2. Verification baseline (run 2026-11-14 on the working tree)
 
-| Check | Result |
-|---|---|
-| `@academy/shared` build + test | ✅ 27/27 tests |
-| `@academy/database` build | ✅ |
-| `@academy/database` test | ❌ 3/6 failing — `src/tenant-transaction.test.ts` expects separate `set_config` calls; the (uncommitted) implementation now batches them into one statement. Tests are stale, behavior is intact. |
-| `@academy/api` test | ✅ 227/227 tests (22 files) |
-| `@academy/api` typecheck | ✅ 0 errors |
-| `@academy/web` test | ✅ 84/84 tests (12 files) |
-| `@academy/web` typecheck | ✅ 0 errors |
-| lint, format:check, build, SQL tests, E2E | ⏳ not run in this baseline |
+| Check                                     | Result                                                                                                                                                                                            |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@academy/shared` build + test            | ✅ 27/27 tests                                                                                                                                                                                    |
+| `@academy/database` build                 | ✅                                                                                                                                                                                                |
+| `@academy/database` test                  | ❌ 3/6 failing — `src/tenant-transaction.test.ts` expects separate `set_config` calls; the (uncommitted) implementation now batches them into one statement. Tests are stale, behavior is intact. |
+| `@academy/api` test                       | ✅ 227/227 tests (22 files)                                                                                                                                                                       |
+| `@academy/api` typecheck                  | ✅ 0 errors                                                                                                                                                                                       |
+| `@academy/web` test                       | ✅ 84/84 tests (12 files)                                                                                                                                                                         |
+| `@academy/web` typecheck                  | ✅ 0 errors                                                                                                                                                                                       |
+| lint, format:check, build, SQL tests, E2E | ⏳ not run in this baseline                                                                                                                                                                       |
 
 ## 3. Completed (implemented in code)
 
@@ -40,49 +40,49 @@ Docker/VPS/self-host deployment assets.
 
 ## 4. Incomplete / in-progress
 
-| Item | Evidence |
-|---|---|
-| Repository layer | `backend/src/modules/database/repositories/*` registered in `DatabaseModule` but **no service uses them**. |
-| Service extraction | `AttendanceRosterService`, `FinancePlansService`, `PlatformMetricsService` are injected `@Optional()`; the original methods keep full fallback copies → duplicated logic. |
-| Frontend reorganisation | `src/lib/*` are 2-line re-export shims; `src/lib/i18n/translations.ts` is a **byte-identical duplicate** of `src/locales/translations.ts`. |
-| `AuthGuard` component | `frontend/src/components/layout/AuthGuard.tsx` exists, unused; every page re-implements auth redirects. |
-| SaaS plan limits | Only `maxPlayers` is enforced, and only on join-request approval (`players.service.ts:1135`). `maxBranches`, `maxCoaches`, and manual player creation are not limited. |
-| SaaS invoices | `saas_invoices` table/model exists; no service creates or updates invoices. |
-| Support access | Records an audit entry only; no actual read-only support session mechanism. |
-| Background jobs | BullMQ mentioned in README "later"; emails are sent inline. |
+| Item                    | Evidence                                                                                                                                                                  |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Repository layer        | `backend/src/modules/database/repositories/*` registered in `DatabaseModule` but **no service uses them**.                                                                |
+| Service extraction      | `AttendanceRosterService`, `FinancePlansService`, `PlatformMetricsService` are injected `@Optional()`; the original methods keep full fallback copies → duplicated logic. |
+| Frontend reorganisation | `src/lib/*` are 2-line re-export shims; `src/lib/i18n/translations.ts` is a **byte-identical duplicate** of `src/locales/translations.ts`.                                |
+| `AuthGuard` component   | `frontend/src/components/layout/AuthGuard.tsx` exists, unused; every page re-implements auth redirects.                                                                   |
+| SaaS plan limits        | Only `maxPlayers` is enforced, and only on join-request approval (`players.service.ts:1135`). `maxBranches`, `maxCoaches`, and manual player creation are not limited.    |
+| SaaS invoices           | `saas_invoices` table/model exists; no service creates or updates invoices.                                                                                               |
+| Support access          | Records an audit entry only; no actual read-only support session mechanism.                                                                                               |
+| Background jobs         | BullMQ mentioned in README "later"; emails are sent inline.                                                                                                               |
 
 ## 5. Known issues (verified in code — not yet fixed)
 
 Severity is an engineering estimate; none of these were changed.
 
-| # | Sev | Issue | Location |
-|---|---|---|---|
-| K1 | High | **OTP reset brute-force guard is ineffective**: the attempt counter key is the hash of the *submitted* code, so every wrong guess uses a new key; reset accepts the 6-digit code without the email, so any pending reset in the system can be guessed. | `backend/src/modules/auth/auth.service.ts:570`, `packages/shared/src/schemas/auth.ts:75` |
-| K2 | High | **Committed data dump** with 29 users incl. `passwordHash` and token columns, tenants, players. | `packages/database/backup_pre_migration_coach_delegation.json` (tracked in git) |
-| K3 | High | **Suspended academies keep working**: `TenantGuard` and login never check `tenant.status`; plain suspension does not revoke sessions (only Owner archive does). | `backend/src/modules/auth/guards/tenant.guard.ts`, `platform.service.ts:252` |
-| K4 | Med | **Currency hard-coded to `SAR`** on payments and expenses (and across finance UI), while tenants, plans and settings default to `EGP`. | `finance.service.ts:440, 512, 834`; `frontend/src/components/finance/*`, `app/finance/page.tsx`, `app/attendance/**` |
-| K5 | Med | **Storage maintenance cannot purge audit logs**: `auditLog.deleteMany` hits the append-only trigger → the whole maintenance transaction (incl. token purge) fails when old logs exist. | `platform.service.ts:2078` vs migration `20261016000100_audit_log_append_only` |
-| K6 | Med | **Public join requests never link the applicant**: `POST /portal/player-join-requests` has no JWT guard, so `@CurrentUser('id')` is always undefined → `applicantUserId` null → no applicant notifications, no login gating for players. | `backend/src/modules/portal/portal.controller.ts:75` |
-| K7 | ✅ Fixed `f1ddeca` (F22) | **National ID leaks in player list** to every `players.read` role (COACH, VIEWER, ACCOUNTANT); detail view masks it. | `players.service.ts:156` vs `:263` |
-| K8 | Med | **Cashier close requires only `session_expenses.read`** (granted to RECEPTIONIST, COACH, VIEWER). | `finance.controller.ts:171-172` |
-| K9 | Med | Join-request approval may **merge different children with the same first+last name** into one player; defaults gender MALE / DOB 2012-01-01 when unknown. | `players.service.ts` (`reviewPlayerJoinRequest`) |
-| K10 | Low | Invitation API response returns the raw invitation token to the inviter. | `tenancy.service.ts:246` |
-| K11 | Low | Receipt/expense numbers use `Math.random()` 4 digits (`REC-YYYY-####`) — collisions likely at volume; no uniqueness constraint. | `finance.service.ts:426, 823` |
-| K12 | Low | Payment receipt email is sent (with retries) **inside** the DB transaction, holding the transaction open. | `finance.service.ts:506` |
-| K13 | Low | `changePassword` does not revoke other refresh tokens (reset does). | `auth.service.ts` (`changePassword`) |
-| K14 | Low | Missing space in class list: `bg-(--bg-base)text-(--text-main)` → text colour class not applied. | `frontend/src/components/layout/AppShell.tsx:22` |
-| K15 | Low | Stale tests in `packages/database/src/tenant-transaction.test.ts` (see §2). | |
-| K16 | Low | Monetary amounts stored as `Float` (double) — rounding risk for ledger sums. | `schema.prisma` (finance models) |
+| #   | Sev                      | Issue                                                                                                                                                                                                                                                  | Location                                                                                                             |
+| --- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| K1  | High                     | **OTP reset brute-force guard is ineffective**: the attempt counter key is the hash of the _submitted_ code, so every wrong guess uses a new key; reset accepts the 6-digit code without the email, so any pending reset in the system can be guessed. | `backend/src/modules/auth/auth.service.ts:570`, `packages/shared/src/schemas/auth.ts:75`                             |
+| K2  | High                     | **Committed data dump** with 29 users incl. `passwordHash` and token columns, tenants, players.                                                                                                                                                        | `packages/database/backup_pre_migration_coach_delegation.json` (tracked in git)                                      |
+| K3  | High                     | **Suspended academies keep working**: `TenantGuard` and login never check `tenant.status`; plain suspension does not revoke sessions (only Owner archive does).                                                                                        | `backend/src/modules/auth/guards/tenant.guard.ts`, `platform.service.ts:252`                                         |
+| K4  | Med                      | **Currency hard-coded to `SAR`** on payments and expenses (and across finance UI), while tenants, plans and settings default to `EGP`.                                                                                                                 | `finance.service.ts:440, 512, 834`; `frontend/src/components/finance/*`, `app/finance/page.tsx`, `app/attendance/**` |
+| K5  | Med                      | **Storage maintenance cannot purge audit logs**: `auditLog.deleteMany` hits the append-only trigger → the whole maintenance transaction (incl. token purge) fails when old logs exist.                                                                 | `platform.service.ts:2078` vs migration `20261016000100_audit_log_append_only`                                       |
+| K6  | Med                      | **Public join requests never link the applicant**: `POST /portal/player-join-requests` has no JWT guard, so `@CurrentUser('id')` is always undefined → `applicantUserId` null → no applicant notifications, no login gating for players.               | `backend/src/modules/portal/portal.controller.ts:75`                                                                 |
+| K7  | ✅ Fixed `f1ddeca` (F22) | **National ID leaks in player list** to every `players.read` role (COACH, VIEWER, ACCOUNTANT); detail view masks it.                                                                                                                                   | `players.service.ts:156` vs `:263`                                                                                   |
+| K8  | Med                      | **Cashier close requires only `session_expenses.read`** (granted to RECEPTIONIST, COACH, VIEWER).                                                                                                                                                      | `finance.controller.ts:171-172`                                                                                      |
+| K9  | Med                      | Join-request approval may **merge different children with the same first+last name** into one player; defaults gender MALE / DOB 2012-01-01 when unknown.                                                                                              | `players.service.ts` (`reviewPlayerJoinRequest`)                                                                     |
+| K10 | Low                      | Invitation API response returns the raw invitation token to the inviter.                                                                                                                                                                               | `tenancy.service.ts:246`                                                                                             |
+| K11 | Low                      | Receipt/expense numbers use `Math.random()` 4 digits (`REC-YYYY-####`) — collisions likely at volume; no uniqueness constraint.                                                                                                                        | `finance.service.ts:426, 823`                                                                                        |
+| K12 | Low                      | Payment receipt email is sent (with retries) **inside** the DB transaction, holding the transaction open.                                                                                                                                              | `finance.service.ts:506`                                                                                             |
+| K13 | Low                      | `changePassword` does not revoke other refresh tokens (reset does).                                                                                                                                                                                    | `auth.service.ts` (`changePassword`)                                                                                 |
+| K14 | Low                      | Missing space in class list: `bg-(--bg-base)text-(--text-main)` → text colour class not applied.                                                                                                                                                       | `frontend/src/components/layout/AppShell.tsx:22`                                                                     |
+| K15 | Low                      | Stale tests in `packages/database/src/tenant-transaction.test.ts` (see §2).                                                                                                                                                                            |                                                                                                                      |
+| K16 | Low                      | Monetary amounts stored as `Float` (double) — rounding risk for ledger sums.                                                                                                                                                                           | `schema.prisma` (finance models)                                                                                     |
 
 ## 6. Documentation vs implementation discrepancies
 
-| Doc | Says | Code does |
-|---|---|---|
-| `docs/security/ROLE_PERMISSION_MATRIX.md` | 18 cells differ, e.g. COACH `attendance.mark` ✅, MANAGER `players.delete` ✅, RECEPTIONIST/COACH/ACCOUNTANT/VIEWER `staff.read` ✅, VIEWER `evaluations.read` ✅, BRANCH_MANAGER `session_expenses.approve` ❌, VIEWER `reports.read` ❌ | See `ROLE_PERMISSIONS` table in BUSINESS_LOGIC.md §1.2 |
-| `docs/implementation/MASTER_PROGRESS.md` | Paths `apps/api`, `apps/web`; endpoints `/platform/applications/:id/approve|reject` | Paths `backend/`, `frontend/`; endpoint `PATCH|POST /platform/applications/:id/review` |
-| `MASTER_PROGRESS.md` Phase 2 | "Removed debug tokens from all public API responses" | `forgot-password` returns `debugOtp` when `NODE_ENV=development` |
-| `README.md` | Runtime role denied `INSERT` on `tenants` | Platform approval creates tenants through Prisma under `withPlatformAdminTransaction` — must rely on later grants/policies (not re-verified against a live DB) |
-| `README.md` | `packages/*-config` "Shared TypeScript / ESLint" and BullMQ | Config packages exist; BullMQ not installed |
+| Doc                                       | Says                                                                                                                                                                                                                                      | Code does                                                                                                                                                      |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `docs/security/ROLE_PERMISSION_MATRIX.md` | 18 cells differ, e.g. COACH `attendance.mark` ✅, MANAGER `players.delete` ✅, RECEPTIONIST/COACH/ACCOUNTANT/VIEWER `staff.read` ✅, VIEWER `evaluations.read` ✅, BRANCH_MANAGER `session_expenses.approve` ❌, VIEWER `reports.read` ❌ | See `ROLE_PERMISSIONS` table in BUSINESS_LOGIC.md §1.2                                                                                                         |
+| `docs/implementation/MASTER_PROGRESS.md`  | Paths `apps/api`, `apps/web`; endpoints `/platform/applications/:id/approve                                                                                                                                                               | reject`                                                                                                                                                        | Paths `backend/`, `frontend/`; endpoint `PATCH | POST /platform/applications/:id/review` |
+| `MASTER_PROGRESS.md` Phase 2              | "Removed debug tokens from all public API responses"                                                                                                                                                                                      | `forgot-password` returns `debugOtp` when `NODE_ENV=development`                                                                                               |
+| `README.md`                               | Runtime role denied `INSERT` on `tenants`                                                                                                                                                                                                 | Platform approval creates tenants through Prisma under `withPlatformAdminTransaction` — must rely on later grants/policies (not re-verified against a live DB) |
+| `README.md`                               | `packages/*-config` "Shared TypeScript / ESLint" and BullMQ                                                                                                                                                                               | Config packages exist; BullMQ not installed                                                                                                                    |
 
 ## 7. Open questions (need product-owner decision)
 
@@ -114,13 +114,13 @@ Severity is an engineering estimate; none of these were changed.
 
 Status: **analysis done, target architecture proposed, awaiting approval. No frontend code changed.**
 
-| Check (frontend) | Result |
-|---|---|
-| `pnpm --filter @academy/web lint` | ✅ 0 errors (warnings: Next ESLint plugin not detected; `eslint.config.js` module-type warning) |
-| `typecheck` | ✅ 0 errors |
-| `test` | ✅ 84/84 |
-| `build` (Next 15.5.28) | ✅ 36 routes; shared JS 103 kB; largest `/attendance/scanner` 231 kB first load |
-| Prettier check | ❌ 91 files differ — ~50 only by CRLF line endings (`core.autocrlf=true` checkout; repo stores LF), **41 with real formatting drift** |
+| Check (frontend)                  | Result                                                                                                                                |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm --filter @academy/web lint` | ✅ 0 errors (warnings: Next ESLint plugin not detected; `eslint.config.js` module-type warning)                                       |
+| `typecheck`                       | ✅ 0 errors                                                                                                                           |
+| `test`                            | ✅ 84/84                                                                                                                              |
+| `build` (Next 15.5.28)            | ✅ 36 routes; shared JS 103 kB; largest `/attendance/scanner` 231 kB first load                                                       |
+| Prettier check                    | ❌ 91 files differ — ~50 only by CRLF line endings (`core.autocrlf=true` checkout; repo stores LF), **41 with real formatting drift** |
 
 Frontend findings (in addition to K14):
 
@@ -137,19 +137,20 @@ Frontend findings (in addition to K14):
 
 ### Phase 1 progress
 
-| Step | Status | Commit |
-|---|---|---|
-| 0 — checkpoint of prior WIP (sensitive `academy_platform_mysql.sql` excluded, left untracked) | ✅ | `64c3adc` |
-| 0 — Prettier-only formatting commit (frontend) | ✅ | `0553112` |
-| Fix — restore 258 erased CSS-variable classes on `attendance/sessions/[id]` (damage from `1e77d5a`) | ✅ | `402c5df` |
-| 1 — foundation: `config/`, `lib/http/`, `features/<domain>/api.ts`, `api/client.ts` facade, contract test, `ConfirmProvider`/`useConfirm` replacing 8 native `confirm()`, dev-only QR simulator | ✅ | `9dcc3ad` |
-| 2 — shell & guards: `resolveAccess` + `useAccessGuard` replace 20 inline guards; `AuthGuard` rebuilt on the same hook; AppShell K14 fixed | ✅ | see change log |
-| 3 — auth & public pages (login, register, forgot/reset password, verify email, accept invite, landing) + 8 typo fixes (F12) | ✅ | see change log |
-| F17 notice — join form tells applicants which fields are not submitted/saved (generated from the pending-field list) | ✅ | `7ce0fac` |
-| 4 — players (`/players`, `/players/new`, `/players/[id]`, `components/player-qr-card.tsx`) | ✅ awaiting owner review | see change log |
-| 5–13 | pending (awaiting owner review of Step 4) | |
+| Step                                                                                                                                                                                            | Status                                    | Commit         |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- | -------------- |
+| 0 — checkpoint of prior WIP (sensitive `academy_platform_mysql.sql` excluded, left untracked)                                                                                                   | ✅                                        | `64c3adc`      |
+| 0 — Prettier-only formatting commit (frontend)                                                                                                                                                  | ✅                                        | `0553112`      |
+| Fix — restore 258 erased CSS-variable classes on `attendance/sessions/[id]` (damage from `1e77d5a`)                                                                                             | ✅                                        | `402c5df`      |
+| 1 — foundation: `config/`, `lib/http/`, `features/<domain>/api.ts`, `api/client.ts` facade, contract test, `ConfirmProvider`/`useConfirm` replacing 8 native `confirm()`, dev-only QR simulator | ✅                                        | `9dcc3ad`      |
+| 2 — shell & guards: `resolveAccess` + `useAccessGuard` replace 20 inline guards; `AuthGuard` rebuilt on the same hook; AppShell K14 fixed                                                       | ✅                                        | see change log |
+| 3 — auth & public pages (login, register, forgot/reset password, verify email, accept invite, landing) + 8 typo fixes (F12)                                                                     | ✅                                        | see change log |
+| F17 notice — join form tells applicants which fields are not submitted/saved (generated from the pending-field list)                                                                            | ✅                                        | `7ce0fac`      |
+| 4 — players (`/players`, `/players/new`, `/players/[id]`, `components/player-qr-card.tsx`)                                                                                                      | ✅ awaiting owner review                  | see change log |
+| 5–13                                                                                                                                                                                            | pending (awaiting owner review of Step 4) |                |
 
 Step 4 details:
+
 - `features/players/`: `player-permissions.ts` (`players.sensitive.read` / `players.delete` via shared `hasPermission`,
   replacing hard-coded role lists — proven identical for all 7 roles), `player-profile.ts` (transfer validation, update
   payload, bilingual labels), `new-player-form.ts` (create validation + payload, moved verbatim),
@@ -170,6 +171,7 @@ Step 4 details:
   `canViewSensitive` rule), Tailwind tokens/design.
 
 New findings (documented, not changed):
+
 - F21 ✅ **Resolved (backend `f1ddeca` + frontend).** Root cause: `CreatePlayerSchema` had no start-date field and
   `createPlayer` hard-coded `startDate: new Date()`. Added optional `initialEnrollmentStartDate` (YYYY-MM-DD, real
   calendar date — shared `isCalendarDate`) to the contract; the service stores it as the initial
@@ -187,10 +189,10 @@ New findings (documented, not changed):
 - F23 ✅ **Resolved (backend `6efea56`).** Without `players.sensitive.read`, a duplicate national ID on
   `POST /players` or `PATCH /players/:id` now returns a generic `400 VALIDATION_FAILED` ("The player could not be
   saved. Please review the entered details and try again.") instead of `409 "A player with this National ID is already
-  registered…"`. Actors with the permission keep the specific 409. A concurrent duplicate that slips past the pre-check
+registered…"`. Actors with the permission keep the specific 409. A concurrent duplicate that slips past the pre-check
   (Prisma `P2002` on `unique_player_national_id_per_tenant`) is mapped to the same responses — previously the global
   filter answered every role with `409 "A record with this tenant_id, national_id already exists"`. The partial unique
-  index is unchanged. **Residual (inherent):** the request still *fails* when the ID exists, so a restricted user who
+  index is unchanged. **Residual (inherent):** the request still _fails_ when the ID exists, so a restricted user who
   tries to create a player can infer a collision from the failure itself; the message no longer confirms it, and it
   is indistinguishable from other validation failures. Fully hiding the signal would require a different product flow
   (e.g. staff review of duplicates) — not implemented.
@@ -209,6 +211,7 @@ Outstanding (unchanged): **real authenticated testing with an actual account**. 
 in-browser mocked API (no backend/DB contact); authentication is **not** considered verified.
 
 Step 3 details:
+
 - New `features/auth/`: `AuthPageLayout`/`AuthPageSuspense`, `AuthCard`/`BackToSignInLink`, `AuthAlert`
   (`role="alert"`/`"status"`), `PasswordVisibilityToggle` (aria-label/pressed/controls), `OtpCodeField`,
   `PasswordField`, `auth-styles.ts`; pure modules `login-form.ts`, `register-form.ts`,
@@ -223,6 +226,7 @@ Step 3 details:
   `--brand-surface`, legacy `[var(--x)]` syntax.
 
 New findings (documented, not changed — need owner decision):
+
 - F14 ✅ **Resolved (follow-up commit after Step 3).** `/login` and `/register` now honour `?redirect=` through
   `lib/auth/safe-return-path.ts`: strict allow-list (`/accept-invite`, `/auth/accept-invite`), query preserved, fragment
   dropped; rejects external/protocol-relative URLs, other schemes, backslashes, encoded separators, dot-segments,
@@ -250,6 +254,7 @@ New findings (documented, not changed — need owner decision):
   (both end at the same backend policy). Kept as-is.
 
 Step 2 details:
+
 - Guard inventory (corrected): **20** page guards, not 21 — `forgot-password`/`reset-password` only redirect to
   `/login` after a successful submit (not access control; untouched). Rules: `authenticated` (10 pages),
   `admin` (5), `admin-or-coach` (2), `no-coach` (2, page-specific toast preserved), `platform-staff` (1).
@@ -263,6 +268,7 @@ Step 2 details:
 - Authenticated, per-role browser checks: **pending** owner-provided test account (rules covered by unit tests).
 
 New findings (documented for the separate cleanup phase, not changed):
+
 - F12 Same missing-space typo as K14 in 8 more places: `bg-(--bg-base)text-(--text-main)` in `app/{accept-invite,landing,offline,register,reset-password,verify-email}/page.tsx`, and `bg-(--bg-base)text-(--text-muted)` twice in `components/platform/CoOwnerTab.tsx`.
 - F13 `/evaluations` and `/evaluations/player/[id]` have **no client-side access guard** (only API enforcement). Preserved as-is; adding one is a product decision.
 
@@ -273,6 +279,7 @@ all 33 page routes 200, `/`→`/dashboard` and `/scanner`→`/attendance/scanner
 account password differs from the seed default; needs a test account from the owner.
 
 New findings during Phase 1:
+
 - F10 `--brand-surface` CSS variable is used (`attendance/sessions/[id]`, `components/finance/PlansTab.tsx`) but never defined in `globals.css` → transparent background. Pre-existing; not changed.
 - F11 Many files still use the legacy `[var(--x)]` Tailwind syntax (editor suggests `(--x)`); both work in Tailwind v4. Not changed (cosmetic, high churn).
 - Rule for dev-only UI: guard with inline `process.env.NODE_ENV === 'development'` at the call site; an imported constant is not folded across modules and ships to production (verified).
@@ -281,12 +288,12 @@ New findings during Phase 1:
 
 Found during F21–F24 verification; all predate this work (they come from the checkpointed WIP `64c3adc`).
 
-| Area | Issue | Files |
-|---|---|---|
-| Backend formatting | Real Prettier drift (not only CRLF) in 16 files | `common/filters/global-exception.filter{,.test}.ts`, `modules/attendance/{attendance-roster.service,attendance.service}.ts`, `modules/auth/auth.service.ts`, `modules/database/repositories/{attendance,base,finance,index,player,tenant,user}.repository.ts` + `repositories.test.ts`, `modules/finance/finance-plans.service.ts`, `modules/platform/{platform-metrics.service,platform.service}.ts` |
-| Backend lint | 2 errors `@typescript-eslint/consistent-type-imports` | `common/filters/global-exception.filter.test.ts:4`, `modules/database/repositories/base.repository.ts:2` |
-| Backend lint | ~104 warnings (mostly `no-explicit-any`) | across modules |
-| Working tree | CRLF vs LF: `core.autocrlf=true` makes Prettier report every file on Windows checkouts; the repository itself stores LF | repo-wide |
+| Area               | Issue                                                                                                                   | Files                                                                                                                                                                                                                                                                                                                                                                                                 |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Backend formatting | Real Prettier drift (not only CRLF) in 16 files                                                                         | `common/filters/global-exception.filter{,.test}.ts`, `modules/attendance/{attendance-roster.service,attendance.service}.ts`, `modules/auth/auth.service.ts`, `modules/database/repositories/{attendance,base,finance,index,player,tenant,user}.repository.ts` + `repositories.test.ts`, `modules/finance/finance-plans.service.ts`, `modules/platform/{platform-metrics.service,platform.service}.ts` |
+| Backend lint       | 2 errors `@typescript-eslint/consistent-type-imports`                                                                   | `common/filters/global-exception.filter.test.ts:4`, `modules/database/repositories/base.repository.ts:2`                                                                                                                                                                                                                                                                                              |
+| Backend lint       | ~104 warnings (mostly `no-explicit-any`)                                                                                | across modules                                                                                                                                                                                                                                                                                                                                                                                        |
+| Working tree       | CRLF vs LF: `core.autocrlf=true` makes Prettier report every file on Windows checkouts; the repository itself stores LF | repo-wide                                                                                                                                                                                                                                                                                                                                                                                             |
 
 CI impact: `pnpm lint` (2 errors) and `pnpm format:check` (16 files) would fail on these until cleaned up in a dedicated change.
 
@@ -298,18 +305,19 @@ separate commits). No large backend refactor. Status: BR-1 and BR-2 — document
 implementation; BR-3 — **pending product decision**.
 
 ### BR-1 (F16) Distinguishable login failures without account enumeration
+
 Current API: every failure below is HTTP 401 (`UnauthorizedException`). Order in `AuthService.login`: rate limit →
 password verification → suspension → pending/rejected application or join request.
 
-| Situation | Checked | Current | Required status + `code` | Frontend message (to implement then) |
-|---|---|---|---|---|
-| Wrong email or password | — | 401 `INVALID_CREDENTIALS` | keep 401 `INVALID_CREDENTIALS` | generic "Invalid email or password" |
-| Too many attempts | before password | 401 `RATE_LIMIT_EXCEEDED` | 429 `RATE_LIMIT_EXCEEDED` (+ retry-after seconds) | "Too many attempts, try again in N min" |
-| Account suspended | after password | 401 `FORBIDDEN` | 403 `ACCOUNT_SUSPENDED` (new code) | "Account suspended — contact support" |
-| Academy application pending / more info | after password | 401 `ACADEMY_PENDING_APPROVAL` | 403 `ACADEMY_PENDING_APPROVAL` | "Your academy application is under review" |
-| Academy application rejected | after password | 401 `ACADEMY_REJECTED` | 403 `ACADEMY_REJECTED` | "Your academy application was not approved" |
-| Player join request pending | after password | 401 `PLAYER_PENDING_APPROVAL` | 403 `PLAYER_PENDING_APPROVAL` | "Your join request is under review" |
-| Player join request rejected | after password | 401 `PLAYER_REJECTED` | 403 `PLAYER_REJECTED` | "Your join request was not approved" |
+| Situation                               | Checked         | Current                        | Required status + `code`                          | Frontend message (to implement then)        |
+| --------------------------------------- | --------------- | ------------------------------ | ------------------------------------------------- | ------------------------------------------- |
+| Wrong email or password                 | —               | 401 `INVALID_CREDENTIALS`      | keep 401 `INVALID_CREDENTIALS`                    | generic "Invalid email or password"         |
+| Too many attempts                       | before password | 401 `RATE_LIMIT_EXCEEDED`      | 429 `RATE_LIMIT_EXCEEDED` (+ retry-after seconds) | "Too many attempts, try again in N min"     |
+| Account suspended                       | after password  | 401 `FORBIDDEN`                | 403 `ACCOUNT_SUSPENDED` (new code)                | "Account suspended — contact support"       |
+| Academy application pending / more info | after password  | 401 `ACADEMY_PENDING_APPROVAL` | 403 `ACADEMY_PENDING_APPROVAL`                    | "Your academy application is under review"  |
+| Academy application rejected            | after password  | 401 `ACADEMY_REJECTED`         | 403 `ACADEMY_REJECTED`                            | "Your academy application was not approved" |
+| Player join request pending             | after password  | 401 `PLAYER_PENDING_APPROVAL`  | 403 `PLAYER_PENDING_APPROVAL`                     | "Your join request is under review"         |
+| Player join request rejected            | after password  | 401 `PLAYER_REJECTED`          | 403 `PLAYER_REJECTED`                             | "Your join request was not approved"        |
 
 Rules: account-specific codes only **after** successful password verification (already true), so they reveal nothing
 to someone without the password; add the new codes to `packages/shared` `ErrorCode`; the frontend maps on `code`
@@ -317,6 +325,7 @@ to someone without the password; add the new codes to `packages/shared` `ErrorCo
 unknown codes keep the generic message. Also fix F15 (`VALIDATION_ERROR` → `VALIDATION_FAILED`) at the same time.
 
 ### BR-2 (F17) Persist all player join-request fields
+
 - Schema/migration: add to `player_registration_requests` — `gender`, `jersey_number`, `national_id`,
   `emergency_contact_name`, `emergency_contact_phone`, `medical_notes`, `guardian_relationship` (nullable; reversible migration;
   existing rows untouched).
@@ -329,19 +338,20 @@ unknown codes keep the generic message. Also fix F15 (`VALIDATION_ERROR` → `VA
   contract-drift test will flag the change).
 
 ### BR-3 (F19) Invite-based staff sign-up
+
 Product decision needed: a staff sign-up that creates an account bound to the invitation email (no academy application),
 with e-mail verification, so invitees can accept invitations.
 
 ## 11. Change log
 
-| Date | Change | Files |
-|---|---|---|
-| 2026-11-14 | Initial knowledge baseline: created the five core docs; no application code modified. | `docs/PROJECT_OVERVIEW.md`, `docs/SYSTEM_ARCHITECTURE.md`, `docs/BUSINESS_LOGIC.md`, `docs/TECHNOLOGY_STACK.md`, `docs/DEVELOPMENT_STATUS.md` |
-| 2026-11-14 | Phase 1 frontend analysis + verification baseline (§9); proposal pending approval. | `docs/DEVELOPMENT_STATUS.md` |
-| 2026-11-15 | F23 + F24. **Backend `6efea56`:** generic 400 for duplicate national ID without `players.sensitive.read` (specific 409 kept for permitted roles); P2002 race mapped; presence-based 403 for `nationalId`/`medicalNotes` on update. **Frontend:** contract test only. Docs: §9b pre-existing issues. No migration; API error responses changed for restricted roles only. | `backend/src/modules/players/{players.service.ts,player-sensitive-data.ts}` (+2 test files), `frontend/src/features/players/players-logic.test.ts` |
-| 2026-11-15 | F22 + F21 full-stack. **Backend `f1ddeca`:** `players/player-sensitive-data.ts` (single sensitive-data rule), list/create responses mask `nationalId`/`medicalNotes`, list search excludes national ID without `players.sensitive.read`; `CreatePlayerSchema.initialEnrollmentStartDate` (optional) + `isCalendarDate`; `createPlayer` uses it. **Frontend:** create form sends the start date; roster hides national ID + adjusts search placeholder by permission. No migration; no breaking API change. | `backend/src/modules/players/{players.service.ts,player-sensitive-data.ts}` (+2 test files), `packages/shared/src/schemas/player.ts` (+test), `frontend/src/features/players/new-player-form.ts`, `frontend/src/app/players/{page,new/page}.tsx` |
-| 2026-11-14 | Phase 1 Step 4: players feature (`features/players/**`), pagination/search/error-state fixes, bilingual + accessible player profile and modals; F17 applicant notice (`7ce0fac`). No backend/API/DB/currency changes. | `frontend/src/app/players/{page,new/page,[id]/page}.tsx`, `frontend/src/components/player-qr-card.tsx`, `frontend/src/features/players/**`, `frontend/src/hooks/useDebouncedValue.ts` (+2 test files) |
-| 2026-11-14 | Step 3 follow-up: F14 safe return path implemented; F17 explicit contract mapping (fields kept, pending list); F16/F17/F19 backend requirements documented (§10). No backend/API/DB changes. | `frontend/src/lib/auth/safe-return-path.ts`, `frontend/src/hooks/useSafeReturnPath.ts`, `frontend/src/app/{login,register,accept-invite}/page.tsx`, `frontend/src/features/landing/{player-join-request.ts,components/PlayerJoinRequestModal.tsx}` (+2 test files) |
-| 2026-11-14 | Phase 1 Step 3: auth & public pages restructured onto `features/auth` + `features/landing`; error-message hardening; 8 typo fixes. No API, validation-rule, backend or currency changes. | `frontend/src/app/{login,register,forgot-password,reset-password,verify-email,accept-invite,landing,offline}/page.tsx`, `frontend/src/components/platform/CoOwnerTab.tsx`, `frontend/src/features/{auth,landing}/**`, `frontend/src/hooks/{useCooldown,useDelayedRedirect}.ts` (+6 test files) |
-| 2026-11-14 | Phase 1 Step 2: shared access guard, AuthGuard rebuilt, AppShell text colour fixed. No permission, API or backend changes. | `frontend/src/lib/auth/access-rules.ts`, `frontend/src/hooks/useAccessGuard.ts`, `frontend/src/components/layout/{AuthGuard,AppShell}.tsx`, 20 pages under `frontend/src/app/` (+3 test files) |
-| 2026-11-14 | Phase 1 Steps 0–1 + session-page CSS repair (see §9 progress). No backend, API contract or currency changes. | `frontend/src/{config,lib/http,features/*/api.ts,api/client.ts,components/ui/ConfirmDialog.tsx,features/attendance/components/QrCheckInSimulator.tsx}`, 5 pages (confirm dialogs), `app/layout.tsx` |
+| Date       | Change                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | Files                                                                                                                                                                                                                                                                                          |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-11-14 | Initial knowledge baseline: created the five core docs; no application code modified.                                                                                                                                                                                                                                                                                                                                                                                                                      | `docs/PROJECT_OVERVIEW.md`, `docs/SYSTEM_ARCHITECTURE.md`, `docs/BUSINESS_LOGIC.md`, `docs/TECHNOLOGY_STACK.md`, `docs/DEVELOPMENT_STATUS.md`                                                                                                                                                  |
+| 2026-11-14 | Phase 1 frontend analysis + verification baseline (§9); proposal pending approval.                                                                                                                                                                                                                                                                                                                                                                                                                         | `docs/DEVELOPMENT_STATUS.md`                                                                                                                                                                                                                                                                   |
+| 2026-11-15 | F23 + F24. **Backend `6efea56`:** generic 400 for duplicate national ID without `players.sensitive.read` (specific 409 kept for permitted roles); P2002 race mapped; presence-based 403 for `nationalId`/`medicalNotes` on update. **Frontend:** contract test only. Docs: §9b pre-existing issues. No migration; API error responses changed for restricted roles only.                                                                                                                                   | `backend/src/modules/players/{players.service.ts,player-sensitive-data.ts}` (+2 test files), `frontend/src/features/players/players-logic.test.ts`                                                                                                                                             |
+| 2026-11-15 | F22 + F21 full-stack. **Backend `f1ddeca`:** `players/player-sensitive-data.ts` (single sensitive-data rule), list/create responses mask `nationalId`/`medicalNotes`, list search excludes national ID without `players.sensitive.read`; `CreatePlayerSchema.initialEnrollmentStartDate` (optional) + `isCalendarDate`; `createPlayer` uses it. **Frontend:** create form sends the start date; roster hides national ID + adjusts search placeholder by permission. No migration; no breaking API change. | `backend/src/modules/players/{players.service.ts,player-sensitive-data.ts}` (+2 test files), `packages/shared/src/schemas/player.ts` (+test), `frontend/src/features/players/new-player-form.ts`, `frontend/src/app/players/{page,new/page}.tsx`                                               |
+| 2026-11-14 | Phase 1 Step 4: players feature (`features/players/**`), pagination/search/error-state fixes, bilingual + accessible player profile and modals; F17 applicant notice (`7ce0fac`). No backend/API/DB/currency changes.                                                                                                                                                                                                                                                                                      | `frontend/src/app/players/{page,new/page,[id]/page}.tsx`, `frontend/src/components/player-qr-card.tsx`, `frontend/src/features/players/**`, `frontend/src/hooks/useDebouncedValue.ts` (+2 test files)                                                                                          |
+| 2026-11-14 | Step 3 follow-up: F14 safe return path implemented; F17 explicit contract mapping (fields kept, pending list); F16/F17/F19 backend requirements documented (§10). No backend/API/DB changes.                                                                                                                                                                                                                                                                                                               | `frontend/src/lib/auth/safe-return-path.ts`, `frontend/src/hooks/useSafeReturnPath.ts`, `frontend/src/app/{login,register,accept-invite}/page.tsx`, `frontend/src/features/landing/{player-join-request.ts,components/PlayerJoinRequestModal.tsx}` (+2 test files)                             |
+| 2026-11-14 | Phase 1 Step 3: auth & public pages restructured onto `features/auth` + `features/landing`; error-message hardening; 8 typo fixes. No API, validation-rule, backend or currency changes.                                                                                                                                                                                                                                                                                                                   | `frontend/src/app/{login,register,forgot-password,reset-password,verify-email,accept-invite,landing,offline}/page.tsx`, `frontend/src/components/platform/CoOwnerTab.tsx`, `frontend/src/features/{auth,landing}/**`, `frontend/src/hooks/{useCooldown,useDelayedRedirect}.ts` (+6 test files) |
+| 2026-11-14 | Phase 1 Step 2: shared access guard, AuthGuard rebuilt, AppShell text colour fixed. No permission, API or backend changes.                                                                                                                                                                                                                                                                                                                                                                                 | `frontend/src/lib/auth/access-rules.ts`, `frontend/src/hooks/useAccessGuard.ts`, `frontend/src/components/layout/{AuthGuard,AppShell}.tsx`, 20 pages under `frontend/src/app/` (+3 test files)                                                                                                 |
+| 2026-11-14 | Phase 1 Steps 0–1 + session-page CSS repair (see §9 progress). No backend, API contract or currency changes.                                                                                                                                                                                                                                                                                                                                                                                               | `frontend/src/{config,lib/http,features/*/api.ts,api/client.ts,components/ui/ConfirmDialog.tsx,features/attendance/components/QrCheckInSimulator.tsx}`, 5 pages (confirm dialogs), `app/layout.tsx`                                                                                            |

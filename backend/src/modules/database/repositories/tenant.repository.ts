@@ -53,4 +53,3 @@ export class TenantRepository extends BaseRepository {
     });
   }
 }
-
