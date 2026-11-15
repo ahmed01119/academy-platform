@@ -509,4 +509,24 @@ describe('PlatformService', () => {
       expect(metrics.redisAvailable).toBe(true);
     });
   });
+
+  describe('executeStorageMaintenance (K5)', () => {
+    it('purges expired tokens and retains append-only audit logs instead of aborting', async () => {
+      const deleteTokens = vi.fn().mockResolvedValue({ count: 4 });
+      (mockTx.refreshToken as unknown as { deleteMany: MockFn }).deleteMany = deleteTokens;
+      const deleteLogs = vi.fn();
+      (mockTx.auditLog as unknown as { deleteMany: MockFn }).deleteMany = deleteLogs;
+      mockTx.auditLog.count.mockResolvedValue(12);
+
+      const res = await service.executeStorageMaintenance(actorUserId, {
+        purgeExpiredTokens: true,
+        archiveOperationalLogsOlderThanDays: 90,
+      } as never);
+
+      expect(res).toMatchObject({ success: true, purgedTokensCount: 4, purgedLogsCount: 0 });
+      expect(res.message).toContain('12 aged operational logs were retained');
+      expect(deleteTokens).toHaveBeenCalled();
+      expect(deleteLogs).not.toHaveBeenCalled();
+    });
+  });
 });

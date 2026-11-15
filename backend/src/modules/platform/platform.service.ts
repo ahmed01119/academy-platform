@@ -1834,12 +1834,16 @@ export class PlatformService {
         tx.playerSubscription.count({ where: { status: 'ACTIVE' } }),
       ]);
 
-      const estimatedReclaimableBytes = expiredTokensCount * 256 + purgeableAuditLogsCount * 350;
+      // K5: audit logs are append-only (trigger, and no DELETE privilege for the runtime role); maintenance never deletes
+      // them, so none are purgeable and only expired tokens count towards reclaimable space. Aged operational logs are
+      // still counted for information.
+      const estimatedReclaimableBytes = expiredTokensCount * 256;
 
       return {
         expiredSessionsCount: expiredTokensCount,
         expiredTokensCount,
-        purgeableAuditLogsCount,
+        purgeableAuditLogsCount: 0,
+        agedOperationalLogsCount: purgeableAuditLogsCount,
         estimatedReclaimableBytes,
         formattedReclaimableSize: this.formatBytes(estimatedReclaimableBytes),
         protectedRecordsSummary: {
@@ -1866,7 +1870,8 @@ export class PlatformService {
     return this.prisma.withPlatformAdminTransaction({ actorUserId }, async (tx) => {
       const now = new Date();
       let purgedTokensCount = 0;
-      let purgedLogsCount = 0;
+      const purgedLogsCount = 0;
+      let retainedLogsCount = 0;
 
       if (dto.purgeExpiredTokens) {
         const tokenRes = await tx.refreshToken.deleteMany({
@@ -1882,8 +1887,10 @@ export class PlatformService {
           Date.now() - dto.archiveOperationalLogsOlderThanDays * 86400000,
         );
 
-        // Strict fail-safe: NEVER delete financial audit logs!
-        const logRes = await tx.auditLog.deleteMany({
+        // K5: audit logs are append-only (database trigger; the runtime role has no DELETE privilege). Deleting them
+        // aborted the whole maintenance transaction, including the token purge. Until a retention policy is decided
+        // (open question 13) aged operational logs are retained and only counted.
+        retainedLogsCount = await tx.auditLog.count({
           where: {
             createdAt: { lt: cutoffDate },
             NOT: {
@@ -1896,7 +1903,6 @@ export class PlatformService {
             },
           },
         });
-        purgedLogsCount = logRes.count;
       }
 
       await this.auditService.logEvent({
@@ -1906,6 +1912,7 @@ export class PlatformService {
         metadata: {
           purgedTokensCount,
           purgedLogsCount,
+          retainedLogsCount,
         },
       });
 
@@ -1913,7 +1920,7 @@ export class PlatformService {
         success: true,
         purgedTokensCount,
         purgedLogsCount,
-        message: `Maintenance completed successfully. Purged ${purgedTokensCount} expired tokens and ${purgedLogsCount} operational logs.`,
+        message: `Maintenance completed successfully. Purged ${purgedTokensCount} expired tokens. ${retainedLogsCount} aged operational logs were retained (audit logs are append-only).`,
       };
     });
   }

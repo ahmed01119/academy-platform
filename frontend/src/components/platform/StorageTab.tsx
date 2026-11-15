@@ -23,7 +23,7 @@ export function StorageTab() {
   const [isExecuteModalOpen, setIsExecuteModalOpen] = useState(false);
   const [purgeExpiredTokens, setPurgeExpiredTokens] = useState(true);
   const [archiveOlderThanDays, setArchiveOlderThanDays] = useState(90);
-  const [enableLogPurge, setEnableLogPurge] = useState(true);
+  const [enableLogPurge, setEnableLogPurge] = useState(false);
   const [isExecuting, setIsExecuting] = useState(false);
 
   const fetchMetrics = useCallback(async () => {
@@ -345,10 +345,12 @@ export function StorageTab() {
 
               <div className="p-3 rounded-xl bg-(--bg-surface-subtle) space-y-1">
                 <span className="text-[11px] text-(--text-muted)">
-                  {locale === 'ar' ? 'سجلات تدقيق تشغيلية قديمة' : 'Purgeable Audit Logs'}
+                  {locale === 'ar'
+                    ? 'سجلات تشغيلية قديمة (محفوظة، غير قابلة للحذف)'
+                    : 'Aged audit logs (retained, append-only)'}
                 </span>
                 <div className="text-lg font-bold text-emerald-400 font-mono">
-                  {dryRunData.purgeableAuditLogsCount}
+                  {dryRunData.agedOperationalLogsCount ?? dryRunData.purgeableAuditLogsCount}
                 </div>
               </div>
             </div>
@@ -470,13 +472,13 @@ export function StorageTab() {
                   <div>
                     <span className="text-xs font-bold text-(--text-main) block">
                       {locale === 'ar'
-                        ? 'أرشفة السجلات التشغيلية غير المالية القديمة'
-                        : 'Archive Aged Operational Logs'}
+                        ? 'عدّ السجلات التشغيلية القديمة (تبقى محفوظة)'
+                        : 'Count aged operational logs (they are retained)'}
                     </span>
                     <span className="text-[11px] text-(--text-muted)">
                       {locale === 'ar'
-                        ? 'تنظيف سجلات الأحداث الروتينية الأقدم من 90 يوماً. السجلات المالية لا تُحذف أبداً.'
-                        : 'Purges non-financial audit logs older than threshold. Financial records are never deleted.'}
+                        ? 'سجلات التدقيق للإلحاق فقط ولا تُحذف؛ يتم عدّ السجلات الأقدم من المدة المحددة فقط حتى تُعتمد سياسة احتفاظ.'
+                        : 'Audit logs are append-only and never deleted; logs older than the threshold are only counted until a retention policy is decided.'}
                     </span>
                   </div>
 

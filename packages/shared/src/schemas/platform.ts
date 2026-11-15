@@ -334,6 +334,8 @@ export const StorageMaintenanceDryRunResponseSchema = z.object({
   expiredSessionsCount: z.number(),
   expiredTokensCount: z.number(),
   purgeableAuditLogsCount: z.number(),
+  /** Aged operational audit logs (older than 90 days). Counted only: audit logs are append-only and retained (K5). */
+  agedOperationalLogsCount: z.number().optional(),
   estimatedReclaimableBytes: z.number(),
   formattedReclaimableSize: z.string(),
   protectedRecordsSummary: z.object({
