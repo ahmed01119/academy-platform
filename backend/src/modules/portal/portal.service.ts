@@ -2,13 +2,12 @@ import crypto from 'node:crypto';
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
-import { AuditService } from '../audit/audit.service';
-import { TokenService } from '../auth/token.service';
 import {
   ErrorCode,
   type GuardianChildSummary,
@@ -21,15 +20,45 @@ import {
   type PlayerJoinRequestItem,
   type ApplicationStatus,
 } from '@academy/shared';
-import { NotificationsService } from '../notifications/notifications.service';
+import { RedisService } from '../redis/redis.service';
+import { databaseFunctionErrorCode, singleRow } from '../../common/db-function-error';
+
+const CLAIM_ATTEMPT_LIMIT = 10;
+const CLAIM_ATTEMPT_WINDOW_SECONDS = 60 * 60;
+const CLAIM_CODE_ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ'; // Crockford base 32
+const JOIN_REQUEST_ERRORS = [
+  'ACADEMY_NOT_AVAILABLE',
+  'TOO_MANY_PENDING_REQUESTS',
+  'APPLICANT_NOT_PERMITTED',
+  'PLAYER_NAME_INVALID',
+  'CONTACT_EMAIL_INVALID',
+  'CONTACT_PHONE_INVALID',
+  'GUARDIAN_NAME_INVALID',
+  'DATE_OF_BIRTH_INVALID',
+] as const;
+
+/** Unbiased random code from the Crockford base-32 alphabet. */
+export function randomClaimCode(length: number): string {
+  let code = '';
+  while (code.length < length) {
+    const byte = crypto.randomBytes(1)[0] ?? 0;
+    if (byte < 256 - (256 % CLAIM_CODE_ALPHABET.length)) {
+      code += CLAIM_CODE_ALPHABET[byte % CLAIM_CODE_ALPHABET.length];
+    }
+  }
+  return code;
+}
+
+/** SHA-256 of the normalised code (trimmed, upper-cased), the only form stored (matches M2's conversion). */
+export function hashClaimCode(code: string): string {
+  return crypto.createHash('sha256').update(code.trim().toUpperCase(), 'utf8').digest('hex');
+}
 
 @Injectable()
 export class PortalService {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
-    @Inject(AuditService) private readonly auditService: AuditService,
-    @Inject(TokenService) private readonly tokenService: TokenService,
-    @Inject(NotificationsService) private readonly notificationsService: NotificationsService,
+    @Inject(RedisService) private readonly redisService: RedisService,
   ) {}
 
   /**
@@ -294,139 +323,125 @@ export class PortalService {
     targetType: 'PLAYER' | 'GUARDIAN',
     targetId: string,
   ): Promise<{ claimToken: string; expiresAt: string }> {
-    return this.prisma.withTenantTransaction(tenantContext.tenantId, async (tx) => {
-      // Generate clean memorable token: ACAD-XXXXXX
-      const rawCode = this.tokenService.generateSecureRandomString(4).toUpperCase();
-      const claimToken = `ACAD-${rawCode}`;
-      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+    // S9: 10 Crockford base-32 characters (50 bits, no I/L/O/U) instead of 8 hex characters (32 bits). Only the
+    // SHA-256 hash is stored; the code itself is shown once to the staff member who hands it over.
+    const claimToken = `ACAD-${randomClaimCode(10)}`;
+    const claimHash = hashClaimCode(claimToken);
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
-      if (targetType === 'PLAYER') {
-        const player = await tx.player.findUnique({
-          where: { tenantId: tenantContext.tenantId, id: targetId },
-        });
-        if (!player) {
-          throw new NotFoundException({
-            code: ErrorCode.NOT_FOUND,
-            message: 'Player not found',
+    return this.prisma.withTenantTransaction(
+      { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
+      async (tx) => {
+        if (targetType === 'PLAYER') {
+          const player = await tx.player.findUnique({
+            where: { tenantId: tenantContext.tenantId, id: targetId },
+          });
+          if (!player) {
+            throw new NotFoundException({ code: ErrorCode.NOT_FOUND, message: 'Player not found' });
+          }
+          await tx.player.update({
+            where: { tenantId: tenantContext.tenantId, id: targetId },
+            data: { claimToken: claimHash, claimExpiresAt: expiresAt },
+          });
+        } else {
+          const guardian = await tx.guardian.findUnique({
+            where: { tenantId: tenantContext.tenantId, id: targetId },
+          });
+          if (!guardian) {
+            throw new NotFoundException({
+              code: ErrorCode.NOT_FOUND,
+              message: 'Guardian not found',
+            });
+          }
+          await tx.guardian.update({
+            where: { tenantId: tenantContext.tenantId, id: targetId },
+            data: { claimToken: claimHash, claimExpiresAt: expiresAt },
           });
         }
-        await tx.player.update({
-          where: { tenantId: tenantContext.tenantId, id: targetId },
-          data: { claimToken, claimExpiresAt: expiresAt },
-        });
-      } else {
-        const guardian = await tx.guardian.findUnique({
-          where: { tenantId: tenantContext.tenantId, id: targetId },
-        });
-        if (!guardian) {
-          throw new NotFoundException({
-            code: ErrorCode.NOT_FOUND,
-            message: 'Guardian not found',
-          });
-        }
-        await tx.guardian.update({
-          where: { tenantId: tenantContext.tenantId, id: targetId },
-          data: { claimToken, claimExpiresAt: expiresAt },
-        });
-      }
 
-      return {
-        claimToken,
-        expiresAt: expiresAt.toISOString(),
-      };
-    });
+        return { claimToken, expiresAt: expiresAt.toISOString() };
+      },
+    );
   }
 
   /**
-   * Redeems a claim token to link the authenticated user to a Player or Guardian profile.
+   * Redeems a claim code to link the authenticated user to a Player or Guardian profile.
+   *
+   * redeem_portal_claim (definer function) does the work under the user's actor context: it compares the code's hash,
+   * checks expiry and that the academy is ACTIVE, refuses records linked to another account (now guardians too),
+   * links, clears the code (single use) and writes the audit entry in the same statement sequence.
+   * Attempts are limited per account (S9) so codes cannot be guessed online.
    */
   async redeemClaimToken(
     actorUserId: string,
     claimToken: string,
   ): Promise<{ success: boolean; type: 'PLAYER' | 'GUARDIAN'; entityId: string; message: string }> {
-    const cleanToken = claimToken.trim();
-
-    return this.prisma.$transaction(async (tx) => {
-      // Check Player
-      const player = await tx.player.findFirst({
-        where: {
-          claimToken: cleanToken,
-          claimExpiresAt: { gte: new Date() },
-        },
-      });
-
-      if (player) {
-        if (player.userId && player.userId !== actorUserId) {
-          throw new ConflictException({
-            code: ErrorCode.CONFLICT,
-            message: 'This player profile is already linked to another account',
-          });
-        }
-
-        await tx.player.update({
-          where: { id: player.id },
-          data: {
-            userId: actorUserId,
-            claimToken: null,
-            claimExpiresAt: null,
-          },
-        });
-
-        await this.auditService.logEvent({
-          tenantId: player.tenantId,
-          actorUserId,
-          action: 'PORTAL_PLAYER_ACCOUNT_CLAIMED',
-          resourceType: 'Player',
-          resourceId: player.id,
-        });
-
-        return {
-          success: true,
-          type: 'PLAYER',
-          entityId: player.id,
-          message: `تم ربط ملف اللاعب (${player.firstName} ${player.lastName}) بحسابك بنجاح`,
-        };
-      }
-
-      // Check Guardian
-      const guardian = await tx.guardian.findFirst({
-        where: {
-          claimToken: cleanToken,
-          claimExpiresAt: { gte: new Date() },
-        },
-      });
-
-      if (guardian) {
-        await tx.guardian.update({
-          where: { id: guardian.id },
-          data: {
-            userId: actorUserId,
-            claimToken: null,
-            claimExpiresAt: null,
-          },
-        });
-
-        await this.auditService.logEvent({
-          tenantId: guardian.tenantId,
-          actorUserId,
-          action: 'PORTAL_GUARDIAN_ACCOUNT_CLAIMED',
-          resourceType: 'Guardian',
-          resourceId: guardian.id,
-        });
-
-        return {
-          success: true,
-          type: 'GUARDIAN',
-          entityId: guardian.id,
-          message: `تم ربط حساب ولي الأمر (${guardian.firstName} ${guardian.lastName}) بحسابك بنجاح`,
-        };
-      }
-
+    const attempts = await this.redisService.incrementRateLimit(
+      `ratelimit:portal-claim:${actorUserId}`,
+      CLAIM_ATTEMPT_WINDOW_SECONDS,
+    );
+    if (attempts.count > CLAIM_ATTEMPT_LIMIT) {
       throw new BadRequestException({
-        code: ErrorCode.TOKEN_INVALID,
-        message: 'رمز المطالبة غير صالح أو منتهي الصلاحية',
+        code: ErrorCode.RATE_LIMIT_EXCEEDED,
+        message: `محاولات كثيرة. حاول مرة أخرى بعد ${Math.ceil(attempts.remainingTime / 60)} دقيقة (Too many attempts. Try again later.)`,
       });
-    });
+    }
+
+    const claimHash = hashClaimCode(claimToken);
+    try {
+      const rows = await this.prisma.withPortalUserTransaction(
+        { actorUserId },
+        (tx) =>
+          tx.$queryRaw<
+            Array<{
+              entity_type: 'PLAYER' | 'GUARDIAN';
+              entity_id: string;
+              first_name: string;
+              last_name: string;
+            }>
+          >`SELECT entity_type, entity_id::text AS entity_id, first_name, last_name
+           FROM public.redeem_portal_claim(${claimHash})`,
+      );
+      const claimed = singleRow(rows);
+      const name = `${claimed.first_name} ${claimed.last_name}`;
+      return {
+        success: true,
+        type: claimed.entity_type,
+        entityId: claimed.entity_id,
+        message:
+          claimed.entity_type === 'PLAYER'
+            ? `تم ربط ملف اللاعب (${name}) بحسابك بنجاح`
+            : `تم ربط حساب ولي الأمر (${name}) بحسابك بنجاح`,
+      };
+    } catch (err) {
+      const code = databaseFunctionErrorCode(err, [
+        'CLAIM_INVALID',
+        'CLAIM_ALREADY_LINKED',
+        'CLAIM_REQUIRES_ACTIVE_ACCOUNT',
+      ] as const);
+      if (
+        code === 'CLAIM_ALREADY_LINKED' ||
+        /players_user_id_key|duplicate key/.test(String((err as Error)?.message))
+      ) {
+        throw new ConflictException({
+          code: ErrorCode.CONFLICT,
+          message: 'This profile is already linked to another account',
+        });
+      }
+      if (code === 'CLAIM_REQUIRES_ACTIVE_ACCOUNT') {
+        throw new ForbiddenException({
+          code: ErrorCode.FORBIDDEN,
+          message: 'This account cannot claim profiles',
+        });
+      }
+      if (code === 'CLAIM_INVALID') {
+        throw new BadRequestException({
+          code: ErrorCode.TOKEN_INVALID,
+          message: 'رمز المطالبة غير صالح أو منتهي الصلاحية',
+        });
+      }
+      throw err;
+    }
   }
 
   /**
@@ -496,84 +511,82 @@ export class PortalService {
   }
 
   /**
-   * Submits a player/guardian request to join an existing academy.
+   * Submits a player/guardian request to join an existing academy (public endpoint).
+   *
+   * submit_player_join_request (definer function) requires the academy to be ACTIVE (B1), validates the input, caps
+   * pending requests per academy and e-mail (B2), creates the request as PENDING_REVIEW and notifies the academy's
+   * managers in the same transaction. The applicant is the signed-in user when there is one, otherwise none.
    */
   async submitPlayerJoinRequest(
     dto: CreatePlayerJoinRequest,
     applicantUserId?: string,
   ): Promise<PlayerJoinRequestItem> {
-    const tenant = await this.prisma.tenant.findUnique({
-      where: { id: dto.tenantId },
-      select: { id: true, name: true },
-    });
-
-    if (!tenant) {
-      throw new NotFoundException({
-        code: ErrorCode.NOT_FOUND,
-        message: 'Academy not found',
-      });
-    }
-
-    const request = await this.prisma.playerRegistrationRequest.create({
-      data: {
+    try {
+      const rows = await this.prisma.withAuthLookupTransaction(
+        { actorUserId: applicantUserId },
+        (tx) =>
+          tx.$queryRaw<
+            Array<{
+              request_id: string;
+              tenant_name: string;
+              applicant_user_id: string | null;
+              created_at: Date;
+            }>
+          >`SELECT request_id::text AS request_id, tenant_name, applicant_user_id::text AS applicant_user_id, created_at
+           FROM public.submit_player_join_request(
+             ${dto.tenantId}::uuid, ${dto.playerName}, ${dto.contactEmail}, ${dto.contactPhone ?? null},
+             ${dto.dateOfBirth ?? null}::date, ${dto.guardianName ?? null}
+           )`,
+      );
+      const created = singleRow(rows);
+      return {
+        id: created.request_id,
         tenantId: dto.tenantId,
-        applicantUserId: applicantUserId || null,
+        tenantName: created.tenant_name,
+        applicantUserId: created.applicant_user_id,
         playerName: dto.playerName.trim(),
         contactEmail: dto.contactEmail.trim().toLowerCase(),
         contactPhone: dto.contactPhone?.trim() || null,
-        dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : null,
+        dateOfBirth: dto.dateOfBirth ?? null,
         guardianName: dto.guardianName?.trim() || null,
-        status: 'PENDING_REVIEW',
-      },
-    });
-
-    // Notify academy managers & owners
-    const academyStaff = await this.prisma.tenantMembership.findMany({
-      where: {
-        tenantId: dto.tenantId,
-        role: { in: ['OWNER', 'MANAGER', 'BRANCH_MANAGER'] },
-        status: 'ACTIVE',
-      },
-      select: { userId: true },
-    });
-
-    for (const staff of academyStaff) {
-      await this.notificationsService.createNotification({
-        userId: staff.userId,
-        tenantId: dto.tenantId,
-        type: 'PLAYER_REGISTRATION',
-        title: 'New Player Join Request',
-        body: `"${dto.playerName}" submitted a join request for review.`,
-        href: '/players?tab=applications',
-      });
+        status: 'PENDING_REVIEW' as ApplicationStatus,
+        reviewNotes: null,
+        reviewedByUserId: null,
+        reviewedAt: null,
+        createdAt: new Date(created.created_at).toISOString(),
+      };
+    } catch (err) {
+      const code = databaseFunctionErrorCode(err, JOIN_REQUEST_ERRORS);
+      if (code === 'ACADEMY_NOT_AVAILABLE') {
+        throw new NotFoundException({ code: ErrorCode.NOT_FOUND, message: 'Academy not found' });
+      }
+      if (code === 'TOO_MANY_PENDING_REQUESTS') {
+        throw new BadRequestException({
+          code: ErrorCode.RATE_LIMIT_EXCEEDED,
+          message: 'There are already several pending requests for this e-mail at this academy',
+        });
+      }
+      if (code === 'APPLICANT_NOT_PERMITTED') {
+        throw new ForbiddenException({
+          code: ErrorCode.FORBIDDEN,
+          message: 'This account cannot submit requests',
+        });
+      }
+      if (code) {
+        throw new BadRequestException({
+          code: ErrorCode.VALIDATION_FAILED,
+          message: `Invalid request: ${code}`,
+        });
+      }
+      throw err;
     }
-
-    return {
-      id: request.id,
-      tenantId: request.tenantId,
-      tenantName: tenant.name,
-      applicantUserId: request.applicantUserId,
-      playerName: request.playerName,
-      contactEmail: request.contactEmail,
-      contactPhone: request.contactPhone,
-      dateOfBirth: request.dateOfBirth ? request.dateOfBirth.toISOString().split('T')[0] : null,
-      guardianName: request.guardianName,
-      status: request.status as ApplicationStatus,
-      reviewNotes: request.reviewNotes,
-      reviewedByUserId: request.reviewedByUserId,
-      reviewedAt: request.reviewedAt?.toISOString() || null,
-      createdAt: request.createdAt.toISOString(),
-    };
   }
 
   /**
-   * List active academies for public join request dropdown.
+   * Active academies for the public join-request form: id, name and slug only (list_public_academies).
    */
   async listPublicAcademies(): Promise<Array<{ id: string; name: string; slug: string }>> {
-    return this.prisma.tenant.findMany({
-      where: { status: 'ACTIVE' },
-      select: { id: true, name: true, slug: true },
-      orderBy: { name: 'asc' },
-    });
+    return this.prisma.$queryRaw<Array<{ id: string; name: string; slug: string }>>`
+      SELECT id::text AS id, name, slug FROM public.list_public_academies()`;
   }
 }

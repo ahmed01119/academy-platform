@@ -241,34 +241,6 @@ describe('TokenService', () => {
     );
   });
 
-  it('invalidateAllSessions bumps the version before revoking refresh tokens', async () => {
-    const order: string[] = [];
-    const tx = {
-      user: {
-        update: vi.fn(async () => {
-          order.push('bump');
-          return { sessionVersion: 4 };
-        }),
-      },
-      refreshToken: {
-        updateMany: vi.fn(async () => {
-          order.push('revoke');
-          return { count: 2 };
-        }),
-      },
-    };
-    const version = await tokenService.invalidateAllSessions(tx as never, 'user-123', {
-      passwordHash: 'h',
-    });
-    expect(version).toBe(4);
-    expect(order).toEqual(['bump', 'revoke']);
-    expect(tx.user.update).toHaveBeenCalledWith({
-      where: { id: 'user-123' },
-      data: { passwordHash: 'h', sessionVersion: { increment: 1 } },
-      select: { sessionVersion: true },
-    });
-  });
-
   it('revokes all user tokens', async () => {
     await tokenService.revokeAllUserTokens('user-reset-id');
     expect(mockPrisma.refreshToken.updateMany).toHaveBeenCalledWith({

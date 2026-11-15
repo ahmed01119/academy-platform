@@ -1235,6 +1235,7 @@ export class PlayersService {
         if (request.applicantUserId) {
           await this.notificationsService.createNotification({
             userId: request.applicantUserId,
+            senderUserId: tenantContext.actorUserId,
             tenantId: tenantContext.tenantId,
             type: 'PLAYER_REGISTRATION',
             title: 'Academy Registration Approved',
@@ -1245,6 +1246,7 @@ export class PlayersService {
       } else if (dto.status === 'REJECTED' && request.applicantUserId) {
         await this.notificationsService.createNotification({
           userId: request.applicantUserId,
+          senderUserId: tenantContext.actorUserId,
           tenantId: tenantContext.tenantId,
           type: 'PLAYER_REGISTRATION',
           title: 'Registration Request Update',
@@ -1254,6 +1256,7 @@ export class PlayersService {
       } else if (dto.status === 'MORE_INFO_REQUESTED' && request.applicantUserId) {
         await this.notificationsService.createNotification({
           userId: request.applicantUserId,
+          senderUserId: tenantContext.actorUserId,
           tenantId: tenantContext.tenantId,
           type: 'PLAYER_REGISTRATION',
           title: 'Additional Information Required',

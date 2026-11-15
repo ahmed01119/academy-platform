@@ -793,18 +793,23 @@ export class FinanceService {
     if (result.status === 'PENDING' && this.notificationsService) {
       try {
         const notifService = this.notificationsService;
-        const managers = await this.prisma.tenantMembership.findMany({
-          where: {
-            tenantId: tenantContext.tenantId,
-            role: { in: ['OWNER', 'MANAGER', 'ACCOUNTANT'] },
-            status: 'ACTIVE',
-          },
-          select: { userId: true },
-        });
+        const managers = await this.prisma.withTenantTransaction(
+          { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
+          (tx) =>
+            tx.tenantMembership.findMany({
+              where: {
+                tenantId: tenantContext.tenantId,
+                role: { in: ['OWNER', 'MANAGER', 'ACCOUNTANT'] },
+                status: 'ACTIVE',
+              },
+              select: { userId: true },
+            }),
+        );
 
         for (const m of managers) {
           await notifService.createNotification({
             userId: m.userId,
+            senderUserId: tenantContext.actorUserId,
             tenantId: tenantContext.tenantId,
             type: 'EXPENSE_APPROVAL',
             title: 'طلب اعتماد مصروف تدريبي جديد',
@@ -913,6 +918,7 @@ export class FinanceService {
         const notifService = this.notificationsService;
         await notifService.createNotification({
           userId: result.recordedByUserId,
+          senderUserId: tenantContext.actorUserId,
           tenantId: tenantContext.tenantId,
           type: 'EXPENSE_APPROVAL',
           title: 'تم اعتماد المصروف التدريبي',
@@ -1004,6 +1010,7 @@ export class FinanceService {
         const notifService = this.notificationsService;
         await notifService.createNotification({
           userId: result.recordedByUserId,
+          senderUserId: tenantContext.actorUserId,
           tenantId: tenantContext.tenantId,
           type: 'EXPENSE_APPROVAL',
           title: 'تم رفض طلب المصروف التدريبي',

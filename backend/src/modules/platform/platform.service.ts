@@ -4,6 +4,7 @@ import {
   Logger,
   NotFoundException,
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   ServiceUnavailableException,
   Optional,
@@ -42,11 +43,30 @@ import {
   type ApplicationStatus,
 } from '@academy/shared';
 import { HealthService } from '../health/health.service';
-import { invalidateUserSessions } from '../auth/session-invalidation';
+import { databaseFunctionErrorCode, singleRow } from '../../common/db-function-error';
 import { NotificationsService } from '../notifications/notifications.service';
 import { EmailService } from '../email/email.service';
 import { RedisService } from '../redis/redis.service';
 import { PlatformMetricsService } from './platform-metrics.service';
+
+const PLATFORM_FUNCTION_MESSAGES = {
+  PLATFORM_ADMIN_REQUIRED: 'Platform administrator privileges are required',
+  PLATFORM_OWNER_REQUIRED: 'Only a Platform Owner can perform this action',
+  LAST_PLATFORM_OWNER: 'Cannot remove or suspend the last active platform owner',
+  USER_NOT_FOUND: 'Target user not found',
+  APPLICATION_NOT_FOUND: 'Academy application not found',
+  ACADEMY_NOT_FOUND: 'Academy not found',
+  APPLICATION_ALREADY_APPROVED: 'Application has already been approved and provisioned',
+  APPLICATION_NOT_REVIEWABLE: 'A rejected application cannot be approved',
+  CONFIRMATION_SLUG_MISMATCH: 'Confirmation slug does not match the academy',
+  ACADEMY_HAS_HISTORY:
+    'Academies with players, attendance or financial history can only be archived',
+  PLATFORM_ROLE_INVALID: 'Unknown platform role',
+  EMAIL_INVALID: 'A valid e-mail address is required',
+  NAME_INVALID: 'A name of at most 120 characters is required',
+} as const;
+type PlatformFunctionError = keyof typeof PLATFORM_FUNCTION_MESSAGES;
+const PLATFORM_FUNCTION_ERRORS = Object.keys(PLATFORM_FUNCTION_MESSAGES) as PlatformFunctionError[];
 
 @Injectable()
 export class PlatformService {
@@ -61,6 +81,48 @@ export class PlatformService {
     @Inject(PlatformMetricsService) private readonly metricsService: PlatformMetricsService,
     @Optional() @Inject(RedisService) private readonly redisService?: RedisService,
   ) {}
+
+  /**
+   * Runs a Phase 3A.2 platform definer function and maps the codes it raises (it re-checks the platform rules in the
+   * database) to the API's usual HTTP errors. Unknown errors are re-thrown unchanged.
+   */
+  private async callPlatformFunction<T>(call: () => Promise<T>): Promise<T> {
+    try {
+      return await call();
+    } catch (err) {
+      const code = databaseFunctionErrorCode(err, PLATFORM_FUNCTION_ERRORS);
+      if (code === 'PLATFORM_ADMIN_REQUIRED' || code === 'PLATFORM_OWNER_REQUIRED') {
+        throw new ForbiddenException({
+          code: ErrorCode.FORBIDDEN,
+          message: PLATFORM_FUNCTION_MESSAGES[code],
+        });
+      }
+      if (
+        code === 'USER_NOT_FOUND' ||
+        code === 'APPLICATION_NOT_FOUND' ||
+        code === 'ACADEMY_NOT_FOUND'
+      ) {
+        throw new NotFoundException({
+          code: ErrorCode.NOT_FOUND,
+          message: PLATFORM_FUNCTION_MESSAGES[code],
+        });
+      }
+      if (code) {
+        throw new BadRequestException({
+          code: ErrorCode.VALIDATION_FAILED,
+          message: PLATFORM_FUNCTION_MESSAGES[code],
+        });
+      }
+      const message = String((err as { message?: unknown })?.message ?? '');
+      if (/duplicate key|23505/.test(message)) {
+        throw new ConflictException({
+          code: ErrorCode.CONFLICT,
+          message: 'A record with the same unique value (e-mail or academy slug) already exists',
+        });
+      }
+      throw err;
+    }
+  }
 
   /**
    * Retrieves high-level SaaS platform metrics for Super Administrators.
@@ -349,7 +411,10 @@ export class PlatformService {
         tenant._count.players > 0;
 
       if (dto.permanent && !hasHistory) {
-        await tx.tenant.delete({ where: { id: academyId } });
+        await this.callPlatformFunction(
+          () =>
+            tx.$queryRaw`SELECT public.platform_delete_academy(${academyId}::uuid, ${dto.confirmationSlug})`,
+        );
 
         await this.auditService.logEvent({
           actorUserId,
@@ -515,8 +580,13 @@ export class PlatformService {
         }
       }
 
-      // K13b: bump the session version first, then revoke refresh tokens - access tokens die immediately too.
-      const { revokedCount } = await invalidateUserSessions(tx, targetUserId);
+      // K13b in the database: platform_revoke_user_sessions bumps the session version first (row lock), then revokes
+      // the refresh tokens, and re-checks the platform rules (admin; another owner's sessions need an owner).
+      const revokedCount = await this.callPlatformFunction(async () => {
+        const rows = await tx.$queryRaw<Array<{ count: number }>>`
+          SELECT public.platform_revoke_user_sessions(${targetUserId}::uuid) AS count`;
+        return Number(singleRow(rows).count);
+      });
       const res = { count: revokedCount };
 
       await this.auditService.logEvent({
@@ -578,36 +648,18 @@ export class PlatformService {
         }
       }
 
-      const dataToUpdate: {
-        mustResetPassword?: boolean;
-        isSuspended?: boolean;
-        suspendedReason?: string | null;
-      } = {};
-
-      if (typeof dto.mustResetPassword === 'boolean') {
-        dataToUpdate.mustResetPassword = dto.mustResetPassword;
-      }
-      if (typeof dto.isSuspended === 'boolean') {
-        dataToUpdate.isSuspended = dto.isSuspended;
-        dataToUpdate.suspendedReason = dto.isSuspended
-          ? (dto.reason ?? 'Suspended by Super Admin')
-          : null;
-      }
-      const suspending = dto.isSuspended === true;
-
-      // K13b: suspension bumps the session version in the same UPDATE (row lock first), then revokes refresh
-      // tokens, so every access token of the suspended user is rejected on its next request.
-      await tx.user.update({
-        where: { id: targetUserId },
-        data: suspending ? { ...dataToUpdate, sessionVersion: { increment: 1 } } : dataToUpdate,
-        select: { id: true },
-      });
-      if (suspending) {
-        await tx.refreshToken.updateMany({
-          where: { userId: targetUserId, isRevoked: false },
-          data: { isRevoked: true },
-        });
-      }
+      // platform_update_user_security writes the flags (the runtime role has no UPDATE on them, S6) and re-checks the
+      // rules above in the database. K13b: suspension bumps the session version (row lock first), then revokes the
+      // refresh tokens, so every access token of the suspended user is rejected on its next request.
+      const mustResetPassword =
+        typeof dto.mustResetPassword === 'boolean' ? dto.mustResetPassword : null;
+      const isSuspended = typeof dto.isSuspended === 'boolean' ? dto.isSuspended : null;
+      await this.callPlatformFunction(
+        () => tx.$queryRaw`
+          SELECT * FROM public.platform_update_user_security(
+            ${targetUserId}::uuid, ${mustResetPassword}::boolean, ${isSuspended}::boolean, ${dto.reason ?? null}
+          )`,
+      );
 
       const updated = await tx.user.findUniqueOrThrow({
         where: { id: targetUserId },
@@ -859,19 +911,19 @@ export class PlatformService {
       const grantedAt = new Date();
       const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour session
 
-      const auditEvent = await tx.auditLog.create({
-        data: {
-          tenantId: academyId,
-          actorUserId,
-          action: 'PLATFORM_SUPPORT_SESSION_STARTED',
-          resourceType: 'Tenant',
-          resourceId: academyId,
-          metadata: {
-            reason: dto.reason,
-            grantedAt: grantedAt.toISOString(),
-            expiresAt: expiresAt.toISOString(),
-            scope: 'READ_ONLY_SUPPORT',
-          },
+      // The audit entry is the grant itself: written through append_audit_log for the academy (platform admins may be
+      // recorded for any tenant) and the request fails if it cannot be written.
+      const auditLogId = await this.auditService.recordEvent({
+        tenantId: academyId,
+        actorUserId,
+        action: 'PLATFORM_SUPPORT_SESSION_STARTED',
+        resourceType: 'Tenant',
+        resourceId: academyId,
+        metadata: {
+          reason: dto.reason,
+          grantedAt: grantedAt.toISOString(),
+          expiresAt: expiresAt.toISOString(),
+          scope: 'READ_ONLY_SUPPORT',
         },
       });
 
@@ -882,7 +934,7 @@ export class PlatformService {
         reason: dto.reason,
         grantedAt: grantedAt.toISOString(),
         expiresAt: expiresAt.toISOString(),
-        auditLogId: auditEvent.id,
+        auditLogId,
       };
     });
   }
@@ -1094,29 +1146,28 @@ export class PlatformService {
         });
       }
 
-      let user = await tx.user.findUnique({ where: { email } });
-
-      if (user) {
-        user = await tx.user.update({
-          where: { id: user.id },
-          data: {
-            isPlatformSuperAdmin: true,
-            isPlatformOwner: isCoOwner ? true : user.isPlatformOwner,
-          },
-        });
+      // Privileged flags are written only by the definer functions (S6); both require a platform owner.
+      const existing = await tx.user.findUnique({
+        where: { email },
+        select: { id: true, isPlatformOwner: true },
+      });
+      let userId: string;
+      if (existing) {
+        const role = isCoOwner || existing.isPlatformOwner ? 'PLATFORM_OWNER' : 'SUPER_ADMIN';
+        await this.callPlatformFunction(
+          () =>
+            tx.$queryRaw`SELECT * FROM public.platform_set_user_platform_role(${existing.id}::uuid, ${role})`,
+        );
+        userId = existing.id;
       } else {
         isNewUser = true;
-        user = await tx.user.create({
-          data: {
-            email,
-            name: dto.name.trim(),
-            passwordHash: 'INVITED_PENDING_ACTIVATION',
-            isPlatformSuperAdmin: true,
-            isPlatformOwner: isCoOwner,
-            mustResetPassword: true,
-          },
+        userId = await this.callPlatformFunction(async () => {
+          const rows = await tx.$queryRaw<Array<{ id: string }>>`
+            SELECT public.platform_create_user(${email}, ${dto.name.trim()}, NULL, true, ${isCoOwner})::text AS id`;
+          return singleRow(rows).id;
         });
       }
+      const user = await tx.user.findUniqueOrThrow({ where: { id: userId } });
 
       return {
         userId: user.id,
@@ -1159,6 +1210,7 @@ export class PlatformService {
 
     await this.notificationsService.createNotification({
       userId: result.userId,
+      senderUserId: actorUserId,
       type: 'SECURITY',
       title: isCoOwner ? 'Platform Co-Owner Access Granted' : 'Platform Super Admin Access Granted',
       body: isCoOwner
@@ -1243,31 +1295,12 @@ export class PlatformService {
         }
       }
 
-      let isPlatformSuperAdmin = true;
-      let isPlatformOwner = false;
-
-      if (dto.role === 'PLATFORM_OWNER') {
-        isPlatformSuperAdmin = true;
-        isPlatformOwner = true;
-      } else if (dto.role === 'SUPER_ADMIN') {
-        isPlatformSuperAdmin = true;
-        isPlatformOwner = false;
-      } else if (dto.role === 'REVOKE') {
-        isPlatformSuperAdmin = false;
-        isPlatformOwner = false;
-      }
-
-      await tx.user.update({
-        where: { id: targetUserId },
-        data: { isPlatformSuperAdmin, isPlatformOwner },
-      });
-
-      if (dto.role === 'REVOKE') {
-        await tx.refreshToken.updateMany({
-          where: { userId: targetUserId, isRevoked: false },
-          data: { isRevoked: true },
-        });
-      }
+      // platform_set_user_platform_role writes the flags (S6), re-checks owner-only and last-owner protection in the
+      // database, and ends the user's sessions on any demotion (K13b), including REVOKE as before.
+      await this.callPlatformFunction(
+        () =>
+          tx.$queryRaw`SELECT * FROM public.platform_set_user_platform_role(${targetUserId}::uuid, ${dto.role})`,
+      );
 
       await this.auditService.logEvent({
         actorUserId,
@@ -1308,7 +1341,7 @@ export class PlatformService {
 
     const tenantId = dto.tenantId;
 
-    return this.prisma.withPlatformAdminTransaction({ actorUserId }, async (tx) => {
+    const invited = await this.prisma.withPlatformAdminTransaction({ actorUserId }, async (tx) => {
       const tenant = await tx.tenant.findUnique({ where: { id: tenantId } });
       if (!tenant) {
         throw new NotFoundException({
@@ -1321,16 +1354,16 @@ export class PlatformService {
       let user = await tx.user.findUnique({ where: { email } });
 
       if (!user) {
-        user = await tx.user.create({
-          data: {
-            email,
-            name: dto.name.trim(),
-            phone: dto.phone ?? null,
-            passwordHash: 'INVITED_PENDING_ACTIVATION',
-            mustResetPassword: true,
-          },
+        const newUserId = await this.callPlatformFunction(async () => {
+          const rows = await tx.$queryRaw<Array<{ id: string }>>`
+            SELECT public.platform_create_user(${email}, ${dto.name.trim()}, ${dto.phone ?? null}, false, false)::text AS id`;
+          return singleRow(rows).id;
         });
+        user = await tx.user.findUniqueOrThrow({ where: { id: newUserId } });
       }
+
+      // Memberships are tenant rows: RLS accepts their insert/update only under that tenant's context.
+      await tx.$executeRaw`SELECT set_config('app.tenant_id', ${tenantId}, true)`;
 
       const existingMembership = await tx.tenantMembership.findFirst({
         where: { tenantId, userId: user.id },
@@ -1363,21 +1396,30 @@ export class PlatformService {
         metadata: { email, role: dto.role, tenantId },
       });
 
+      return { tenantName: tenant.name, userId: user.id };
+    });
+
+    // After commit: the notification function verifies that the recipient is a member of the academy, which only
+    // the committed membership proves. A notification failure never undoes the invitation.
+    try {
       await this.notificationsService.createNotification({
-        userId: user.id,
+        userId: invited.userId,
+        senderUserId: actorUserId,
         tenantId,
         type: 'SYSTEM',
-        title: `Invited to ${tenant.name}`,
-        body: `You have been added to ${tenant.name} with the role of ${dto.role}.`,
+        title: `Invited to ${invited.tenantName}`,
+        body: `You have been added to ${invited.tenantName} with the role of ${dto.role}.`,
         href: '/dashboard',
       });
+    } catch (e) {
+      this.logger.warn(`Failed to notify the invited user: ${(e as Error)?.message}`);
+    }
 
-      return {
-        success: true,
-        message: `User invited to ${tenant.name} successfully`,
-        userId: user.id,
-      };
-    });
+    return {
+      success: true,
+      message: `User invited to ${invited.tenantName} successfully`,
+      userId: invited.userId,
+    };
   }
 
   /**
@@ -1446,67 +1488,44 @@ export class PlatformService {
         });
       }
 
-      let provisionedTenantId: string | null = application.provisionedTenantId;
-
-      if (dto.status === 'APPROVED') {
-        const tenant = await tx.tenant.create({
-          data: {
-            name: application.academyName,
-            slug: application.academySlug,
-            currency: 'EGP',
-            timezone: 'Africa/Cairo',
-            status: 'ACTIVE',
-            branches: {
-              create: {
-                name: 'الفرع الرئيسي',
-                code: 'MAIN',
-                status: 'ACTIVE',
-              },
-            },
-            memberships: {
-              create: {
-                userId: application.applicantUserId,
-                role: 'OWNER',
-                status: 'ACTIVE',
-              },
-            },
-          },
-        });
-
-        provisionedTenantId = tenant.id;
-
-        const plan = await tx.saaSPlan.findFirst({
-          where: { code: dto.initialPlanCode as any, isActive: true },
-        });
-
-        const renewalDate = new Date();
-        renewalDate.setMonth(renewalDate.getMonth() + 1);
-
-        await tx.tenantSubscription.create({
-          data: {
-            tenantId: tenant.id,
-            planCode: (plan?.code ?? 'STARTER') as any,
-            status: 'ACTIVE',
-            billingCycle: 'MONTHLY',
-            negotiatedPrice: plan?.priceMonthly ?? null,
-            currency: 'EGP',
-            renewalDate,
-            autoRenew: true,
-          },
+      // Owner decision B7: only PENDING_REVIEW or MORE_INFO_REQUESTED applications can be approved.
+      if (dto.status === 'APPROVED' && application.status === 'REJECTED') {
+        throw new BadRequestException({
+          code: ErrorCode.VALIDATION_FAILED,
+          message: 'A rejected application cannot be approved',
         });
       }
 
-      const updated = await tx.academyApplication.update({
-        where: { id: applicationId },
-        data: {
-          status: dto.status as any,
-          reviewNotes: dto.reviewNotes?.trim() ?? null,
-          reviewedByUserId: actorUserId,
-          reviewedAt: new Date(),
-          provisionedTenantId,
-        },
-        include: { applicant: { select: { name: true } } },
-      });
+      let provisionedTenantId: string | null = application.provisionedTenantId;
+
+      if (dto.status === 'APPROVED') {
+        // One definer function provisions the academy atomically (tenant, main branch, OWNER membership, subscription)
+        // and marks the application APPROVED; the runtime role has no INSERT on tenants.
+        provisionedTenantId = await this.callPlatformFunction(async () => {
+          const rows = await tx.$queryRaw<Array<{ id: string }>>`
+            SELECT public.platform_approve_academy_application(
+              ${applicationId}::uuid, ${dto.initialPlanCode ?? null}, ${dto.reviewNotes ?? null}
+            )::text AS id`;
+          return singleRow(rows).id;
+        });
+      }
+
+      const updated =
+        dto.status === 'APPROVED'
+          ? await tx.academyApplication.findUniqueOrThrow({
+              where: { id: applicationId },
+              include: { applicant: { select: { name: true } } },
+            })
+          : await tx.academyApplication.update({
+              where: { id: applicationId },
+              data: {
+                status: dto.status as any,
+                reviewNotes: dto.reviewNotes?.trim() ?? null,
+                reviewedByUserId: actorUserId,
+                reviewedAt: new Date(),
+              },
+              include: { applicant: { select: { name: true } } },
+            });
 
       await this.auditService.logEvent({
         actorUserId,
@@ -1551,6 +1570,7 @@ export class PlatformService {
       if (dto.status === 'APPROVED') {
         await this.notificationsService.createNotification({
           userId: result.applicantUserId,
+          senderUserId: actorUserId,
           tenantId: result.provisionedTenantId ?? undefined,
           type: 'ACADEMY_APPLICATION',
           title: 'Academy Approved & Ready',
@@ -1576,6 +1596,7 @@ export class PlatformService {
       } else if (dto.status === 'REJECTED') {
         await this.notificationsService.createNotification({
           userId: result.applicantUserId,
+          senderUserId: actorUserId,
           type: 'ACADEMY_APPLICATION',
           title: 'Academy Application Update',
           body: `Your application for "${result.academyName}" was reviewed: ${dto.reviewNotes ?? 'Application not approved.'}`,
@@ -1599,6 +1620,7 @@ export class PlatformService {
       } else if (dto.status === 'MORE_INFO_REQUESTED') {
         await this.notificationsService.createNotification({
           userId: result.applicantUserId,
+          senderUserId: actorUserId,
           type: 'ACADEMY_APPLICATION',
           title: 'Additional Information Required',
           body: `Additional details required for "${result.academyName}": ${dto.reviewNotes ?? ''}`,

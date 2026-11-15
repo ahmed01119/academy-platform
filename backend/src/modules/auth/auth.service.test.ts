@@ -49,7 +49,6 @@ interface MockToken {
   revokeRefreshToken: MockFn;
   revokeFamily: MockFn;
   revokeAllUserTokens: MockFn;
-  invalidateAllSessions: MockFn;
 }
 
 interface MockRedis {
@@ -60,6 +59,11 @@ interface MockRedis {
 
 interface MockAudit {
   logEvent: MockFn;
+}
+
+/** The SQL text of a tagged-template $queryRaw / $executeRaw mock call, for asserting which function was called. */
+function sqlText(call: unknown[] | undefined): string {
+  return ((call?.[0] ?? []) as string[]).join('?');
 }
 
 describe('AuthService', () => {
@@ -129,7 +133,6 @@ describe('AuthService', () => {
       revokeRefreshToken: vi.fn(),
       revokeFamily: vi.fn(),
       revokeAllUserTokens: vi.fn(),
-      invalidateAllSessions: vi.fn(),
     };
 
     mockRedis = {
@@ -185,28 +188,28 @@ describe('AuthService', () => {
       ).rejects.toThrow(ConflictException);
     });
 
+    /** Routes the register flow's raw queries by their SQL text. */
+    const routeRegisterQueries = (slugTaken: boolean[] = []) => {
+      mockPrisma.$queryRaw.mockImplementation((strings: TemplateStringsArray) => {
+        const sql = strings.join('?');
+        if (sql.includes('academy_slug_in_use'))
+          return Promise.resolve([{ in_use: slugTaken.shift() ?? false }]);
+        if (sql.includes('INSERT INTO public.users')) return Promise.resolve([{ id: 'user-1' }]);
+        if (sql.includes('INSERT INTO public.academy_applications'))
+          return Promise.resolve([{ id: 'app-1' }]);
+        return Promise.resolve([]);
+      });
+    };
+    const callsMatching = (text: string) =>
+      mockPrisma.$queryRaw.mock.calls.filter((c: unknown[]) => sqlText(c).includes(text));
+
     it('registers new user, creates academy application in PENDING_REVIEW, and dispatches confirmation email', async () => {
       mockPrisma.user.findUnique.mockResolvedValue(null);
-      mockPrisma.user.create.mockResolvedValue({
-        id: 'user-1',
-        email: 'captain@example.com',
-        name: 'Captain Tsubasa',
-        phone: '+201000000001',
-        isEmailVerified: false,
-        createdAt: new Date(),
-      });
-      mockPrisma.academyApplication.create.mockResolvedValue({
-        id: 'app-1',
-        applicantUserId: 'user-1',
-        academyName: 'Nankatsu SC',
-        academySlug: 'nankatsu-sc',
-        sport: 'FOOTBALL',
-        status: 'PENDING_REVIEW',
-      });
+      routeRegisterQueries();
 
       const result = await authService.register({
         name: 'Captain Tsubasa',
-        email: 'captain@example.com',
+        email: 'Captain@Example.com',
         password: 'Password123!',
         academyName: 'Nankatsu SC',
         sport: 'FOOTBALL',
@@ -216,23 +219,34 @@ describe('AuthService', () => {
       expect(result.response.applicationId).toBe('app-1');
       expect(result.response.academyName).toBe('Nankatsu SC');
 
-      expect(mockPrisma.user.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            email: 'captain@example.com',
-            name: 'Captain Tsubasa',
-          }),
-        }),
+      // Phase 3A.2: both inserts name only the columns the runtime role may write; status and is_email_verified come
+      // from the database defaults (Prisma's create() would send them and be refused).
+      const [userInsert] = callsMatching('INSERT INTO public.users');
+      expect(sqlText(userInsert)).toContain(
+        '(id, email, password_hash, name, phone, created_at, updated_at)',
       );
+      expect(sqlText(userInsert)).not.toContain('is_email_verified');
+      expect(userInsert?.slice(1, 4)).toEqual([
+        'captain@example.com',
+        'argon2id$mock$hash',
+        'Captain Tsubasa',
+      ]);
+      const [applicationInsert] = callsMatching('INSERT INTO public.academy_applications');
+      expect(sqlText(applicationInsert)).not.toMatch(/\bstatus\b/);
+      expect(applicationInsert?.slice(1, 4)).toEqual(['user-1', 'Nankatsu SC', 'nankatsu-sc']);
+      expect(mockPrisma.user.create).not.toHaveBeenCalled();
+      expect(mockPrisma.academyApplication.create).not.toHaveBeenCalled();
 
-      expect(mockPrisma.academyApplication.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            applicantUserId: 'user-1',
-            academyName: 'Nankatsu SC',
-            status: 'PENDING_REVIEW',
-          }),
-        }),
+      // The applicant is the transaction's actor before the application insert (RLS academy_applications_insert).
+      const actorCall = mockPrisma.$executeRaw.mock.calls.find((c: unknown[]) =>
+        sqlText(c).includes("set_config('app.actor_user_id'"),
+      );
+      expect(actorCall?.[1]).toBe('user-1');
+      const applicationInsertIndex = applicationInsert
+        ? mockPrisma.$queryRaw.mock.calls.indexOf(applicationInsert)
+        : -1;
+      expect(mockPrisma.$executeRaw.mock.invocationCallOrder[0]).toBeLessThan(
+        mockPrisma.$queryRaw.mock.invocationCallOrder[applicationInsertIndex] ?? 0,
       );
 
       expect(mockAudit.logEvent).toHaveBeenCalledWith(
@@ -245,26 +259,7 @@ describe('AuthService', () => {
 
     it('resolves slug collision by appending numeric suffix', async () => {
       mockPrisma.user.findUnique.mockResolvedValue(null);
-      mockPrisma.tenant.findUnique
-        .mockResolvedValueOnce({ id: 'existing-tenant', slug: 'nankatsu-sc' })
-        .mockResolvedValueOnce(null);
-
-      mockPrisma.user.create.mockResolvedValue({
-        id: 'user-1',
-        email: 'captain@example.com',
-        name: 'Captain Tsubasa',
-        phone: null,
-        isEmailVerified: false,
-        createdAt: new Date(),
-      });
-
-      mockPrisma.academyApplication.create.mockResolvedValue({
-        id: 'app-2',
-        applicantUserId: 'user-1',
-        academyName: 'Nankatsu SC',
-        academySlug: 'nankatsu-sc-1',
-        status: 'PENDING_REVIEW',
-      });
+      routeRegisterQueries([true, false]); // the first candidate is taken, the suffixed one is free
 
       const result = await authService.register({
         name: 'Captain Tsubasa',
@@ -275,7 +270,30 @@ describe('AuthService', () => {
       });
 
       expect(result.response.status).toBe('PENDING_REVIEW');
-      expect(mockPrisma.tenant.findUnique).toHaveBeenCalledTimes(2);
+      expect(callsMatching('academy_slug_in_use').map((c: unknown[]) => c[1])).toEqual([
+        'nankatsu-sc',
+        'nankatsu-sc-1',
+      ]);
+      expect(callsMatching('INSERT INTO public.academy_applications')[0]?.[3]).toBe(
+        'nankatsu-sc-1',
+      );
+    });
+
+    it('maps a concurrent duplicate e-mail to 409', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue(null);
+      routeRegisterQueries();
+      mockPrisma.$transaction.mockRejectedValueOnce(
+        new Error('duplicate key value violates unique constraint "users_email_key"'),
+      );
+      await expect(
+        authService.register({
+          name: 'Captain Tsubasa',
+          email: 'captain@example.com',
+          password: 'Password123!',
+          academyName: 'Nankatsu SC',
+          sport: 'FOOTBALL',
+        }),
+      ).rejects.toThrow(ConflictException);
     });
   });
 
@@ -676,8 +694,8 @@ describe('AuthService', () => {
         isPlatformOwner: false,
       });
       mockPassword.verify.mockResolvedValue(true);
-      mockPassword.hash.mockResolvedValue('new-hash');
-      mockToken.invalidateAllSessions.mockResolvedValue(6);
+      mockPassword.hash.mockResolvedValue('$argon2id$new-hash');
+      mockPrisma.$queryRaw.mockResolvedValue([{ version: 6 }]);
 
       const result = await authService.changePassword(
         'u-1',
@@ -686,9 +704,15 @@ describe('AuthService', () => {
         'agent',
       );
 
-      expect(mockToken.invalidateAllSessions).toHaveBeenCalledWith(expect.anything(), 'u-1', {
-        passwordHash: 'new-hash',
-      });
+      // change_own_password runs with this user as the transaction's actor and receives only the new hash.
+      const actorCall = mockPrisma.$executeRaw.mock.calls.find((c: unknown[]) =>
+        sqlText(c).includes("set_config('app.actor_user_id'"),
+      );
+      expect(actorCall?.[1]).toBe('u-1');
+      const changeCall = mockPrisma.$queryRaw.mock.calls.find((c: unknown[]) =>
+        sqlText(c).includes('public.change_own_password'),
+      );
+      expect(changeCall?.slice(1)).toEqual(['$argon2id$new-hash']);
       const call = mockToken.generateTokens.mock.calls[0] as unknown[];
       expect(call[0]).toBe('u-1');
       expect(call[8]).toBe(6); // the new session version
@@ -705,7 +729,11 @@ describe('AuthService', () => {
           newPassword: 'New-Password-2!',
         }),
       ).rejects.toThrow(BadRequestException);
-      expect(mockToken.invalidateAllSessions).not.toHaveBeenCalled();
+      expect(
+        mockPrisma.$queryRaw.mock.calls.some((c: unknown[]) =>
+          sqlText(c).includes('public.change_own_password'),
+        ),
+      ).toBe(false);
       expect(mockToken.generateTokens).not.toHaveBeenCalled();
     });
   });

@@ -2,6 +2,7 @@ import * as crypto from 'crypto';
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Inject,
   Injectable,
   Logger,
@@ -11,6 +12,7 @@ import { PrismaService } from '../database/prisma.service';
 import { PasswordService } from './password.service';
 import { TokenService, type GeneratedTokens } from './token.service';
 import { rateLimitIpKey } from '../../common/client-ip';
+import { databaseFunctionErrorCode, singleRow } from '../../common/db-function-error';
 import { RedisService } from '../redis/redis.service';
 import { AuditService } from '../audit/audit.service';
 import { AppConfigService } from '../../config/app-config.service';
@@ -74,6 +76,12 @@ export class AuthService {
     @Inject(NotificationsService) private readonly notificationsService: NotificationsService,
   ) {}
 
+  private async isAcademySlugInUse(slug: string): Promise<boolean> {
+    const rows = await this.prisma.$queryRaw<Array<{ in_use: boolean }>>`
+      SELECT public.academy_slug_in_use(${slug}) AS in_use`;
+    return singleRow(rows).in_use === true;
+  }
+
   private slugify(text: string): string {
     return text
       .toLowerCase()
@@ -107,46 +115,54 @@ export class AuthService {
     let finalSlug = slugBase;
     let counter = 1;
 
-    while (
-      (await this.prisma.tenant.findUnique({ where: { slug: finalSlug } })) ||
-      (await this.prisma.academyApplication.findFirst({
-        where: { academySlug: finalSlug, status: { in: ['PENDING_REVIEW', 'APPROVED'] } },
-      }))
-    ) {
+    // academy_slug_in_use (definer function) answers availability without exposing tenants or other applications to
+    // this anonymous request; it also reserves slugs of MORE_INFO_REQUESTED applications (decision B3).
+    while (await this.isAcademySlugInUse(finalSlug)) {
       finalSlug = `${slugBase}-${counter++}`;
     }
 
-    const result = await this.prisma.$transaction(async (tx) => {
-      const user = await tx.user.create({
-        data: {
-          email,
-          passwordHash,
-          name: dto.name.trim(),
-          phone: dto.phone?.trim() ?? null,
-          isEmailVerified: false,
-        },
+    const rawSport = (dto.sport as string) || 'FOOTBALL';
+    const applicationSport = rawSport === 'FOOTBALL' ? 'FOOTBALL' : 'FOOTBALL';
+    const initialNotes = rawSport !== 'FOOTBALL' ? `Sport: ${rawSport}` : null;
+    const academyName = dto.academyName.trim();
+
+    // Both inserts name their columns explicitly. The runtime database role may insert only the 7 registration columns
+    // of users and the applicant columns of academy_applications (Phase 3A.2); Prisma's create() would also send every
+    // column that has a default (is_email_verified, session_version, the platform flags, status), which the database
+    // correctly refuses. Defaults therefore come from the database.
+    let result: { user: { id: string }; application: { id: string; academyName: string } };
+    try {
+      result = await this.prisma.$transaction(async (tx) => {
+        const userRows = await tx.$queryRaw<Array<{ id: string }>>`
+          INSERT INTO public.users (id, email, password_hash, name, phone, created_at, updated_at)
+          VALUES (gen_random_uuid(), ${email}, ${passwordHash}, ${dto.name.trim()}, ${dto.phone?.trim() ?? null}, now(), now())
+          RETURNING id::text AS id`;
+        const user = singleRow(userRows);
+
+        // The applicant becomes the transaction's actor: RLS academy_applications_insert accepts only the actor's own
+        // PENDING_REVIEW application (the status default), with empty review fields.
+        await tx.$executeRaw`SELECT set_config('app.actor_user_id', ${user.id}, true)`;
+        const applicationRows = await tx.$queryRaw<Array<{ id: string }>>`
+          INSERT INTO public.academy_applications (
+            id, applicant_user_id, academy_name, academy_slug, sport, city, contact_email, contact_phone, notes,
+            created_at, updated_at
+          )
+          VALUES (
+            gen_random_uuid(), ${user.id}::uuid, ${academyName}, ${finalSlug}, ${applicationSport}::"SportCode",
+            ${dto.city?.trim() ?? null}, ${email}, ${dto.phone?.trim() ?? null}, ${initialNotes}, now(), now()
+          )
+          RETURNING id::text AS id`;
+        return { user, application: { id: singleRow(applicationRows).id, academyName } };
       });
-
-      const rawSport = (dto.sport as string) || 'FOOTBALL';
-      const applicationSport = rawSport === 'FOOTBALL' ? 'FOOTBALL' : 'FOOTBALL';
-      const initialNotes = rawSport !== 'FOOTBALL' ? `Sport: ${rawSport}` : null;
-
-      const application = await tx.academyApplication.create({
-        data: {
-          applicantUserId: user.id,
-          academyName: dto.academyName.trim(),
-          academySlug: finalSlug,
-          sport: applicationSport as any,
-          city: dto.city?.trim() ?? null,
-          contactEmail: email,
-          contactPhone: dto.phone?.trim() ?? null,
-          notes: initialNotes,
-          status: 'PENDING_REVIEW',
-        },
-      });
-
-      return { user, application };
-    });
+    } catch (err) {
+      if (/users_email_key|duplicate key/.test(String((err as Error)?.message))) {
+        throw new ConflictException({
+          code: ErrorCode.EMAIL_ALREADY_EXISTS,
+          message: 'An account with this email address already exists',
+        });
+      }
+      throw err;
+    }
 
     // Notify Super Admins & Platform Owners
     try {
@@ -161,6 +177,7 @@ export class AuthService {
       for (const admin of platformStaff) {
         await this.notificationsService.createNotification({
           userId: admin.id,
+          senderUserId: result.user.id,
           type: 'ACADEMY_APPLICATION',
           title: 'New Academy Application',
           body: `"${dto.academyName}" submitted a registration application for review.`,
@@ -285,10 +302,21 @@ export class AuthService {
 
     // Enforce approval & tenant status gating
     if (!user.isPlatformSuperAdmin && !user.isPlatformOwner && userMemberships.length === 0) {
-      const application = await this.prisma.academyApplication.findFirst({
-        where: { applicantUserId: user.id },
-        orderBy: { createdAt: 'desc' },
-      });
+      // Actor context (password already verified): RLS shows the user's own applications and join requests of every
+      // status, so pending, more-info and rejected applicants are all gated.
+      const { application, joinRequest } = await this.prisma.withAuthLookupTransaction(
+        { actorUserId: user.id },
+        async (tx) => ({
+          application: await tx.academyApplication.findFirst({
+            where: { applicantUserId: user.id },
+            orderBy: { createdAt: 'desc' },
+          }),
+          joinRequest: await tx.playerRegistrationRequest.findFirst({
+            where: { applicantUserId: user.id },
+            orderBy: { createdAt: 'desc' },
+          }),
+        }),
+      );
       if (application) {
         if (
           application.status === 'PENDING_REVIEW' ||
@@ -307,10 +335,6 @@ export class AuthService {
           });
         }
       }
-      const joinRequest = await this.prisma.playerRegistrationRequest.findFirst({
-        where: { applicantUserId: user.id },
-        orderBy: { createdAt: 'desc' },
-      });
       if (joinRequest) {
         if (joinRequest.status === 'PENDING_REVIEW') {
           throw new UnauthorizedException({
@@ -688,7 +712,7 @@ export class AuthService {
           ${passwordHash}
         )
       `;
-      const userId = rows[0]?.complete_password_reset_for_email;
+      const userId = singleRow(rows).complete_password_reset_for_email;
       if (!userId) throw invalidResetError();
       await this.redisService.resetRateLimit(resetCodeAttemptsKey(email));
       return userId;
@@ -714,7 +738,7 @@ export class AuthService {
       const rows = await this.prisma.$queryRaw<Array<{ complete_password_reset_by_link: string }>>`
         SELECT public.complete_password_reset_by_link(${tokenHash}, ${passwordHash})
       `;
-      const userId = rows[0]?.complete_password_reset_by_link;
+      const userId = singleRow(rows).complete_password_reset_by_link;
       if (userId) return userId;
     } catch (err) {
       if (!isInvalidResetTokenError(err)) throw err;
@@ -724,7 +748,7 @@ export class AuthService {
       const rows = await this.prisma.$queryRaw<Array<{ complete_password_reset: string }>>`
         SELECT public.complete_password_reset(${tokenHash}, ${passwordHash})
       `;
-      const userId = rows[0]?.complete_password_reset;
+      const userId = singleRow(rows).complete_password_reset;
       if (userId) return userId;
     } catch (err) {
       if (!isInvalidResetTokenError(err)) throw err;
@@ -747,7 +771,7 @@ export class AuthService {
         SELECT public.verify_user_email(${tokenHash})
       `;
 
-      const userId = rows[0]?.verify_user_email;
+      const userId = singleRow(rows).verify_user_email;
       if (!userId) {
         throw new BadRequestException({
           code: ErrorCode.TOKEN_INVALID,
@@ -931,13 +955,26 @@ export class AuthService {
     }
 
     const newHash = await this.passwordService.hash(dto.newPassword);
-    // K13/K13b in one transaction: the new hash and the session-version bump are written first (taking the user row
-    // lock that serialises against refresh rotation), all refresh tokens are revoked, and this device receives new
-    // tokens carrying the new version. Every other device and every older access token stop working immediately.
+    // K13/K13b in one transaction: change_own_password (definer function, actor = this user) writes the new hash and
+    // bumps the session version first (taking the user row lock that serialises against refresh rotation), revokes
+    // every refresh token and clears outstanding reset codes (B5); this device then receives new tokens carrying the
+    // new version. Every other device and every older access token stop working immediately.
     const rawTokens = await this.prisma.$transaction(async (tx) => {
-      const sessionVersion = await this.tokenService.invalidateAllSessions(tx, userId, {
-        passwordHash: newHash,
-      });
+      await tx.$executeRaw`SELECT set_config('app.actor_user_id', ${userId}, true)`;
+      let sessionVersion: number;
+      try {
+        const rows = await tx.$queryRaw<Array<{ version: number }>>`
+          SELECT public.change_own_password(${newHash}) AS version`;
+        sessionVersion = Number(singleRow(rows).version);
+      } catch (err) {
+        if (databaseFunctionErrorCode(err, ['ACCOUNT_NOT_ACTIVE'] as const)) {
+          throw new ForbiddenException({
+            code: ErrorCode.FORBIDDEN,
+            message: 'This account is suspended',
+          });
+        }
+        throw err;
+      }
       return this.tokenService.generateTokens(
         userId,
         user.email,

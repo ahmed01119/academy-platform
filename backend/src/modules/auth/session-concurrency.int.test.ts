@@ -7,15 +7,30 @@
  */
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { JwtService } from '@nestjs/jwt';
-import { PrismaClient } from '@academy/database';
+import { PrismaClient, type Prisma } from '@academy/database';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { AppConfigService } from '../../config/app-config.service';
 import type { PrismaService } from '../database/prisma.service';
-import { invalidateUserSessions } from './session-invalidation';
 import { TokenService } from './token.service';
 
 const url = process.env.INTEGRATION_DATABASE_URL;
 const sha256 = (v: string) => createHash('sha256').update(v).digest('hex');
+
+/**
+ * The real password-change path (Phase 3A.2): public.change_own_password with the user as the transaction's actor.
+ * It bumps the session version first (row lock) and then revokes the refresh tokens.
+ */
+async function changeOwnPassword(
+  tx: Prisma.TransactionClient,
+  userId: string,
+): Promise<{ sessionVersion: number }> {
+  await tx.$executeRaw`SELECT set_config('app.actor_user_id', ${userId}, true)`;
+  const rows = await tx.$queryRaw<Array<{ v: number }>>`
+    SELECT public.change_own_password(${'$argon2id$v=19$synthetic-new'}) AS v`;
+  const row = rows[0];
+  if (!row) throw new Error('change_own_password returned no row');
+  return { sessionVersion: Number(row.v) };
+}
 
 describe.skipIf(!url)('K13b session versions on real PostgreSQL', () => {
   let prisma: PrismaClient;
@@ -72,7 +87,7 @@ describe.skipIf(!url)('K13b session versions on real PostgreSQL', () => {
     // A: password change - bumps the version (row lock) and revokes tokens, then waits before committing.
     const change = other.$transaction(
       async (tx) => {
-        await invalidateUserSessions(tx, userId, { passwordHash: 'new-synthetic-hash' });
+        await changeOwnPassword(tx, userId);
         locked();
         await held;
       },
@@ -125,7 +140,7 @@ describe.skipIf(!url)('K13b session versions on real PostgreSQL', () => {
     await lockTaken;
 
     // A: password change - must wait for B, then revoke B's freshly committed token too.
-    const change = prisma.$transaction((tx) => invalidateUserSessions(tx, userId), {
+    const change = prisma.$transaction((tx) => changeOwnPassword(tx, userId), {
       timeout: 20_000,
     });
     expect(await settledWithin(change, 750)).toBe('pending');
@@ -150,7 +165,7 @@ describe.skipIf(!url)('K13b session versions on real PostgreSQL', () => {
 
     const results = await Promise.allSettled([
       ...devices.map((d) => tokens.rotateRefreshToken(d.refreshToken)),
-      prisma.$transaction((tx) => invalidateUserSessions(tx, userId), { timeout: 30_000 }),
+      prisma.$transaction((tx) => changeOwnPassword(tx, userId), { timeout: 30_000 }),
     ]);
     const changed = results.at(-1);
     expect(changed?.status).toBe('fulfilled');

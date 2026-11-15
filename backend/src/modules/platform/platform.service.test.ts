@@ -42,13 +42,19 @@ interface MockPlatformTx {
   saaSPlan: { findMany: MockFn; findUnique: MockFn; update: MockFn };
   platformAnnouncement: { findMany: MockFn; create: MockFn };
   auditLog: { findMany: MockFn; create: MockFn; count: MockFn };
+  academyApplication: { findUnique: MockFn; findUniqueOrThrow: MockFn; update: MockFn };
+  $queryRaw: MockFn;
+  $executeRaw: MockFn;
 }
+
+/** SQL text of a tagged-template raw-query mock call. */
+const sqlText = (call: unknown[] | undefined): string => ((call?.[0] ?? []) as string[]).join('?');
 
 describe('PlatformService', () => {
   let service: PlatformService;
   let mockTx: MockPlatformTx;
   let mockPrisma: { withPlatformAdminTransaction: MockFn; $executeRaw: MockFn };
-  let mockAudit: { logEvent: MockFn };
+  let mockAudit: { logEvent: MockFn; recordEvent: MockFn };
   let mockHealth: { getPlatformHealth: MockFn };
   let mockNotifications: { createNotification: MockFn };
   let mockEmail: {
@@ -114,6 +120,9 @@ describe('PlatformService', () => {
         create: vi.fn().mockResolvedValue({ id: '00000000-0000-4000-8000-000000000999' }),
         count: vi.fn().mockResolvedValue(0),
       },
+      academyApplication: { findUnique: vi.fn(), findUniqueOrThrow: vi.fn(), update: vi.fn() },
+      $queryRaw: vi.fn(),
+      $executeRaw: vi.fn().mockResolvedValue(1),
     };
 
     mockPrisma = {
@@ -123,6 +132,7 @@ describe('PlatformService', () => {
 
     mockAudit = {
       logEvent: vi.fn().mockResolvedValue(undefined),
+      recordEvent: vi.fn().mockResolvedValue('00000000-0000-4000-8000-000000000999'),
     };
     mockHealth = {
       getPlatformHealth: vi.fn().mockResolvedValue('HEALTHY'),
@@ -163,64 +173,58 @@ describe('PlatformService', () => {
   });
 
   describe('revokeUserSessions', () => {
-    it('revokes all refresh tokens and logs forced logout event', async () => {
-      mockTx.user.findUnique.mockResolvedValue({
-        id: targetUserId,
-        email: 'user@example.com',
-      });
-
-      const order: string[] = [];
-      mockTx.user.update.mockImplementation(async () => {
-        order.push('bump');
-        return { sessionVersion: 5 };
-      });
-      const revoke = mockTx.refreshToken.updateMany.getMockImplementation();
-      mockTx.refreshToken.updateMany.mockImplementation(async (...args: unknown[]) => {
-        order.push('revoke');
-        return revoke ? revoke(...args) : { count: 3 };
-      });
+    it('ends the sessions through platform_revoke_user_sessions and logs the forced logout', async () => {
+      mockTx.user.findUnique.mockResolvedValue({ id: targetUserId, email: 'user@example.com' });
+      mockTx.$queryRaw.mockResolvedValue([{ count: 3 }]);
 
       const res = await service.revokeUserSessions(actorUserId, targetUserId);
-      expect(res.success).toBe(true);
-      expect(res.revokedCount).toBe(3);
-      // K13b: the session version is bumped (access tokens die) BEFORE refresh tokens are revoked.
-      expect(order).toEqual(['bump', 'revoke']);
-      expect(mockTx.user.update).toHaveBeenCalledWith({
-        where: { id: targetUserId },
-        data: { sessionVersion: { increment: 1 } },
-        select: { sessionVersion: true },
-      });
-      expect(mockTx.refreshToken.updateMany).toHaveBeenCalledWith({
-        where: { userId: targetUserId, isRevoked: false },
-        data: { isRevoked: true },
-      });
+
+      expect(res).toEqual({ success: true, revokedCount: 3 });
+      // K13b ordering (version bump, then revocation) and the platform rules live in the database function (S6):
+      // the service never writes users.session_version or refresh tokens itself.
+      expect(sqlText(mockTx.$queryRaw.mock.calls[0])).toContain(
+        'public.platform_revoke_user_sessions',
+      );
+      expect(mockTx.$queryRaw.mock.calls[0]?.slice(1)).toEqual([targetUserId]);
+      expect(mockTx.user.update).not.toHaveBeenCalled();
+      expect(mockTx.refreshToken.updateMany).not.toHaveBeenCalled();
       expect(mockAudit.logEvent).toHaveBeenCalledWith(
-        expect.objectContaining({
-          action: 'PLATFORM_USER_FORCE_LOGOUT',
-          resourceType: 'User',
-          resourceId: targetUserId,
-        }),
+        expect.objectContaining({ action: 'PLATFORM_USER_FORCE_LOGOUT', resourceId: targetUserId }),
+      );
+    });
+
+    it('maps the database owner rule to 403', async () => {
+      mockTx.user.findUnique.mockResolvedValue({ id: targetUserId, email: 'u@example.com' });
+      mockTx.$queryRaw.mockRejectedValue(
+        new Error('Raw query failed. Message: `ERROR: PLATFORM_OWNER_REQUIRED`'),
+      );
+      await expect(service.revokeUserSessions(actorUserId, targetUserId)).rejects.toThrow(
+        'Only a Platform Owner can perform this action',
       );
     });
   });
 
   describe('updateUserSecurityPolicy', () => {
-    it('forces password reset and suspends account with session termination', async () => {
+    const updatedUser = {
+      id: targetUserId,
+      email: 'bad.actor@example.com',
+      name: 'Bad Actor',
+      phone: null,
+      isPlatformSuperAdmin: false,
+      mustResetPassword: true,
+      isSuspended: true,
+      suspendedReason: 'Suspicious credential activity',
+      createdAt: new Date(),
+      memberships: [],
+      _count: { refreshTokens: 0 },
+    };
+
+    it('suspends and forces a reset through platform_update_user_security', async () => {
       mockTx.user.findUnique.mockResolvedValue({ id: targetUserId });
-      mockTx.user.update.mockResolvedValue({ id: targetUserId });
-      mockTx.user.findUniqueOrThrow.mockResolvedValue({
-        id: targetUserId,
-        email: 'bad.actor@example.com',
-        name: 'Bad Actor',
-        phone: null,
-        isPlatformSuperAdmin: false,
-        mustResetPassword: true,
-        isSuspended: true,
-        suspendedReason: 'Suspicious credential activity',
-        createdAt: new Date(),
-        memberships: [],
-        _count: { refreshTokens: 0 },
-      });
+      mockTx.$queryRaw.mockResolvedValue([
+        { must_reset_password: true, is_suspended: true, session_version: 1 },
+      ]);
+      mockTx.user.findUniqueOrThrow.mockResolvedValue(updatedUser);
 
       const res = await service.updateUserSecurityPolicy(actorUserId, targetUserId, {
         mustResetPassword: true,
@@ -230,19 +234,16 @@ describe('PlatformService', () => {
 
       expect(res.mustResetPassword).toBe(true);
       expect(res.isSuspended).toBe(true);
-      // K13b: suspension bumps the session version in the same user update, before tokens are revoked.
-      expect(mockTx.user.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({ isSuspended: true, sessionVersion: { increment: 1 } }),
-        }),
+      expect(sqlText(mockTx.$queryRaw.mock.calls[0])).toContain(
+        'public.platform_update_user_security',
       );
-      expect(mockTx.user.update.mock.invocationCallOrder[0]).toBeLessThan(
-        mockTx.refreshToken.updateMany.mock.invocationCallOrder[0] ?? 0,
-      );
-      expect(mockTx.refreshToken.updateMany).toHaveBeenCalledWith({
-        where: { userId: targetUserId, isRevoked: false },
-        data: { isRevoked: true },
-      });
+      expect(mockTx.$queryRaw.mock.calls[0]?.slice(1)).toEqual([
+        targetUserId,
+        true,
+        true,
+        'Suspicious credential activity',
+      ]);
+      expect(mockTx.user.update).not.toHaveBeenCalled();
       expect(mockAudit.logEvent).toHaveBeenCalledWith(
         expect.objectContaining({
           action: 'PLATFORM_USER_SECURITY_POLICY_UPDATE',
@@ -250,10 +251,20 @@ describe('PlatformService', () => {
         }),
       );
     });
+
+    it('passes NULL for the fields that are not being changed', async () => {
+      mockTx.user.findUnique.mockResolvedValue({ id: targetUserId });
+      mockTx.$queryRaw.mockResolvedValue([{}]);
+      mockTx.user.findUniqueOrThrow.mockResolvedValue({ ...updatedUser, isSuspended: false });
+      await service.updateUserSecurityPolicy(actorUserId, targetUserId, {
+        mustResetPassword: true,
+      });
+      expect(mockTx.$queryRaw.mock.calls[0]?.slice(1)).toEqual([targetUserId, true, null, null]);
+    });
   });
 
   describe('requestSupportAccess', () => {
-    it('grants time-limited support session and creates audited event', async () => {
+    it('grants time-limited support session and records the audited grant', async () => {
       mockTx.tenant.findUnique.mockResolvedValue({
         id: academyId,
         name: 'Stars Academy',
@@ -269,17 +280,16 @@ describe('PlatformService', () => {
       expect(res.tenantName).toBe('Stars Academy');
       expect(res.reason).toContain('Investigating billing discrepancy');
       expect(res.auditLogId).toBe('00000000-0000-4000-8000-000000000999');
-
-      expect(mockTx.auditLog.create).toHaveBeenCalledWith(
+      // Written through append_audit_log (recordEvent throws if it cannot be written); no direct insert.
+      expect(mockAudit.recordEvent).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({
-            tenantId: academyId,
-            actorUserId,
-            action: 'PLATFORM_SUPPORT_SESSION_STARTED',
-            resourceType: 'Tenant',
-          }),
+          tenantId: academyId,
+          actorUserId,
+          action: 'PLATFORM_SUPPORT_SESSION_STARTED',
+          resourceType: 'Tenant',
         }),
       );
+      expect(mockTx.auditLog.create).not.toHaveBeenCalled();
     });
 
     it('throws NotFoundException when academy does not exist', async () => {
@@ -294,18 +304,15 @@ describe('PlatformService', () => {
   });
 
   describe('invitePlatformSuperAdmin', () => {
-    it('creates new platform co-owner and dispatches activation email', async () => {
+    it('creates a new platform co-owner through platform_create_user and dispatches the activation email', async () => {
       mockTx.user.findUnique
         .mockResolvedValueOnce({ id: actorUserId, isPlatformOwner: true }) // actor check
         .mockResolvedValueOnce(null); // existing user check
-
-      mockTx.user.create = vi.fn().mockResolvedValue({
+      mockTx.$queryRaw.mockResolvedValue([{ id: 'new-owner-id' }]);
+      mockTx.user.findUniqueOrThrow.mockResolvedValue({
         id: 'new-owner-id',
         email: 'coowner@platform.sa',
         name: 'Co Owner',
-        isPlatformSuperAdmin: true,
-        isPlatformOwner: true,
-        mustResetPassword: true,
       });
 
       const res = await service.invitePlatformSuperAdmin(actorUserId, {
@@ -316,13 +323,98 @@ describe('PlatformService', () => {
 
       expect(res.success).toBe(true);
       expect(res.userId).toBe('new-owner-id');
-      expect(mockTx.user.create).toHaveBeenCalledWith(
+      expect(sqlText(mockTx.$queryRaw.mock.calls[0])).toContain('public.platform_create_user');
+      // e-mail, name, co-owner flag (the function always sets must_reset_password and the super-admin flag).
+      expect(mockTx.$queryRaw.mock.calls[0]?.slice(1)).toEqual([
+        'coowner@platform.sa',
+        'Co Owner',
+        true,
+      ]);
+      expect(mockTx.user.create).not.toHaveBeenCalled();
+      expect(mockEmail.sendPlatformAdminInvite).toHaveBeenCalled();
+    });
+
+    it('promotes an existing user through platform_set_user_platform_role, keeping an owner an owner', async () => {
+      mockTx.user.findUnique
+        .mockResolvedValueOnce({ id: actorUserId, isPlatformOwner: true })
+        .mockResolvedValueOnce({ id: targetUserId, isPlatformOwner: true });
+      mockTx.$queryRaw.mockResolvedValue([{}]);
+      mockTx.user.findUniqueOrThrow.mockResolvedValue({
+        id: targetUserId,
+        email: 'o@platform.sa',
+        name: 'O',
+      });
+
+      await service.invitePlatformSuperAdmin(actorUserId, {
+        email: 'o@platform.sa',
+        name: 'O',
+        role: 'SUPER_ADMIN',
+      });
+
+      expect(sqlText(mockTx.$queryRaw.mock.calls[0])).toContain(
+        'public.platform_set_user_platform_role',
+      );
+      expect(mockTx.$queryRaw.mock.calls[0]?.slice(1)).toEqual([targetUserId, 'PLATFORM_OWNER']);
+      expect(mockTx.user.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('reviewAcademyApplication', () => {
+    const applicationId = '00000000-0000-4000-8000-0000000000aa';
+    const application = (status: string) => ({
+      id: applicationId,
+      status,
+      applicantUserId: targetUserId,
+      academyName: 'Stars',
+      academySlug: 'stars',
+      provisionedTenantId: null,
+      applicant: { name: 'A' },
+    });
+
+    it('refuses to approve a REJECTED application (decision B7)', async () => {
+      mockTx.academyApplication.findUnique.mockResolvedValue(application('REJECTED'));
+      await expect(
+        service.reviewAcademyApplication(actorUserId, applicationId, {
+          status: 'APPROVED',
+        } as never),
+      ).rejects.toThrow('A rejected application cannot be approved');
+      expect(mockTx.$queryRaw).not.toHaveBeenCalled();
+    });
+
+    it('provisions through platform_approve_academy_application', async () => {
+      mockTx.academyApplication.findUnique.mockResolvedValue(application('PENDING_REVIEW'));
+      mockTx.$queryRaw.mockResolvedValue([{ id: academyId }]);
+      mockTx.academyApplication.findUniqueOrThrow.mockResolvedValue({
+        ...application('APPROVED'),
+        provisionedTenantId: academyId,
+        sport: 'FOOTBALL',
+        city: null,
+        contactEmail: 'a@example.com',
+        contactPhone: null,
+        notes: null,
+        reviewNotes: null,
+        reviewedByUserId: actorUserId,
+        reviewedAt: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      const res = await service.reviewAcademyApplication(actorUserId, applicationId, {
+        status: 'APPROVED',
+        initialPlanCode: 'PRO',
+      } as never);
+
+      expect(res.status).toBe('APPROVED');
+      expect(sqlText(mockTx.$queryRaw.mock.calls[0])).toContain(
+        'public.platform_approve_academy_application',
+      );
+      expect(mockTx.$queryRaw.mock.calls[0]?.slice(1)).toEqual([applicationId, 'PRO', null]);
+      expect(mockTx.academyApplication.update).not.toHaveBeenCalled();
+      expect(mockNotifications.createNotification).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({
-            isPlatformOwner: true,
-            isPlatformSuperAdmin: true,
-            mustResetPassword: true,
-          }),
+          userId: targetUserId,
+          senderUserId: actorUserId,
+          tenantId: academyId,
         }),
       );
     });

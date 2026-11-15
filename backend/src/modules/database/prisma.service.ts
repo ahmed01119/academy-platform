@@ -11,11 +11,14 @@ import {
   type PlatformAdminTransactionOptions,
   type PortalUserTransactionOptions,
 } from '@academy/database';
+import { assertRuntimeDatabaseRole } from './runtime-role-guard';
 
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
   async onModuleInit(): Promise<void> {
     await this.$connect();
+    // S3: refuse an RLS-bypassing database role in production (warning elsewhere).
+    await assertRuntimeDatabaseRole(this, process.env.NODE_ENV);
   }
 
   async onModuleDestroy(): Promise<void> {

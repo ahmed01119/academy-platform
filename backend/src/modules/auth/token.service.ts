@@ -4,7 +4,6 @@ import * as crypto from 'crypto';
 import { AppConfigService } from '../../config/app-config.service';
 import { PrismaService } from '../database/prisma.service';
 import type { Prisma } from '@academy/database';
-import { invalidateUserSessions } from './session-invalidation';
 import { ErrorCode, type TenantRole } from '@academy/shared';
 
 export interface JwtPayload {
@@ -251,15 +250,6 @@ export class TokenService {
     }
 
     return result;
-  }
-
-  /** Immediately invalidates every session of a user (K13b); see {@link invalidateUserSessions}. */
-  async invalidateAllSessions(
-    tx: Prisma.TransactionClient,
-    userId: string,
-    extraUserData: Prisma.UserUpdateInput = {},
-  ): Promise<number> {
-    return (await invalidateUserSessions(tx, userId, extraUserData)).sessionVersion;
   }
 
   /**
