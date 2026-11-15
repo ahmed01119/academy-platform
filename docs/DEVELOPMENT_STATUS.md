@@ -354,7 +354,8 @@ Neon development database (not production):
   corrected replacement is M2 (Phase 3A.2). `_prisma_migrations` was not edited directly.
 - M1 applied with `prisma migrate deploy`; status up to date (24 migrations).
 - Explicit before/after check:
-  - policies: 101 → 101, unchanged;
+  - policies: 81, unchanged (the earlier "101" was the snapshot's output line count; multi-line policy expressions span
+    several lines. The comparison itself was exact);
   - functions: 4 new, and `complete_password_reset` redefined;
   - table grants, triggers and ownership: unchanged;
   - `sportexus_app`: 6 new column grants and 4 new function grants;
@@ -382,6 +383,16 @@ Open after 3A.1:
   start; they belong to S2 and S3.
 - S2 needs the owner's exact list of trusted origins per environment.
 - S3/S4 (M2, M3, runtime-role switch): SQL review and isolated Neon branch tests come first (Phase 3A.2).
+
+## 9d. Phase 3A.2 (S3, S4, S6): SQL in review (2026-11-15)
+
+Drafts only, nothing applied to Neon: `docs/proposals/PHASE_3A2_SQL_REVIEW.md` and `docs/proposals/phase-3a2/`
+(M2, M3, a 121-check boundary suite, read-only catalog verification, CI drafts). Tested on isolated PostgreSQL 18
+models of both migration histories, with synthetic data only. New findings: S6 (runtime role could promote, take
+over or delete any account through `users` column grants), S7 (re-running `provision-runtime-role.sql` dropped the
+M1 `session_version` grant; fixed in the script), S8 (fresh installs grant no table privileges to the runtime
+role), S9 (portal claim codes plaintext, 32-bit, no rate limit), S10 (approval and deletion fail under the runtime
+role). Awaiting the owner's review and decisions B1 to B8.
 
 ## 10. Backend requirements (recorded by owner decisions)
 
@@ -432,6 +443,7 @@ with e-mail verification, so invitees can accept invitations.
 
 | Date       | Change                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | Files                                                                                                                                                                                                                                                                                                                |
 | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-11-15 | **Phase 3A.2 SQL review package** (§9d): M2/M3 drafts, boundary tests, catalog verification; `provision-runtime-role.sql` keeps the `session_version` grant (S7); policy-count wording corrected in §9c. No migration applied.                                                                                                                                                                                                                                                                             | `docs/proposals/PHASE_3A2_SQL_REVIEW.md`, `docs/proposals/phase-3a2/**`, `packages/database/scripts/provision-runtime-role.sql`                                                                                                                                                                                      |
 | 2026-11-15 | **Phase 3A.1 security** (§9c): S5 retired, S1 trusted client IP, M1 migration, K1 reset bound to email plus link token, K13/K13b session versions, real-PostgreSQL concurrency tests. M1 applied to the Neon dev database after a verified backup; 104105500 recorded as a baseline exception. API change: `reset-password` needs `email` with a code.                                                                                                                                                     | backend `modules/auth/**`, `common/client-ip.ts`, `config/*`, `main.ts`, `platform.*`; frontend `app/{reset,forgot}-password`, `features/auth/reset-link.ts`, `lib/http/proxy-forwarding.ts`, `app/v1/[...path]/route.ts`; `packages/shared/src/schemas/auth.ts`; migration M1; compose, Render and env examples; CI |
 | 2026-11-15 | **Phase 2A completion.** Prisma generation made explicit, with a client freshness check (`9a10f1f`); `prisma generate` no longer needs `DATABASE_URL`, fixing Docker and fresh-checkout builds (`478e31a`); test files type-checked in all packages, with 142 hidden errors fixed (`16cdd9e`, `5ae3ce6`, `0504aa3`); Next.js ESLint rules (`7321c74`); Node 22 LTS everywhere (`d192a43`). Phase 3A proposal written (`docs/proposals/PHASE_3A_SECURITY.md`).                                              | see §9b                                                                                                                                                                                                                                                                                                              |
 | 2026-11-15 | **Phase 2A, structure and hygiene (no behaviour change).** Database tests fixed (K15); 0 lint errors; Prettier clean; LF line endings enforced; `version.json` no longer rewritten by local builds; `frontend/src/lib` shims and the duplicate translations removed; duplicated `@Optional()` fallbacks removed from the attendance, finance and platform services; Windows CI job. Commits `b33d68f`, `4bb0699`, `ace1bd6`, `25ecbba`, `ab3a599`, `4e00569`, `6f7277b`, `fea097a`.                        | see §9b                                                                                                                                                                                                                                                                                                              |
