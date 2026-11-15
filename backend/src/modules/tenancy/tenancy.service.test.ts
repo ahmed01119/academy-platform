@@ -43,6 +43,7 @@ interface MockPrisma {
     findUnique: MockFn;
   };
   $queryRaw: MockFn;
+  $executeRaw: MockFn;
   $transaction: MockFn;
   withTenantTransaction: MockFn;
   withAuthLookupTransaction: MockFn;
@@ -186,7 +187,7 @@ describe('TenancyService', () => {
 
       await expect(
         service.inviteStaff(
-          { tenantId: 'tenant-1', actorUserId: 'owner-1' },
+          { tenantId: 'tenant-1', actorUserId: 'owner-1', locale: 'ar' },
           { email: 'existing@example.com', role: TenantRole.COACH },
         ),
       ).rejects.toThrow(ConflictException);
@@ -202,7 +203,7 @@ describe('TenancyService', () => {
 
       await expect(
         service.inviteStaff(
-          { tenantId: 'tenant-1', actorUserId: 'owner-1' },
+          { tenantId: 'tenant-1', actorUserId: 'owner-1', locale: 'ar' },
           { email: 'pending@example.com', role: TenantRole.COACH },
         ),
       ).rejects.toThrow('An active invitation is already pending for this email address');
@@ -221,7 +222,7 @@ describe('TenancyService', () => {
       mockPrisma.user.findUnique.mockResolvedValue({ name: 'Captain Ahmed' });
 
       const result = await service.inviteStaff(
-        { tenantId: 'tenant-1', actorUserId: 'owner-1' },
+        { tenantId: 'tenant-1', actorUserId: 'owner-1', locale: 'ar' },
         { email: 'newcoach@example.com', role: TenantRole.COACH },
       );
 
@@ -347,7 +348,10 @@ describe('TenancyService', () => {
       });
 
       await expect(
-        service.revokeMembership({ tenantId: 'tenant-1', actorUserId: 'owner-1' }, 'mem-owner'),
+        service.revokeMembership(
+          { tenantId: 'tenant-1', actorUserId: 'owner-1', locale: 'ar' },
+          'mem-owner',
+        ),
       ).rejects.toThrow(ForbiddenException);
     });
 
@@ -360,7 +364,7 @@ describe('TenancyService', () => {
       });
 
       const res = await service.revokeMembership(
-        { tenantId: 'tenant-1', actorUserId: 'owner-1' },
+        { tenantId: 'tenant-1', actorUserId: 'owner-1', locale: 'ar' },
         'mem-coach',
       );
 

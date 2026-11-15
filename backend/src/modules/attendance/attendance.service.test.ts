@@ -53,6 +53,10 @@ interface MockPrisma {
   playerEnrollment: {
     findFirst: MockFn;
   };
+  playerSubscription: {
+    findMany: MockFn;
+    findFirst: MockFn;
+  };
   tenant: {
     findUnique: MockFn;
   };
@@ -798,6 +802,7 @@ describe('AttendanceService', () => {
       tenantId: tenantContext.tenantId,
       branchId: tenantContext.branchId,
       actorUserId: 'coach-user-123',
+      locale: tenantContext.locale,
       role: 'COACH',
     };
 

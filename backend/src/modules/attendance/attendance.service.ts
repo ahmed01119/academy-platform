@@ -30,6 +30,31 @@ import {
   type TenantContext,
 } from '@academy/shared';
 import { AttendanceRosterService } from './attendance-roster.service';
+import type { AttendanceRecord, AttendanceStatus } from '@academy/database';
+
+/** Response of POST /attendance/records. Replayed verbatim when an idempotency key repeats. */
+type RecordAttendanceResult = {
+  record: {
+    recordId: string;
+    playerId: string;
+    playerName: string;
+    photoUrl: string | null;
+    status: AttendanceStatus;
+    checkInTime: string | null;
+    remarks: string | null;
+    version: number;
+  };
+  previousStatus: AttendanceStatus;
+};
+
+/**
+ * Response of POST /attendance/records/bulk. Replayed verbatim when an idempotency key repeats
+ * (the stored copy is the JSON-serialised form of the same payload).
+ */
+type BulkRecordAttendanceResult = {
+  count: number;
+  records: AttendanceRecord[];
+};
 
 @Injectable()
 export class AttendanceService {
@@ -407,7 +432,10 @@ export class AttendanceService {
    * Records attendance for a single player with idempotency and optimistic concurrency.
    * Writes append-only AttendanceEvent for audit stream.
    */
-  async recordAttendance(tenantContext: TenantContext, dto: AttendanceMutation) {
+  async recordAttendance(
+    tenantContext: TenantContext,
+    dto: AttendanceMutation,
+  ): Promise<RecordAttendanceResult> {
     return this.prisma.withTenantTransaction(
       { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
       async (tx) => {
@@ -422,7 +450,7 @@ export class AttendanceService {
         });
 
         if (existingIdempotency?.response) {
-          return existingIdempotency.response;
+          return existingIdempotency.response as unknown as RecordAttendanceResult;
         }
 
         const session = await tx.attendanceSession.findUnique({
@@ -592,7 +620,10 @@ export class AttendanceService {
   /**
    * Bulk records attendance for multiple players in a session with idempotency.
    */
-  async bulkRecordAttendance(tenantContext: TenantContext, dto: BulkAttendanceSubmission) {
+  async bulkRecordAttendance(
+    tenantContext: TenantContext,
+    dto: BulkAttendanceSubmission,
+  ): Promise<BulkRecordAttendanceResult> {
     return this.prisma.withTenantTransaction(
       { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
       async (tx) => {
@@ -607,7 +638,7 @@ export class AttendanceService {
         });
 
         if (existingIdempotency?.response) {
-          return existingIdempotency.response;
+          return existingIdempotency.response as unknown as BulkRecordAttendanceResult;
         }
 
         const session = await tx.attendanceSession.findUnique({

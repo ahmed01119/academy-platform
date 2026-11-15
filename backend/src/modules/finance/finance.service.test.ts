@@ -41,6 +41,7 @@ describe('FinanceService', () => {
   const tenantContext: TenantContext = {
     tenantId: '00000000-0000-4000-8000-000000000101',
     actorUserId: '00000000-0000-4000-8000-000000000001',
+    locale: 'ar',
     role: 'OWNER',
   };
 
@@ -289,6 +290,7 @@ describe('FinanceService', () => {
     const coachContext: TenantContext = {
       tenantId: tenantContext.tenantId,
       actorUserId: coachUserId,
+      locale: 'ar',
       role: 'COACH',
     };
 
@@ -325,6 +327,7 @@ describe('FinanceService', () => {
       });
 
       const res = await service.recordSessionExpense(coachContext, sessionId, {
+        branchId,
         amount: 85.5,
         paymentMethod: 'CASH',
         notes: 'Bottled water for squad',
@@ -359,6 +362,7 @@ describe('FinanceService', () => {
 
       await expect(
         service.recordSessionExpense(coachContext, sessionId, {
+          branchId,
           amount: 50,
           paymentMethod: 'CASH',
           notes: 'Unassigned coach attempt',
@@ -399,6 +403,7 @@ describe('FinanceService', () => {
       });
 
       const res = await service.recordSessionExpense(tenantContext, sessionId, {
+        branchId,
         amount: 150,
         paymentMethod: 'CASH',
         notes: 'Emergency medical kit',
@@ -450,6 +455,7 @@ describe('FinanceService', () => {
       });
 
       const res = await service.recordSessionExpense(coachContext, sessionId, {
+        branchId,
         amount: 50,
         paymentMethod: 'CASH',
         notes: 'Hydration',
@@ -463,6 +469,7 @@ describe('FinanceService', () => {
     it('rejects invalid or non-positive amount with BadRequestException', async () => {
       await expect(
         service.recordSessionExpense(coachContext, sessionId, {
+          branchId,
           amount: -25,
           paymentMethod: 'CASH',
           notes: 'Negative value',
@@ -471,6 +478,7 @@ describe('FinanceService', () => {
 
       await expect(
         service.recordSessionExpense(coachContext, sessionId, {
+          branchId,
           amount: 0,
           paymentMethod: 'CASH',
           notes: 'Zero value',
@@ -484,6 +492,7 @@ describe('FinanceService', () => {
     const managerContext: TenantContext = {
       tenantId: tenantContext.tenantId,
       actorUserId: '00000000-0000-4000-8000-000000000003',
+      locale: 'ar',
       role: 'MANAGER',
     };
 
@@ -591,6 +600,7 @@ describe('FinanceService', () => {
     const managerContext: TenantContext = {
       tenantId: tenantContext.tenantId,
       actorUserId: '00000000-0000-4000-8000-000000000003',
+      locale: 'ar',
       role: 'MANAGER',
     };
 
@@ -775,6 +785,7 @@ describe('FinanceService', () => {
       const unassignedCoachContext: TenantContext = {
         tenantId: tenantContext.tenantId,
         actorUserId: 'unassigned-coach-id',
+        locale: 'ar',
         role: 'COACH',
       };
 

@@ -12,6 +12,20 @@ import type { NotificationsService } from '../notifications/notifications.servic
  */
 type MockFn = ReturnType<typeof vi.fn>;
 
+/** The Prisma delegates this suite uses, typed precisely (no index signature). */
+interface PlayerDelegateMock {
+  findMany: MockFn;
+  findUnique: MockFn;
+  findFirst: MockFn;
+  count: MockFn;
+  create: MockFn;
+  update: MockFn;
+}
+interface EnrollmentDelegateMock {
+  count: MockFn;
+  create: MockFn;
+}
+
 const TENANT = '00000000-0000-4000-8000-000000000001';
 const ACTOR = '00000000-0000-4000-8000-000000000099';
 const NATIONAL_ID = '29901011234567';
@@ -47,9 +61,9 @@ const listedPlayer = {
 
 describe('PlayersService — F21/F22', () => {
   let service: PlayersService;
-  let prisma: Record<string, Record<string, MockFn> | MockFn>;
-  let player: Record<string, MockFn>;
-  let enrollment: Record<string, MockFn>;
+  let prisma: Record<string, unknown>;
+  let player: PlayerDelegateMock;
+  let enrollment: EnrollmentDelegateMock;
 
   beforeEach(() => {
     player = {
@@ -58,6 +72,7 @@ describe('PlayersService — F21/F22', () => {
       findFirst: vi.fn().mockResolvedValue(null),
       count: vi.fn(),
       create: vi.fn().mockResolvedValue({ ...listedPlayer }),
+      update: vi.fn(),
     };
     enrollment = {
       count: vi.fn().mockResolvedValue(0),

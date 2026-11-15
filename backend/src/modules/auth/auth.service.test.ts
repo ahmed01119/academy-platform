@@ -15,11 +15,16 @@ interface MockPrisma {
     findUnique: MockFn;
     findUniqueOrThrow: MockFn;
     findFirst: MockFn;
+    findMany: MockFn;
     create: MockFn;
     update: MockFn;
   };
   tenant: {
     findUnique: MockFn;
+  };
+  academyApplication: {
+    findFirst: MockFn;
+    create: MockFn;
   };
   tenantMembership: {
     findMany: MockFn;
@@ -506,7 +511,8 @@ describe('AuthService', () => {
       });
 
       const result = await authService.resendVerificationEmail('verified@example.com');
-      expect(result.debugToken).toBeUndefined();
+      // The response carries a generic message only: no token or code is ever returned.
+      expect(result).toEqual({ message: expect.any(String) });
       expect(mockPrisma.$executeRaw).not.toHaveBeenCalled();
     });
 

@@ -1,8 +1,15 @@
 import { describe, expect, it, vi } from 'vitest';
-import { GlobalExceptionFilter } from './global-exception.filter';
+import { GlobalExceptionFilter, type StandardErrorResponse } from './global-exception.filter';
 import { HttpException, HttpStatus } from '@nestjs/common';
 import { z, type ZodError } from 'zod';
 import type { ArgumentsHost } from '@nestjs/common';
+
+/** First argument of the first call; fails the test clearly if the mock was never called. */
+function firstCallArg(mock: ReturnType<typeof vi.fn>): StandardErrorResponse {
+  const call = mock.mock.calls[0];
+  if (!call) throw new Error('expected the response body to have been sent');
+  return call[0] as StandardErrorResponse;
+}
 
 describe('GlobalExceptionFilter', () => {
   const filter = new GlobalExceptionFilter();
@@ -37,7 +44,7 @@ describe('GlobalExceptionFilter', () => {
     filter.catch(zodError!, host);
 
     expect(statusMock).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
-    const sent = jsonMock.mock.calls[0][0];
+    const sent = firstCallArg(jsonMock);
     expect(sent.success).toBe(false);
     expect(sent.statusCode).toBe(400);
     expect(sent.code).toBe('VALIDATION_ERROR');
@@ -56,7 +63,7 @@ describe('GlobalExceptionFilter', () => {
     filter.catch(exception, host);
 
     expect(statusMock).toHaveBeenCalledWith(HttpStatus.FORBIDDEN);
-    const sent = jsonMock.mock.calls[0][0];
+    const sent = firstCallArg(jsonMock);
     expect(sent.success).toBe(false);
     expect(sent.statusCode).toBe(403);
     expect(sent.code).toBe('ACADEMY_SUSPENDED');
@@ -75,7 +82,7 @@ describe('GlobalExceptionFilter', () => {
     filter.catch(prismaError, host);
 
     expect(statusMock).toHaveBeenCalledWith(HttpStatus.CONFLICT);
-    const sent = jsonMock.mock.calls[0][0];
+    const sent = firstCallArg(jsonMock);
     expect(sent.success).toBe(false);
     expect(sent.statusCode).toBe(409);
     expect(sent.code).toBe('CONFLICT');
@@ -89,7 +96,7 @@ describe('GlobalExceptionFilter', () => {
     filter.catch(error, host);
 
     expect(statusMock).toHaveBeenCalledWith(HttpStatus.INTERNAL_SERVER_ERROR);
-    const sent = jsonMock.mock.calls[0][0];
+    const sent = firstCallArg(jsonMock);
     expect(sent.success).toBe(false);
     expect(sent.statusCode).toBe(500);
     expect(sent.code).toBe('INTERNAL_SERVER_ERROR');

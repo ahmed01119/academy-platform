@@ -16,7 +16,7 @@ interface MockPlatformTx {
     update: MockFn;
   };
   player: { count: MockFn };
-  user: { count: MockFn; findMany: MockFn; findUnique: MockFn; update: MockFn };
+  user: { count: MockFn; findMany: MockFn; findUnique: MockFn; update: MockFn; create: MockFn };
   branch: { count: MockFn };
   attendanceSession: { count: MockFn };
   tenantMembership: { count: MockFn };
@@ -34,13 +34,13 @@ interface MockPlatformTx {
   refreshToken: { updateMany: MockFn };
   saaSPlan: { findMany: MockFn; findUnique: MockFn; update: MockFn };
   platformAnnouncement: { findMany: MockFn; create: MockFn };
-  auditLog: { findMany: MockFn; create: MockFn };
+  auditLog: { findMany: MockFn; create: MockFn; count: MockFn };
 }
 
 describe('PlatformService', () => {
   let service: PlatformService;
   let mockTx: MockPlatformTx;
-  let mockPrisma: { withPlatformAdminTransaction: MockFn };
+  let mockPrisma: { withPlatformAdminTransaction: MockFn; $executeRaw: MockFn };
   let mockAudit: { logEvent: MockFn };
   let mockHealth: { getPlatformHealth: MockFn };
   let mockNotifications: { createNotification: MockFn };
@@ -68,6 +68,7 @@ describe('PlatformService', () => {
         findMany: vi.fn().mockResolvedValue([]),
         findUnique: vi.fn(),
         update: vi.fn(),
+        create: vi.fn(),
       },
       branch: { count: vi.fn().mockResolvedValue(8) },
       attendanceSession: { count: vi.fn().mockResolvedValue(350) },
@@ -103,6 +104,7 @@ describe('PlatformService', () => {
       auditLog: {
         findMany: vi.fn().mockResolvedValue([]),
         create: vi.fn().mockResolvedValue({ id: '00000000-0000-4000-8000-000000000999' }),
+        count: vi.fn().mockResolvedValue(0),
       },
     };
 
@@ -340,8 +342,8 @@ describe('PlatformService', () => {
       expect(metrics.databaseSizeBytes).toBe(13596351);
       expect(metrics.totalTables).toBe(34);
       expect(metrics.tables.length).toBe(2);
-      expect(metrics.tables[0].tableName).toBe('audit_logs');
-      expect(metrics.tables[0].tableBytes).toBe(106496);
+      expect(metrics.tables[0]?.tableName).toBe('audit_logs');
+      expect(metrics.tables[0]?.tableBytes).toBe(106496);
       expect(metrics.auditLogsCount).toBe(376);
       expect(metrics.cacheStatus).toBe('IN_MEMORY');
       expect(metrics.redisAvailable).toBe(false);
