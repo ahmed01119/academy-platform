@@ -33,12 +33,15 @@ build and start locally after every phase.
 
 ## Status
 
-| Phase     | Scope                              | Status                                                            |
-| --------- | ---------------------------------- | ----------------------------------------------------------------- |
-| 1         | Complete audit                     | ✅ Done 2026-11-15: findings below, awaiting approval of the plan |
-| 2–7       | See "Phased plan"                  | Not started                                                       |
-| (Group 1) | Password-reset hardening, K1 + K13 | Approved. Migration drafted, not applied. Folded into Phase 3A.   |
-| (Group 2) | Build hygiene                      | Approved as next priority. Folded into Phase 2A.                  |
+| Phase | Scope                                                             | Status                                                                           |
+| ----- | ----------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| 1     | Complete audit                                                    | ✅ Done 2026-11-15; plan approved                                                |
+| 2A    | Structure and code hygiene                                        | ✅ Done 2026-11-15, awaiting owner review. Details: `DEVELOPMENT_STATUS.md` §9b. |
+| 3A    | Security: K1 + K13 + S1                                           | Next after the 2A review. Migration drafted, not applied.                        |
+| 3B    | Backend performance                                               | Approved in principle; detailed proposal before start                            |
+| 3C    | Database: Decimal money, unique receipt numbers                   | Approved in principle; migrations need backup and review                         |
+| 4     | Frontend: persistent layout, data states                          | Approved in principle; detailed proposal before start                            |
+| 5–7   | Integration, performance and security verification, final testing | Not started                                                                      |
 
 ## Environment facts (measured 2026-11-15)
 
@@ -277,6 +280,45 @@ Confirm on each provider's pricing page before any decision.
 - **Decide production hosting separately, when it becomes relevant.** The rule: run the database in the same region as
   the API.
 
+### Moving the Neon project to Frankfurt (evaluated, not executed)
+
+**Why:** the API on Render runs in Frankfurt and the users are in Egypt and Saudi Arabia, but the database is in Ohio.
+From the development machine a round trip is about 150 ms today. A tenant request needs 4–6 round trips, so the
+API↔database distance dominates response time.
+
+**Expected impact** (estimates, to be measured after any move):
+
+- **Render staging:** Frankfurt↔Frankfurt round trips are a few milliseconds, instead of crossing the Atlantic. This is
+  the largest gain.
+- **Development from Egypt:** a shorter route to Frankfurt than to Ohio.
+- **Unchanged:** the Neon Free limits, the plan, and the 5-minute scale-to-zero (cold starts remain).
+
+**Steps:**
+
+1. **Create the new project.** Create a new Neon project in the EU region (AWS Frankfurt, if offered in the console)
+   with PostgreSQL 18, the same major version as today. No cost on Free.
+2. **Recreate the roles.** Create the runtime role (`sportexus_app` / `academy_runtime`) and its grants using
+   `packages/database/scripts/provision-runtime-role.sql`.
+3. **Back up.** Take a full logical backup of the current project with the owner role (`pg_dump -Fc`). Verify it with
+   `pg_restore --list` and row counts per table.
+4. **Restore** into the new project (`pg_restore --no-owner`), then run `prisma migrate status` (expect "up to date").
+   Compare row counts table by table against the source.
+5. **Smoke-test.** Point a _second_ local API instance at the new project using command-line environment overrides
+   (no `.env` edits): health check, login, the main lists.
+6. **Cut over.** Update `DATABASE_URL` in `backend/.env` and the root `.env`, and in Render's environment
+   variables. This is an owner action; credentials are not handled in chat.
+7. **Retire the old project.** Keep it read-only for at least 7 days, then delete it on owner approval.
+
+**Rollback:** restore the previous `DATABASE_URL` values. The old project is untouched until step 7. Writes made to the
+new project after cut-over would need a reverse dump; the window is small at the current size of 12 MB.
+
+**Risks:**
+
+- Extensions or role grants missing in the new project. Mitigation: `provision-runtime-role.sql` plus the CI privilege
+  test scripts in `packages/database/tests`.
+- Forgetting to update one environment.
+- Free-plan limits apply per project; the old project counts until it is deleted.
+
 ## Phased plan
 
 Each phase is proposed in detail and approved before it starts. Order follows risk: security and stability first, then
@@ -341,8 +383,9 @@ architecture.
 
 ## Decision log
 
-| Date       | Decision                                                                                                                                                                                |
-| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-11-15 | Group 1 (K1 + K13) approved. The migration must be shown with a backup confirmation before it is applied; nothing applied to production; the 6-digit code and 5-minute expiry are kept. |
-| 2026-11-15 | Group 2 next after Group 1. K2: no deletion or history rewrite yet. K3, K5, K8 pending. Roadmap saved.                                                                                  |
-| 2026-11-15 | Neon is a development/testing database, not production. Its schema and data may be changed for development. No paid services. Full-project audit requested in phases; Phase 1 first.    |
+| Date       | Decision                                                                                                                                                                                                                                                                                                                                                                                       |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-11-15 | Group 1 (K1 + K13) approved. The migration must be shown with a backup confirmation before it is applied; nothing applied to production; the 6-digit code and 5-minute expiry are kept.                                                                                                                                                                                                        |
+| 2026-11-15 | Group 2 next after Group 1. K2: no deletion or history rewrite yet. K3, K5, K8 pending. Roadmap saved.                                                                                                                                                                                                                                                                                         |
+| 2026-11-15 | Neon is a development/testing database, not production. Its schema and data may be changed for development. No paid services. Full-project audit requested in phases; Phase 1 first.                                                                                                                                                                                                           |
+| 2026-11-15 | Phase order approved: 2A → 3A → 3B → 3C → 4. Neon stays Free (no purchase; no provider move without a cost and performance comparison). Frankfurt move: evaluate only. Backups before destructive changes. No fake statistics ("+12%" to be replaced with real data or an unavailable state). Failed requests must be distinguishable from empty results. No feature retired without approval. |
