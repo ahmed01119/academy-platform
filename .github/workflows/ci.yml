@@ -141,3 +141,56 @@ jobs:
 
       - name: Verify Frontend Docker Build
         run: docker build -f Dockerfile.web -t sportexus-web:ci .
+
+  # Cross-platform check: the team develops on Windows, so formatting, lint, typecheck, unit tests
+  # and production builds must also pass there (line endings, path separators, shell differences).
+  # Database SQL tests and Docker builds need Linux service containers and stay in `quality`.
+  quality-windows:
+    name: Windows — format, lint, typecheck, unit tests & build
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    env:
+      # Unit tests mock Prisma and Redis; no database server is contacted.
+      DATABASE_URL: postgresql://academy:academy@localhost:5432/academy?schema=public
+      NEXT_TELEMETRY_DISABLED: '1'
+      NODE_ENV: test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate version metadata
+        run: node scripts/generate-version.js
+
+      - name: Generate Prisma client
+        run: pnpm db:generate
+
+      - name: Format check
+        run: pnpm format:check
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build applications
+        run: pnpm build
