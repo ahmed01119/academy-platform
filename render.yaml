@@ -6,7 +6,7 @@ services:
     region: frankfurt
     branch: staging/cloud-zero-cost
     repo: https://github.com/ahmed01119/academy-platform
-    buildCommand: pnpm install --frozen-lockfile && pnpm turbo run build --filter=@academy/api...
+    buildCommand: pnpm install --frozen-lockfile && pnpm db:generate && pnpm turbo run build --filter=@academy/api...
     startCommand: node backend/dist/main.js
     healthCheckPath: /v1/health/ready
     envVars:
