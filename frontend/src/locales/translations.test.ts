@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { translations } from './i18n/translations';
+import { translations } from './translations';
 
 describe('Localization Completeness & Translation Parity', () => {
   it('has identical top-level sections in both Arabic and English', () => {

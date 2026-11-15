@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { api, setActiveTenantIdHeader, getActiveTenantIdHeader, ApiError } from './api-client';
+import { api, setActiveTenantIdHeader, getActiveTenantIdHeader, ApiError } from './client';
 
 describe('api-client', () => {
   beforeEach(() => {
