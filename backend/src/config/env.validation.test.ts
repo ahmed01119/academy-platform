@@ -7,6 +7,8 @@ const productionConfig = {
   JWT_SECRET: 'a-production-only-secret-with-sufficient-entropy',
   CORS_ORIGIN: 'https://academy.example.com',
   COOKIE_SECURE: true,
+  // Synthetic test value (not a real secret).
+  INTERNAL_PROXY_SECRET: 'test-only-proxy-secret-0123456789abcdef',
 };
 
 describe('production database configuration', () => {
@@ -72,5 +74,40 @@ describe('production database configuration', () => {
 
   it('keeps database optional in local development', () => {
     expect(validateEnv({ NODE_ENV: 'development' }).DATABASE_URL).toBeUndefined();
+  });
+});
+
+describe('trusted web proxy configuration (S1)', () => {
+  const validRuntime = {
+    ...productionConfig,
+    DATABASE_URL: 'postgresql://academy_runtime:example@localhost:5432/academy',
+  };
+
+  it('requires INTERNAL_PROXY_SECRET in production (staging also runs NODE_ENV=production)', () => {
+    const { INTERNAL_PROXY_SECRET: _omit, ...withoutSecret } = validRuntime;
+    expect(() => validateEnv(withoutSecret)).toThrow('INTERNAL_PROXY_SECRET');
+  });
+
+  it('rejects a short or blank secret', () => {
+    expect(() => validateEnv({ ...validRuntime, INTERNAL_PROXY_SECRET: 'too-short' })).toThrow(
+      'at least 32 characters',
+    );
+    expect(() => validateEnv({ ...validRuntime, INTERNAL_PROXY_SECRET: ' '.repeat(40) })).toThrow(
+      'INTERNAL_PROXY_SECRET',
+    );
+  });
+
+  it('accepts TRUST_PROXY_HOPS 0-3 and rejects anything else', () => {
+    expect(validateEnv({ NODE_ENV: 'development' }).TRUST_PROXY_HOPS).toBe(0);
+    expect(validateEnv({ NODE_ENV: 'development', TRUST_PROXY_HOPS: '2' }).TRUST_PROXY_HOPS).toBe(
+      2,
+    );
+    for (const bad of ['-1', '4', '1.5', 'abc']) {
+      expect(() => validateEnv({ NODE_ENV: 'development', TRUST_PROXY_HOPS: bad })).toThrow();
+    }
+  });
+
+  it('does not require the secret in development', () => {
+    expect(validateEnv({ NODE_ENV: 'development' }).INTERNAL_PROXY_SECRET).toBeUndefined();
   });
 });

@@ -11,7 +11,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-academy}
       POSTGRES_USER: ${POSTGRES_USER:-academy}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-SportexusSecureDbPass2026!}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
       POSTGRES_RUNTIME_PASSWORD: ${POSTGRES_RUNTIME_PASSWORD:-SportexusRuntimePass2026!}
     volumes:
       - sportexus_pg_data:/var/lib/postgresql/data
@@ -51,13 +51,16 @@ services:
       NODE_ENV: production
       PORT: 3001
       API_VERSION: ${API_VERSION:-1.0.0}
-      DATABASE_URL: postgresql://${POSTGRES_USER:-academy}:${POSTGRES_PASSWORD:-SportexusSecureDbPass2026!}@postgres:5432/${POSTGRES_DB:-academy}?schema=public
+      DATABASE_URL: postgresql://${POSTGRES_USER:-academy}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-academy}?schema=public
       REDIS_URL: redis://redis:6379
-      JWT_SECRET: ${JWT_SECRET:-sportexus_super_secure_production_jwt_secret_key_2026}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-15m}
       REFRESH_TOKEN_EXPIRES_DAYS: ${REFRESH_TOKEN_EXPIRES_DAYS:-7}
       CORS_ORIGIN: '*'
       COOKIE_SECURE: 'true'
+      # S1: nginx routes /v1 directly to the API and is the one trusted hop.
+      INTERNAL_PROXY_SECRET: ${INTERNAL_PROXY_SECRET:?set INTERNAL_PROXY_SECRET}
+      TRUST_PROXY_HOPS: '1'
     depends_on:
       postgres:
         condition: service_healthy
@@ -84,6 +87,8 @@ services:
       NODE_ENV: production
       INTERNAL_API_URL: http://api:3001
       PORT: 3000
+      INTERNAL_PROXY_SECRET: ${INTERNAL_PROXY_SECRET:?set INTERNAL_PROXY_SECRET}
+      WEB_TRUSTED_PROXY_HOPS: '1'
     depends_on:
       api:
         condition: service_healthy

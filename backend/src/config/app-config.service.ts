@@ -46,6 +46,16 @@ export class AppConfigService {
     return this.config.get('CORS_ORIGIN', { infer: true });
   }
 
+  /** Shared web-proxy secret (S1). Undefined when not configured (development). */
+  get internalProxySecret(): string | undefined {
+    const value = this.config.get('INTERNAL_PROXY_SECRET', { infer: true })?.trim();
+    return value ? value : undefined;
+  }
+
+  get trustProxyHops(): number {
+    return this.config.get('TRUST_PROXY_HOPS', { infer: true });
+  }
+
   get cookieSecure(): boolean {
     return this.config.get('COOKIE_SECURE', { infer: true }) || this.nodeEnv === 'production';
   }

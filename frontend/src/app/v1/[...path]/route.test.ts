@@ -75,6 +75,8 @@ describe('V1 API Proxy Runtime Route Handler', () => {
     it('successfully forwards POST request, body, and captures Set-Cookie headers', async () => {
       process.env.INTERNAL_API_URL = 'https://sportexus-backend-staging.hostless.app';
       vi.stubEnv('NODE_ENV', 'production');
+      vi.stubEnv('INTERNAL_PROXY_SECRET', 'test-only-proxy-secret-0123456789abcdef');
+      vi.stubEnv('WEB_TRUSTED_PROXY_HOPS', '1');
 
       const mockSetCookies = [
         'access_token=jwt.token.here; Path=/; HttpOnly; SameSite=Lax; Secure; Domain=sportexus-backend-staging.hostless.app',
@@ -133,6 +135,8 @@ describe('V1 API Proxy Runtime Route Handler', () => {
     it('returns HTTP 502 Bad Gateway when upstream fetch fails', async () => {
       process.env.INTERNAL_API_URL = 'https://sportexus-backend-staging.hostless.app';
       vi.stubEnv('NODE_ENV', 'production');
+      vi.stubEnv('INTERNAL_PROXY_SECRET', 'test-only-proxy-secret-0123456789abcdef');
+      vi.stubEnv('WEB_TRUSTED_PROXY_HOPS', '1');
 
       global.fetch = vi.fn().mockRejectedValue(new Error('Connection timeout to backend'));
 

@@ -10,6 +10,7 @@ import {
 import { PrismaService } from '../database/prisma.service';
 import { PasswordService } from './password.service';
 import { TokenService, type GeneratedTokens } from './token.service';
+import { rateLimitIpKey } from '../../common/client-ip';
 import { RedisService } from '../redis/redis.service';
 import { AuditService } from '../audit/audit.service';
 import { AppConfigService } from '../../config/app-config.service';
@@ -186,7 +187,7 @@ export class AuthService {
     activeTenantId?: string,
   ): Promise<{ response: AuthResponse; rawTokens: GeneratedTokens }> {
     const normalizedEmail = dto.email.toLowerCase().trim();
-    const rateLimitKey = `ratelimit:login:${ipAddress || 'unknown'}:${normalizedEmail}`;
+    const rateLimitKey = `ratelimit:login:${rateLimitIpKey(ipAddress)}:${normalizedEmail}`;
 
     const { count, remainingTime } = await this.redisService.incrementRateLimit(
       rateLimitKey,
@@ -488,7 +489,7 @@ export class AuthService {
       });
     }
 
-    const rateLimitKey = `ratelimit:forgot-password:${ipAddress || 'unknown'}:${normalizedEmail}`;
+    const rateLimitKey = `ratelimit:forgot-password:${rateLimitIpKey(ipAddress)}:${normalizedEmail}`;
     const { count, remainingTime } = await this.redisService.incrementRateLimit(
       rateLimitKey,
       15 * 60,
@@ -696,7 +697,7 @@ export class AuthService {
     userAgent?: string,
   ): Promise<{ message: string }> {
     const normalizedEmail = email.toLowerCase().trim();
-    const rateLimitKey = `ratelimit:email-verify:${ipAddress || 'unknown'}:${normalizedEmail}`;
+    const rateLimitKey = `ratelimit:email-verify:${rateLimitIpKey(ipAddress)}:${normalizedEmail}`;
     const { count, remainingTime } = await this.redisService.incrementRateLimit(
       rateLimitKey,
       15 * 60,

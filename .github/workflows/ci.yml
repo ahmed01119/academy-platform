@@ -133,6 +133,7 @@ jobs:
           DATABASE_URL: postgresql://academy_runtime:ci@postgres:5432/academy?schema=public
           DATABASE_ADMIN_URL: postgresql://academy:ci@postgres:5432/academy?schema=public
           JWT_SECRET: ci-placeholder-jwt-secret-32chars
+          INTERNAL_PROXY_SECRET: ci-placeholder-proxy-secret-0123456789abcdef
           CORS_ORIGIN: https://app.example.test
           NEXT_PUBLIC_API_BASE_URL: https://api.example.test/v1
 

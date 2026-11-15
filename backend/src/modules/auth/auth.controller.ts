@@ -110,7 +110,7 @@ export class AuthController {
   @HttpCode(HttpStatus.CREATED)
   async register(@Body() body: unknown, @Req() req: Request): Promise<RegisterResponse> {
     const dto: RegisterRequest = RegisterRequestSchema.parse(body);
-    const ipAddress = req.ip || req.socket.remoteAddress;
+    const ipAddress = req.clientIp;
     const userAgent = req.headers['user-agent'];
 
     const { response } = await this.authService.register(dto, ipAddress, userAgent);
@@ -127,7 +127,7 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ): Promise<AuthResponse> {
     const dto: LoginRequest = LoginRequestSchema.parse(body);
-    const ipAddress = req.ip || req.socket.remoteAddress;
+    const ipAddress = req.clientIp;
     const userAgent = req.headers['user-agent'];
     const activeTenantId = (req.headers['x-tenant-id'] as string) || req.cookies?.tenant_id;
 
@@ -152,7 +152,7 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ): Promise<AuthResponse> {
     const token = req.cookies?.refresh_token || body?.refreshToken;
-    const ipAddress = req.ip || req.socket.remoteAddress;
+    const ipAddress = req.clientIp;
     const userAgent = req.headers['user-agent'];
     const activeTenantId = (req.headers['x-tenant-id'] as string) || req.cookies?.tenant_id;
 
@@ -198,7 +198,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async forgotPassword(@Body() body: unknown, @Req() req: Request): Promise<{ message: string }> {
     const dto: ForgotPasswordRequest = ForgotPasswordRequestSchema.parse(body);
-    const ipAddress = req.ip || req.socket.remoteAddress;
+    const ipAddress = req.clientIp;
     const userAgent = req.headers['user-agent'];
 
     return this.authService.forgotPassword(dto, ipAddress, userAgent);
@@ -210,7 +210,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async resetPassword(@Body() body: unknown, @Req() req: Request): Promise<{ message: string }> {
     const dto: ResetPasswordRequest = ResetPasswordRequestSchema.parse(body);
-    const ipAddress = req.ip || req.socket.remoteAddress;
+    const ipAddress = req.clientIp;
     const userAgent = req.headers['user-agent'];
 
     return this.authService.resetPassword(dto, ipAddress, userAgent);
@@ -222,7 +222,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async verifyEmail(@Body() body: unknown, @Req() req: Request): Promise<{ message: string }> {
     const dto = VerifyEmailSchema.parse(body);
-    const ipAddress = req.ip || req.socket.remoteAddress;
+    const ipAddress = req.clientIp;
     const userAgent = req.headers['user-agent'];
 
     return this.authService.verifyEmail(dto.token, ipAddress, userAgent);
@@ -237,7 +237,7 @@ export class AuthController {
     @Req() req: Request,
   ): Promise<{ message: string }> {
     const dto = ResendVerificationSchema.parse(body);
-    const ipAddress = req.ip || req.socket.remoteAddress;
+    const ipAddress = req.clientIp;
     const userAgent = req.headers['user-agent'];
 
     return this.authService.resendVerificationEmail(dto.email, ipAddress, userAgent);
@@ -259,7 +259,7 @@ export class AuthController {
     @Req() req: Request,
   ): Promise<{ message: string }> {
     const dto: ChangePasswordRequest = ChangePasswordRequestSchema.parse(body);
-    const ipAddress = req.ip || req.socket.remoteAddress;
+    const ipAddress = req.clientIp;
     const userAgent = req.headers['user-agent'];
 
     return this.authService.changePassword(userId, dto, ipAddress, userAgent);

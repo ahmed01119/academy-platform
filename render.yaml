@@ -25,6 +25,11 @@ services:
         sync: false
       - key: JWT_SECRET
         generateValue: true
+      # S1: must equal the web service's INTERNAL_PROXY_SECRET (set both by hand; never commit the value).
+      - key: INTERNAL_PROXY_SECRET
+        sync: false
+      - key: TRUST_PROXY_HOPS
+        value: '1'
       - key: JWT_ACCESS_SECRET
         generateValue: true
       - key: JWT_REFRESH_SECRET

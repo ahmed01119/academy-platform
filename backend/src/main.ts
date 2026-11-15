@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import cookieParser from 'cookie-parser';
 import express from 'express';
 import { AppModule } from './app.module';
@@ -7,13 +8,20 @@ import { AppConfigService } from './config/app-config.service';
 import { correlationMiddleware } from './common/correlation.middleware';
 import { securityHeadersMiddleware } from './common/security-headers.middleware';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
+import { createClientIpMiddleware } from './common/client-ip';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, {
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     abortOnError: true,
   });
 
   const config = app.get(AppConfigService);
+
+  // Trusted client IP (S1): Express derives req.ip from at most TRUST_PROXY_HOPS reverse proxies (default 0 =
+  // socket address); the middleware then accepts the web proxy's forwarded IP only with the shared secret.
+  // Registered first so every later middleware, guard and controller sees the same value.
+  app.set('trust proxy', config.trustProxyHops);
+  app.use(createClientIpMiddleware(config.internalProxySecret));
 
   // Request parsing with size protection
   app.use(express.json({ limit: '10mb' }));

@@ -1,5 +1,10 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import {
+  HOP_BY_HOP_HEADERS,
+  buildUpstreamHeaders,
+  resolveProxyConfig,
+} from '@/lib/http/proxy-forwarding';
 
 /**
  * Resolves the backend base URL at RUNTIME.
@@ -22,22 +27,6 @@ export function resolveBackendBaseUrl(): string {
   // Development only fallback
   return 'http://127.0.0.1:3001';
 }
-
-/**
- * Hop-by-hop headers that must not be forwarded to the upstream backend.
- */
-const HOP_BY_HOP_HEADERS = new Set([
-  'connection',
-  'keep-alive',
-  'proxy-authenticate',
-  'proxy-authorization',
-  'te',
-  'trailer',
-  'transfer-encoding',
-  'upgrade',
-  'host',
-  'content-length',
-]);
 
 async function handleProxy(
   req: NextRequest,
@@ -65,21 +54,24 @@ async function handleProxy(
   const query = req.nextUrl.search || '';
   const targetUrl = `${backendBase}/v1/${subPath}${query}`;
 
-  // Forward client request headers, filtering hop-by-hop headers
-  const forwardHeaders = new Headers();
-  req.headers.forEach((value, key) => {
-    const lowerKey = key.toLowerCase();
-    if (!HOP_BY_HOP_HEADERS.has(lowerKey)) {
-      forwardHeaders.set(key, value);
-    }
-  });
-
-  // Preserve client IP and protocol forwarding
-  const clientIp = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip');
-  if (clientIp) {
-    forwardHeaders.set('x-forwarded-for', clientIp);
+  // S1: strip every client-supplied identity header, then attach the real client IP (from the trusted hop) and
+  // the shared secret. Production fails safe when the proxy security configuration is missing.
+  const proxyConfig = resolveProxyConfig(process.env);
+  if (!proxyConfig.ok) {
+    console.error(
+      '[SPORTEXUS Proxy Error] Invalid proxy security configuration:',
+      proxyConfig.message,
+    );
+    return NextResponse.json(
+      { statusCode: 500, message: proxyConfig.message, error: 'Configuration Error' },
+      { status: 500 },
+    );
   }
-  forwardHeaders.set('x-forwarded-proto', req.nextUrl.protocol.replace(':', ''));
+  const forwardHeaders = buildUpstreamHeaders(
+    req.headers,
+    proxyConfig.config,
+    req.nextUrl.protocol.replace(':', ''),
+  );
 
   // Prepare request body for mutation methods
   const hasBody = !['GET', 'HEAD'].includes(req.method);
