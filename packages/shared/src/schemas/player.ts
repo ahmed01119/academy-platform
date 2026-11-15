@@ -1,5 +1,14 @@
 import { z } from 'zod';
 
+/** True for a YYYY-MM-DD string that is a real date (rejects e.g. 2026-02-31, which JS would roll over). */
+export function isCalendarDate(value: string): boolean {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return false;
+  const [, y, m, d] = match.map(Number) as [number, number, number, number];
+  const date = new Date(Date.UTC(y, m - 1, d));
+  return date.getUTCFullYear() === y && date.getUTCMonth() === m - 1 && date.getUTCDate() === d;
+}
+
 export const PlayerGender = {
   MALE: 'MALE',
   FEMALE: 'FEMALE',
@@ -54,6 +63,15 @@ export const CreatePlayerSchema = z.object({
   medicalNotes: z.string().trim().max(500).optional().nullable(),
   primaryGuardian: GuardianInputSchema,
   initialBranchId: z.string().uuid('Initial branch ID is required'),
+  /**
+   * Start date of the initial branch enrollment (YYYY-MM-DD, a real calendar date).
+   * Optional and backward compatible: omitted → the enrollment starts today (previous behaviour).
+   */
+  initialEnrollmentStartDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Enrollment start date must be YYYY-MM-DD')
+    .refine(isCalendarDate, 'Enrollment start date must be a valid calendar date')
+    .optional(),
   sport: z.enum(['FOOTBALL']).default('FOOTBALL'),
 });
 export type CreatePlayerRequest = z.infer<typeof CreatePlayerSchema>;

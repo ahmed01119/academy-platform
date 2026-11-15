@@ -13,10 +13,9 @@ import {
 import { PrismaService } from '../database/prisma.service';
 import type { Prisma } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
+import { buildPlayerSearchConditions, canViewSensitivePlayerData } from './player-sensitive-data';
 import {
   ErrorCode,
-  Permission,
-  hasPermission,
   type CreatePlayerRequest,
   type PlayerDetails,
   type PlayerSummary,
@@ -70,6 +69,8 @@ export class PlayersService {
     const skip = (page - 1) * limit;
 
     const effectiveBranchId = tenantContext.branchId || options?.branchId;
+    // F22: national ID is neither returned nor searchable without players.sensitive.read
+    const canViewSensitive = canViewSensitivePlayerData(tenantContext);
 
     return this.prisma.withTenantTransaction(
       { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
@@ -93,23 +94,7 @@ export class PlayersService {
 
         if (options?.search) {
           const term = options.search.trim();
-          whereClause.OR = [
-            { firstName: { contains: term, mode: 'insensitive' } },
-            { lastName: { contains: term, mode: 'insensitive' } },
-            { nationalId: { contains: term } },
-            { emergencyContactPhone: { contains: term } },
-            {
-              guardians: {
-                some: {
-                  OR: [
-                    { firstName: { contains: term, mode: 'insensitive' } },
-                    { lastName: { contains: term, mode: 'insensitive' } },
-                    { phone: { contains: term } },
-                  ],
-                },
-              },
-            },
-          ];
+          whereClause.OR = buildPlayerSearchConditions(term, canViewSensitive);
         }
 
         const [total, players] = await Promise.all([
@@ -153,7 +138,7 @@ export class PlayersService {
             lastName: p.lastName,
             gender: p.gender as PlayerGender,
             dateOfBirth: p.dateOfBirth.toISOString().slice(0, 10),
-            nationalId: p.nationalId,
+            nationalId: canViewSensitive ? p.nationalId : null,
             photoUrl: p.photoUrl,
             emergencyContactName: p.emergencyContactName,
             emergencyContactPhone: p.emergencyContactPhone,
@@ -244,11 +229,7 @@ export class PlayersService {
           }
         }
 
-        const canViewSensitive = Boolean(
-          tenantContext.permissions?.includes(Permission.PLAYERS_SENSITIVE_READ) ||
-          (tenantContext.role &&
-            hasPermission(tenantContext.role, Permission.PLAYERS_SENSITIVE_READ)),
-        );
+        const canViewSensitive = canViewSensitivePlayerData(tenantContext);
 
         const primaryGuardian = p.guardians.find((g) => g.isPrimary) || p.guardians[0] || null;
         const activeEnrollment = p.enrollments.find((e) => e.status === 'ACTIVE') || null;
@@ -367,11 +348,7 @@ export class PlayersService {
         }
 
         // Sensitive data check
-        const hasSensitivePerm = Boolean(
-          tenantContext.permissions?.includes(Permission.PLAYERS_SENSITIVE_READ) ||
-          (tenantContext.role &&
-            hasPermission(tenantContext.role, Permission.PLAYERS_SENSITIVE_READ)),
-        );
+        const hasSensitivePerm = canViewSensitivePlayerData(tenantContext);
         if (dto.medicalNotes && !hasSensitivePerm) {
           throw new ForbiddenException({
             code: ErrorCode.FORBIDDEN,
@@ -449,7 +426,10 @@ export class PlayersService {
             branchId: branch.id,
             sport: dto.sport,
             status: 'ACTIVE',
-            startDate: new Date(),
+            // F21: honour the requested start date (validated YYYY-MM-DD); default today as before
+            startDate: dto.initialEnrollmentStartDate
+              ? new Date(dto.initialEnrollmentStartDate)
+              : new Date(),
           },
           include: {
             branch: {
@@ -510,11 +490,11 @@ export class PlayersService {
           lastName: player.lastName,
           gender: player.gender as PlayerGender,
           dateOfBirth: player.dateOfBirth.toISOString().slice(0, 10),
-          nationalId: player.nationalId,
+          nationalId: hasSensitivePerm ? player.nationalId : null,
           photoUrl: player.photoUrl,
           emergencyContactName: player.emergencyContactName,
           emergencyContactPhone: player.emergencyContactPhone,
-          medicalNotes: player.medicalNotes,
+          medicalNotes: hasSensitivePerm ? player.medicalNotes : null,
           status: player.status as PlayerStatus,
           currentBranch: {
             id: branch.id,
@@ -608,11 +588,7 @@ export class PlayersService {
           }
         }
 
-        const hasSensitivePerm = Boolean(
-          tenantContext.permissions?.includes(Permission.PLAYERS_SENSITIVE_READ) ||
-          (tenantContext.role &&
-            hasPermission(tenantContext.role, Permission.PLAYERS_SENSITIVE_READ)),
-        );
+        const hasSensitivePerm = canViewSensitivePlayerData(tenantContext);
 
         if (
           dto.medicalNotes !== undefined &&
@@ -702,11 +678,7 @@ export class PlayersService {
           tx,
         );
 
-        const canViewSensitive = Boolean(
-          tenantContext.permissions?.includes(Permission.PLAYERS_SENSITIVE_READ) ||
-          (tenantContext.role &&
-            hasPermission(tenantContext.role, Permission.PLAYERS_SENSITIVE_READ)),
-        );
+        const canViewSensitive = canViewSensitivePlayerData(tenantContext);
         const primaryGuardian = updated.guardians[0] || null;
         const activeEnrollment = updated.enrollments[0] || null;
 
@@ -1324,16 +1296,28 @@ export class PlayersService {
         reviewedByUserId: updated.reviewedByUserId,
         reviewedAt: updated.reviewedAt?.toISOString() || null,
         createdAt: updated.createdAt.toISOString(),
-        _meta: { email: updated.contactEmail, tenantId: updated.tenantId, playerName: updated.playerName, status: dto.status, reviewNotes: dto.reviewNotes },
+        _meta: {
+          email: updated.contactEmail,
+          tenantId: updated.tenantId,
+          playerName: updated.playerName,
+          status: dto.status,
+          reviewNotes: dto.reviewNotes,
+        },
       };
     });
 
     // Dispatch email outside transaction (fire-and-forget)
-    if (result._meta.email && (result._meta.status === 'APPROVED' || result._meta.status === 'REJECTED')) {
-      const tenant = await this.prisma.withTenantTransaction(
-        { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
-        (tx) => tx.tenant.findUnique({ where: { id: tenantContext.tenantId }, select: { name: true } }),
-      ).catch(() => ({ name: 'Academy' }));
+    if (
+      result._meta.email &&
+      (result._meta.status === 'APPROVED' || result._meta.status === 'REJECTED')
+    ) {
+      const tenant = await this.prisma
+        .withTenantTransaction(
+          { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
+          (tx) =>
+            tx.tenant.findUnique({ where: { id: tenantContext.tenantId }, select: { name: true } }),
+        )
+        .catch(() => ({ name: 'Academy' }));
       void this.dispatchPlayerReviewEmail(
         result._meta.email,
         result._meta.playerName,
