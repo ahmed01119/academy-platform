@@ -92,7 +92,7 @@ Permissions are a static map (`ROLE_PERMISSIONS`). Current code:
      - `TenantSubscription` (plan = `initialPlanCode` if active else STARTER, MONTHLY, renewal +1 month,
        negotiatedPrice = plan monthly price).
    - Each outcome sends an in-app notification and an email to the applicant.
-   - Alternative public entry: `POST /platform/applications/public`.
+   - The former anonymous entry `POST /platform/applications/public` was **retired** (S5, 2026-11-15): it filed applications under existing accounts by email, which let anyone block a portal user's sign-in. Registration happens only through `/auth/register`.
 
 ### 2.2 Authentication & session
 

@@ -21,7 +21,6 @@ import type {
   RequestSupportAccessRequest,
   SupportAccessResponse,
   AcademyApplicationItem,
-  CreateAcademyApplicationRequest,
   ReviewAcademyApplicationRequest,
   StorageMetrics,
   StorageMaintenanceDryRunResponse,
@@ -150,15 +149,6 @@ export const platformApi = {
     data: CreatePlatformAnnouncementRequest,
   ): Promise<PlatformAnnouncementItem> {
     return request('/platform/announcements', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-  },
-
-  async submitAcademyApplication(
-    data: CreateAcademyApplicationRequest,
-  ): Promise<AcademyApplicationItem> {
-    return request('/platform/applications/public', {
       method: 'POST',
       body: JSON.stringify(data),
     });

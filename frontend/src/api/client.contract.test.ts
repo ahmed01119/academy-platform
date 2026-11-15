@@ -29,7 +29,7 @@ const EXPECTED_API_SURFACE: Record<string, string[]> = {
       ' ',
     ),
   platform:
-    'getMetrics listAcademies getAcademyDeletionImpact archiveAcademy updateAcademyStatus requestSupportAccess listAuditLogs getSecurityEvents listUsers revokeUserSessions updateUserSecurityPolicy listSaaSPlans updateSaaSPlan updateTenantSubscription listAnnouncements createAnnouncement submitAcademyApplication listAcademyApplications reviewAcademyApplication getStorageMetrics dryRunStorageMaintenance executeStorageMaintenance inviteSuperAdmin inviteUser updatePlatformAdminRole'.split(
+    'getMetrics listAcademies getAcademyDeletionImpact archiveAcademy updateAcademyStatus requestSupportAccess listAuditLogs getSecurityEvents listUsers revokeUserSessions updateUserSecurityPolicy listSaaSPlans updateSaaSPlan updateTenantSubscription listAnnouncements createAnnouncement listAcademyApplications reviewAcademyApplication getStorageMetrics dryRunStorageMaintenance executeStorageMaintenance inviteSuperAdmin inviteUser updatePlatformAdminRole'.split(
       ' ',
     ),
   finance:

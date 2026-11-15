@@ -22,7 +22,6 @@ import {
   UpdateSaaSPlanRequestSchema,
   UpdateTenantSubscriptionRequestSchema,
   CreatePlatformAnnouncementRequestSchema,
-  CreateAcademyApplicationRequestSchema,
   ReviewAcademyApplicationRequestSchema,
   ExecuteStorageMaintenanceRequestSchema,
   InvitePlatformSuperAdminRequestSchema,
@@ -35,7 +34,6 @@ import {
   type UpdateSaaSPlanRequest,
   type UpdateTenantSubscriptionRequest,
   type CreatePlatformAnnouncementRequest,
-  type CreateAcademyApplicationRequest,
   type ReviewAcademyApplicationRequest,
   type ExecuteStorageMaintenanceRequest,
   type InvitePlatformSuperAdminRequest,
@@ -44,7 +42,6 @@ import {
   type ApplicationStatus,
 } from '@academy/shared';
 import { PlatformOwnerGuard } from '../auth/guards/platform-owner.guard';
-import { Public } from '../auth/guards/public.decorator';
 
 @Controller('platform')
 @UseGuards(JwtAuthGuard, PlatformSuperAdminGuard, CsrfGuard)
@@ -193,16 +190,6 @@ export class PlatformController {
   @Get('security-events')
   async getSecurityEvents(@CurrentUser('id') actorUserId: string) {
     return this.platformService.getSecurityEvents(actorUserId);
-  }
-
-  @Public()
-  @Post('applications/public')
-  async submitAcademyApplicationPublic(
-    @Body() body: unknown,
-    @CurrentUser('id') actorUserId?: string,
-  ) {
-    const dto: CreateAcademyApplicationRequest = CreateAcademyApplicationRequestSchema.parse(body);
-    return this.platformService.submitAcademyApplication(actorUserId ?? '', dto);
   }
 
   @Get('applications')

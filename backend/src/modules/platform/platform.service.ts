@@ -5,7 +5,6 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
-  ConflictException,
   ServiceUnavailableException,
   Optional,
 } from '@nestjs/common';
@@ -32,7 +31,6 @@ import {
   type UpdateTenantSubscriptionRequest,
   type PlatformAnnouncementItem,
   type CreatePlatformAnnouncementRequest,
-  type CreateAcademyApplicationRequest,
   type ReviewAcademyApplicationRequest,
   type AcademyApplicationItem,
   type StorageMetrics,
@@ -1374,112 +1372,6 @@ export class PlatformService {
         userId: user.id,
       };
     });
-  }
-
-  /**
-   * Submits a public academy registration application.
-   */
-  async submitAcademyApplication(
-    applicantUserId: string,
-    dto: CreateAcademyApplicationRequest,
-  ): Promise<AcademyApplicationItem> {
-    const slug = dto.academySlug.trim().toLowerCase();
-
-    // Check slug uniqueness across active tenants and pending applications
-    const existingTenant = await this.prisma.tenant.findUnique({ where: { slug } });
-    if (existingTenant) {
-      throw new ConflictException({
-        code: ErrorCode.CONFLICT,
-        message: 'An academy with this slug already exists. Please choose a different identifier.',
-      });
-    }
-
-    const existingApp = await this.prisma.academyApplication.findFirst({
-      where: {
-        academySlug: slug,
-        status: { in: ['PENDING_REVIEW', 'APPROVED'] },
-      },
-    });
-    if (existingApp) {
-      throw new ConflictException({
-        code: ErrorCode.CONFLICT,
-        message: 'An application with this slug is already registered or under review.',
-      });
-    }
-
-    let resolvedApplicantId = applicantUserId?.trim();
-    if (!resolvedApplicantId) {
-      const email = dto.contactEmail.trim().toLowerCase();
-      let user = await this.prisma.user.findUnique({ where: { email } });
-      if (!user) {
-        user = await this.prisma.user.create({
-          data: {
-            email,
-            name: `${dto.academyName.trim()} Applicant`,
-            phone: dto.contactPhone?.trim() ?? null,
-            passwordHash: 'INVITED_PENDING_ACTIVATION',
-            mustResetPassword: true,
-          },
-        });
-      }
-      resolvedApplicantId = user.id;
-    }
-
-    const application = await this.prisma.academyApplication.create({
-      data: {
-        applicantUserId: resolvedApplicantId,
-        academyName: dto.academyName.trim(),
-        academySlug: slug,
-        sport: dto.sport as any,
-        city: dto.city?.trim() ?? null,
-        contactPhone: dto.contactPhone?.trim() ?? null,
-        contactEmail: dto.contactEmail.trim().toLowerCase(),
-        notes: dto.notes?.trim() ?? null,
-        status: 'PENDING_REVIEW',
-      },
-      include: {
-        applicant: { select: { name: true } },
-      },
-    });
-
-    // Notify Super Admins and Platform Owners
-    const platformStaff = await this.prisma.user.findMany({
-      where: {
-        OR: [{ isPlatformSuperAdmin: true }, { isPlatformOwner: true }],
-        isSuspended: false,
-      },
-      select: { id: true },
-    });
-
-    for (const admin of platformStaff) {
-      await this.notificationsService.createNotification({
-        userId: admin.id,
-        type: 'ACADEMY_APPLICATION',
-        title: 'New Academy Application',
-        body: `"${dto.academyName}" submitted a registration application for review.`,
-        href: '/platform',
-      });
-    }
-
-    return {
-      id: application.id,
-      applicantUserId: application.applicantUserId,
-      applicantName: application.applicant.name,
-      academyName: application.academyName,
-      academySlug: application.academySlug,
-      sport: application.sport,
-      city: application.city,
-      contactPhone: application.contactPhone,
-      contactEmail: application.contactEmail,
-      notes: application.notes,
-      status: application.status as ApplicationStatus,
-      reviewNotes: application.reviewNotes,
-      reviewedByUserId: application.reviewedByUserId,
-      reviewedAt: application.reviewedAt?.toISOString() ?? null,
-      provisionedTenantId: application.provisionedTenantId,
-      createdAt: application.createdAt.toISOString(),
-      updatedAt: application.updatedAt.toISOString(),
-    };
   }
 
   /**
