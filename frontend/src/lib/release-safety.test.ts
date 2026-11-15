@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
+import { createRequire } from 'module';
 
 describe('CI/CD Release Safety & Verification Invariants', () => {
   const backendSample = `
@@ -266,5 +267,38 @@ CMD ["node", "frontend/server.js"]
 
     expect(backendMsg).toContain('[skip ci]');
     expect(webMsg).toContain('[skip ci]');
+  });
+});
+
+describe('generate-version: local builds do not rewrite tracked version files', () => {
+  // scripts/generate-version.js is CommonJS and only runs main() when executed directly.
+  const { shouldWriteManifest, RELEASE_ENV_KEYS } = createRequire(import.meta.url)(
+    '../../../scripts/generate-version.js',
+  ) as {
+    shouldWriteManifest: (input: {
+      env: Record<string, string | undefined>;
+      manifestExists: boolean;
+    }) => boolean;
+    RELEASE_ENV_KEYS: string[];
+  };
+
+  it('keeps an existing manifest on a plain local build', () => {
+    expect(shouldWriteManifest({ env: {}, manifestExists: true })).toBe(false);
+  });
+
+  it('always writes when the manifest does not exist yet', () => {
+    expect(shouldWriteManifest({ env: {}, manifestExists: false })).toBe(true);
+  });
+
+  it.each(['COMMIT_SHA', 'GITHUB_SHA', 'BUILD_ID', 'CI', 'SPORTEXUS_STAMP_VERSION'])(
+    'regenerates for release builds identified by %s',
+    (key) => {
+      expect(RELEASE_ENV_KEYS).toContain(key);
+      expect(shouldWriteManifest({ env: { [key]: 'abc123' }, manifestExists: true })).toBe(true);
+    },
+  );
+
+  it.each(['', '  ', '0', 'false'])('treats %j as not set', (value) => {
+    expect(shouldWriteManifest({ env: { CI: value }, manifestExists: true })).toBe(false);
   });
 });
