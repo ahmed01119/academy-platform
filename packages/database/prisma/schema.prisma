@@ -225,6 +225,11 @@ model User {
   emailVerificationExpiresAt DateTime? @map("email_verification_expires_at") @db.Timestamptz(3)
   passwordResetToken         String?   @map("password_reset_token")
   passwordResetExpiresAt     DateTime? @map("password_reset_expires_at") @db.Timestamptz(3)
+  /// SHA-256 of the 256-bit reset link token (K1). Never stored or logged in plain text; single-use.
+  passwordResetLinkToken     String?   @map("password_reset_link_token")
+  /// Incremented on password change/reset, suspension and admin session revocation (K13b). Access and refresh
+  /// tokens carry the version they were issued with and are rejected once it no longer matches.
+  sessionVersion             Int       @default(0) @map("session_version")
   onboardingToken            String?   @map("onboarding_token")
   onboardingExpiresAt        DateTime? @map("onboarding_expires_at") @db.Timestamptz(3)
   redemptionChallenge        String?   @map("redemption_challenge")
@@ -261,15 +266,17 @@ model User {
 
 /// Refresh tokens supporting rotation, reuse detection, and device tracking.
 model RefreshToken {
-  id         String   @id @default(uuid()) @db.Uuid
-  userId     String   @map("user_id") @db.Uuid
-  tokenHash  String   @unique @map("token_hash")
-  familyId   String   @map("family_id") @db.Uuid
-  deviceInfo String?  @map("device_info")
-  ipAddress  String?  @map("ip_address")
-  isRevoked  Boolean  @default(false) @map("is_revoked")
-  expiresAt  DateTime @map("expires_at") @db.Timestamptz(3)
-  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  id             String   @id @default(uuid()) @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  tokenHash      String   @unique @map("token_hash")
+  familyId       String   @map("family_id") @db.Uuid
+  deviceInfo     String?  @map("device_info")
+  ipAddress      String?  @map("ip_address")
+  isRevoked      Boolean  @default(false) @map("is_revoked")
+  /// users.session_version at issuance (K13b); rotation is refused once it no longer matches.
+  sessionVersion Int      @default(0) @map("session_version")
+  expiresAt      DateTime @map("expires_at") @db.Timestamptz(3)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
