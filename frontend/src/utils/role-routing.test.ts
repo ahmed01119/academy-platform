@@ -15,6 +15,7 @@ describe('role-routing', () => {
     name: 'Test User',
     isEmailVerified: true,
     isPlatformSuperAdmin: false,
+    isPlatformOwner: false,
     createdAt: new Date().toISOString(),
   };
 

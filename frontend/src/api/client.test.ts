@@ -80,7 +80,7 @@ describe('api-client', () => {
         headers: expect.any(Headers),
       }),
     );
-    const lastHeaders = fetchSpy.mock.calls[fetchSpy.mock.calls.length - 1][1]?.headers as Headers;
+    const lastHeaders = fetchSpy.mock.lastCall?.[1]?.headers as Headers;
     expect(lastHeaders.get('x-tenant-id')).toBe('switched-tenant-789');
   });
 

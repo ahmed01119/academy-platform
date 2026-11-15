@@ -37,7 +37,7 @@ describe('OfflineAttendanceStore', () => {
 
     const pending = await offlineStore.getPendingScans('session-uuid-1');
     expect(pending.length).toBe(1);
-    expect(pending[0].operationId).toBe(entry.operationId);
+    expect(pending[0]?.operationId).toBe(entry.operationId);
 
     const count = await offlineStore.getPendingCount();
     expect(count).toBe(1);
@@ -61,10 +61,10 @@ describe('OfflineAttendanceStore', () => {
     const allScans = await offlineStore.getPendingScans();
 
     expect(scansA.length).toBe(1);
-    expect(scansA[0].qrCardCode).toBe('QR-A');
+    expect(scansA[0]?.qrCardCode).toBe('QR-A');
 
     expect(scansB.length).toBe(1);
-    expect(scansB[0].qrCardCode).toBe('QR-B');
+    expect(scansB[0]?.qrCardCode).toBe('QR-B');
 
     expect(allScans.length).toBe(2);
     expect(await offlineStore.getPendingCount()).toBe(2);
@@ -92,14 +92,16 @@ describe('OfflineAttendanceStore', () => {
       createdAt: '2026-10-22T08:00:00.000Z',
       roster: [
         {
+          recordId: 'r1',
           playerId: 'p1',
-          name: 'Omar Sherif',
+          playerName: 'Omar Sherif',
           status: 'UNMARKED',
           version: 1,
         },
         {
+          recordId: 'r2',
           playerId: 'p2',
-          name: 'Ziad Tarek',
+          playerName: 'Ziad Tarek',
           status: 'UNMARKED',
           version: 1,
         },
@@ -112,7 +114,7 @@ describe('OfflineAttendanceStore', () => {
     expect(cached).not.toBeNull();
     expect(cached?.groupName).toBe('U14 Tigers');
     expect(cached?.roster.length).toBe(2);
-    expect(cached?.roster[0].name).toBe('Omar Sherif');
+    expect(cached?.roster[0]?.playerName).toBe('Omar Sherif');
   });
 
   it('syncs pending scans with the backend and clears successful ones from the queue', async () => {
@@ -129,17 +131,14 @@ describe('OfflineAttendanceStore', () => {
     });
 
     vi.mocked(apiClient.attendance.syncOfflineBatch).mockResolvedValueOnce({
-      sessionId: 'session-sync-test',
       syncedCount: 1,
       failedCount: 1,
-      alreadyCheckedInCount: 0,
       results: [
         {
           operationId: scan1.operationId,
           success: true,
           status: 'PRESENT',
-          playerId: 'p1',
-          playerName: 'Player 1',
+          player: { id: 'p1', name: 'Player 1' },
         },
         {
           operationId: scan2.operationId,
@@ -168,7 +167,7 @@ describe('OfflineAttendanceStore', () => {
     // Scan 1 should have been deleted, Scan 2 remains in queue
     const remaining = await offlineStore.getPendingScans('session-sync-test');
     expect(remaining.length).toBe(1);
-    expect(remaining[0].operationId).toBe(scan2.operationId);
+    expect(remaining[0]?.operationId).toBe(scan2.operationId);
   });
 
   it('returns null when syncing an empty session queue', async () => {

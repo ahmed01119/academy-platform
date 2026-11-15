@@ -14,14 +14,14 @@ const baseUser: UserSummary = {
   createdAt: '2026-01-01T00:00:00.000Z',
 };
 
-const USERS: Record<string, UserSummary | null> = {
+const USERS = {
   signedOut: null,
   staff: baseUser,
   superAdmin: { ...baseUser, isPlatformSuperAdmin: true },
   platformOwner: { ...baseUser, isPlatformOwner: true },
   player: { ...baseUser, hasPlayerProfile: true },
   guardian: { ...baseUser, hasGuardianProfile: true },
-};
+} satisfies Record<string, UserSummary | null>;
 
 const ROLES: TenantRole[] = [
   'OWNER',
