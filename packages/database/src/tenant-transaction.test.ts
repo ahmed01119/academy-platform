@@ -2,6 +2,21 @@ import { describe, expect, it, vi } from 'vitest';
 import type { PrismaClient } from '@prisma/client';
 import { withTenantTransaction } from './tenant-transaction';
 
+/** Captures each tagged-template $executeRaw call as { sql, values }. */
+function captureRaw(onCall?: () => void) {
+  const calls: Array<{ sql: string; values: unknown[] }> = [];
+  const fn = vi.fn(async (strings: TemplateStringsArray, ...values: unknown[]) => {
+    calls.push({ sql: strings.join('?'), values });
+    onCall?.();
+    return 1;
+  });
+  return { fn, calls };
+}
+
+/** The config keys set by a captured statement, in order. */
+const configKeys = (sql: string | undefined) =>
+  [...(sql ?? '').matchAll(/set_config\('([a-z_.]+)'/g)].map((m) => m[1]);
+
 describe('withTenantTransaction', () => {
   it('rejects invalid tenant identifiers before opening a transaction', async () => {
     const transaction = vi.fn();
@@ -30,11 +45,8 @@ describe('withTenantTransaction', () => {
   it('sets transaction-local context before invoking tenant queries', async () => {
     const tenantId = '00000000-0000-4000-8000-000000000201';
     const events: string[] = [];
-    const executeRaw = vi.fn(async () => {
-      events.push('context');
-      return 1;
-    });
-    const tx = { $executeRaw: executeRaw };
+    const raw = captureRaw(() => events.push('context'));
+    const tx = { $executeRaw: raw.fn };
     const client = {
       $transaction: vi.fn(async (callback: (transaction: typeof tx) => Promise<string>) =>
         callback(tx),
@@ -48,18 +60,18 @@ describe('withTenantTransaction', () => {
     });
 
     expect(result).toBe('done');
-    expect(events).toEqual(['context', 'context', 'operation']);
-    expect(executeRaw).toHaveBeenCalledTimes(2); // app.tenant_id and app.current_tenant_id
+    // Context is set in ONE round trip, before the tenant operation runs.
+    expect(events).toEqual(['context', 'operation']);
+    expect(raw.calls).toHaveLength(1);
+    expect(configKeys(raw.calls[0]?.sql)).toEqual(['app.tenant_id', 'app.current_tenant_id']);
+    // Values are bound parameters, never interpolated into the SQL text.
+    expect(raw.calls[0]?.values).toEqual([tenantId, tenantId]);
+    expect(raw.calls[0]?.sql).not.toContain(tenantId);
   });
 
   it('sets session config with actorUserId inside transaction', async () => {
-    const executedRawQueries: unknown[] = [];
-    const mockTx = {
-      $executeRaw: vi.fn(async (strings: TemplateStringsArray, ...values: unknown[]) => {
-        executedRawQueries.push({ strings, values });
-        return 1;
-      }),
-    };
+    const raw = captureRaw();
+    const mockTx = { $executeRaw: raw.fn };
 
     const mockPrisma = {
       $transaction: vi.fn(async (callback: (tx: typeof mockTx) => Promise<unknown>) => {
@@ -81,7 +93,14 @@ describe('withTenantTransaction', () => {
 
     expect(result).toEqual({ success: true });
     expect(mockPrisma.$transaction).toHaveBeenCalledOnce();
-    expect(mockTx.$executeRaw).toHaveBeenCalledTimes(4); // app.tenant_id, app.current_tenant_id, app.actor_user_id, app.current_actor_user_id
+    expect(raw.calls).toHaveLength(1);
+    expect(configKeys(raw.calls[0]?.sql)).toEqual([
+      'app.tenant_id',
+      'app.current_tenant_id',
+      'app.actor_user_id',
+      'app.current_actor_user_id',
+    ]);
+    expect(raw.calls[0]?.values).toEqual([tenantId, tenantId, actorUserId, actorUserId]);
   });
 
   it('propagates transaction errors instead of returning partial results', async () => {
@@ -101,7 +120,8 @@ describe('withTenantTransaction', () => {
   });
 
   it('sets auth discovery context in withAuthLookupTransaction', async () => {
-    const tx = { $executeRaw: vi.fn(async () => 1) };
+    const raw = captureRaw();
+    const tx = { $executeRaw: raw.fn };
     const client = {
       $transaction: vi.fn(async (callback: (transaction: typeof tx) => Promise<unknown>) =>
         callback(tx),
@@ -120,6 +140,12 @@ describe('withTenantTransaction', () => {
       },
     );
 
-    expect(tx.$executeRaw).toHaveBeenCalledTimes(3); // auth_context, actor_user_id, current_actor_user_id
+    expect(raw.calls).toHaveLength(1);
+    expect(configKeys(raw.calls[0]?.sql)).toEqual([
+      'app.auth_context',
+      'app.actor_user_id',
+      'app.current_actor_user_id',
+    ]);
+    expect(raw.calls[0]?.values).toEqual(['auth_discovery', actorUserId, actorUserId]);
   });
 });
