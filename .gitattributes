@@ -1,0 +1,15 @@
+# Line endings: the repository and every checkout use LF, matching .editorconfig and
+# .prettierrc ("endOfLine": "lf"). This overrides a machine-level `core.autocrlf=true`, so Windows
+# and Linux working copies are identical and `pnpm format:check` gives the same result on both.
+* text=auto eol=lf
+
+# Binary assets: never normalise or diff as text.
+*.png binary
+*.ico binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.pdf binary
