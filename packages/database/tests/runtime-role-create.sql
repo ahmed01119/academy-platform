@@ -1,5 +1,5 @@
--- Phase 3A.2 draft: replaces packages/database/tests/runtime-role-setup.sql in CI and runs BEFORE
--- "Deploy Prisma migrations", so the migrations (M2/M3) own every object privilege of the CI runtime role, exactly as
+-- Creates the CI runtime role BEFORE "Deploy Prisma migrations" (Phase 3A.2), so that
+-- the migrations (M3 baseline) own every object privilege of the CI runtime role, exactly as
 -- they do for academy_runtime (self-host) and sportexus_app (Neon). Disposable CI database only.
 DO $$
 BEGIN

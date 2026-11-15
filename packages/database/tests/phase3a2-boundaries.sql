@@ -1,7 +1,7 @@
--- M2/M3 access-boundary tests. Run by the admin role on an isolated database built with fixtures.sql + M2 + M3.
+-- M2/M3 access-boundary tests. Run by the admin role on an isolated database with all migrations and phase3a2-fixtures.sql.
 -- Every check runs AS the runtime role (SET ROLE :runtime_role) with an explicit context, so RLS, column privileges
 -- and function checks all apply. Any failed expectation raises and stops the run (psql ON_ERROR_STOP).
--- Usage: psql -v ON_ERROR_STOP=1 -v runtime_role=sportexus_app -f m2-m3-boundaries.sql
+-- Usage: psql -v ON_ERROR_STOP=1 -v runtime_role=academy_runtime_ci -f phase3a2-fixtures.sql -f phase3a2-boundaries.sql
 \set QUIET on
 SET client_min_messages = warning;
 
@@ -47,6 +47,13 @@ $$;
 \set B '''00000000-0000-4000-8000-0000000000b1'''
 \set S '''00000000-0000-4000-8000-0000000000c1'''
 \set E '''00000000-0000-4000-8000-0000000000e1'''
+
+-- Fixtures hold plaintext claim codes. On a database migrated before the fixtures were loaded (CI), apply M2's
+-- conversion statement again (it is idempotent: already-hashed values are skipped).
+UPDATE public.players SET claim_token = encode(sha256(convert_to(upper(trim(claim_token)), 'UTF8')), 'hex')
+WHERE claim_token IS NOT NULL AND claim_token !~ '^[0-9a-f]{64}$';
+UPDATE public.guardians SET claim_token = encode(sha256(convert_to(upper(trim(claim_token)), 'UTF8')), 'hex')
+WHERE claim_token IS NOT NULL AND claim_token !~ '^[0-9a-f]{64}$';
 
 SET client_min_messages = notice;
 SET ROLE :runtime_role;
@@ -445,6 +452,8 @@ SELECT pg_temp.check('AP-02 approval provisions tenant, branch, OWNER membership
        FROM public.academy_applications WHERE id = '00000000-0000-4000-8000-00000000aa01'));
 SELECT pg_temp.expect_fail('AP-03 an approved application cannot be approved again',
   $$SELECT public.platform_approve_academy_application('00000000-0000-4000-8000-00000000aa01')$$, 'APPLICATION_ALREADY_APPROVED');
+SELECT pg_temp.expect_fail('AP-03b a REJECTED application cannot be approved (decision B7)',
+  $$SELECT public.platform_approve_academy_application('00000000-0000-4000-8000-00000000aa02')$$, 'APPLICATION_NOT_REVIEWABLE');
 SELECT pg_temp.expect_fail('AP-04 slug collision with an existing academy is refused (unique index), nothing provisioned',
   $$SELECT public.platform_approve_academy_application('00000000-0000-4000-8000-00000000aa04')$$, 'duplicate key');
 SELECT set_config('test.id', public.platform_approve_academy_application('00000000-0000-4000-8000-00000000aa03', 'NOPE')::text, false);

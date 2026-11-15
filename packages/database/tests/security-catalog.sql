@@ -1,6 +1,6 @@
 -- Phase 3A.2 catalog verification (READ-ONLY: queries pg_catalog / information_schema only, never table data).
 -- Asserts the security end state after M2 + M3 directly in the catalog; a Prisma schema diff cannot see any of this.
--- Run as the migration (owner) role:  psql -v ON_ERROR_STOP=1 -f verify-catalog.sql
+-- Run as the migration (owner) role:  psql -v ON_ERROR_STOP=1 -f security-catalog.sql
 -- Every check raises on failure; success prints PASS lines.
 \set QUIET on
 SET client_min_messages = notice;
@@ -241,4 +241,4 @@ BEGIN
   IF n <> 0 THEN RAISE EXCEPTION 'FAIL 09 % plaintext claim codes remain', n; END IF;
   RAISE NOTICE 'PASS 09 claim codes hashed at rest';
 END $$;
-\echo 'verify-catalog: all checks passed'
+\echo 'security-catalog: all checks passed'

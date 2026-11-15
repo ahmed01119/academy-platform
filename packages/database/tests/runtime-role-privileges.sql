@@ -43,10 +43,28 @@ BEGIN
     RAISE EXCEPTION 'SECURITY FAILURE: runtime role has forbidden table privileges';
   END IF;
 
+  -- Phase 3A.2 (M2/M3): audit entries, notifications and join requests are written only through validated definer
+  -- functions; users' privileged columns and deletes are closed (S6).
+  IF has_table_privilege(current_user, 'public.audit_logs', 'INSERT')
+    OR has_table_privilege(current_user, 'public.app_notifications', 'INSERT')
+    OR has_table_privilege(current_user, 'public.player_registration_requests', 'INSERT')
+    OR has_table_privilege(current_user, 'public.academy_applications', 'DELETE')
+    OR has_column_privilege(current_user, 'public.academy_applications', 'status', 'INSERT')
+    OR has_column_privilege(current_user, 'public.academy_applications', 'provisioned_tenant_id', 'INSERT')
+    OR has_table_privilege(current_user, 'public.users', 'DELETE')
+    OR has_column_privilege(current_user, 'public.users', 'is_platform_super_admin', 'UPDATE')
+    OR has_column_privilege(current_user, 'public.users', 'is_platform_owner', 'UPDATE')
+    OR has_column_privilege(current_user, 'public.users', 'is_suspended', 'UPDATE')
+    OR has_column_privilege(current_user, 'public.users', 'session_version', 'UPDATE') THEN
+    RAISE EXCEPTION 'SECURITY FAILURE: runtime role can bypass the Phase 3A.2 definer functions';
+  END IF;
+
   IF NOT has_table_privilege(current_user, 'public.tenants', 'SELECT')
     OR NOT has_table_privilege(current_user, 'public.branches', 'SELECT')
     OR NOT has_table_privilege(current_user, 'public.tenant_sports', 'SELECT')
-    OR NOT has_table_privilege(current_user, 'public.audit_logs', 'INSERT')
+    OR NOT has_function_privilege(current_user, 'public.append_audit_log(text, text, text, jsonb, text, text, uuid, uuid)', 'EXECUTE')
+    OR NOT has_function_privilege(current_user, 'public.create_app_notification(uuid, uuid, text, text, text, text)', 'EXECUTE')
+    OR NOT has_function_privilege(current_user, 'public.change_own_password(text)', 'EXECUTE')
     OR NOT has_table_privilege(current_user, 'public.attendance_sessions', 'SELECT')
     OR NOT has_table_privilege(current_user, 'public.attendance_records', 'SELECT')
     OR NOT has_table_privilege(current_user, 'public.attendance_corrections', 'INSERT') THEN

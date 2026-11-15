@@ -285,8 +285,14 @@ BEGIN
   -- 2. Permitted UPDATE on standard user profile columns
   EXECUTE 'UPDATE public.users SET name = name WHERE false';
 
-  -- 3. Permitted append-only INSERT into audit_logs
-  EXECUTE 'INSERT INTO public.audit_logs (id, tenant_id, action, resource_type) SELECT gen_random_uuid(), null, ''REGRESSION_TEST'', ''SECURITY_SUITE'' WHERE false';
+  -- 3. Audit entries are appended only through public.append_audit_log (Phase 3A.2, M2): direct INSERT is denied,
+  --    the validated function is executable. Checked by privilege, so no row is written.
+  IF has_table_privilege(current_user, 'public.audit_logs', 'INSERT') THEN
+    RAISE EXCEPTION 'SECURITY INVARIANT BREACH: sportexus_app can INSERT into audit_logs directly';
+  END IF;
+  IF NOT has_function_privilege(current_user, 'public.append_audit_log(text, text, text, jsonb, text, text, uuid, uuid)', 'EXECUTE') THEN
+    RAISE EXCEPTION 'CONFIGURATION FAIL: sportexus_app cannot execute append_audit_log';
+  END IF;
 
   -- 4. Row-Level Security Isolation (Fail-Closed when tenant_id is unset)
   PERFORM set_config('app.tenant_id', '', true);

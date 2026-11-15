@@ -1,6 +1,5 @@
 -- =====================================================================================================================
--- M2 (Phase 3A.2, S4 + context functions for S3). DRAFT FOR REVIEW - not in prisma/migrations, not applied anywhere
--- except the isolated test database.
+-- M2 (Phase 3A.2, S4 + context functions for S3). Approved by the owner on 2026-11-15 (decisions B1-B8; B7: no approval of REJECTED applications).
 --
 -- Purpose
 --   1. S4: remove anonymous access to academy_applications (introduced by 20261104105500, which Neon recorded as

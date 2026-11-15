@@ -1,6 +1,6 @@
 -- =====================================================================================================================
--- M3 (Phase 3A.2, S3 + S6). DRAFT FOR REVIEW - not in prisma/migrations, not applied anywhere except the isolated
--- test database. Requires M2.
+-- M3 (Phase 3A.2, S3 + S6). Approved by the owner on 2026-11-15 (decisions B1-B8; B7: no approval of REJECTED
+-- applications). Requires M2.
 --
 -- Purpose
 --   1. S6: users has no RLS, yet Neon's runtime role (sportexus_app) may UPDATE is_platform_super_admin,
@@ -273,8 +273,8 @@ $$;
 -- Approves an application and provisions the academy, exactly as PlatformService.reviewAcademyApplication does today:
 -- tenant (ACTIVE, EGP, Africa/Cairo), main branch, OWNER membership for the applicant, SaaS subscription (requested
 -- active plan, else STARTER; monthly; renewal in one month), application marked APPROVED. Platform administrators
--- only; an already approved application is refused; the slug's uniqueness is enforced by the tenants index.
--- (Approving a REJECTED application is still possible, as today; see the review notes.)
+-- only; only PENDING_REVIEW or MORE_INFO_REQUESTED applications can be approved (owner decision B7); the slug's
+-- uniqueness is enforced by the tenants index.
 CREATE OR REPLACE FUNCTION public.platform_approve_academy_application(
   p_application_id uuid,
   p_plan_code text DEFAULT NULL,
@@ -301,6 +301,10 @@ BEGIN
   END IF;
   IF v_app.status = 'APPROVED' THEN
     RAISE EXCEPTION 'APPLICATION_ALREADY_APPROVED' USING ERRCODE = '22023';
+  END IF;
+  -- Owner decision B7 (2026-11-15): a REJECTED application can no longer be approved.
+  IF v_app.status NOT IN ('PENDING_REVIEW', 'MORE_INFO_REQUESTED') THEN
+    RAISE EXCEPTION 'APPLICATION_NOT_REVIEWABLE' USING ERRCODE = '22023';
   END IF;
 
   INSERT INTO public.tenants (id, name, slug, status, currency, timezone, created_at, updated_at)
