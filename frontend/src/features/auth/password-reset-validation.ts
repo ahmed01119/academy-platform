@@ -41,13 +41,32 @@ export function validateForgotPasswordReset(
   return null;
 }
 
-/** `/reset-password`. Order: OTP → full strength → match. */
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/**
+ * `/reset-password`. Order: code + e-mail (code mode only) → full strength → match.
+ * With a link token (`linkToken`) no code or e-mail is needed: the link itself identifies the reset (K1).
+ */
 export function validateResetPasswordForm(
-  input: { token: string; password: string; confirmPassword: string },
+  input: {
+    token: string;
+    password: string;
+    confirmPassword: string;
+    linkToken?: string;
+    email?: string;
+  },
   locale: Locale,
 ): string | null {
-  const otp = otpError(input.token, locale);
-  if (otp) return otp;
+  if (!input.linkToken) {
+    const otp = otpError(input.token, locale);
+    if (otp) return otp;
+    // The API only accepts a 6-digit code together with the e-mail address it was sent to.
+    if (!EMAIL_PATTERN.test((input.email ?? '').trim())) {
+      return locale === 'ar'
+        ? 'يرجى إدخال البريد الإلكتروني الذي أُرسل إليه رمز التحقق.'
+        : 'Please enter the email address the code was sent to.';
+    }
+  }
   if (evaluatePassword(input.password).score < 5) {
     return locale === 'ar'
       ? 'يرجى استيفاء كافة شروط كلمة المرور القوية (8 أحرف، حرف كبير، حرف صغير، رقم، ورمز خاص).'

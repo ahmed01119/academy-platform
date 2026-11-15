@@ -161,7 +161,8 @@ export class EmailService {
    */
   private maskSensitiveUrl(url?: string): string | undefined {
     if (!url) return undefined;
-    return url.replace(/([?&](token|code|key|secret)=)[^&]+/gi, '$1***');
+    // Covers query strings and URL fragments (reset links carry their token after `#`, K1).
+    return url.replace(/([?&#](token|code|otp|key|secret)=)[^&#]+/gi, '$1***');
   }
 
   /**

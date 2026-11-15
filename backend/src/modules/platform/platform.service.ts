@@ -42,6 +42,7 @@ import {
   type ApplicationStatus,
 } from '@academy/shared';
 import { HealthService } from '../health/health.service';
+import { invalidateUserSessions } from '../auth/session-invalidation';
 import { NotificationsService } from '../notifications/notifications.service';
 import { EmailService } from '../email/email.service';
 import { RedisService } from '../redis/redis.service';
@@ -514,10 +515,9 @@ export class PlatformService {
         }
       }
 
-      const res = await tx.refreshToken.updateMany({
-        where: { userId: targetUserId, isRevoked: false },
-        data: { isRevoked: true },
-      });
+      // K13b: bump the session version first, then revoke refresh tokens - access tokens die immediately too.
+      const { revokedCount } = await invalidateUserSessions(tx, targetUserId);
+      const res = { count: revokedCount };
 
       await this.auditService.logEvent({
         actorUserId,
@@ -592,19 +592,25 @@ export class PlatformService {
         dataToUpdate.suspendedReason = dto.isSuspended
           ? (dto.reason ?? 'Suspended by Super Admin')
           : null;
+      }
+      const suspending = dto.isSuspended === true;
 
-        // If suspending account, immediately revoke all active sessions!
-        if (dto.isSuspended) {
-          await tx.refreshToken.updateMany({
-            where: { userId: targetUserId, isRevoked: false },
-            data: { isRevoked: true },
-          });
-        }
+      // K13b: suspension bumps the session version in the same UPDATE (row lock first), then revokes refresh
+      // tokens, so every access token of the suspended user is rejected on its next request.
+      await tx.user.update({
+        where: { id: targetUserId },
+        data: suspending ? { ...dataToUpdate, sessionVersion: { increment: 1 } } : dataToUpdate,
+        select: { id: true },
+      });
+      if (suspending) {
+        await tx.refreshToken.updateMany({
+          where: { userId: targetUserId, isRevoked: false },
+          data: { isRevoked: true },
+        });
       }
 
-      const updated = await tx.user.update({
+      const updated = await tx.user.findUniqueOrThrow({
         where: { id: targetUserId },
-        data: dataToUpdate,
         include: {
           memberships: {
             include: { tenant: { select: { name: true } } },

@@ -52,6 +52,16 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       });
     }
 
+    // K13b: every protected request passes here (all guarded routes use JwtAuthGuard -> this strategy, and the
+    // user row is loaded on each request). Tokens issued before the user's last password change/reset, suspension or
+    // session revocation carry an older version and are rejected immediately. Pre-K13b tokens have no `sv` (= 0).
+    if ((payload.sv ?? 0) !== user.sessionVersion) {
+      throw new UnauthorizedException({
+        code: ErrorCode.TOKEN_INVALID,
+        message: 'Session is no longer valid. Please sign in again.',
+      });
+    }
+
     return {
       id: user.id,
       email: user.email,

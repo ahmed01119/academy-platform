@@ -72,10 +72,26 @@ export const ForgotPasswordRequestSchema = z.object({
 
 export type ForgotPasswordRequest = z.infer<typeof ForgotPasswordRequestSchema>;
 
-export const ResetPasswordRequestSchema = z.object({
-  token: z.string().min(6, 'Reset token or verification code is required'),
-  newPassword: PasswordSchema,
-});
+/** 6-digit code typed by the user (K1): only valid together with the e-mail address it was sent to. */
+export const RESET_CODE_PATTERN = /^\d{6}$/;
+/** 256-bit link token from the e-mailed link, or a platform activation token: 64 hex characters. */
+export const RESET_LINK_TOKEN_PATTERN = /^[0-9a-f]{64}$/i;
+
+export const ResetPasswordRequestSchema = z
+  .object({
+    token: z
+      .string()
+      .trim()
+      .min(6, 'Reset token or verification code is required')
+      .max(128, 'Invalid reset token'),
+    /** Required with a 6-digit code; optional with a link token. */
+    email: EmailSchema.optional(),
+    newPassword: PasswordSchema,
+  })
+  .refine((value) => !RESET_CODE_PATTERN.test(value.token) || Boolean(value.email), {
+    message: 'Email address is required with the verification code',
+    path: ['email'],
+  });
 
 export type ResetPasswordRequest = z.infer<typeof ResetPasswordRequestSchema>;
 

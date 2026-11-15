@@ -45,7 +45,7 @@ describe('validateResetPasswordForm (/reset-password)', () => {
   it('requires every strength rule before checking the match', () => {
     expect(
       validateResetPasswordForm(
-        { token: '123456', password: 'lowercase', confirmPassword: 'x' },
+        { token: '123456', email: 'u@x.com', password: 'lowercase', confirmPassword: 'x' },
         'en',
       ),
     ).toMatch(/strong password requirements/);
@@ -54,7 +54,7 @@ describe('validateResetPasswordForm (/reset-password)', () => {
   it('then checks the confirmation', () => {
     expect(
       validateResetPasswordForm(
-        { token: '123456', password: 'Str0ng!Pass', confirmPassword: 'x' },
+        { token: '123456', email: 'u@x.com', password: 'Str0ng!Pass', confirmPassword: 'x' },
         'ar',
       ),
     ).toBe('كلمة المرور وتأكيد كلمة المرور غير متطابقين.');
@@ -63,7 +63,12 @@ describe('validateResetPasswordForm (/reset-password)', () => {
   it('accepts a strong, matching password', () => {
     expect(
       validateResetPasswordForm(
-        { token: ' 123456 ', password: 'Str0ng!Pass', confirmPassword: 'Str0ng!Pass' },
+        {
+          token: ' 123456 ',
+          email: 'u@x.com',
+          password: 'Str0ng!Pass',
+          confirmPassword: 'Str0ng!Pass',
+        },
         'en',
       ),
     ).toBeNull();

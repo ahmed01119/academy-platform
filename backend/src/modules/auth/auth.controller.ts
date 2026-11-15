@@ -257,12 +257,21 @@ export class AuthController {
     @CurrentUser('id') userId: string,
     @Body() body: unknown,
     @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
   ): Promise<{ message: string }> {
     const dto: ChangePasswordRequest = ChangePasswordRequestSchema.parse(body);
     const ipAddress = req.clientIp;
     const userAgent = req.headers['user-agent'];
 
-    return this.authService.changePassword(userId, dto, ipAddress, userAgent);
+    // K13: every other session is invalidated; this device keeps working with freshly issued tokens.
+    const { message, rawTokens } = await this.authService.changePassword(
+      userId,
+      dto,
+      ipAddress,
+      userAgent,
+    );
+    this.setAuthCookies(res, rawTokens);
+    return { message };
   }
 
   @UseGuards(JwtAuthGuard, CsrfGuard)

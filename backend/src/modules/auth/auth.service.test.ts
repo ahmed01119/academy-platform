@@ -49,11 +49,13 @@ interface MockToken {
   revokeRefreshToken: MockFn;
   revokeFamily: MockFn;
   revokeAllUserTokens: MockFn;
+  invalidateAllSessions: MockFn;
 }
 
 interface MockRedis {
   incrementRateLimit: MockFn;
   resetRateLimit: MockFn;
+  peekRateLimit: MockFn;
 }
 
 interface MockAudit {
@@ -127,11 +129,13 @@ describe('AuthService', () => {
       revokeRefreshToken: vi.fn(),
       revokeFamily: vi.fn(),
       revokeAllUserTokens: vi.fn(),
+      invalidateAllSessions: vi.fn(),
     };
 
     mockRedis = {
       incrementRateLimit: vi.fn().mockResolvedValue({ count: 1, remainingTime: 900 }),
       resetRateLimit: vi.fn().mockResolvedValue(undefined),
+      peekRateLimit: vi.fn().mockResolvedValue(0),
     };
 
     mockAudit = {
@@ -397,68 +401,312 @@ describe('AuthService', () => {
     });
   });
 
-  describe('forgotPassword', () => {
-    it('omits debugToken in all environments and dispatches password reset email', async () => {
-      mockPrisma.user.findUnique.mockResolvedValue({
-        id: 'u-1',
-        name: 'Test User',
-        email: 'user@example.com',
+  describe('K1 password reset', () => {
+    /** In-memory counters behaving like RedisService (no expiry; `expire` simulates a window passing). */
+    let counters: Map<string, number>;
+    const expire = (fragment: string) => {
+      for (const key of [...counters.keys()]) if (key.includes(fragment)) counters.delete(key);
+    };
+    const emailService = () =>
+      (authService as unknown as { emailService: { sendPasswordReset: MockFn } }).emailService;
+    const LINK = 'a'.repeat(64);
+    const user = { id: 'u-1', name: 'Test User', email: 'user@example.com' };
+    const invalidToken = () => new Error('db error: INVALID_OR_EXPIRED_TOKEN');
+
+    beforeEach(() => {
+      counters = new Map();
+      mockRedis.incrementRateLimit.mockImplementation(async (key: string) => {
+        const count = (counters.get(key) ?? 0) + 1;
+        counters.set(key, count);
+        return { count, remainingTime: 300 };
+      });
+      mockRedis.resetRateLimit.mockImplementation(async (key: string) => {
+        counters.delete(key);
+      });
+      mockRedis.peekRateLimit.mockImplementation(async (key: string) => counters.get(key) ?? 0);
+      mockToken.hashToken.mockImplementation((value: string) => `sha256(${value})`);
+      mockToken.generateSecureRandomString.mockReturnValue(LINK);
+    });
+
+    describe('forgotPassword', () => {
+      it('issues a code and a 256-bit link, stores only their hashes, and e-mails the link in the URL fragment', async () => {
+        mockPrisma.user.findUnique.mockResolvedValue(user);
+
+        const result = await authService.forgotPassword(
+          { email: 'User@Example.com ' },
+          '203.0.113.7',
+        );
+
+        expect(result.message).toContain('instructions have been sent');
+        expect(mockToken.generateSecureRandomString).toHaveBeenCalledWith(32); // 32 bytes = 256 bits
+        const [sql, ...values] = mockPrisma.$queryRaw.mock.calls[0] as [
+          TemplateStringsArray,
+          ...unknown[],
+        ];
+        expect(sql.join('?')).toContain('request_password_reset_with_link');
+        const [email, codeHash, linkHash, expiresAt] = values as [string, string, string, Date];
+        expect(email).toBe('user@example.com');
+        expect(codeHash).toMatch(/^sha256\(\d{6}\)$/);
+        expect(linkHash).toBe(`sha256(${LINK})`);
+        expect(expiresAt.getTime() - Date.now()).toBeLessThanOrEqual(5 * 60 * 1000);
+
+        const [, , resetUrl, , code] = emailService().sendPasswordReset.mock.calls[0] as string[];
+        expect(resetUrl).toContain(`/reset-password#token=${LINK}&email=user%40example.com`);
+        expect(resetUrl).not.toContain('?token=');
+        expect(codeHash).toBe(`sha256(${code})`);
       });
 
-      const result = await authService.forgotPassword({
-        email: 'user@example.com',
+      it('responds identically for an unknown e-mail and never touches the database or sends mail', async () => {
+        mockPrisma.user.findUnique.mockResolvedValue(null);
+        const result = await authService.forgotPassword(
+          { email: 'unknown@example.com' },
+          '203.0.113.7',
+        );
+        expect(result.message).toContain('instructions have been sent');
+        expect(mockPrisma.$queryRaw).not.toHaveBeenCalled();
+        expect(emailService().sendPasswordReset).not.toHaveBeenCalled();
       });
 
-      expect((result as any).debugToken).toBeUndefined();
-      expect(result.message).toContain('instructions have been sent');
-      expect(mockPrisma.$executeRaw).toHaveBeenCalled();
+      it('never resets the 24 h code-failure counter when a new code is issued', async () => {
+        mockPrisma.user.findUnique.mockResolvedValue(user);
+        counters.set('ratelimit:reset-code-failures-daily:user@example.com', 7);
+        await authService.forgotPassword({ email: 'user@example.com' }, '203.0.113.7');
+        expect(counters.get('ratelimit:reset-code-failures-daily:user@example.com')).toBe(7);
+      });
+
+      it('allows one request per minute per e-mail, for known and unknown accounts alike', async () => {
+        for (const found of [user, null]) {
+          counters.clear();
+          mockPrisma.user.findUnique.mockResolvedValue(found);
+          await authService.forgotPassword({ email: 'user@example.com' }, '203.0.113.7');
+          await expect(
+            authService.forgotPassword({ email: 'user@example.com' }, '203.0.113.7'),
+          ).rejects.toMatchObject({ response: { code: 'RATE_LIMIT_EXCEEDED' } });
+        }
+      });
+
+      it('after 3 requests in an hour, requires 5 minutes (the code lifetime) between requests', async () => {
+        mockPrisma.user.findUnique.mockResolvedValue(user);
+        for (let i = 0; i < 3; i++) {
+          await authService.forgotPassword({ email: 'user@example.com' }, `203.0.113.${i}`);
+          expire('cooldown:60:'); // a minute passes
+        }
+        await authService.forgotPassword({ email: 'user@example.com' }, '203.0.113.9'); // 4th: allowed
+        expire('cooldown:60:');
+        await expect(
+          authService.forgotPassword({ email: 'user@example.com' }, '203.0.113.10'),
+        ).rejects.toMatchObject({ response: { code: 'RATE_LIMIT_EXCEEDED' } });
+      });
+
+      it('limits one IP to 10 reset requests per hour across all e-mails (anti-flooding)', async () => {
+        mockPrisma.user.findUnique.mockResolvedValue(null);
+        for (let i = 0; i < 10; i++) {
+          await authService.forgotPassword({ email: `victim${i}@example.com` }, '198.51.100.1');
+        }
+        await expect(
+          authService.forgotPassword({ email: 'victim10@example.com' }, '198.51.100.1'),
+        ).rejects.toMatchObject({ response: { code: 'RATE_LIMIT_EXCEEDED' } });
+      });
     });
 
-    it('blocks forgot-password when rate limit is exceeded', async () => {
-      mockRedis.incrementRateLimit.mockResolvedValue({ count: 4, remainingTime: 600 });
-
-      await expect(authService.forgotPassword({ email: 'spammer@example.com' })).rejects.toThrow(
-        BadRequestException,
-      );
-    });
-
-    it('returns generic message without updating tokens when user is not found', async () => {
-      mockPrisma.user.findUnique.mockResolvedValue(null);
-
-      const result = await authService.forgotPassword({ email: 'unknown@example.com' });
-      expect(result.message).toContain('instructions have been sent');
-      expect(mockPrisma.$executeRaw).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('resetPassword', () => {
-    it('resets password, clears reset token, revokes all user sessions, and logs audit event', async () => {
-      mockPrisma.$queryRaw.mockResolvedValue([{ complete_password_reset: 'u-reset' }]);
-
-      const result = await authService.resetPassword({
-        token: 'valid-reset-token',
+    describe('resetPassword', () => {
+      const withCode = (code = '123456', email = 'user@example.com') => ({
+        token: code,
+        email,
         newPassword: 'NewPassword123!',
       });
 
-      expect(result.message).toContain('Password has been successfully reset');
-      expect(mockToken.revokeAllUserTokens).toHaveBeenCalledWith('u-reset');
-      expect(mockAudit.logEvent).toHaveBeenCalledWith(
-        expect.objectContaining({
-          actorUserId: 'u-reset',
-          action: 'AUTH_PASSWORD_RESET_COMPLETED',
-        }),
+      it('completes with the code only for the e-mail it was sent to, in one atomic function call', async () => {
+        mockPrisma.$queryRaw.mockResolvedValue([{ complete_password_reset_for_email: 'u-1' }]);
+
+        const result = await authService.resetPassword(
+          withCode('123456', 'User@Example.com'),
+          '203.0.113.7',
+        );
+
+        expect(result.message).toContain('successfully reset');
+        const [sql, ...values] = mockPrisma.$queryRaw.mock.calls[0] as [
+          TemplateStringsArray,
+          ...unknown[],
+        ];
+        expect(sql.join('?')).toContain('complete_password_reset_for_email');
+        expect(values).toEqual(['user@example.com', 'sha256(123456)', 'argon2id$mock$hash']);
+        expect(mockAudit.logEvent).toHaveBeenCalledWith(
+          expect.objectContaining({ actorUserId: 'u-1', action: 'AUTH_PASSWORD_RESET_COMPLETED' }),
+        );
+      });
+
+      it('rejects a correct code with another e-mail (the database binds code to e-mail) with the generic error', async () => {
+        mockPrisma.$queryRaw.mockRejectedValue(invalidToken());
+        await expect(
+          authService.resetPassword(withCode('123456', 'other@example.com'), '203.0.113.7'),
+        ).rejects.toMatchObject({ response: { code: 'TOKEN_INVALID' } });
+      });
+
+      it('cancels the code after 5 wrong attempts', async () => {
+        mockPrisma.$queryRaw.mockRejectedValue(invalidToken());
+        for (let i = 0; i < 5; i++) {
+          await expect(
+            authService.resetPassword(withCode(`00000${i}`), '203.0.113.7'),
+          ).rejects.toThrow();
+        }
+        const invalidations = mockPrisma.$executeRaw.mock.calls.filter((c) =>
+          (c[0] as TemplateStringsArray)
+            .join('?')
+            .includes('invalidate_password_reset_code_for_email'),
+        );
+        expect(invalidations).toHaveLength(1); // on the 5th failure
+        expect(invalidations[0]?.[1]).toBe('user@example.com');
+      });
+
+      it('after 10 failed code attempts in 24 h refuses code entry - even the correct code - without a DB call', async () => {
+        counters.set('ratelimit:reset-code-failures-daily:user@example.com', 10);
+        mockPrisma.$queryRaw.mockResolvedValue([{ complete_password_reset_for_email: 'u-1' }]);
+
+        await expect(authService.resetPassword(withCode(), '203.0.113.7')).rejects.toMatchObject({
+          response: { code: 'TOKEN_INVALID' },
+        });
+        expect(mockPrisma.$queryRaw).not.toHaveBeenCalled();
+      });
+
+      it('keeps the e-mailed link working while code entry is suspended (no account-denial)', async () => {
+        counters.set('ratelimit:reset-code-failures-daily:user@example.com', 10);
+        mockPrisma.$queryRaw.mockResolvedValue([{ complete_password_reset_by_link: 'u-1' }]);
+
+        const result = await authService.resetPassword(
+          { token: LINK, newPassword: 'NewPassword123!' },
+          '203.0.113.7',
+        );
+        expect(result.message).toContain('successfully reset');
+        const [sql, ...values] = mockPrisma.$queryRaw.mock.calls[0] as [
+          TemplateStringsArray,
+          ...unknown[],
+        ];
+        expect(sql.join('?')).toContain('complete_password_reset_by_link');
+        expect(values[0]).toBe(`sha256(${LINK})`);
+      });
+
+      it('does not count link failures against the account', async () => {
+        mockPrisma.$queryRaw.mockRejectedValue(invalidToken());
+        await expect(
+          authService.resetPassword({ token: LINK, newPassword: 'NewPassword123!' }, '203.0.113.7'),
+        ).rejects.toMatchObject({ response: { code: 'TOKEN_INVALID' } });
+        expect([...counters.keys()].some((k) => k.includes('reset-code'))).toBe(false);
+      });
+
+      it('falls back to the legacy function for platform activation links', async () => {
+        mockPrisma.$queryRaw
+          .mockRejectedValueOnce(invalidToken())
+          .mockResolvedValueOnce([{ complete_password_reset: 'u-staff' }]);
+
+        await authService.resetPassword(
+          { token: 'b'.repeat(64), newPassword: 'NewPassword123!' },
+          '203.0.113.7',
+        );
+
+        const sql = (mockPrisma.$queryRaw.mock.calls[1]?.[0] as TemplateStringsArray).join('?');
+        expect(sql).toContain('public.complete_password_reset(');
+      });
+
+      it('refuses malformed tokens and codes without an e-mail before touching the database', async () => {
+        for (const token of ['abc123xyz', '12345', '1234567', 'g'.repeat(64)]) {
+          await expect(
+            authService.resetPassword({ token, newPassword: 'NewPassword123!' }, '203.0.113.7'),
+          ).rejects.toMatchObject({ response: { code: 'TOKEN_INVALID' } });
+        }
+        await expect(
+          authService.resetPassword(
+            { token: '123456', newPassword: 'NewPassword123!' },
+            '203.0.113.7',
+          ),
+        ).rejects.toMatchObject({ response: { code: 'TOKEN_INVALID' } });
+        expect(mockPrisma.$queryRaw).not.toHaveBeenCalled();
+      });
+
+      it('limits one IP to 30 reset attempts per 15 minutes across accounts', async () => {
+        mockPrisma.$queryRaw.mockRejectedValue(invalidToken());
+        for (let i = 0; i < 30; i++) {
+          await expect(
+            authService.resetPassword(withCode('123456', `user${i}@example.com`), '198.51.100.1'),
+          ).rejects.toMatchObject({ response: { code: 'TOKEN_INVALID' } });
+        }
+        await expect(
+          authService.resetPassword(withCode('123456', 'user30@example.com'), '198.51.100.1'),
+        ).rejects.toMatchObject({ response: { code: 'RATE_LIMIT_EXCEEDED' } });
+      });
+
+      it('returns the same message for every failure, so responses reveal nothing about the account', async () => {
+        const messages = new Set<string>();
+        const capture = async (dto: { token: string; email?: string; newPassword: string }) => {
+          try {
+            await authService.resetPassword(dto, '203.0.113.7');
+          } catch (e) {
+            messages.add((e as { response: { message: string } }).response.message);
+          }
+        };
+        mockPrisma.$queryRaw.mockRejectedValue(invalidToken());
+        await capture(withCode('111111', 'unknown@example.com')); // unknown e-mail
+        await capture(withCode('222222')); // wrong code
+        await capture({ token: LINK, newPassword: 'NewPassword123!' }); // wrong / expired link
+        counters.set('ratelimit:reset-code-failures-daily:user@example.com', 10);
+        await capture(withCode('333333')); // code entry suspended
+        expect(messages.size).toBe(1);
+      });
+
+      it('surfaces unexpected database errors instead of counting them as wrong codes', async () => {
+        mockPrisma.$queryRaw.mockRejectedValue(new Error('connection reset'));
+        await expect(authService.resetPassword(withCode(), '203.0.113.7')).rejects.toThrow(
+          'connection reset',
+        );
+        expect(
+          counters.get('ratelimit:reset-code-failures-daily:user@example.com'),
+        ).toBeUndefined();
+      });
+    });
+  });
+
+  describe('changePassword (K13)', () => {
+    it('invalidates every other session and issues fresh tokens for this device at the new version', async () => {
+      mockPrisma.user.findUniqueOrThrow.mockResolvedValue({
+        id: 'u-1',
+        email: 'user@example.com',
+        name: 'U',
+        passwordHash: 'old-hash',
+        isPlatformSuperAdmin: false,
+        isPlatformOwner: false,
+      });
+      mockPassword.verify.mockResolvedValue(true);
+      mockPassword.hash.mockResolvedValue('new-hash');
+      mockToken.invalidateAllSessions.mockResolvedValue(6);
+
+      const result = await authService.changePassword(
+        'u-1',
+        { currentPassword: 'Old-Password-1!', newPassword: 'New-Password-2!' },
+        '203.0.113.7',
+        'agent',
       );
+
+      expect(mockToken.invalidateAllSessions).toHaveBeenCalledWith(expect.anything(), 'u-1', {
+        passwordHash: 'new-hash',
+      });
+      const call = mockToken.generateTokens.mock.calls[0] as unknown[];
+      expect(call[0]).toBe('u-1');
+      expect(call[8]).toBe(6); // the new session version
+      expect(call[9]).toBeDefined(); // issued inside the same transaction
+      expect(result.rawTokens.accessToken).toBe('mock.access.token');
     });
 
-    it('rejects invalid or expired reset token', async () => {
-      mockPrisma.$queryRaw.mockResolvedValue([]);
-
+    it('changes nothing when the current password is wrong', async () => {
+      mockPrisma.user.findUniqueOrThrow.mockResolvedValue({ id: 'u-1', passwordHash: 'old-hash' });
+      mockPassword.verify.mockResolvedValue(false);
       await expect(
-        authService.resetPassword({
-          token: 'invalid-or-expired-token',
-          newPassword: 'NewPassword123!',
+        authService.changePassword('u-1', {
+          currentPassword: 'Wrong-Password-1!',
+          newPassword: 'New-Password-2!',
         }),
       ).rejects.toThrow(BadRequestException);
+      expect(mockToken.invalidateAllSessions).not.toHaveBeenCalled();
+      expect(mockToken.generateTokens).not.toHaveBeenCalled();
     });
   });
 

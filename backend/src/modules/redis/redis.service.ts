@@ -163,6 +163,26 @@ export class RedisService implements OnModuleDestroy {
     return { count: entry.count, remainingTime };
   }
 
+  /**
+   * Reads a rate-limit counter without incrementing it (0 when absent or expired). Same fail-closed rule as
+   * {@link incrementRateLimit}: in production without Redis the call throws instead of returning a guess.
+   */
+  async peekRateLimit(key: string): Promise<number> {
+    if (this.client) {
+      try {
+        const value = await this.client.get(key);
+        return value ? Number.parseInt(value, 10) || 0 : 0;
+      } catch (err) {
+        this.logger.warn(`Redis get error: ${(err as Error).message}.`);
+        this.assertFallbackAllowed();
+      }
+    } else {
+      this.assertFallbackAllowed();
+    }
+    const entry = this.memoryStore.get(key);
+    return entry && Date.now() <= entry.resetAt ? entry.count : 0;
+  }
+
   async resetRateLimit(key: string): Promise<void> {
     if (this.client) {
       try {

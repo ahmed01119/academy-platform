@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
 import { useLocale } from '@/contexts/locale-context';
 import { api, getErrorMessage } from '@/api/client';
 import { PasswordStrengthMeter } from '@/components/ui/PasswordStrengthMeter';
@@ -9,20 +8,23 @@ import { useDelayedRedirect } from '@/hooks/useDelayedRedirect';
 import { AuthPageLayout, AuthPageSuspense } from '@/features/auth/components/AuthPageLayout';
 import { AuthCard, BackToSignInLink } from '@/features/auth/components/AuthCard';
 import { AuthAlert } from '@/features/auth/components/AuthAlert';
+import { OtpCodeField, PasswordField } from '@/features/auth/components/AuthFields';
+import { AUTH_ICON_INPUT, AUTH_LABEL } from '@/features/auth/components/auth-styles';
 import {
-  OtpCodeField,
-  PasswordField,
-  normalizeOtpInput,
-} from '@/features/auth/components/AuthFields';
+  buildResetPasswordPayload,
+  hasResetSecret,
+  readResetLinkParams,
+} from '@/features/auth/reset-link';
 import { AUTH_PRIMARY_ACTION } from '@/features/auth/components/auth-styles';
 import { validateResetPasswordForm } from '@/features/auth/password-reset-validation';
 import { KeyRound, ArrowRight, Loader2, Mail } from 'lucide-react';
 
 function ResetPasswordForm() {
-  const searchParams = useSearchParams();
   const { locale, isRtl } = useLocale();
 
   const [token, setToken] = useState('');
+  /** 64-hex token from the e-mailed link (or an activation link); never shown or editable. */
+  const [linkToken, setLinkToken] = useState<string | undefined>(undefined);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -36,25 +38,25 @@ function ResetPasswordForm() {
   useDelayedRedirect(success, '/login', 3000);
 
   useEffect(() => {
-    // Handle token, otp, or code query params
-    const queryToken =
-      searchParams.get('token') || searchParams.get('otp') || searchParams.get('code');
-    if (queryToken) {
-      setToken(normalizeOtpInput(queryToken));
+    // K1: the link carries its token in the URL fragment (never sent to servers). Read it once, then remove it
+    // from the address bar and the history entry so it cannot leak through copy/paste, screenshots or history.
+    const params = readResetLinkParams(window.location.hash, window.location.search);
+    if (params.linkToken) setLinkToken(params.linkToken);
+    if (params.code) setToken(params.code);
+    if (params.email) setEmail(params.email);
+    if (hasResetSecret(params)) {
+      window.history.replaceState(null, '', window.location.pathname);
     }
-
-    // Handle optional email query param (display only; not sent to the API)
-    const queryEmail = searchParams.get('email');
-    if (queryEmail) {
-      setEmail(queryEmail.trim());
-    }
-  }, [searchParams]);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    const validationError = validateResetPasswordForm({ token, password, confirmPassword }, locale);
+    const validationError = validateResetPasswordForm(
+      { token, password, confirmPassword, linkToken, email },
+      locale,
+    );
     if (validationError) {
       setError(validationError);
       return;
@@ -62,7 +64,9 @@ function ResetPasswordForm() {
 
     setIsSubmitting(true);
     try {
-      await api.auth.resetPassword({ token: token.trim(), newPassword: password });
+      await api.auth.resetPassword(
+        buildResetPasswordPayload({ linkToken, code: token, email, newPassword: password }),
+      );
       setSuccess(true);
     } catch (err: unknown) {
       setError(
@@ -116,12 +120,46 @@ function ResetPasswordForm() {
 
       {!success && (
         <form onSubmit={handleSubmit} className="space-y-5 relative z-10">
-          <OtpCodeField
-            id="token"
-            label={locale === 'ar' ? 'رمز التحقق (6 أرقام) *' : 'Verification Code (6 digits) *'}
-            value={token}
-            onChange={setToken}
-          />
+          {linkToken ? (
+            <AuthAlert tone="success" size="compact">
+              {locale === 'ar'
+                ? 'تم التعرف على رابط إعادة التعيين. اختر كلمة مرور جديدة.'
+                : 'Reset link recognised. Choose a new password.'}
+            </AuthAlert>
+          ) : (
+            <>
+              <div>
+                <label htmlFor="email" className={AUTH_LABEL}>
+                  {locale === 'ar' ? 'البريد الإلكتروني *' : 'Email Address *'}
+                </label>
+                <div className="relative">
+                  <input
+                    id="email"
+                    type="email"
+                    required
+                    autoComplete="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="user@example.com"
+                    dir="ltr"
+                    className={AUTH_ICON_INPUT}
+                  />
+                  <Mail
+                    aria-hidden="true"
+                    className="absolute inset-s-3 top-3 h-4 w-4 text-(--text-muted)"
+                  />
+                </div>
+              </div>
+              <OtpCodeField
+                id="token"
+                label={
+                  locale === 'ar' ? 'رمز التحقق (6 أرقام) *' : 'Verification Code (6 digits) *'
+                }
+                value={token}
+                onChange={setToken}
+              />
+            </>
+          )}
 
           <PasswordField
             id="password"

@@ -98,7 +98,11 @@ export default function ForgotPasswordPage() {
 
     setIsResetting(true);
     try {
-      await api.auth.resetPassword({ token: otp.trim(), newPassword });
+      await api.auth.resetPassword({
+        token: otp.trim(),
+        email: email.trim().toLowerCase(),
+        newPassword,
+      });
       setResetSuccess(true);
     } catch (err: unknown) {
       setError(

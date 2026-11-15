@@ -16,7 +16,14 @@ interface MockPlatformTx {
     update: MockFn;
   };
   player: { count: MockFn };
-  user: { count: MockFn; findMany: MockFn; findUnique: MockFn; update: MockFn; create: MockFn };
+  user: {
+    count: MockFn;
+    findMany: MockFn;
+    findUnique: MockFn;
+    findUniqueOrThrow: MockFn;
+    update: MockFn;
+    create: MockFn;
+  };
   branch: { count: MockFn };
   attendanceSession: { count: MockFn };
   tenantMembership: { count: MockFn };
@@ -67,6 +74,7 @@ describe('PlatformService', () => {
         count: vi.fn().mockResolvedValue(40),
         findMany: vi.fn().mockResolvedValue([]),
         findUnique: vi.fn(),
+        findUniqueOrThrow: vi.fn(),
         update: vi.fn(),
         create: vi.fn(),
       },
@@ -161,9 +169,27 @@ describe('PlatformService', () => {
         email: 'user@example.com',
       });
 
+      const order: string[] = [];
+      mockTx.user.update.mockImplementation(async () => {
+        order.push('bump');
+        return { sessionVersion: 5 };
+      });
+      const revoke = mockTx.refreshToken.updateMany.getMockImplementation();
+      mockTx.refreshToken.updateMany.mockImplementation(async (...args: unknown[]) => {
+        order.push('revoke');
+        return revoke ? revoke(...args) : { count: 3 };
+      });
+
       const res = await service.revokeUserSessions(actorUserId, targetUserId);
       expect(res.success).toBe(true);
       expect(res.revokedCount).toBe(3);
+      // K13b: the session version is bumped (access tokens die) BEFORE refresh tokens are revoked.
+      expect(order).toEqual(['bump', 'revoke']);
+      expect(mockTx.user.update).toHaveBeenCalledWith({
+        where: { id: targetUserId },
+        data: { sessionVersion: { increment: 1 } },
+        select: { sessionVersion: true },
+      });
       expect(mockTx.refreshToken.updateMany).toHaveBeenCalledWith({
         where: { userId: targetUserId, isRevoked: false },
         data: { isRevoked: true },
@@ -181,7 +207,8 @@ describe('PlatformService', () => {
   describe('updateUserSecurityPolicy', () => {
     it('forces password reset and suspends account with session termination', async () => {
       mockTx.user.findUnique.mockResolvedValue({ id: targetUserId });
-      mockTx.user.update.mockResolvedValue({
+      mockTx.user.update.mockResolvedValue({ id: targetUserId });
+      mockTx.user.findUniqueOrThrow.mockResolvedValue({
         id: targetUserId,
         email: 'bad.actor@example.com',
         name: 'Bad Actor',
@@ -203,6 +230,15 @@ describe('PlatformService', () => {
 
       expect(res.mustResetPassword).toBe(true);
       expect(res.isSuspended).toBe(true);
+      // K13b: suspension bumps the session version in the same user update, before tokens are revoked.
+      expect(mockTx.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ isSuspended: true, sessionVersion: { increment: 1 } }),
+        }),
+      );
+      expect(mockTx.user.update.mock.invocationCallOrder[0]).toBeLessThan(
+        mockTx.refreshToken.updateMany.mock.invocationCallOrder[0] ?? 0,
+      );
       expect(mockTx.refreshToken.updateMany).toHaveBeenCalledWith({
         where: { userId: targetUserId, isRevoked: false },
         data: { isRevoked: true },

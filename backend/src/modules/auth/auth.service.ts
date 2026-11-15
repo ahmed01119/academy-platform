@@ -26,10 +26,38 @@ import {
   type RegisterRequest,
   type RegisterResponse,
   type ResetPasswordRequest,
+  RESET_CODE_PATTERN,
+  RESET_LINK_TOKEN_PATTERN,
   type TenantMembershipSummary,
   type UpdateUserProfileRequest,
   type UserSummary,
 } from '@academy/shared';
+
+/** Password reset codes and links expire after 5 minutes (K1). */
+const PASSWORD_RESET_TTL_MS = 5 * 60 * 1000;
+/** Wrong attempts allowed per issued 6-digit code before it is cancelled. */
+const RESET_CODE_ATTEMPT_LIMIT = 5;
+/** Failed code attempts per account per rolling 24 h before code entry is suspended (the link still works). */
+const RESET_CODE_DAILY_FAILURE_LIMIT = 10;
+
+const resetCodeAttemptsKey = (email: string) => `ratelimit:reset-code-attempts:${email}`;
+const resetCodeDailyFailuresKey = (email: string) => `ratelimit:reset-code-failures-daily:${email}`;
+
+/** The single generic error for every reset failure (unknown e-mail, wrong/expired/cancelled code or link, suspended code entry). */
+function invalidResetError(): BadRequestException {
+  return new BadRequestException({
+    code: ErrorCode.TOKEN_INVALID,
+    message:
+      'رمز التحقق أو الرابط غير صالح أو منتهي الصلاحية. استخدم الرابط من أحدث رسالة أو اطلب رمزاً جديداً (The code or link is invalid or has expired. Use the link from your most recent email, or request a new one.)',
+  });
+}
+
+/** True when a reset SQL function rejected the token (raised INVALID_OR_EXPIRED_TOKEN / TOKEN_REQUIRED). */
+function isInvalidResetTokenError(err: unknown): boolean {
+  if (err instanceof BadRequestException) return true;
+  const message = (err as { message?: unknown })?.message;
+  return typeof message === 'string' && /INVALID_OR_EXPIRED_TOKEN|TOKEN_REQUIRED/.test(message);
+}
 
 @Injectable()
 export class AuthService {
@@ -469,8 +497,14 @@ export class AuthService {
   }
 
   /**
-   * Generates single-use expiring password reset token with brute-force rate limiting.
-   * Returns a generic success message to prevent user enumeration.
+   * Starts a password reset (K1). The response is always the same generic message, so it never reveals whether an
+   * account exists. For an existing account it issues BOTH a 6-digit code and a 256-bit single-use link token; only
+   * their SHA-256 hashes are stored and both expire after 5 minutes. The link carries the token in the URL
+   * *fragment*, so it never reaches server access logs or Referer headers.
+   *
+   * Flood protection (keyed by the submitted e-mail and client IP, independent of account existence):
+   * 60 s between requests per e-mail, and 5 min (the code lifetime) after 3 requests in an hour, so a valid e-mail
+   * cannot be superseded before it expires; 3 per 15 min per IP + e-mail; 10 per hour per IP across all e-mails.
    */
   async forgotPassword(
     dto: ForgotPasswordRequest,
@@ -478,56 +512,31 @@ export class AuthService {
     userAgent?: string,
   ): Promise<{ message: string; debugOtp?: string }> {
     const normalizedEmail = dto.email.toLowerCase().trim();
-
-    // 60-second cooldown per target email
-    const cooldownKey = `ratelimit:forgot-password-cooldown:${normalizedEmail}`;
-    const cooldownCheck = await this.redisService.incrementRateLimit(cooldownKey, 60);
-    if (cooldownCheck.count > 1) {
-      throw new BadRequestException({
-        code: ErrorCode.RATE_LIMIT_EXCEEDED,
-        message: `يرجى الانتظار ${cooldownCheck.remainingTime} ثانية قبل طلب رمز جديد (Please wait ${cooldownCheck.remainingTime}s before requesting a new code).`,
-      });
-    }
-
-    const rateLimitKey = `ratelimit:forgot-password:${rateLimitIpKey(ipAddress)}:${normalizedEmail}`;
-    const { count, remainingTime } = await this.redisService.incrementRateLimit(
-      rateLimitKey,
-      15 * 60,
-    );
-    if (count > 3) {
-      this.logger.warn(
-        `Rate limit exceeded for forgot-password on ${normalizedEmail} from ${ipAddress}`,
-      );
-      throw new BadRequestException({
-        code: ErrorCode.RATE_LIMIT_EXCEEDED,
-        message: `Too many password reset requests. Please try again in ${Math.ceil(remainingTime / 60)} minutes.`,
-      });
-    }
+    await this.enforceResetRequestLimits(normalizedEmail, rateLimitIpKey(ipAddress));
 
     const user = await this.prisma.user.findUnique({
       where: { email: normalizedEmail },
+      select: { id: true, email: true, name: true },
     });
 
     let debugOtp: string | undefined;
 
     if (user) {
-      // Cryptographically secure 6-digit numeric OTP code
-      const otp = crypto.randomInt(100000, 1000000).toString();
-      const tokenHash = this.tokenService.hashToken(otp);
-      // 5-minute expiry per Phase 6 specification
-      const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+      const code = crypto.randomInt(100000, 1000000).toString();
+      const linkToken = this.tokenService.generateSecureRandomString(32); // 32 bytes = 256 bits, 64 hex chars
+      const expiresAt = new Date(Date.now() + PASSWORD_RESET_TTL_MS);
 
-      await this.prisma.$executeRaw`
-        SELECT public.request_password_reset(
+      await this.prisma.$queryRaw`
+        SELECT public.request_password_reset_with_link(
           ${normalizedEmail},
-          ${tokenHash},
+          ${this.tokenService.hashToken(code)},
+          ${this.tokenService.hashToken(linkToken)},
           ${expiresAt}
         )
       `;
 
-      // Reset attempt counter for new OTP
-      const attemptsKey = `ratelimit:reset-attempts:${normalizedEmail}`;
-      await this.redisService.resetRateLimit(attemptsKey);
+      // A new code gets a fresh per-code counter. The 24 h account counter is deliberately NOT reset.
+      await this.redisService.resetRateLimit(resetCodeAttemptsKey(normalizedEmail));
 
       await this.auditService.logEvent({
         actorUserId: user.id,
@@ -541,14 +550,14 @@ export class AuthService {
       try {
         const appUrl =
           process.env.APP_PUBLIC_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-        const resetUrl = `${appUrl}/reset-password?token=${otp}&email=${encodeURIComponent(normalizedEmail)}`;
-        await this.emailService.sendPasswordReset(user.email, user.name, resetUrl, 'ar', otp);
+        const resetUrl = `${appUrl}/reset-password#token=${linkToken}&email=${encodeURIComponent(normalizedEmail)}`;
+        await this.emailService.sendPasswordReset(user.email, user.name, resetUrl, 'ar', code);
       } catch (e) {
         this.logger.warn(`Failed to dispatch password reset email: ${(e as Error)?.message}`);
       }
 
       if (this.config.nodeEnv === 'development') {
-        debugOtp = otp;
+        debugOtp = code;
       }
     }
 
@@ -559,92 +568,168 @@ export class AuthService {
     };
   }
 
+  private async enforceResetRequestLimits(email: string, ipKey: string): Promise<void> {
+    const tooMany = (retryAfterSeconds: number) =>
+      new BadRequestException({
+        code: ErrorCode.RATE_LIMIT_EXCEEDED,
+        message: `يرجى الانتظار قبل طلب رمز جديد (Please wait ${Math.max(1, Math.ceil(retryAfterSeconds / 60))} minute(s) before requesting a new code).`,
+      });
+
+    const perIp = await this.redisService.incrementRateLimit(
+      `ratelimit:forgot-password-ip:${ipKey}`,
+      60 * 60,
+    );
+    if (perIp.count > 10) throw tooMany(perIp.remainingTime);
+
+    const hourly = await this.redisService.incrementRateLimit(
+      `ratelimit:forgot-password-hourly:${email}`,
+      60 * 60,
+    );
+    const cooldownSeconds = hourly.count > 3 ? PASSWORD_RESET_TTL_MS / 1000 : 60;
+    const cooldown = await this.redisService.incrementRateLimit(
+      `ratelimit:forgot-password-cooldown:${cooldownSeconds}:${email}`,
+      cooldownSeconds,
+    );
+    if (cooldown.count > 1) throw tooMany(cooldown.remainingTime);
+
+    const perIpEmail = await this.redisService.incrementRateLimit(
+      `ratelimit:forgot-password:${ipKey}:${email}`,
+      15 * 60,
+    );
+    if (perIpEmail.count > 3) throw tooMany(perIpEmail.remainingTime);
+  }
+
   /**
-   * Resets password with single-use expiring 6-digit OTP code or token.
+   * Completes a password reset (K1).
+   *
+   * - 6-digit code: only valid together with the e-mail it was sent to. 5 wrong attempts cancel that code (the link
+   *   from the same e-mail stays valid); after 10 failed code attempts in 24 h code entry is refused for the account
+   *   until the window passes - the link keeps working, so an attacker cannot block a legitimate reset.
+   * - 64-hex token: the e-mailed link (single-use) or a platform activation link. Not counted per account.
+   * - Every attempt counts against the client IP (30 per 15 min). Every failure returns the same generic error.
+   *
+   * Token consumption, password update, session-version bump and refresh-token revocation happen atomically inside
+   * one database function call.
    */
   async resetPassword(
     dto: ResetPasswordRequest,
     ipAddress?: string,
     userAgent?: string,
   ): Promise<{ message: string }> {
-    const trimmedToken = dto.token.trim();
-    const tokenHash = this.tokenService.hashToken(trimmedToken);
-    const passwordHash = await this.passwordService.hash(dto.newPassword);
-
-    // Max 5 verification attempts check per token hash
-    const attemptKey = `ratelimit:reset-password-attempts:${tokenHash}`;
-    const { count: attemptCount } = await this.redisService.incrementRateLimit(attemptKey, 15 * 60);
-    if (attemptCount > 5) {
-      // Invalidate code upon 5 failed attempts
-      await this.prisma.$executeRaw`
-        UPDATE public.users
-        SET password_reset_token = NULL, password_reset_expires_at = NULL
-        WHERE password_reset_token = ${tokenHash}
-      `;
+    const perIp = await this.redisService.incrementRateLimit(
+      `ratelimit:reset-password-ip:${rateLimitIpKey(ipAddress)}`,
+      15 * 60,
+    );
+    if (perIp.count > 30) {
       throw new BadRequestException({
-        code: ErrorCode.TOKEN_INVALID,
-        message:
-          'تم تجاوز الحد الأقصى للمحاولات (5 محاولات). تم إلغاء صلاحية هذا الرمز، يرجى طلب رمز جديد (Too many failed attempts. Code has been invalidated).',
+        code: ErrorCode.RATE_LIMIT_EXCEEDED,
+        message: `Too many attempts. Please try again in ${Math.max(1, Math.ceil(perIp.remainingTime / 60))} minute(s).`,
       });
     }
 
+    const token = dto.token.trim();
+    let userId: string;
+    if (RESET_CODE_PATTERN.test(token) && dto.email) {
+      userId = await this.resetWithCode(dto.email.toLowerCase().trim(), token, dto.newPassword);
+    } else if (RESET_LINK_TOKEN_PATTERN.test(token)) {
+      userId = await this.resetWithLink(token, dto.newPassword);
+    } else {
+      throw invalidResetError();
+    }
+
+    await this.auditService.logEvent({
+      actorUserId: userId,
+      action: 'AUTH_PASSWORD_RESET_COMPLETED',
+      resourceType: 'User',
+      resourceId: userId,
+      ipAddress,
+      userAgent,
+    });
+
     try {
-      const rows = await this.prisma.$queryRaw<Array<{ complete_password_reset: string }>>`
-        SELECT public.complete_password_reset(
-          ${tokenHash},
+      const userRecord = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { email: true, name: true },
+      });
+      if (userRecord) {
+        await this.emailService.sendPasswordChangedNotification(
+          userRecord.email,
+          userRecord.name,
+          { ipAddress, userAgent, changedAt: new Date() },
+          'ar',
+        );
+      }
+    } catch (e) {
+      this.logger.warn(
+        `Failed to dispatch password changed security email: ${(e as Error)?.message}`,
+      );
+    }
+
+    return {
+      message: 'Password has been successfully reset. You may now log in with your new password.',
+    };
+  }
+
+  private async resetWithCode(email: string, code: string, newPassword: string): Promise<string> {
+    const dailyKey = resetCodeDailyFailuresKey(email);
+    if ((await this.redisService.peekRateLimit(dailyKey)) >= RESET_CODE_DAILY_FAILURE_LIMIT) {
+      // Code entry suspended for this account; the e-mailed link still works. Same generic response.
+      throw invalidResetError();
+    }
+
+    const passwordHash = await this.passwordService.hash(newPassword);
+    try {
+      const rows = await this.prisma.$queryRaw<
+        Array<{ complete_password_reset_for_email: string }>
+      >`
+        SELECT public.complete_password_reset_for_email(
+          ${email},
+          ${this.tokenService.hashToken(code)},
           ${passwordHash}
         )
       `;
-
-      const userId = rows[0]?.complete_password_reset;
-      if (!userId) {
-        throw new BadRequestException({
-          code: ErrorCode.TOKEN_INVALID,
-          message: 'رمز التحقق غير صحيح أو منتهي الصلاحية (Invalid or expired verification code)',
-        });
+      const userId = rows[0]?.complete_password_reset_for_email;
+      if (!userId) throw invalidResetError();
+      await this.redisService.resetRateLimit(resetCodeAttemptsKey(email));
+      return userId;
+    } catch (err) {
+      if (!isInvalidResetTokenError(err)) throw err;
+      const perCode = await this.redisService.incrementRateLimit(
+        resetCodeAttemptsKey(email),
+        PASSWORD_RESET_TTL_MS / 1000,
+      );
+      await this.redisService.incrementRateLimit(dailyKey, 24 * 60 * 60);
+      if (perCode.count >= RESET_CODE_ATTEMPT_LIMIT) {
+        await this.prisma
+          .$executeRaw`SELECT public.invalidate_password_reset_code_for_email(${email})`;
       }
-
-      await this.tokenService.revokeAllUserTokens(userId);
-
-      await this.auditService.logEvent({
-        actorUserId: userId,
-        action: 'AUTH_PASSWORD_RESET_COMPLETED',
-        resourceType: 'User',
-        resourceId: userId,
-        ipAddress,
-        userAgent,
-      });
-
-      // Security alert: dispatch password changed confirmation email
-      try {
-        const userRecord = await this.prisma.user.findUnique({
-          where: { id: userId },
-          select: { email: true, name: true },
-        });
-        if (userRecord) {
-          await this.emailService.sendPasswordChangedNotification(
-            userRecord.email,
-            userRecord.name,
-            { ipAddress, userAgent, changedAt: new Date() },
-            'ar',
-          );
-        }
-      } catch (e) {
-        this.logger.warn(
-          `Failed to dispatch password changed security email: ${(e as Error)?.message}`,
-        );
-      }
-
-      return {
-        message: 'Password has been successfully reset. You may now log in with your new password.',
-      };
-    } catch (err: any) {
-      if (err instanceof BadRequestException) throw err;
-      throw new BadRequestException({
-        code: ErrorCode.TOKEN_INVALID,
-        message: 'رمز التحقق غير صحيح أو منتهي الصلاحية (Invalid or expired verification code)',
-      });
+      throw invalidResetError();
     }
+  }
+
+  private async resetWithLink(token: string, newPassword: string): Promise<string> {
+    const passwordHash = await this.passwordService.hash(newPassword);
+    const tokenHash = this.tokenService.hashToken(token);
+    try {
+      const rows = await this.prisma.$queryRaw<Array<{ complete_password_reset_by_link: string }>>`
+        SELECT public.complete_password_reset_by_link(${tokenHash}, ${passwordHash})
+      `;
+      const userId = rows[0]?.complete_password_reset_by_link;
+      if (userId) return userId;
+    } catch (err) {
+      if (!isInvalidResetTokenError(err)) throw err;
+    }
+    // Platform staff activation links (64-hex tokens issued via request_password_reset).
+    try {
+      const rows = await this.prisma.$queryRaw<Array<{ complete_password_reset: string }>>`
+        SELECT public.complete_password_reset(${tokenHash}, ${passwordHash})
+      `;
+      const userId = rows[0]?.complete_password_reset;
+      if (userId) return userId;
+    } catch (err) {
+      if (!isInvalidResetTokenError(err)) throw err;
+    }
+    throw invalidResetError();
   }
 
   /**
@@ -824,7 +909,7 @@ export class AuthService {
     dto: ChangePasswordRequest,
     ipAddress?: string,
     userAgent?: string,
-  ): Promise<{ message: string }> {
+  ): Promise<{ message: string; rawTokens: GeneratedTokens }> {
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
 
     const isCurrentPasswordValid = await this.passwordService.verify(
@@ -846,9 +931,25 @@ export class AuthService {
     }
 
     const newHash = await this.passwordService.hash(dto.newPassword);
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: { passwordHash: newHash },
+    // K13/K13b in one transaction: the new hash and the session-version bump are written first (taking the user row
+    // lock that serialises against refresh rotation), all refresh tokens are revoked, and this device receives new
+    // tokens carrying the new version. Every other device and every older access token stop working immediately.
+    const rawTokens = await this.prisma.$transaction(async (tx) => {
+      const sessionVersion = await this.tokenService.invalidateAllSessions(tx, userId, {
+        passwordHash: newHash,
+      });
+      return this.tokenService.generateTokens(
+        userId,
+        user.email,
+        undefined,
+        userAgent,
+        ipAddress,
+        undefined,
+        user.isPlatformSuperAdmin,
+        user.isPlatformOwner,
+        sessionVersion,
+        tx,
+      );
     });
 
     await this.auditService.logEvent({
@@ -876,7 +977,7 @@ export class AuthService {
     }
 
     this.logger.log(`Password changed for user ${userId}`);
-    return { message: 'Password changed successfully' };
+    return { message: 'Password changed successfully', rawTokens };
   }
 
   /**

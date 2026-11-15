@@ -516,4 +516,24 @@ describe('EmailService', () => {
       expect(emailService.getSentEmails()).toHaveLength(0);
     });
   });
+
+  describe('URL masking in logs (K1)', () => {
+    const mask = (url: string) =>
+      (
+        new EmailService(configService) as unknown as { maskSensitiveUrl(u: string): string }
+      ).maskSensitiveUrl(url);
+
+    it('never logs reset tokens, whether in the query string or the URL fragment', () => {
+      const link = 'a'.repeat(64);
+      expect(mask(`https://app.test/reset-password#token=${link}&email=u%40x.com`)).toBe(
+        'https://app.test/reset-password#token=***&email=u%40x.com',
+      );
+      expect(mask(`https://app.test/reset-password?token=${link}`)).toBe(
+        'https://app.test/reset-password?token=***',
+      );
+      expect(mask('https://app.test/x?code=123456&otp=654321#secret=s')).not.toMatch(
+        /123456|654321|=s$/,
+      );
+    });
+  });
 });
