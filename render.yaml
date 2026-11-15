@@ -10,6 +10,9 @@ services:
     startCommand: node backend/dist/main.js
     healthCheckPath: /v1/health/ready
     envVars:
+      # Same Node.js major as .nvmrc, CI and the Dockerfiles.
+      - key: NODE_VERSION
+        value: '22'
       - key: NODE_ENV
         value: production
       - key: PORT
