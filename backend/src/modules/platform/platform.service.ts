@@ -52,7 +52,6 @@ import { PlatformMetricsService } from './platform-metrics.service';
 @Injectable()
 export class PlatformService {
   private readonly logger = new Logger(PlatformService.name);
-  private metricsCache: { data: PlatformOverviewMetrics; expiresAt: number } | null = null;
 
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
@@ -60,129 +59,16 @@ export class PlatformService {
     @Inject(HealthService) private readonly healthService: HealthService,
     @Inject(NotificationsService) private readonly notificationsService: NotificationsService,
     @Inject(EmailService) private readonly emailService: EmailService,
+    @Inject(PlatformMetricsService) private readonly metricsService: PlatformMetricsService,
     @Optional() @Inject(RedisService) private readonly redisService?: RedisService,
-    @Optional()
-    @Inject(PlatformMetricsService)
-    private readonly metricsService?: PlatformMetricsService,
   ) {}
 
   /**
    * Retrieves high-level SaaS platform metrics for Super Administrators.
-   * Delegates to dedicated PlatformMetricsService when available, with self-contained fallback.
+   * Delegates to PlatformMetricsService (which owns the short-lived metrics cache).
    */
   async getOverviewMetrics(actorUserId: string): Promise<PlatformOverviewMetrics> {
-    if (this.metricsService) {
-      return this.metricsService.getOverviewMetrics(actorUserId);
-    }
-
-    if (this.metricsCache && Date.now() < this.metricsCache.expiresAt) {
-      return this.metricsCache.data;
-    }
-
-    // Health check executes independently outside the database transaction
-    const systemHealth = await this.healthService.getPlatformHealth();
-
-    const metrics = await this.prisma.withPlatformAdminTransaction(
-      { actorUserId, timeout: 30000, maxWait: 15000 },
-      async (tx) => {
-        const now = new Date();
-        const in14Days = new Date(Date.now() + 14 * 86400000);
-
-        const [
-          totalAcademies,
-          activeAcademies,
-          suspendedAcademies,
-          provisioningAcademies,
-          totalPlayers,
-          totalUsers,
-          totalBranches,
-          totalSessionsCompleted,
-          totalCoaches,
-          totalGuardians,
-          trialAcademies,
-          expiredSubscriptions,
-          upcomingRenewals,
-          activeSubs,
-          paidInvoicesSum,
-          pendingInvoicesCount,
-          overdueInvoicesCount,
-        ] = await Promise.all([
-          tx.tenant.count(),
-          tx.tenant.count({ where: { status: 'ACTIVE' } }),
-          tx.tenant.count({ where: { status: 'SUSPENDED' } }),
-          tx.tenant.count({ where: { status: 'PROVISIONING' } }),
-          tx.player.count(),
-          tx.user.count(),
-          tx.branch.count(),
-          tx.attendanceSession.count({ where: { status: 'CLOSED' } }),
-          tx.tenantMembership.count({ where: { role: 'COACH', status: 'ACTIVE' } }),
-          tx.guardian.count(),
-          tx.tenantSubscription.count({ where: { status: 'TRIAL' } }),
-          tx.tenantSubscription.count({ where: { status: 'EXPIRED' } }),
-          tx.tenantSubscription.count({
-            where: {
-              status: 'ACTIVE',
-              renewalDate: { lte: in14Days, gte: now },
-            },
-          }),
-          tx.tenantSubscription.findMany({
-            where: { status: 'ACTIVE' },
-            include: { plan: true },
-          }),
-          tx.saaSInvoice.aggregate({
-            where: { status: 'PAID' },
-            _sum: { amount: true },
-          }),
-          tx.saaSInvoice.count({ where: { status: 'PENDING' } }),
-          tx.saaSInvoice.count({ where: { status: 'OVERDUE' } }),
-        ]);
-
-        const activeSubscriptions = activeSubs.length;
-        const expiredAcademies = expiredSubscriptions;
-
-        // Calculate Monthly Recurring Revenue (MRR) based on active subscription prices
-        const mrr = (
-          activeSubs as Array<{
-            negotiatedPrice: number | null;
-            plan: { priceMonthly: number | null };
-          }>
-        ).reduce((acc: number, sub) => {
-          const monthly = sub.negotiatedPrice ?? sub.plan.priceMonthly ?? 0;
-          return acc + monthly;
-        }, 0);
-
-        return {
-          totalAcademies,
-          activeAcademies,
-          suspendedAcademies,
-          provisioningAcademies,
-          trialAcademies,
-          expiredAcademies,
-          totalPlayers,
-          totalCoaches,
-          totalUsers,
-          totalBranches,
-          totalGuardians,
-          totalSessionsCompleted,
-          activeSubscriptions,
-          upcomingRenewals,
-          expiredSubscriptions,
-          mrr,
-          collectedRevenue: paidInvoicesSum._sum.amount ?? 0,
-          outstandingInvoices: pendingInvoicesCount,
-          failedPayments: overdueInvoicesCount,
-          systemHealth,
-        };
-      },
-    );
-
-    // Cache metrics in memory for 15 seconds to prevent slamming DB with repeated count aggregations
-    this.metricsCache = {
-      data: metrics,
-      expiresAt: Date.now() + 15000,
-    };
-
-    return metrics;
+    return this.metricsService.getOverviewMetrics(actorUserId);
   }
 
   /**

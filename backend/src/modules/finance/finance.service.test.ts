@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { FinanceService } from './finance.service';
+import { FinancePlansService } from './finance-plans.service';
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import type { PrismaService } from '../database/prisma.service';
 import type { AuditService } from '../audit/audit.service';
@@ -100,6 +101,10 @@ describe('FinanceService', () => {
     service = new FinanceService(
       mockPrisma as unknown as PrismaService,
       mockAudit as unknown as AuditService,
+      new FinancePlansService(
+        mockPrisma as unknown as PrismaService,
+        mockAudit as unknown as AuditService,
+      ),
     );
   });
 
@@ -791,6 +796,26 @@ describe('FinanceService', () => {
       await expect(
         service.getSessionCashierSummary(unassignedCoachContext, sessionId),
       ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('player subscription plans (delegated to FinancePlansService)', () => {
+    it('lists the academy plans for a branch, including academy-wide plans', async () => {
+      const branchId = '33333333-3333-4333-8333-333333333333';
+      mockTx.playerSubscriptionPlan.findMany.mockResolvedValue([]);
+
+      await expect(service.listPlayerSubscriptionPlans(tenantContext, branchId)).resolves.toEqual(
+        [],
+      );
+
+      expect(mockTx.playerSubscriptionPlan.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            tenantId: tenantContext.tenantId,
+            OR: [{ branchId }, { branchId: null }],
+          },
+        }),
+      );
     });
   });
 });

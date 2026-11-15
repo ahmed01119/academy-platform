@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { PlatformService } from './platform.service';
+import { PlatformMetricsService } from './platform-metrics.service';
 import { NotFoundException } from '@nestjs/common';
 import type { PrismaService } from '../database/prisma.service';
 import type { AuditService } from '../audit/audit.service';
@@ -131,6 +132,10 @@ describe('PlatformService', () => {
       mockHealth as unknown as HealthService,
       mockNotifications as any,
       mockEmail as any,
+      new PlatformMetricsService(
+        mockPrisma as unknown as PrismaService,
+        mockHealth as unknown as HealthService,
+      ),
     );
   });
 
@@ -364,6 +369,7 @@ describe('PlatformService', () => {
         mockHealth as any,
         mockNotifications as any,
         mockEmail as any,
+        new PlatformMetricsService(mockPrisma as any, mockHealth as any),
         mockRedisService as any,
       );
 

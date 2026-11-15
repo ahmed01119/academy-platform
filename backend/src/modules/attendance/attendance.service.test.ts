@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { AttendanceService } from './attendance.service';
+import { AttendanceRosterService } from './attendance-roster.service';
 import {
   BadRequestException,
   ConflictException,
@@ -142,6 +143,7 @@ describe('AttendanceService', () => {
     service = new AttendanceService(
       mockPrisma as unknown as PrismaService,
       mockAudit as unknown as AuditService,
+      new AttendanceRosterService(mockPrisma as unknown as PrismaService),
     );
   });
 
@@ -842,6 +844,26 @@ describe('AttendanceService', () => {
           idempotencyKey: 'idem-future',
         }),
       ).rejects.toThrow('Cannot mark attendance for future sessions in advance');
+    });
+  });
+
+  describe('listSessions (delegated to AttendanceRosterService)', () => {
+    it('returns the roster page shape; an empty result reports totalPages 0', async () => {
+      mockPrisma.attendanceSession.count.mockResolvedValue(0);
+      mockPrisma.attendanceSession.findMany.mockResolvedValue([]);
+
+      const result = await service.listSessions(tenantContext, { page: 2, limit: 10 });
+
+      // Pins the behaviour of the code that runs in production. The removed fallback copy
+      // returned totalPages 1 here; the extracted service has always returned 0.
+      expect(result).toEqual({ items: [], total: 0, page: 2, limit: 10, totalPages: 0 });
+      expect(mockPrisma.attendanceSession.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ tenantId: tenantContext.tenantId }),
+          skip: 10,
+          take: 10,
+        }),
+      );
     });
   });
 });
