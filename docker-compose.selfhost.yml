@@ -12,7 +12,9 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-academy}
       POSTGRES_USER: ${POSTGRES_USER:-academy}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
-      POSTGRES_RUNTIME_PASSWORD: ${POSTGRES_RUNTIME_PASSWORD:-SportexusRuntimePass2026!}
+      # Password of the restricted runtime role academy_runtime (created on first start by 01-runtime-role.sh).
+      # Required, no default: a committed default would be a shared secret. Use URL-safe characters.
+      POSTGRES_RUNTIME_PASSWORD: ${POSTGRES_RUNTIME_PASSWORD:?set POSTGRES_RUNTIME_PASSWORD}
     volumes:
       - sportexus_pg_data:/var/lib/postgresql/data
       - ./infrastructure/postgres/01-runtime-role.sh:/docker-entrypoint-initdb.d/01-runtime-role.sh:ro
@@ -40,7 +42,24 @@ services:
     networks:
       - sportexus_internal
 
-  # 3. NestJS Production API
+  # 3. One-shot migrations as the database owner (also grants the runtime role its privileges, M3 baseline).
+  migrate:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: sportexus_migrate
+    restart: on-failure
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-academy}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-academy}?schema=public
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ['pnpm', '--filter', '@academy/database', 'exec', 'prisma', 'migrate', 'deploy']
+    networks:
+      - sportexus_internal
+
+  # 4. NestJS Production API
   api:
     build:
       context: .
@@ -51,12 +70,15 @@ services:
       NODE_ENV: production
       PORT: 3001
       API_VERSION: ${API_VERSION:-1.0.0}
-      DATABASE_URL: postgresql://${POSTGRES_USER:-academy}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-academy}?schema=public
+      # S3: the API connects as the restricted runtime role (RLS enforced; production refuses an owner/BYPASSRLS
+      # role). Only the migrate service uses the owner connection.
+      DATABASE_URL: postgresql://academy_runtime:${POSTGRES_RUNTIME_PASSWORD:?set POSTGRES_RUNTIME_PASSWORD}@postgres:5432/${POSTGRES_DB:-academy}?schema=public
       REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-15m}
       REFRESH_TOKEN_EXPIRES_DAYS: ${REFRESH_TOKEN_EXPIRES_DAYS:-7}
-      CORS_ORIGIN: '*'
+      # Exact browser origin(s) of the web app, comma-separated. Wildcards are not allowed outside development.
+      CORS_ORIGIN: ${CORS_ORIGIN:?set CORS_ORIGIN}
       COOKIE_SECURE: 'true'
       # S1: nginx routes /v1 directly to the API and is the one trusted hop.
       INTERNAL_PROXY_SECRET: ${INTERNAL_PROXY_SECRET:?set INTERNAL_PROXY_SECRET}
@@ -66,6 +88,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     healthcheck:
       test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1:3001/v1/health/ready || exit 1']
       interval: 15s
@@ -74,7 +98,7 @@ services:
     networks:
       - sportexus_internal
 
-  # 4. Next.js Production Web Application
+  # 5. Next.js Production Web Application
   web:
     build:
       context: .
@@ -95,7 +119,7 @@ services:
     networks:
       - sportexus_internal
 
-  # 5. Nginx Reverse Proxy (Frontend at /, API at /v1/)
+  # 6. Nginx Reverse Proxy (Frontend at /, API at /v1/)
   nginx:
     image: nginx:alpine
     container_name: sportexus_nginx
@@ -115,7 +139,7 @@ services:
     networks:
       - sportexus_internal
 
-  # 6. Cloudflare Tunnel (Secure outbound tunnel exposing only Nginx)
+  # 7. Cloudflare Tunnel (Secure outbound tunnel exposing only Nginx)
   tunnel:
     image: cloudflare/cloudflared:latest
     container_name: sportexus_tunnel
