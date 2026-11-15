@@ -114,8 +114,11 @@ describe('Sprint 2 Shared Schemas', () => {
         notes: 'تسجيل في موسم الخريف',
       };
       const parsed = CreateEnrollmentSchema.parse(valid);
-      expect(parsed.status).toBeUndefined(); // defaults applied on server
       expect(parsed.sport).toBe('FOOTBALL');
+
+      // Status is decided by the server: a client-supplied value is stripped, never accepted.
+      const withStatus = CreateEnrollmentSchema.parse({ ...valid, status: 'COMPLETED' });
+      expect(withStatus).not.toHaveProperty('status');
     });
 
     it('validates transfer branch request', () => {
