@@ -1,241 +1,618 @@
-# Phase 3A proposal: password reset, sessions and client IP (K1, K13, S1)
+# Phase 3A proposal (revision 2): security hardening
 
-> **Status: proposal, awaiting owner approval. Nothing below is implemented or applied.**
-> Prepared 2026-11-15 on branch `frontend-architecture-uiux-audit`.
+> **Status: proposal, awaiting owner approval. Nothing is implemented, and no migration has been created in the
+> repository or applied.**
+> Revision 2 (2026-11-15) replaces revision 1 and includes the owner's review decisions.
+> Branch: `frontend-architecture-uiux-audit` (not pushed).
 
-## 1. K1: password-reset codes can be guessed without limit (critical)
+## 0. Summary
 
-### Root cause (verified in code)
+| Sub-phase | Issues                                                                       | Database migration |
+| --------- | ---------------------------------------------------------------------------- | ------------------ |
+| 3A.1      | K1 (password reset), K13 + K13b (session revocation), S1 (trusted client IP) | M1                 |
+| 3A.2      | S4 (academy-application RLS), S3 (runtime role instead of database owner)    | M2, M3             |
+| 3A.3      | S2 (explicit trusted origins)                                                | none               |
+| 3A.4      | Security regression and integration testing                                  | none               |
 
-`AuthService.resetPassword` (`backend/src/modules/auth/auth.service.ts`) has four flaws:
+**What changed from revision 1:**
 
-1. **The attempt counter is keyed by the guessed code.** The key is `ratelimit:reset-password-attempts:<sha256(submitted code)>`,
-   so every new guess starts a new counter at 1. The "5 attempts" limit never triggers for a brute-force attack.
-2. **The code is not bound to an account.** `ResetPasswordRequestSchema` accepts `{ token, newPassword }` with no email.
-   `public.complete_password_reset(text, text)` matches the hash against _all_ users with a pending reset, so one
-   correct guess resets the password of whichever account owns that code.
-3. **There is no per-IP limit** on `POST /auth/reset-password`.
-4. **The "invalidate after 5 failures" step can never work.** It runs
-   `UPDATE users … WHERE password_reset_token = <hash of the guess>`, which matches the real code only if the guess is
-   already correct.
+- **K1:** the per-account daily lockout is **dropped**. Instead:
+  - every reset email carries an unguessable link in addition to the 6-digit code;
+  - only _code entry_ is ever restricted;
+  - an attacker can therefore never block a user from resetting through the link.
+- **K13b:** a `session_version` counter, not a timestamp. It has no clock-skew edge cases and costs no extra queries.
+- **S3 and S4:** investigated in depth. Both depend on application code that queries row-level-security tables
+  **without setting a user context**. That works today only because the API connects as the database owner, which
+  bypasses RLS. They must be fixed together, in code and in the database.
+- **S2:** risk re-assessed. Browsers only ever call the same-origin `/v1` proxy, and cookies are `SameSite=Lax`, so
+  this is a defense-in-depth gap, not an open door. It is still fixed.
 
-The intended design is visible in the code: `forgotPassword` resets a per-email counter
-`ratelimit:reset-attempts:<email>` that `resetPassword` never reads.
+---
 
-**Attack:** request a reset for a victim's email (public endpoint), then submit codes from `000000` to `999999` while
-the code is valid (5 minutes), from one or many IPs. Every guess is free. Result: **account takeover**, including
-platform super admins.
-
-### Fix
-
-**Contract (`packages/shared` `ResetPasswordRequestSchema`):**
-
-- Add `email` (optional in the schema type).
-- A refinement makes `email` **required when `token` is a 6-digit code**. Every other token shape keeps working
-  without it.
-- The 256-bit activation links sent to invited platform staff (`/reset-password?token=<64 hex>`, created by
-  `PlatformService`) carry no email, are not guessable, and keep working.
-- A 6-digit code without an email returns `400 VALIDATION_FAILED`.
-
-**Database:** one additive migration (section 6) adds two functions:
-
-- `complete_password_reset_for_email(email, code_hash, new_password_hash)` succeeds only when the code belongs to that
-  email. Its effects are identical to today's function: it sets the password, clears the code and revokes all refresh
-  tokens.
-- `invalidate_password_reset_for_email(email)` cancels that account's pending code.
-
-**Service, 6-digit code path, in this order:**
-
-1. **Per-IP limit** (shared with the activation path): `ratelimit:reset-password:ip:<clientIp>`, at most **30
-   attempts per 15 minutes**. Depends on S1, since without trustworthy IPs this limit would be shared by all users.
-2. **Per-account daily cap:** `ratelimit:reset-attempts-daily:<email>`, at most **20 failed attempts per 24 hours**.
-   _Not_ reset when a new code is issued, so requesting fresh codes cannot be used to farm guesses.
-3. **Per-code limit:** `ratelimit:reset-attempts:<email>` (the key `forgotPassword` already resets). After **5 failed
-   attempts** the code is cancelled through `invalidate_password_reset_for_email`, and the user must request a new code.
-4. `complete_password_reset_for_email(...)`.
-5. **On success:** clear the per-code counter. The daily counter is kept.
-
-Unknown email, wrong code, expired code and cancelled code all return the **same** `400 TOKEN_INVALID` message, so the
-endpoint does not reveal whether an email exists. Rate-limit responses keep the current convention
-(`400 RATE_LIMIT_EXCEEDED`); moving to `429` is part of BR-1, which is pending.
-
-**Service, 64-hex activation token path:** the per-IP limit plus the existing `complete_password_reset(text, text)`
-function.
-
-**Frontend:**
-
-- `/forgot-password` step 2 sends the email the user typed in step 1.
-- `/reset-password` sends the `email` query parameter that reset emails already include (`?token=…&email=…`).
-- If an emailed link has no `email` parameter (only activation links, which use 64-hex tokens), the page behaves as
-  today.
-
-**Unchanged:**
-
-- the 6-digit code;
-- the 5-minute expiry;
-- the email content;
-- the `forgot-password` limits (one request per minute per email; 3 per 15 minutes per IP and email).
-
-**Trade-off, stated honestly:** anyone who knows a user's email can use up that user's reset attempts for the day
-(20). They still cannot take over the account, and the user can still sign in with their current password. This is the
-standard trade-off and is acceptable.
-
-**Residual brute-force risk after the fix:** at most 5 guesses per issued code, 20 per account per day. The chance of
-success is 20 / 1,000,000 per day (≈0.002 %), and each attempt also requires a fresh email to the victim.
-
-## 2. K13: changing a password does not sign out other sessions
-
-**Root cause:** `AuthService.changePassword` updates the hash, but never touches `refresh_tokens`. A password reset
-already revokes every session (inside the SQL function); a change, which is often done _because_ of a suspected
-compromise, does not.
-
-**Fix:** a new `TokenService.revokeOtherUserTokens(userId, currentRefreshToken?)` revokes every refresh-token family
-of the user except the one in the request's `refresh_token` cookie. If there is no cookie, or it is unknown, every
-family is revoked, which is the safe default. The user stays signed in on the device where they changed the password.
-
-**Relationship with K1:** both close the "attacker keeps access" path.
-
-- **K1** stops a takeover via reset.
-- **K13** makes sure that after the legitimate owner changes the password, any attacker session dies.
-
-Both live in the same module and test suite.
-
-**Residual risk:** an already-issued **access** token (a 15-minute JWT) stays valid until it expires.
-
-**Optional K13b (needs a second migration; recommendation: yes):**
-
-- Add a nullable `users.password_changed_at` column, set on change and reset.
-- `JwtStrategy`, which already loads the user on every request, rejects tokens issued before that time.
-- This makes invalidation immediate.
-- **Decision for the owner:** include it or not.
-
-## 3. S1: trusted client IP behind the Next.js proxy
+## 1. K1: password reset
 
 ### Root cause (verified)
 
-- The API never sets Express `trust proxy`. Every browser request goes browser → (platform proxy) → Next.js
-  `/v1/[...path]` route → API, so `req.ip` is the **proxy's** address for every user:
-  - audit logs record the proxy;
-  - per-IP rate limits behave as one bucket shared by all users;
-  - the "login rate limit per IP + email" is effectively per email.
-- The Next.js proxy copies the client's own `X-Forwarded-For` header upstream unchanged.
-- The API is reachable **directly** as well (`API_DOMAIN` through Caddy in the self-hosted setup; its own public URL on
-  Render). Trusting `X-Forwarded-For` would therefore let any direct caller set an arbitrary IP and escape every per-IP
-  limit.
-- The 8 call sites in `auth.controller.ts` repeat `req.ip || req.socket.remoteAddress`.
+1. **The counter is keyed by the guess.** The attempt counter key is `ratelimit:reset-password-attempts:<hash of the
+submitted code>`, so every guess gets a fresh counter.
+2. **The code is not bound to an email.** `complete_password_reset(text, text)` matches any user's pending code.
+3. **There is no per-IP limit.**
+4. **The "invalidate after 5 failures" step can never succeed.** It runs a direct `UPDATE … WHERE password_reset_token
+= <hash of the guess>`. It also uses a column the runtime role may not update.
+5. **The emailed link contains the 6-digit code itself** (`/reset-password?token=<code>&email=…`), which places the
+   code in browser history and server logs.
 
-### Design: authenticate the proxy; never trust a client-supplied IP header
+Impact: an attacker who knows an email address can take over the account.
+
+### Why revision 1's daily cap was rejected, and the replacement
+
+A per-account failure cap stops brute force, but it lets anyone who knows an email exhaust the cap and block the real
+user. Revision 2 removes the conflict by giving the legitimate user a second way in that **cannot be guessed and is
+never counted**: the emailed link. Every reset email contains both:
+
+| Credential       | Format                                                      | Who uses it                            | Brute-force exposure  | Can an attacker block it?                                      |
+| ---------------- | ----------------------------------------------------------- | -------------------------------------- | --------------------- | -------------------------------------------------------------- |
+| **Link**         | 256-bit random token (64 hex characters), stored as SHA-256 | the user clicks it                     | none (2^256 space)    | **No.** Not subject to per-account counters; per-IP limit only |
+| **6-digit code** | as today, 5-minute expiry                                   | typed manually, e.g. on another device | guessable, so limited | Only code _entry_ can be suspended; the link keeps working     |
+
+### Final limits
+
+| Control                            | Value                                                                                                               | Scope                               | Notes                                                                                                                                                 |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------- | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Code expiry                        | 5 minutes                                                                                                           | per code                            | unchanged (approved)                                                                                                                                  |
+| Wrong attempts per code            | **5**, then the code is cancelled                                                                                   | per code                            | approved. Cancels **only the code**: the link from the same email stays valid until it expires. Otherwise 5 wrong guesses would kill the user's link. |
+| Code-entry suspension              | after **10** failed code attempts in a rolling 24 h, code entry is refused for that account until the window passes | per account                         | **Not reset by requesting new codes** (approved principle). The link path is unaffected.                                                              |
+| Reset attempts per IP              | **30 / 15 min**                                                                                                     | per client IP (IPv6 grouped by /64) | covers both the code and the link paths. Relies on S1.                                                                                                |
+| Reset requests per account         | 60 s between requests; after **3 requests in 1 h**, at least **5 min** between requests                             | per email                           | the 5-minute step equals the code lifetime, so an attacker cannot repeatedly replace a user's still-valid email                                       |
+| Reset requests per IP + email      | 3 / 15 min                                                                                                          | existing                            | unchanged                                                                                                                                             |
+| Reset requests per IP (all emails) | **10 / hour**                                                                                                       | per client IP                       | new; prevents spraying many accounts from one IP                                                                                                      |
+
+**Security implications:**
+
+- **Brute force:** at most 10 code guesses per account per 24 h, so P(success) ≤ 10 / 1,000,000 = **0.001 % per
+  day**. Each guess also requires the attacker to trigger reset emails, which go to the victim.
+  - A stricter alternative is a suspension threshold of **5** (≤ 0.0005 %/day). The cost is that a user who mistypes
+    5 times must use the link. _Owner choice; 10 is recommended._
+- **Denial of service:** an attacker who knows an email can at most:
+  - (a) suspend _code entry_ for that account for 24 h (the link still works);
+  - (b) slow reset _requests_ to one per 5 minutes.
+
+  They cannot lock the account, block sign-in with the current password, or block a link-based reset.
+
+- **Enumeration:**
+  - `forgot-password` always returns the same generic message, and its cooldowns are keyed by the submitted email
+    whether or not an account exists;
+  - every reset failure (unknown email, wrong or expired or cancelled code, suspended code entry) returns the same
+    `400 TOKEN_INVALID` message: _"The code or link is invalid or has expired. Use the link from your most recent
+    email, or request a new one."_;
+  - the database function is called for unknown emails too, so response timing does not reveal account existence.
+
+### Solution, step by step
+
+**Email (`EmailService.sendPasswordReset`):** the link becomes
+`/reset-password?token=<64-hex link token>&email=<email>`; the 6-digit code is shown separately. The template's
+wording and layout do not change.
+
+**`forgotPassword`:**
+
+1. Generate the code and a link token.
+2. Store both SHA-256 hashes via the new `request_password_reset_with_link(...)`.
+3. Apply the issuance limits from the table above.
+
+**`resetPassword`:**
+
+1. Per-IP limit.
+2. Route by token shape:
+   - **6 digits:** requires `email` (schema). Check code-entry suspension; increment the per-code and 24-hour
+     counters; call `complete_password_reset_for_email`. On the 5th failure for this code, call
+     `invalidate_password_reset_code_for_email`, which clears only the code.
+   - **64 hex:** try `complete_password_reset_by_link`. If that fails, fall back to the existing
+     `complete_password_reset(text, text)`, which keeps serving platform staff **activation** links. Those are also
+     64-hex tokens stored in the code column.
+3. **On success:** clear the per-code counter (not the 24-hour one). Sessions are invalidated (see K13b).
+
+**Contract (`ResetPasswordRequestSchema`):** `email` is optional in the type, and required by a refinement when
+`token` is 6 digits.
+
+**Frontend:**
+
+- `/forgot-password` sends the email typed in step 1.
+- `/reset-password` sends the `email` query parameter.
+- The generic error text is used.
+
+### Files
+
+| File                                                                                                                                                         | Change                             |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------- |
+| `packages/shared/src/schemas/auth.ts` (+ test)                                                                                                               | `email` and the 6-digit refinement |
+| `backend/src/modules/auth/auth.service.ts` (+ tests)                                                                                                         | `forgotPassword`, `resetPassword`  |
+| `backend/src/modules/email/email.service.ts` (+ test)                                                                                                        | reset link carries the link token  |
+| `frontend/src/app/forgot-password/page.tsx`, `frontend/src/app/reset-password/page.tsx`, `frontend/src/features/auth/password-reset-validation.ts` (+ tests) | send `email`; generic error        |
+| `packages/database/prisma/migrations/<M1>/migration.sql`                                                                                                     | section 6                          |
+| `packages/database/scripts/provision-runtime-role.sql`, `packages/database/tests/runtime-role-setup.sql`                                                     | grants                             |
+
+### Backward compatibility
+
+- **Reset emails already sent** with the old `?token=<code>&email=` link: the token is 6 digits and the email is
+  present, so they take the code path and keep working until they expire (5 minutes).
+- **Platform activation links** (64 hex, no email): handled by the unchanged legacy function.
+- **API:** the only new error is a 6-digit code without an email (400). Our own frontend always sends the email.
+
+### Tests (automated, mocked unless noted)
+
+1. Correct code + correct email: succeeds; sessions invalidated.
+2. Correct code + another existing account's email: generic error; neither account changes.
+3. Correct code + unknown email: same generic error.
+4. 6-digit code without email: `400 VALIDATION_FAILED`.
+5. 5 wrong codes: the code is cancelled and the correct code fails afterwards; **the link from the same email still
+   works**.
+6. 10 failures spread over several fresh codes in 24 h: code entry is refused (generic error) even with the correct
+   code; **the link still works**.
+7. A new code request does not reset the 24-hour counter.
+8. 31 attempts from one IP across different emails: the 31st is limited. An IPv6 /64 counts as one bucket.
+9. A valid link without an email succeeds. A wrong link fails with the generic error and is per-IP limited.
+10. A platform activation link (legacy) still works.
+11. Expired code or link: generic error.
+12. Issuance: after 3 requests in an hour the next request needs 5 minutes; the response is generic either way.
+13. Redis unavailable in production: refused (fail-closed).
+14. **Real (Neon, after M1):** forgot → link → reset; forgot → code → reset; old password fails; other sessions die.
+
+### Rollback
+
+`git revert` of the 3A.1 commits, plus the M1 rollback block. Codes and links issued in between become invalid; users
+simply request a new email.
+
+---
+
+## 2. K13 + K13b: session revocation
+
+### Root cause
+
+- `changePassword` updates the hash, but never revokes refresh tokens.
+- Neither change nor reset affects **access** tokens. These are stateless 15-minute JWTs, so a stolen access token
+  keeps working for up to 15 minutes after a password change or reset.
+
+### Solution
+
+1. **`users.session_version integer NOT NULL DEFAULT 0`** (migration M1).
+2. **Access tokens carry `sv`** (the user's `session_version` at issuance), set in `TokenService`.
+3. **`JwtStrategy.validate`** already loads the user on every request. It rejects the token with `401 UNAUTHORIZED`
+   when `payload.sv ?? 0 !== user.sessionVersion`.
+4. **Password change:** one transaction does all of the following:
+   - updates the hash;
+   - increments `session_version`;
+   - revokes **all** refresh-token families.
+
+   Then a **fresh token pair is issued to the current device** in the same response. The current session continues
+   ("preserve the current session where appropriate"); every other device and every older access token stop working
+   immediately.
+
+5. **Password reset** (by code, link or activation): the SQL functions increment `session_version` and revoke all
+   refresh tokens. No session is preserved, because the user is not signed in.
+6. **Optional reuse (recommended):** platform "suspend user" and "revoke sessions" also increment `session_version`.
+   Today they leave a 15-minute access window.
+
+### Why `session_version` rather than a `password_changed_at` timestamp
+
+- A timestamp must be compared with the JWT's `iat`, which has 1-second resolution and comes from the API's clock,
+  while the timestamp comes from the database's clock. That produces edge cases around the exact second of the change.
+- An integer version is exact.
+
+### Performance
+
+- **Zero additional queries.** The strategy already performs one user lookup per authenticated request; the check is
+  one integer comparison on a column that lookup already returns.
+- Token size grows by about 8 bytes.
+- The increment is part of the existing password `UPDATE`.
+
+### Files
+
+| File                                                                       | Change                                                      |
+| -------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| `backend/src/modules/auth/token.service.ts` (+ test)                       | `sv` claim; revoke all families                             |
+| `backend/src/modules/auth/guards/jwt.strategy.ts` (+ test)                 | version check                                               |
+| `backend/src/modules/auth/auth.service.ts`, `auth.controller.ts` (+ tests) | change-password flow, fresh cookies for the current device  |
+| `backend/src/modules/platform/platform.service.ts` (+ test)                | optional reuse for suspend / revoke                         |
+| M1                                                                         | the column, and the version bump inside the reset functions |
+
+### Backward compatibility
+
+- Tokens issued before the deploy have no `sv`, which is treated as `0`, and every existing user has version `0`. So
+  **no one is signed out by the deploy itself**; old tokens are rejected only after that user's next password change
+  or reset.
+- API responses are unchanged, except that change-password also sets new cookies.
+
+### Tests
+
+15. A password change invalidates other refresh families **and** previously issued access tokens (strategy rejects
+    the old `sv`); the current device receives working new tokens.
+16. A wrong current password changes nothing (version unchanged).
+17. A reset (code, link or activation) increments the version, and all old tokens are rejected.
+18. Tokens without `sv` are accepted while the version is 0.
+19. _(If approved)_ suspend and revoke-sessions reject access tokens immediately.
+20. **Real:** two browsers; change the password in one; the other is rejected on its **next request**, not after 15
+    minutes.
+
+### Rollback
+
+Revert the code. The column is harmless if left in place; dropping it is in the M1 rollback block.
+
+---
+
+## 3. S1: trusted client IP
+
+### Root cause (verified)
+
+- Express `trust proxy` is unset, and every browser request arrives through the Next.js `/v1` proxy. `req.ip`
+  therefore holds the proxy's address for every user, which breaks audit logs and every per-IP limit.
+- The proxy forwards the client's own `X-Forwarded-For`.
+- The API is also reachable **directly** (`API_DOMAIN` through Caddy; its own public URL on Render), so trusting
+  `X-Forwarded-For` would let any caller set an arbitrary IP.
+
+### Solution
 
 **Next.js proxy (`frontend/src/app/v1/[...path]/route.ts`):**
 
-1. Drop every client-supplied identity header before forwarding: `x-forwarded-for`, `x-real-ip`, `forwarded`,
-   `x-sportexus-client-ip`, `x-sportexus-proxy-auth`.
-2. Determine the client IP from the inbound `X-Forwarded-For`, using `WEB_TRUSTED_PROXY_HOPS`:
-   - the number of trusted proxies in front of the web app (Caddy or Render's load balancer = `1`);
-   - the IP is the entry _hops_ positions from the right, which a client cannot forge;
-   - default `0`, meaning no forwarded IP (local development).
-3. When an IP was determined, send `x-sportexus-client-ip: <ip>` and `x-sportexus-proxy-auth: <INTERNAL_PROXY_SECRET>`.
+1. **Remove** client-supplied identity headers: `x-forwarded-for`, `x-real-ip`, `forwarded`, `true-client-ip`,
+   `cf-connecting-ip`, and every `x-sportexus-*` header.
+2. **Determine the real client IP itself** from the inbound `X-Forwarded-For`, using `WEB_TRUSTED_PROXY_HOPS`:
+   - the number of trusted proxies in front of the web app;
+   - `1` behind Caddy or Render, because Caddy overwrites untrusted client values and Render appends the real peer;
+   - the IP is the entry _hops_ positions from the right, which the client cannot forge;
+   - `0` (development) means no forwarded IP.
+3. **Attach** `x-sportexus-client-ip: <ip>` and `x-sportexus-proxy-auth: <INTERNAL_PROXY_SECRET>`.
+4. **Fail safe:** in production, `INTERNAL_PROXY_SECRET` and `WEB_TRUSTED_PROXY_HOPS` must be set, or every `/v1`
+   request returns `500` with a configuration error (the same pattern as the existing `INTERNAL_API_URL` check).
 
-**API, new `ClientIpMiddleware` registered first in `main.ts`:**
+**API (`backend/src/common/client-ip.middleware.ts`, registered first in `main.ts`):**
 
-1. If `x-sportexus-proxy-auth` equals `INTERNAL_PROXY_SECRET` (constant-time compare; the secret must be at least 32
-   characters) **and** `x-sportexus-client-ip` is a valid IPv4 or IPv6 address (`net.isIP`), the client IP is that
-   value.
-2. Otherwise the client IP is `req.ip`, with Express `trust proxy` set from `TRUST_PROXY_HOPS`:
+1. Compare `x-sportexus-proxy-auth` with `INTERNAL_PROXY_SECRET` (`crypto.timingSafeEqual`, equal-length buffers).
+   **Only if it matches** and `x-sportexus-client-ip` passes `net.isIP`, use that value.
+2. Otherwise use `req.ip`, with Express `trust proxy` = `TRUST_PROXY_HOPS`:
    - default `0`, meaning the socket address;
-   - `1` for Caddy or a Render load balancer in front of the API, which yields the address that hop observed.
-3. The proxy headers are always deleted from the request afterwards, so nothing downstream can read them.
+   - `1` behind Caddy or Render, meaning the address that hop observed.
 
-**Consumers:**
+   `X-Forwarded-For` is **never** read directly; only Express's hop-limited parsing is used, so it is never trusted
+   blindly.
 
-- A `@ClientIp()` parameter decorator replaces the 8 controller call sites.
-- Audit entries and rate-limit keys use the same value.
+3. Delete both `x-sportexus-*` headers from the request, and store the result as `req.clientIp`.
+4. A `@ClientIp()` decorator replaces the 8 `req.ip || req.socket.remoteAddress` call sites in `auth.controller.ts`.
+   Audit entries and all rate-limit keys use it. IPv6 addresses are grouped by /64 for rate limiting.
 
-**Configuration:**
+**Configuration (`env.validation.ts`):** in production, which also covers **staging**, because Render staging runs
+`NODE_ENV=production`, startup fails when:
 
-- `env.validation.ts` validates the new variables.
-- In production, `INTERNAL_PROXY_SECRET` (at least 32 characters) is **required**; startup fails without it
-  (fail-closed). In development it is optional, and without it the API simply uses `req.ip`.
+- `INTERNAL_PROXY_SECRET` is missing or shorter than 32 characters;
+- `TRUST_PROXY_HOPS` is not an integer between 0 and 3.
 
 **Deployments:**
 
-- `render.yaml`: the same generated secret for the web and API services (Render environment group).
-- `docker-compose.prod.yml` / `.env.production.example`: the secret, plus `WEB_TRUSTED_PROXY_HOPS=1` and
-  `TRUST_PROXY_HOPS=1`. Caddy 2.x (`caddy:2-alpine`) ignores a client-supplied `X-Forwarded-For` and sets the real peer
-  address, because no `trusted_proxies` are configured.
+- `render.yaml`: an environment group shared by web and API, holding the generated secret, with
+  `TRUST_PROXY_HOPS=1` and `WEB_TRUSTED_PROXY_HOPS=1`.
+- `docker-compose.prod.yml` and `.env*.example`: the same variables.
 
-**Why not hop counting alone:** on Render the API receives proxied and direct requests through the same load balancer.
-A direct caller can prepend any `X-Forwarded-For` value, so the right position for one path is wrong for the other.
-The shared secret distinguishes the two paths; hop counting stays only for the direct path, where it is correct.
+**Development:** no secret is needed; the API uses the socket address (127.0.0.1).
 
-**Spoofing analysis:**
+### Files
 
-| Attacker action                                                            | Result                                                                               |
-| -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| Sends `X-Forwarded-For: 1.2.3.4` through the web app                       | The proxy drops it; the IP comes from the trusted hop                                |
-| Sends `x-sportexus-client-ip: 1.2.3.4` through the web app                 | The proxy drops it                                                                   |
-| Calls the API directly with `x-sportexus-client-ip` but without the secret | Ignored; `req.ip` from hop counting is used                                          |
-| Calls the API directly with `X-Forwarded-For: 1.2.3.4`                     | With `TRUST_PROXY_HOPS=1`, only the entry added by the trusted load balancer is used |
-| Guesses the secret                                                         | 32+ random characters, constant-time comparison                                      |
-| Sends a malformed IP in the header                                         | Rejected by `net.isIP`; falls back to `req.ip`                                       |
+| File                                                                                                           | Change                                                      |
+| -------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| `frontend/src/app/v1/[...path]/route.ts` (+ test)                                                              | header removal, client IP, proxy auth, production fail-safe |
+| `backend/src/common/client-ip.middleware.ts`, `backend/src/common/decorators/client-ip.decorator.ts` (+ tests) | new                                                         |
+| `backend/src/main.ts`, `backend/src/config/env.validation.ts`, `app-config.service.ts` (+ tests)               | trust proxy, new variables                                  |
+| `backend/src/modules/auth/auth.controller.ts`                                                                  | `@ClientIp()`                                               |
+| `render.yaml`, `docker-compose.prod.yml`, `.env.example`, `.env.production.example`, `.env.staging.example`    | new variables                                               |
 
-## 4. Rate limits after Phase 3A
+### Security implications
 
-All counters live in Redis. In production the limiter fails closed when Redis is unavailable (existing behaviour).
+Per-IP limits become real, and audit logs record actual clients. The secret only authenticates the web proxy to the
+API: it is never sent to browsers and is never logged.
 
-| Endpoint                              | Key             | Limit                                      | Status                                |
-| ------------------------------------- | --------------- | ------------------------------------------ | ------------------------------------- |
-| `POST /auth/login`                    | IP + email      | 5 / 15 min                                 | existing (IP becomes correct with S1) |
-| `POST /auth/forgot-password`          | email           | 1 / 60 s                                   | existing                              |
-| `POST /auth/forgot-password`          | IP + email      | 3 / 15 min                                 | existing                              |
-| `POST /auth/resend-verification`      | IP + email      | 3 / 15 min                                 | existing                              |
-| `POST /auth/reset-password`           | IP              | **30 / 15 min**                            | **new**                               |
-| `POST /auth/reset-password` (6-digit) | email, per code | **5 failures, then the code is cancelled** | **fixed** (was ineffective)           |
-| `POST /auth/reset-password` (6-digit) | email, daily    | **20 failures / 24 h**                     | **new**                               |
+### Backward compatibility
 
-## 5. Files
+- No API contract change.
+- **Deployments must add the new variables, or production and staging will refuse to start.** That is intended:
+  fail-safe.
 
-| Layer  | File                                                                                                                                            | Change                                                             |
-| ------ | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| Shared | `packages/shared/src/schemas/auth.ts` (+ test)                                                                                                  | `email` on the reset request; required for 6-digit codes           |
-| DB     | `packages/database/prisma/migrations/2026111…_bind_password_reset_code_to_email/migration.sql`                                                  | new (section 6)                                                    |
-| DB     | `packages/database/scripts/provision-runtime-role.sql`, `packages/database/tests/runtime-role-setup.sql`                                        | grant EXECUTE on the 2 functions                                   |
-| API    | `backend/src/modules/auth/auth.service.ts` (+ tests)                                                                                            | K1 logic, K13                                                      |
-| API    | `backend/src/modules/auth/token.service.ts` (+ tests)                                                                                           | `revokeOtherUserTokens`                                            |
-| API    | `backend/src/modules/auth/auth.controller.ts`                                                                                                   | `@ClientIp()`, pass the current refresh cookie to `changePassword` |
-| API    | `backend/src/common/client-ip.middleware.ts`, `backend/src/common/decorators/client-ip.decorator.ts` (+ tests)                                  | new (S1)                                                           |
-| API    | `backend/src/main.ts`, `backend/src/config/env.validation.ts`, `app-config.service.ts` (+ tests)                                                | trust proxy, new variables                                         |
-| Web    | `frontend/src/app/v1/[...path]/route.ts` (+ tests)                                                                                              | header stripping, client IP, proxy auth                            |
-| Web    | `frontend/src/app/forgot-password/page.tsx`, `frontend/src/app/reset-password/page.tsx`, `features/auth/password-reset-validation.ts` (+ tests) | send `email`                                                       |
-| Deploy | `render.yaml`, `docker-compose.prod.yml`, `.env*.example`                                                                                       | new variables                                                      |
-| Docs   | `BUSINESS_LOGIC.md`, `SYSTEM_ARCHITECTURE.md`, `DEVELOPMENT_STATUS.md`                                                                          | rules and architecture                                             |
+### Explicit IP-spoofing tests
 
-**Not changed:**
+21. **Through the proxy:** a client sends `X-Forwarded-For: 1.2.3.4`, `X-Real-IP`, `Forwarded`, `True-Client-IP`,
+    `CF-Connecting-IP`, `x-sportexus-client-ip` and `x-sportexus-proxy-auth`. **None** is forwarded as-is; the
+    forwarded IP is the trusted-hop value.
+22. **Through the proxy:** with `X-Forwarded-For: <forged>, <real-from-LB>` and hops = 1, the result is
+    `<real-from-LB>`.
+23. **Direct to the API:** `x-sportexus-client-ip: 1.2.3.4` without a secret, or with a wrong one, is ignored; the IP
+    is `req.ip`.
+24. **Direct to the API:** a correct secret with a malformed IP (`1.2.3.4; drop`, `::ffff:999.1.1.1`, an empty value)
+    is ignored.
+25. **Direct to the API:** a forged `X-Forwarded-For` with `TRUST_PROXY_HOPS=1` yields the load balancer-observed
+    peer; with `0`, the socket address.
+26. **Secret comparison:** constant-time; a shorter or longer guess never throws; the length check precedes the
+    comparison.
+27. The `x-sportexus-*` headers are absent from the request after the middleware runs.
+28. **Production config:** a missing or short secret fails startup (API) and makes the proxy return 500 (web).
+29. **Rate limiting:** 30 requests with 30 different forged headers through the proxy fall into **one** IP bucket.
+30. **Real (local stack: web + API):** tests 21 and 29 end-to-end.
 
-- the existing SQL functions;
-- the 6-digit code and 5-minute expiry;
-- the email templates;
-- the login and forgot-password limits;
-- the response shapes, apart from the documented new 400 for a 6-digit code without an email.
+### Rollback
 
-## 6. Migration SQL (complete)
+Revert the commits and remove the new variables. With the variables removed, behaviour returns to today's.
 
-Additive only. No table, column, index, constraint, policy or row is touched; the existing functions are unchanged.
+---
+
+## 4. S4: public read access to pending academy applications
+
+### Root cause (verified)
+
+- Pending migration `20261104105500_academy_applications_insert_rls` was applied locally, but **not on Neon**. It
+  creates:
+  - `INSERT … WITH CHECK (status = 'PENDING_REVIEW')`, which lets anyone insert an application **for any
+    applicant**;
+  - `SELECT … USING (applicant_user_id = current_app_user_id() OR (current_app_user_id() IS NULL AND status =
+'PENDING_REVIEW'))`, which lets **any query running without a user context read every pending application**,
+    including applicants' contact emails and phone numbers.
+- **Why it was written:** registration (`AuthService.register`), the slug-availability loop, login gating and the
+  public application endpoint (`PlatformService` ~line 1397) query `academy_applications` through the plain Prisma
+  client, **with no user context set**. Under a restricted role those queries need exactly these over-broad policies.
+  Today they work only because the API runs as the owner, which bypasses RLS (S3).
+- **Further defect found:** under correct policies, **login gating** (`findFirst` by `applicantUserId`, no context)
+  would see nothing. Rejected or pending applicants would then not be blocked. And even under 104105500, only
+  `PENDING_REVIEW` rows are visible, so `REJECTED` and `MORE_INFO_REQUESTED` applicants would pass the gate.
+
+**Exposure today:** no current endpoint returns another applicant's application. The over-broad policy is a latent
+defense-in-depth failure: any future or unintended context-free query would leak all pending applicants. It becomes
+live in every runtime-role deployment (CI, self-hosting, and Neon after S3).
+
+### Solution: code and database together
+
+**Code:** every `academy_applications` access runs with an explicit context.
+
+- **Register:**
+  1. inside the transaction, create the user (the `users` table has no RLS);
+  2. call `set_config('app.actor_user_id', <new user id>, true)`;
+  3. create the application.
+
+  The `INSERT` check (`applicant_user_id = current_app_user_id()`) and the `RETURNING` (applicant `SELECT` policy)
+  both pass for the user's **own** row only. The same applies to the public application endpoint.
+
+- **Login gating:** runs in `withAuthLookupTransaction({ actorUserId: user.id })` after the password is verified. The
+  user sees all their own applications, whatever the status, which fixes the gating gap.
+- **Slug availability:** a `SECURITY DEFINER` function `academy_slug_in_use(slug) RETURNS boolean` checks tenants and
+  pending or approved applications. It reveals only availability, which is inherently public.
+- **Platform admin list and review:** already use `withPlatformAdminTransaction`; unchanged.
+
+**Database:** corrective migration **M2**, ordered after 104105500.
+
+### Migration M2 (complete)
 
 ```sql
--- K1 — Bind 6-digit password-reset codes to the account e-mail.
--- ADDITIVE ONLY. Existing request_password_reset(...) and complete_password_reset(text, text) are
--- unchanged; the latter keeps serving 256-bit activation links (no e-mail, not guessable).
---
--- Rollback (Prisma has no down-migrations):
---   DROP FUNCTION IF EXISTS public.complete_password_reset_for_email(text, text, text);
---   DROP FUNCTION IF EXISTS public.invalidate_password_reset_for_email(text);
---   DELETE FROM _prisma_migrations WHERE migration_name = '<this migration name>';
+-- S4: academy_applications RLS - remove anonymous access introduced by 20261104105500.
+-- Final policy set:
+--   academy_applications_platform_admin (unchanged): FOR ALL, super admins / platform owners
+--   academy_applications_applicant: SELECT own rows only (any status)
+--   academy_applications_insert:    INSERT own PENDING_REVIEW application only
+DROP POLICY IF EXISTS academy_applications_applicant ON public.academy_applications;
+CREATE POLICY academy_applications_applicant ON public.academy_applications
+  FOR SELECT TO PUBLIC
+  USING (applicant_user_id = public.current_app_user_id());
 
-CREATE OR REPLACE FUNCTION public.complete_password_reset_for_email(
+DROP POLICY IF EXISTS academy_applications_insert ON public.academy_applications;
+CREATE POLICY academy_applications_insert ON public.academy_applications
+  FOR INSERT TO PUBLIC
+  WITH CHECK (
+    status = 'PENDING_REVIEW'
+    AND applicant_user_id = public.current_app_user_id()
+  );
+
+-- Slug availability without exposing application rows.
+CREATE OR REPLACE FUNCTION public.academy_slug_in_use(p_slug text)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+  SELECT EXISTS (SELECT 1 FROM public.tenants WHERE slug = lower(trim(p_slug)))
+      OR EXISTS (
+        SELECT 1 FROM public.academy_applications
+        WHERE academy_slug = lower(trim(p_slug))
+          AND status IN ('PENDING_REVIEW', 'MORE_INFO_REQUESTED', 'APPROVED')
+      );
+$$;
+REVOKE ALL ON FUNCTION public.academy_slug_in_use(text) FROM PUBLIC;
+DO $$
+DECLARE r text;
+BEGIN
+  FOREACH r IN ARRAY ARRAY['academy_runtime', 'academy_runtime_ci', 'sportexus_app'] LOOP
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = r) THEN
+      EXECUTE format('GRANT EXECUTE ON FUNCTION public.academy_slug_in_use(text) TO %I', r);
+    END IF;
+  END LOOP;
+END $$;
+
+-- Rollback: recreate the two policies exactly as in 20261104105500 (NOT recommended) or as in
+-- 20261023180000 (applicant SELECT own rows, no INSERT policy), and
+-- DROP FUNCTION IF EXISTS public.academy_slug_in_use(text);
+```
+
+### Access verification (SQL tests, run as the runtime role on a Neon test branch and in CI)
+
+| Context                                        | SELECT                                      | INSERT                                             |
+| ---------------------------------------------- | ------------------------------------------- | -------------------------------------------------- |
+| Anonymous (no actor)                           | **0 rows** (was: every pending application) | denied                                             |
+| Authenticated applicant A                      | own applications, any status                | own `PENDING_REVIEW` only; for applicant B: denied |
+| Authenticated, not an applicant (staff, coach) | 0 rows                                      | denied, except their own                           |
+| Platform super admin / owner                   | all                                         | all (unchanged)                                    |
+| Status forging (applicant inserts `APPROVED`)  | —                                           | denied                                             |
+
+**Workflow tests:** registration end to end; slug collision (second registration with the same academy name gets
+`-1`); login gating for `PENDING_REVIEW`, `MORE_INFO_REQUESTED` and `REJECTED`; platform list, review and approve.
+
+### Backward compatibility
+
+No API change.
+
+### Rollback
+
+Revert the code, and run the M2 rollback block. Do not restore the anonymous clause.
+
+---
+
+## 5. S3: the API connects as the database owner (RLS bypassed)
+
+### Root cause (verified, read-only)
+
+- `backend/.env` connects as `neondb_owner`: the owner of all 34 tables, with `BYPASSRLS = true`. Row-level security
+  on 31 tables, including the 21 FORCE tables, is therefore **not enforced** for the API on Neon.
+- The intended runtime role **`sportexus_app` exists** and is correctly restricted:
+  - not a superuser;
+  - `BYPASSRLS = false`;
+  - no `CREATE` on the schema;
+  - table and column grants on 33 tables;
+  - 18 executable functions (11 of them `SECURITY DEFINER`).
+- The production guard rejects only the user names `postgres`, `academy` and `root`, so an owner or BYPASSRLS role
+  passes.
+
+### Audit: what would break if the connection string were simply switched
+
+| #   | Area                                                                                                                                                          | Finding                                                                                                                                                      | Fix                                                                                                                                                                                                                                                                       |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| a   | 21 direct `this.prisma.<model>` calls on RLS tables **without a user context**: audit (1), auth (4), finance (1), notifications (8), platform (3), portal (4) | under RLS these return **no rows** or are denied, for example notifications, public academy list, membership lookups, audit writes                           | wrap each in the correct context helper (`withTenantTransaction`, `withAuthLookupTransaction`, `withPortalUserTransaction`, `withPlatformAdminTransaction`), or use a narrowly scoped `SECURITY DEFINER` function                                                         |
+| b   | `users` INSERT is granted on only 7 columns                                                                                                                   | registration sets `isEmailVerified: false`; platform invites set `isPlatformSuperAdmin`, `isPlatformOwner`, `mustResetPassword`, so they would be **denied** | registration: omit the field (database default `false`). Invites: a `SECURITY DEFINER` function `platform_create_user(...)` that checks `is_current_user_super_admin()` (and `is_current_user_platform_owner()` for the owner flag)                                       |
+| c   | `tenants` has no INSERT grant                                                                                                                                 | **academy approval** (`tx.tenant.create` in `PlatformService`) would be denied                                                                               | `GRANT INSERT ON tenants`. The existing `tenants_platform_super_admin` policy (`FOR ALL USING is_current_user_super_admin()`) also acts as the insert check, so only super admins can insert                                                                              |
+| d   | direct `UPDATE users SET password_reset_token…`                                                                                                               | denied (column not granted)                                                                                                                                  | removed by K1                                                                                                                                                                                                                                                             |
+| e   | `users` readable on all 21 columns, including token hashes                                                                                                    | a hardening gap, not a breakage                                                                                                                              | **follow-up** (not in 3A): column-level `SELECT` restriction requires explicit Prisma `select`/`omit` everywhere `users` is read                                                                                                                                          |
+| f   | background jobs and scheduled tasks                                                                                                                           | **none exist**: no cron, intervals or queues; email is sent inline                                                                                           | nothing to migrate; confirmed by code search                                                                                                                                                                                                                              |
+| g   | migrations and Prisma CLI                                                                                                                                     | must keep using the owner                                                                                                                                    | `DATABASE_URL` = `sportexus_app` (pooled) for the API. `DATABASE_ADMIN_URL` / `DIRECT_URL` = owner (direct, non-pooled) for `prisma migrate` only. `docker-entrypoint.sh` already uses `DATABASE_ADMIN_URL`; `prisma.config.ts` will prefer `DIRECT_URL` for CLI commands |
+| h   | startup safety                                                                                                                                                | —                                                                                                                                                            | the API queries `rolsuper`, `rolbypassrls` and table ownership for `current_user` at boot. **Production and staging refuse to start** if the role is a superuser, has BYPASSRLS, or owns tables. Development logs a warning                                               |
+
+### Migration M3 (complete)
+
+```sql
+-- S3: privileges the runtime role needs for existing workflows (least privilege).
+DO $$
+DECLARE r text;
+BEGIN
+  FOREACH r IN ARRAY ARRAY['academy_runtime', 'academy_runtime_ci', 'sportexus_app'] LOOP
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = r) THEN
+      -- Academy approval creates the tenant; RLS (tenants_platform_super_admin) restricts it to super admins.
+      EXECUTE format('GRANT INSERT ON TABLE public.tenants TO %I', r);
+      -- K13b: password change / suspension bump the session version.
+      EXECUTE format('GRANT UPDATE (session_version) ON TABLE public.users TO %I', r);
+    END IF;
+  END LOOP;
+END $$;
+
+-- Platform staff / invited users with privileged flags, created only by platform administrators.
+CREATE OR REPLACE FUNCTION public.platform_create_user(
   p_email text,
-  p_token_hash text,
-  p_new_password_hash text
+  p_name text,
+  p_is_platform_super_admin boolean,
+  p_is_platform_owner boolean,
+  p_must_reset_password boolean
+)
+RETURNS uuid
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_id uuid;
+BEGIN
+  IF NOT public.is_current_user_super_admin() THEN
+    RAISE EXCEPTION 'PLATFORM_ADMIN_REQUIRED' USING ERRCODE = '42501';
+  END IF;
+  IF p_is_platform_owner AND NOT public.is_current_user_platform_owner() THEN
+    RAISE EXCEPTION 'PLATFORM_OWNER_REQUIRED' USING ERRCODE = '42501';
+  END IF;
+  IF p_email IS NULL OR trim(p_email) = '' OR p_name IS NULL OR trim(p_name) = '' THEN
+    RAISE EXCEPTION 'EMAIL_AND_NAME_REQUIRED' USING ERRCODE = '22023';
+  END IF;
+
+  INSERT INTO public.users (id, email, name, password_hash, is_platform_super_admin,
+                            is_platform_owner, must_reset_password, created_at, updated_at)
+  VALUES (gen_random_uuid(), lower(trim(p_email)), trim(p_name), 'INVITED_PENDING_ACTIVATION',
+          p_is_platform_super_admin, p_is_platform_owner, p_must_reset_password, now(), now())
+  RETURNING id INTO v_id;
+  RETURN v_id;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.platform_create_user(text, text, boolean, boolean, boolean) FROM PUBLIC;
+DO $$
+DECLARE r text;
+BEGIN
+  FOREACH r IN ARRAY ARRAY['academy_runtime', 'academy_runtime_ci', 'sportexus_app'] LOOP
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = r) THEN
+      EXECUTE format('GRANT EXECUTE ON FUNCTION public.platform_create_user(text, text, boolean, boolean, boolean) TO %I', r);
+    END IF;
+  END LOOP;
+END $$;
+
+-- Rollback:
+--   REVOKE INSERT ON public.tenants FROM sportexus_app, academy_runtime, academy_runtime_ci;
+--   REVOKE UPDATE (session_version) ON public.users FROM sportexus_app, academy_runtime, academy_runtime_ci;
+--   DROP FUNCTION IF EXISTS public.platform_create_user(text, text, boolean, boolean, boolean);
+```
+
+**Placeholder password value:** `'INVITED_PENDING_ACTIVATION'` is the value `PlatformService` already writes, so
+behaviour is unchanged. Whether `gen_random_uuid()` is available (PostgreSQL 13+, built in) is verified on the test
+branch.
+
+### Verification plan: the whole application, not just the connection string
+
+1. **Owner actions (credentials never handled by me):**
+   - create a Neon branch `s3-runtime-test` from the dev branch;
+   - set a password for `sportexus_app` on that branch (Neon console → Roles);
+   - put the runtime URL in a local, uncommitted override file.
+2. Apply M1–M3 to the **test branch** only, and run the API there as `sportexus_app`.
+3. **Automated workflow suite** (new script, `scripts/e2e-runtime-role.mjs`), driving the real API over HTTP:
+   - **Accounts and access:** register → verify email (development code) → platform approve → login → switch tenant
+     → invite staff → accept invitation.
+   - **Academy setup:** branches CRUD; players CRUD, QR rotate and revoke, archive.
+   - **Join requests:** submit, then review.
+   - **Training:** enrollments and transfer; groups, coaches, members and schedules.
+   - **Attendance:** session, QR check-in, card scan, bulk, offline sync, correction, reports.
+   - **Evaluations:** templates, evaluations, rankings.
+   - **Finance:** plans, subscriptions, payment, reversal, expense, approve and reject, cashier close.
+   - **Notifications:** list, read, read-all.
+   - **Portal:** claim token, claim, player and guardian views.
+   - **Platform console:** metrics, academies, users, audit, security events, storage dry-run, announcements.
+
+   Each step asserts its HTTP status **and** that no `42501` / permission-denied error appears in the API log.
+
+4. **Tenant-isolation suite:** two academies with staff of each role. Every cross-tenant read, update or delete
+   attempt by ID returns 404 or 403 and **0 rows**, both through the API and directly in SQL as `sportexus_app` with
+   another tenant's context.
+5. **Role-privilege suite:** the existing `packages/database/tests/{runtime-role-privileges,tenant-rls,onboarding-and-invitations,audit-append-only}.sql`,
+   run against the branch as `sportexus_app`, plus the M2 access matrix.
+6. Only when steps 3–5 are clean is the dev `DATABASE_URL` switched, by the owner, followed by the same suite again.
+
+### Rollback
+
+- Switch `DATABASE_URL` back to the owner URL (configuration only).
+- Code changes (context wrappers) are correct for both roles and do not need reverting.
+- M3 rollback block.
+
+---
+
+## 6. Migration M1 (3A.1, complete)
+
+```sql
+-- M1: K1 (bind codes to e-mail, unguessable reset link) and K13b (session version).
+-- Adds 2 columns and 5 functions; re-creates complete_password_reset(text,text) with identical
+-- behaviour plus the session-version bump. Existing request_password_reset(...) is unchanged
+-- (platform activation links keep using it).
+
+ALTER TABLE public.users
+  ADD COLUMN IF NOT EXISTS password_reset_link_token text NULL,
+  ADD COLUMN IF NOT EXISTS session_version integer NOT NULL DEFAULT 0;
+
+-- Issue a reset: stores the hash of the 6-digit code AND of the 256-bit link token.
+CREATE OR REPLACE FUNCTION public.request_password_reset_with_link(
+  p_email text,
+  p_code_hash text,
+  p_link_hash text,
+  p_expires_at timestamptz
 )
 RETURNS uuid
 LANGUAGE plpgsql
@@ -248,7 +625,37 @@ BEGIN
   IF p_email IS NULL OR trim(p_email) = '' THEN
     RAISE EXCEPTION 'EMAIL_REQUIRED' USING ERRCODE = '22023';
   END IF;
-  IF p_token_hash IS NULL OR trim(p_token_hash) = '' THEN
+  IF p_code_hash IS NULL OR trim(p_code_hash) = '' OR p_link_hash IS NULL OR trim(p_link_hash) = '' THEN
+    RAISE EXCEPTION 'TOKEN_REQUIRED' USING ERRCODE = '22023';
+  END IF;
+
+  UPDATE public.users
+  SET password_reset_token = p_code_hash,
+      password_reset_link_token = p_link_hash,
+      password_reset_expires_at = LEAST(p_expires_at, now() + interval '5 minutes'),
+      updated_at = now()
+  WHERE lower(trim(email)) = lower(trim(p_email))
+  RETURNING id INTO v_user_id;
+
+  RETURN v_user_id; -- NULL for unknown e-mails; the caller responds generically either way
+END;
+$$;
+
+-- Complete with the 6-digit code; the code must belong to this e-mail.
+CREATE OR REPLACE FUNCTION public.complete_password_reset_for_email(
+  p_email text,
+  p_code_hash text,
+  p_new_password_hash text
+)
+RETURNS uuid
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_user_id uuid;
+BEGIN
+  IF p_email IS NULL OR trim(p_email) = '' OR p_code_hash IS NULL OR trim(p_code_hash) = '' THEN
     RAISE EXCEPTION 'TOKEN_REQUIRED' USING ERRCODE = '22023';
   END IF;
   IF p_new_password_hash IS NULL OR trim(p_new_password_hash) = '' THEN
@@ -258,10 +665,12 @@ BEGIN
   UPDATE public.users
   SET password_hash = p_new_password_hash,
       password_reset_token = NULL,
+      password_reset_link_token = NULL,
       password_reset_expires_at = NULL,
+      session_version = session_version + 1,
       updated_at = now()
   WHERE lower(trim(email)) = lower(trim(p_email))
-    AND password_reset_token = p_token_hash
+    AND password_reset_token = p_code_hash
     AND password_reset_expires_at > now()
   RETURNING id INTO v_user_id;
 
@@ -269,17 +678,53 @@ BEGIN
     RAISE EXCEPTION 'INVALID_OR_EXPIRED_TOKEN' USING ERRCODE = 'P0002';
   END IF;
 
-  UPDATE public.refresh_tokens
-  SET is_revoked = true
-  WHERE user_id = v_user_id;
-
+  UPDATE public.refresh_tokens SET is_revoked = true WHERE user_id = v_user_id;
   RETURN v_user_id;
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.invalidate_password_reset_for_email(
-  p_email text
+-- Complete with the emailed link token (unguessable; not subject to per-account counters).
+CREATE OR REPLACE FUNCTION public.complete_password_reset_by_link(
+  p_link_hash text,
+  p_new_password_hash text
 )
+RETURNS uuid
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_user_id uuid;
+BEGIN
+  IF p_link_hash IS NULL OR trim(p_link_hash) = '' THEN
+    RAISE EXCEPTION 'TOKEN_REQUIRED' USING ERRCODE = '22023';
+  END IF;
+  IF p_new_password_hash IS NULL OR trim(p_new_password_hash) = '' THEN
+    RAISE EXCEPTION 'PASSWORD_REQUIRED' USING ERRCODE = '22023';
+  END IF;
+
+  UPDATE public.users
+  SET password_hash = p_new_password_hash,
+      password_reset_token = NULL,
+      password_reset_link_token = NULL,
+      password_reset_expires_at = NULL,
+      session_version = session_version + 1,
+      updated_at = now()
+  WHERE password_reset_link_token = p_link_hash
+    AND password_reset_expires_at > now()
+  RETURNING id INTO v_user_id;
+
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'INVALID_OR_EXPIRED_TOKEN' USING ERRCODE = 'P0002';
+  END IF;
+
+  UPDATE public.refresh_tokens SET is_revoked = true WHERE user_id = v_user_id;
+  RETURN v_user_id;
+END;
+$$;
+
+-- Cancel ONLY the 6-digit code (after 5 wrong attempts); the link stays valid until it expires.
+CREATE OR REPLACE FUNCTION public.invalidate_password_reset_code_for_email(p_email text)
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -289,127 +734,224 @@ BEGIN
   IF p_email IS NULL OR trim(p_email) = '' THEN
     RETURN;
   END IF;
-
   UPDATE public.users
   SET password_reset_token = NULL,
-      password_reset_expires_at = NULL,
       updated_at = now()
   WHERE lower(trim(email)) = lower(trim(p_email))
     AND password_reset_token IS NOT NULL;
 END;
 $$;
 
+-- Existing function, re-created with identical behaviour plus: session-version bump and clearing
+-- the link token. Still serves 64-hex platform activation links.
+CREATE OR REPLACE FUNCTION public.complete_password_reset(
+  p_token text,
+  p_new_password_hash text
+)
+RETURNS uuid
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_user_id uuid;
+  v_token_hash text;
+BEGIN
+  IF p_token IS NULL OR trim(p_token) = '' THEN
+    RAISE EXCEPTION 'TOKEN_REQUIRED' USING ERRCODE = '22023';
+  END IF;
+  IF p_new_password_hash IS NULL OR trim(p_new_password_hash) = '' THEN
+    RAISE EXCEPTION 'PASSWORD_REQUIRED' USING ERRCODE = '22023';
+  END IF;
+
+  v_token_hash := encode(sha256(p_token::bytea), 'hex');
+
+  UPDATE public.users
+  SET password_hash = p_new_password_hash,
+      password_reset_token = NULL,
+      password_reset_link_token = NULL,
+      password_reset_expires_at = NULL,
+      session_version = session_version + 1,
+      updated_at = now()
+  WHERE (password_reset_token = p_token OR password_reset_token = v_token_hash)
+    AND password_reset_expires_at > now()
+  RETURNING id INTO v_user_id;
+
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'INVALID_OR_EXPIRED_TOKEN' USING ERRCODE = 'P0002';
+  END IF;
+
+  UPDATE public.refresh_tokens SET is_revoked = true WHERE user_id = v_user_id;
+  RETURN v_user_id;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.request_password_reset_with_link(text, text, text, timestamptz) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.complete_password_reset_for_email(text, text, text) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.invalidate_password_reset_for_email(text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.complete_password_reset_by_link(text, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.invalidate_password_reset_code_for_email(text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.complete_password_reset(text, text) FROM PUBLIC;
 
 DO $$
-DECLARE
-  r text;
+DECLARE r text;
 BEGIN
   FOREACH r IN ARRAY ARRAY['academy_runtime', 'academy_runtime_ci', 'sportexus_app'] LOOP
     IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = r) THEN
+      EXECUTE format('GRANT EXECUTE ON FUNCTION public.request_password_reset_with_link(text, text, text, timestamptz) TO %I', r);
       EXECUTE format('GRANT EXECUTE ON FUNCTION public.complete_password_reset_for_email(text, text, text) TO %I', r);
-      EXECUTE format('GRANT EXECUTE ON FUNCTION public.invalidate_password_reset_for_email(text) TO %I', r);
+      EXECUTE format('GRANT EXECUTE ON FUNCTION public.complete_password_reset_by_link(text, text) TO %I', r);
+      EXECUTE format('GRANT EXECUTE ON FUNCTION public.invalidate_password_reset_code_for_email(text) TO %I', r);
+      EXECUTE format('GRANT EXECUTE ON FUNCTION public.complete_password_reset(text, text) TO %I', r);
     END IF;
   END LOOP;
 END $$;
+
+-- Rollback:
+--   DROP FUNCTION IF EXISTS public.request_password_reset_with_link(text, text, text, timestamptz);
+--   DROP FUNCTION IF EXISTS public.complete_password_reset_for_email(text, text, text);
+--   DROP FUNCTION IF EXISTS public.complete_password_reset_by_link(text, text);
+--   DROP FUNCTION IF EXISTS public.invalidate_password_reset_code_for_email(text);
+--   Re-create complete_password_reset(text, text) from 20261021040000 (without the two new SET lines).
+--   ALTER TABLE public.users DROP COLUMN IF EXISTS password_reset_link_token, DROP COLUMN IF EXISTS session_version;
+--   DELETE FROM _prisma_migrations WHERE migration_name = '<M1 name>';
 ```
 
-**Optional K13b migration (only if approved):**
+**Note on `ADD COLUMN … NOT NULL DEFAULT 0`:** on PostgreSQL 11+ this is a metadata-only change (no table rewrite).
+Neon runs PostgreSQL 18.
 
-```sql
-ALTER TABLE public.users ADD COLUMN password_changed_at timestamptz NULL;
--- Rollback: ALTER TABLE public.users DROP COLUMN password_changed_at;
-```
+---
 
-The two reset functions would also set it. That means re-creating them with `CREATE OR REPLACE` and identical
-behaviour plus that one assignment, so K13b would not be purely additive.
+## 7. S2: explicit trusted origins
 
-## 7. Databases, backup and rollback
+### Root cause and accurate risk
 
-| Database                     | Used by                               | Migration state                                                                   | Backup method                                                                             |
-| ---------------------------- | ------------------------------------- | --------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| Neon (dev/test, `us-east-2`) | the running API (`backend/.env`)      | **22 of 23 applied**: `20261104105500_academy_applications_insert_rls` is pending | Neon branch + `pg_dump` (the owner role has BYPASSRLS, so the dump is complete)           |
-| Local PostgreSQL 17          | Prisma CLI (`packages/database/.env`) | 23 of 23                                                                          | `pg_dump` as `postgres` superuser (owner action; the app role cannot read FORCE-RLS rows) |
+- Staging `CORS_ORIGIN` is `*.pages.dev,http://localhost:3000`. The same list feeds both CORS (`main.ts`) and the
+  CSRF guard's `Origin`/`Referer` check (`csrf.guard.ts`), which accepts any origin ending in `.pages.dev`.
+- **Practical risk is limited:**
+  - browsers always call the same-origin `/v1` proxy (`config/env.ts`), so the auth cookies belong to the web
+    origin;
+  - the cookies are `SameSite=Lax`, so cross-site `fetch` and `POST` requests from a foreign page do not carry them.
+- **It is still a real gap:** the CSRF check trusts _every_ Cloudflare Pages site. If any environment ever sets
+  cookies on the API host, or relaxes SameSite, any `*.pages.dev` page could make authenticated requests.
+- **Production** rejects a bare `*` but **accepts `*.` wildcards**, and staging runs `NODE_ENV=production`.
 
-**Important:** `prisma migrate deploy` applies **all** pending migrations. On Neon it would also apply
-`20261104105500_academy_applications_insert_rls`, which has a security concern of its own (S4 below). Decide on S4
-before migrating Neon.
+### Solution
 
-**Procedure (Neon):**
+- **Policy:** in production and staging, `CORS_ORIGIN` must be a list of **exact** `https://` origins. Wildcard
+  entries (`*`, `*.x`) and `http://` origins other than `localhost` **fail startup**.
+- **Development** keeps `localhost` and the `*.trycloudflare.com` wildcard used by `start-sportexus.ps1` tunnels. It is
+  allowed only when `NODE_ENV=development`.
+- **One shared origin-matching function**, used by CORS and CSRF alike. It does exact URL-origin comparison: scheme,
+  host and port. No substring or suffix matching outside development.
+- **Staging:** `render.yaml` lists the exact staging web origin(s). The owner confirms the exact list; preview
+  deployments such as `<hash>.<project>.pages.dev` are **not** allowed unless explicitly listed.
+- **CORS hardening:** credentials are only ever combined with an exact-match origin. A request without an `Origin`
+  header (server-to-server) stays allowed for CORS; the CSRF guard still demands `Origin`/`Referer` for
+  cookie-authenticated mutations, as today.
 
-1. **Neon branch backup** (owner, in the Neon console: Branches → Create branch from `main`, named
-   `pre-phase-3a-YYYYMMDD`). It is an instant copy-on-write snapshot, available on the Free plan (10 branches). Neon
-   also keeps a 6-hour restore window on Free.
-2. **Logical backup:** `pg_dump -Fc` as the owner role into `C:\Users\IT\academy-db-backups\` (outside OneDrive).
-   Verified with `pg_restore --list` and row counts per table. Credentials are read from `.env` and never printed.
-3. **Apply:** `prisma migrate deploy` against Neon, only after the owner confirms that steps 1 and 2 exist.
-4. **Verify:**
-   - `migrate status` reports "up to date";
-   - both functions exist with the expected grants;
-   - an end-to-end reset works on a test account.
+### Files
 
-**Rollback:**
+`backend/src/main.ts`, `backend/src/modules/auth/guards/csrf.guard.ts`, a new `backend/src/common/trusted-origins.ts`
+(+ tests), `backend/src/config/env.validation.ts` (+ test), `render.yaml`, `.env*.example`.
 
-| Problem        | Rollback                                                                                             |
-| -------------- | ---------------------------------------------------------------------------------------------------- |
-| Code           | `git revert` of the Phase 3A commits                                                                 |
-| Database       | Run the 3 statements in the migration header (drops only the new functions and the migration record) |
-| Anything worse | Restore from the Neon branch (console: Branches → Restore) or from the `pg_dump` file                |
+### Backward compatibility
 
-## 8. Test plan
+- An environment that relied on a wildcard must list its exact origins, otherwise it refuses to start (fail-safe).
+- Local development is unchanged.
 
-All tests are automated (mocked unit tests) unless marked **real**.
+### Tests (CSRF and cross-origin)
 
-**K1: account takeover prevention**
+31. Production config: `*.pages.dev`, `*` or `http://example.com` in `CORS_ORIGIN` fails startup; exact https
+    origins pass.
+32. CORS: an allowed exact origin gets `Access-Control-Allow-Origin` echoed with credentials. `evil.pages.dev`,
+    `https://staging.example.com.evil.com`, a different scheme or a different port get no CORS headers.
+33. CSRF: a cookie-authenticated `POST`/`PATCH`/`DELETE` with an untrusted `Origin` gets 403; with no `Origin` and no
+    `Referer`, 403; with an untrusted `Referer` and no `Origin`, 403; with a malformed `Referer`, 403; with a trusted
+    origin, passes.
+34. CSRF: `GET`/`HEAD`/`OPTIONS` and cookie-less requests are unaffected (as today).
+35. Development: `*.trycloudflare.com` and `localhost` still work.
+36. **Real:** the staging-like local stack (`NODE_ENV=production` build) with an exact origin; login and a mutation
+    through the proxy succeed; a forged `Origin` is rejected.
 
-1. A correct 6-digit code with the correct email resets the password and revokes refresh tokens.
-2. A correct code with a **different** email (another existing account) fails with the generic error; nothing changes
-   for either account.
-3. A correct code with an unknown email fails with the same generic error (no enumeration).
-4. A 6-digit code without an email returns 400 `VALIDATION_FAILED` (schema).
-5. 5 wrong codes for one email: the 6th attempt fails _and_ the real code is cancelled, so the correct code no longer
-   works.
-6. Wrong codes spread across many freshly requested codes for one email: blocked after 20 failures in 24 hours, even
-   when each code was requested fresh.
-7. 31 attempts from one IP within 15 minutes, across different emails: the 31st is rate-limited.
-8. Guesses against a 64-hex activation token: per-IP limited; a valid activation link still works without an email.
-9. An expired code fails the same way as a wrong code.
-10. Success clears the per-code counter, but not the daily counter.
-11. Redis unavailable in production: requests are refused (fail-closed), not unlimited.
-12. **Real (Neon, after migration):** the full forgot → email code → reset flow on a test account. Afterwards the old
-    password fails, the new one works, and existing sessions are revoked.
+### Rollback
 
-**K13** 13. A password change revokes every other refresh-token family of the user and keeps the current one. 14. With no or an unknown refresh cookie, all families are revoked. 15. A wrong current password changes nothing. 16. **Real:** sign in on two browsers, change the password on one; the other loses its session at the next refresh, or
-immediately with K13b.
+Revert the commits and restore the previous `CORS_ORIGIN` values.
 
-**S1: IP spoofing** 17. Proxy: client `X-Forwarded-For`, `X-Real-IP`, `Forwarded` and `x-sportexus-*` headers are never forwarded as-is. 18. Proxy: with `WEB_TRUSTED_PROXY_HOPS=1`, the client IP is the entry added by the trusted hop. A forged left-most
-entry is ignored. 19. API: a valid secret plus a valid IP header is used. A missing or wrong secret is ignored; the IP falls back to
-`req.ip`. 20. API: a valid secret with a malformed IP is ignored. 21. API: a direct call with a forged `X-Forwarded-For` and `TRUST_PROXY_HOPS=1` yields the load balancer's observed
-peer. 22. API: the proxy headers are removed after the middleware runs. 23. Config: production without `INTERNAL_PROXY_SECRET` fails startup (fail-closed). 24. Rate limits and audit entries receive the resolved IP (controller and decorator tests). 25. **Real (local stack):** two requests through the web proxy with different forged headers count toward the same IP
-bucket.
+---
 
-**Regression:** all existing suites (backend 273, frontend 333, shared 44, database 10), type check (now including
-tests), lint, format, both production builds, and the clean-clone install-and-build check.
+## 8. Migration history, Neon state and backup
 
-## 9. Related findings (reported, not part of Phase 3A unless approved)
+### Current history (verified, read-only)
 
-| #   | Finding                                                                                                                                                                                                                                                                                  | Recommendation                                                                                                                    |
-| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| S2  | `render.yaml` staging `CORS_ORIGIN` includes `*.pages.dev`, so **any** Cloudflare Pages site can make credentialed requests to the staging API. The production guard rejects only a bare `*`.                                                                                            | Replace with the exact staging origin, and reject wildcard sub-domains in production.                                             |
-| S3  | The API connects to Neon as `neondb_owner`, which has **BYPASSRLS**. Tenant row-level security is therefore not enforced in that environment, even though the restricted `sportexus_app` role exists. The production guard rejects only the user names `postgres`, `academy` and `root`. | Connect as `sportexus_app`, keep the owner for migrations only, and reject BYPASSRLS roles at startup.                            |
-| S4  | Pending migration `20261104105500` adds a `SELECT` policy `... OR (current_app_user_id() IS NULL AND status = 'PENDING_REVIEW')`. Any query running without a user context can read **all** pending academy applications, including applicant contact data.                              | Before applying it to Neon, add a follow-up migration that narrows the policy. The applied migration cannot be edited (checksum). |
-| I1  | Attendance contract drift: the frontend types `recordAttendance` as `AttendanceRosterItem` and the bulk result as `{ count, updated }`; the API returns `{ record, previousStatus }` and `{ count, records }`. The session page works around this with casts.                            | Shared response types (Phase 4/5).                                                                                                |
+- The repository has 23 migrations.
+- Neon has **22 applied**; `20261104105500_academy_applications_insert_rls` is **pending**.
+- Local PostgreSQL (unused by the API) has all 23. Per the owner's decision, it is not migrated further.
 
-## 10. Decisions needed
+### Handling of the pending migration
 
-1. **Approve K1 + K13 + S1** as designed, including the new 400 for a 6-digit code without an email.
-2. **Approve the rate-limit values:** 30 / 15 min per IP; 5 per code; 20 / 24 h per account.
-3. **K13b**, immediate access-token invalidation (extra column): yes or no.
-4. **Migrations:**
-   - apply to **Neon**, local, or both;
-   - and how to handle S4 first: a follow-up tightening migration (recommended), or apply as-is.
-5. **Backups:**
-   - the owner creates the Neon branch, or authorises it;
-   - the owner runs the local `postgres` dump, or we skip local, since the API does not use it.
-6. **Whether S2 and S3 join Phase 3A or wait for a later phase.**
+**Order on Neon:** `20261104105500` → **M1** → **M2** → **M3**.
+
+- **Recommended:** apply all of them in **one** `prisma migrate deploy` run.
+  - The insecure intermediate policy state exists for a few seconds only. Until S3 is switched on, the API connects
+    as the owner (BYPASSRLS), so that intermediate state is not reachable at all.
+  - The migration history then stays identical to every other environment (CI, self-host), which is the safest
+    long-term state.
+- **Not recommended:** `prisma migrate resolve --applied 20261104105500` (mark as applied without running it). This
+  leaves Neon's history different from what its schema went through.
+
+**Fresh databases** (CI, new self-host installs) run the same sequence; M2 always follows the insecure migration.
+
+### Backup and restore verification (before any migration)
+
+1. **Owner:** create the Neon branch `pre-phase-3a-YYYYMMDD` (a backup, never modified).
+2. **Full dump:** `pg_dump -Fc` as the owner role. It is complete because the owner has BYPASSRLS, which I verified.
+   - The connection string is read from `backend/.env` inside the script and never printed.
+   - The dump goes to `C:\Users\IT\academy-db-backups\` (outside OneDrive and the repository) and is never deleted
+     or overwritten (timestamped name).
+3. **Readability:** `pg_restore --list`, plus SHA-256 of the file.
+4. **Restore test in an isolated environment:**
+   - `pg_restore` into a **new, throwaway database** on the local PostgreSQL 17 server (`academy_restore_test`),
+     created by the owner or by a role with `CREATEDB`;
+   - compare row counts per table with the source;
+   - check that functions, policies and grants exist.
+
+   PG 18 → 17 restore compatibility is checked; if it fails, the restore target is a second Neon branch instead.
+
+5. Report: file, size, checksum, table count, row-count comparison. **No data values.**
+6. Apply migrations **only after the owner approves the final SQL**.
+
+---
+
+## 9. Execution and test plan (3A.4)
+
+**Order:** 3A.1 → 3A.2 → 3A.3 → 3A.4. Each sub-phase is committed separately, followed by a report and owner review.
+
+**3A.4 regression:**
+
+- everything in 3A.1–3A.3;
+- all existing suites (backend 273, frontend 333, shared 44, database 10);
+- type check (tests included), lint, format;
+- both production builds and the clean-clone build;
+- the S3 workflow, isolation and privilege suites;
+- a browser smoke test of the main flows;
+- **real login** with an owner-provided test account (still outstanding).
+
+**What remains mocked versus real is reported explicitly.**
+
+## 10. Decisions needed before implementation
+
+1. **K1:**
+   - approve the link-plus-code design and the limits in §1;
+   - choose the code-entry suspension threshold: **10 (recommended)** or 5 per 24 h.
+2. **K1 email change:** the reset link carries a link token instead of the code. Layout and wording are unchanged.
+3. **K13b:** approve `session_version` (instead of a timestamp), and its optional reuse for suspend / revoke sessions.
+4. **S1:**
+   - approve the header names and variables;
+   - approve that production **and** staging refuse to start without the secret.
+5. **S4:** approve M2 and the code changes (explicit contexts and `academy_slug_in_use`).
+6. **S3:**
+   - approve M3, `platform_create_user` and the startup role guard;
+   - the owner creates the `s3-runtime-test` branch and sets the `sportexus_app` password there.
+7. **S2:** provide the exact list of legitimate staging and production web origins.
+8. **Migration order:** approve the recommended single run on Neon (104105500 → M1 → M2 → M3).
+9. **Follow-up (not 3A):** column-level `SELECT` hardening on `users` (item 5e).
