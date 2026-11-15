@@ -1,5 +1,10 @@
 # Phase 3A proposal (revision 2): security hardening
 
+> **Revision 3 addendum (2026-11-15):** see `PHASE_3A_SECURITY_DETAILS.md`. It records the owner’s preliminary decisions,
+> corrects this document (26 context-free queries, not 21; refresh-token versioning; link token in the URL fragment; new
+> finding S5) and adds the S3/S4 details, migration safety, test strategy and session-invalidation analysis. Where the two
+> differ, the addendum takes precedence.
+
 > **Status: proposal, awaiting owner approval. Nothing is implemented, and no migration has been created in the
 > repository or applied.**
 > Revision 2 (2026-11-15) replaces revision 1 and includes the owner's review decisions.
