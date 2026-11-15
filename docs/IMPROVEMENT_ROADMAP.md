@@ -33,15 +33,15 @@ build and start locally after every phase.
 
 ## Status
 
-| Phase | Scope                                                             | Status                                                                           |
-| ----- | ----------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| 1     | Complete audit                                                    | ✅ Done 2026-11-15; plan approved                                                |
-| 2A    | Structure and code hygiene                                        | ✅ Done 2026-11-15, awaiting owner review. Details: `DEVELOPMENT_STATUS.md` §9b. |
-| 3A    | Security: K1 + K13 + S1                                           | Next after the 2A review. Migration drafted, not applied.                        |
-| 3B    | Backend performance                                               | Approved in principle; detailed proposal before start                            |
-| 3C    | Database: Decimal money, unique receipt numbers                   | Approved in principle; migrations need backup and review                         |
-| 4     | Frontend: persistent layout, data states                          | Approved in principle; detailed proposal before start                            |
-| 5–7   | Integration, performance and security verification, final testing | Not started                                                                      |
+| Phase | Scope                                                             | Status                                                                                                                                       |
+| ----- | ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1     | Complete audit                                                    | ✅ Done 2026-11-15; plan approved                                                                                                            |
+| 2A    | Structure and code hygiene                                        | ✅ Done 2026-11-15, including the approved follow-ups (Prisma generation, test type checking, Next.js lint rules, Node 22). Awaiting review. |
+| 3A    | Security: K1 + K13 + S1                                           | Proposal ready: `docs/proposals/PHASE_3A_SECURITY.md`. Awaiting approval; nothing implemented or applied.                                    |
+| 3B    | Backend performance                                               | Approved in principle; detailed proposal before start                                                                                        |
+| 3C    | Database: Decimal money, unique receipt numbers                   | Approved in principle; migrations need backup and review                                                                                     |
+| 4     | Frontend: persistent layout, data states                          | Approved in principle; detailed proposal before start                                                                                        |
+| 5–7   | Integration, performance and security verification, final testing | Not started                                                                                                                                  |
 
 ## Environment facts (measured 2026-11-15)
 
