@@ -56,6 +56,9 @@ importers:
       cookie-parser:
         specifier: ^1.4.7
         version: 1.4.7
+      express:
+        specifier: 5.2.1
+        version: 5.2.1
       ioredis:
         specifier: ^6.0.0
         version: 6.0.0
@@ -200,6 +203,9 @@ importers:
       '@types/node':
         specifier: ^22.15.29
         version: 22.20.5
+      dotenv:
+        specifier: 16.6.1
+        version: 16.6.1
       embedded-postgres:
         specifier: 18.4.0-beta.17
         version: 18.4.0-beta.17
