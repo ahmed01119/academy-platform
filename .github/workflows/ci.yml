@@ -122,6 +122,13 @@ jobs:
       - name: Test
         run: pnpm test
 
+      # Real-PostgreSQL integration tests (K1 reset functions, K13b session-version concurrency). They create and
+      # delete their own synthetic rows in the CI service database, which has all migrations deployed above.
+      - name: Integration tests (PostgreSQL)
+        env:
+          INTEGRATION_DATABASE_URL: ${{ env.DATABASE_URL }}
+        run: pnpm --filter @academy/api exec vitest run int.test
+
       - name: Build applications
         run: pnpm build
 
