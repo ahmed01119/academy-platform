@@ -63,7 +63,7 @@ Severity is an engineering estimate; none of these were changed.
 | K4 | Med | **Currency hard-coded to `SAR`** on payments and expenses (and across finance UI), while tenants, plans and settings default to `EGP`. | `finance.service.ts:440, 512, 834`; `frontend/src/components/finance/*`, `app/finance/page.tsx`, `app/attendance/**` |
 | K5 | Med | **Storage maintenance cannot purge audit logs**: `auditLog.deleteMany` hits the append-only trigger → the whole maintenance transaction (incl. token purge) fails when old logs exist. | `platform.service.ts:2078` vs migration `20261016000100_audit_log_append_only` |
 | K6 | Med | **Public join requests never link the applicant**: `POST /portal/player-join-requests` has no JWT guard, so `@CurrentUser('id')` is always undefined → `applicantUserId` null → no applicant notifications, no login gating for players. | `backend/src/modules/portal/portal.controller.ts:75` |
-| K7 | Med | **National ID leaks in player list** to every `players.read` role (COACH, VIEWER, ACCOUNTANT); detail view masks it. | `players.service.ts:156` vs `:263` |
+| K7 | ✅ Fixed `f1ddeca` (F22) | **National ID leaks in player list** to every `players.read` role (COACH, VIEWER, ACCOUNTANT); detail view masks it. | `players.service.ts:156` vs `:263` |
 | K8 | Med | **Cashier close requires only `session_expenses.read`** (granted to RECEPTIONIST, COACH, VIEWER). | `finance.controller.ts:171-172` |
 | K9 | Med | Join-request approval may **merge different children with the same first+last name** into one player; defaults gender MALE / DOB 2012-01-01 when unknown. | `players.service.ts` (`reviewPlayerJoinRequest`) |
 | K10 | Low | Invitation API response returns the raw invitation token to the inviter. | `tenancy.service.ts:246` |
@@ -170,13 +170,27 @@ Step 4 details:
   `canViewSensitive` rule), Tailwind tokens/design.
 
 New findings (documented, not changed):
-- F21 `/players/new` shows an **"Enrollment Start Date"** field, but `CreatePlayerSchema` has no such field and the
-  page never sends it — the enrollment always starts on the server's current date. Same class as F17; decide: send it
-  (backend support), add a notice, or remove the field.
-- F22 The players **list** shows `nationalId` to every role that can open it (OWNER, MANAGER, BRANCH_MANAGER,
-  ACCOUNTANT, RECEPTIONIST + super admins) because the API returns it unmasked (K7); the detail page masks it for roles
-  without `players.sensitive.read`. Recommended: mask in the API (backend phase) and hide the column for those roles in
-  the UI now — needs owner approval (changes what Accountant/Receptionist see).
+- F21 ✅ **Resolved (backend `f1ddeca` + frontend).** Root cause: `CreatePlayerSchema` had no start-date field and
+  `createPlayer` hard-coded `startDate: new Date()`. Added optional `initialEnrollmentStartDate` (YYYY-MM-DD, real
+  calendar date — shared `isCalendarDate`) to the contract; the service stores it as the initial
+  `player_enrollments.start_date`; omitted → today (previous behaviour). The create form now sends the field it already
+  collected. **No migration** (column existed); **non-breaking** (optional field). No range rule was invented — past
+  and future dates are accepted, as for enrollment create/transfer (open question: should future/back-dated starts be
+  limited?).
+- F22 ✅ **Resolved at the API + UI (backend `f1ddeca` + frontend).** Root cause: `listPlayers` returned `nationalId`
+  unmasked and searched on it for every role (K7), and `createPlayer` echoed `nationalId`/`medicalNotes` back. Now one
+  helper (`players/player-sensitive-data.ts`) decides `players.sensitive.read` for list, detail, create and update; the
+  list and create responses return `null` without it, and the list search no longer matches on national ID for those
+  roles (closes an existence/enumeration oracle; count and results share the filter). UI: the list hides the line and
+  the search placeholder reads "Search name or phone…" for those roles. **Behaviour change (approved):** Accountant,
+  Receptionist (and any role without the permission) no longer see or search by national ID in the roster.
+- F23 (remaining, not changed) Duplicate-check message on create/update ("A player with this National ID is already
+  registered in this academy") still tells a Receptionist — who may record but not read national IDs — that an ID
+  exists. Uniqueness is a business rule; changing the message/flow needs a decision.
+- F24 (remaining, not changed) Roles without `players.sensitive.read` but with `players.update` (Receptionist) can still
+  *write* `nationalId` on update (the UI does not expose it). Write-without-read is existing behaviour; confirm intent.
+- `database/repositories/player.repository.ts` still contains a national-ID search, but no service uses the repository
+  layer yet (unused code; to be aligned when repositories are adopted).
 
 Outstanding (unchanged): **real authenticated testing with an actual account**. Step 4 browser checks used an
 in-browser mocked API (no backend/DB contact); authentication is **not** considered verified.
@@ -250,7 +264,12 @@ New findings during Phase 1:
 - F11 Many files still use the legacy `[var(--x)]` Tailwind syntax (editor suggests `(--x)`); both work in Tailwind v4. Not changed (cosmetic, high churn).
 - Rule for dev-only UI: guard with inline `process.env.NODE_ENV === 'development'` at the call site; an imported constant is not folded across modules and ships to production (verified).
 
-## 10. Backend-phase requirements (recorded by owner decisions — not started)
+## 10. Backend requirements (recorded by owner decisions)
+
+**Workflow (owner direction 2026-11-15):** frontend issues whose root cause is in the backend are now fixed across both
+layers in the same increment (inspect both → fix root cause → server-side authorization → tests on both sides →
+separate commits). No large backend refactor. Status: BR-1 and BR-2 — documented, **pending scope review** before any
+implementation; BR-3 — **pending product decision**.
 
 ### BR-1 (F16) Distinguishable login failures without account enumeration
 Current API: every failure below is HTTP 401 (`UnauthorizedException`). Order in `AuthService.login`: rate limit →
@@ -293,6 +312,7 @@ with e-mail verification, so invitees can accept invitations.
 |---|---|---|
 | 2026-11-14 | Initial knowledge baseline: created the five core docs; no application code modified. | `docs/PROJECT_OVERVIEW.md`, `docs/SYSTEM_ARCHITECTURE.md`, `docs/BUSINESS_LOGIC.md`, `docs/TECHNOLOGY_STACK.md`, `docs/DEVELOPMENT_STATUS.md` |
 | 2026-11-14 | Phase 1 frontend analysis + verification baseline (§9); proposal pending approval. | `docs/DEVELOPMENT_STATUS.md` |
+| 2026-11-15 | F22 + F21 full-stack. **Backend `f1ddeca`:** `players/player-sensitive-data.ts` (single sensitive-data rule), list/create responses mask `nationalId`/`medicalNotes`, list search excludes national ID without `players.sensitive.read`; `CreatePlayerSchema.initialEnrollmentStartDate` (optional) + `isCalendarDate`; `createPlayer` uses it. **Frontend:** create form sends the start date; roster hides national ID + adjusts search placeholder by permission. No migration; no breaking API change. | `backend/src/modules/players/{players.service.ts,player-sensitive-data.ts}` (+2 test files), `packages/shared/src/schemas/player.ts` (+test), `frontend/src/features/players/new-player-form.ts`, `frontend/src/app/players/{page,new/page}.tsx` |
 | 2026-11-14 | Phase 1 Step 4: players feature (`features/players/**`), pagination/search/error-state fixes, bilingual + accessible player profile and modals; F17 applicant notice (`7ce0fac`). No backend/API/DB/currency changes. | `frontend/src/app/players/{page,new/page,[id]/page}.tsx`, `frontend/src/components/player-qr-card.tsx`, `frontend/src/features/players/**`, `frontend/src/hooks/useDebouncedValue.ts` (+2 test files) |
 | 2026-11-14 | Step 3 follow-up: F14 safe return path implemented; F17 explicit contract mapping (fields kept, pending list); F16/F17/F19 backend requirements documented (§10). No backend/API/DB changes. | `frontend/src/lib/auth/safe-return-path.ts`, `frontend/src/hooks/useSafeReturnPath.ts`, `frontend/src/app/{login,register,accept-invite}/page.tsx`, `frontend/src/features/landing/{player-join-request.ts,components/PlayerJoinRequestModal.tsx}` (+2 test files) |
 | 2026-11-14 | Phase 1 Step 3: auth & public pages restructured onto `features/auth` + `features/landing`; error-message hardening; 8 typo fixes. No API, validation-rule, backend or currency changes. | `frontend/src/app/{login,register,forgot-password,reset-password,verify-email,accept-invite,landing,offline}/page.tsx`, `frontend/src/components/platform/CoOwnerTab.tsx`, `frontend/src/features/{auth,landing}/**`, `frontend/src/hooks/{useCooldown,useDelayedRedirect}.ts` (+6 test files) |

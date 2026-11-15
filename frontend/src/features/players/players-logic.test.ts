@@ -142,7 +142,22 @@ const newForm: NewPlayerFormValues = {
   guardianPhone: '01000000002',
   guardianEmail: '',
   branchId: '33333333-3333-4333-8333-333333333333',
+  enrollmentStartDate: '2026-09-01',
 };
+
+describe('F21: enrollment start date is sent to the API', () => {
+  it('maps the form value to initialEnrollmentStartDate (accepted by the shared schema)', () => {
+    const payload = buildCreatePlayerPayload(newForm, 'en');
+    expect(payload.initialEnrollmentStartDate).toBe('2026-09-01');
+    expect(CreatePlayerSchema.safeParse(payload).success).toBe(true);
+  });
+
+  it('omits it when empty so the API keeps its default (today)', () => {
+    const payload = buildCreatePlayerPayload({ ...newForm, enrollmentStartDate: '' }, 'en');
+    expect(payload).not.toHaveProperty('initialEnrollmentStartDate', expect.anything());
+    expect(payload.initialEnrollmentStartDate).toBeUndefined();
+  });
+});
 
 describe('validateNewPlayerForm (order preserved)', () => {
   it('accepts a complete form', () => {

@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { useAccessGuard } from '@/hooks/useAccessGuard';
 import { usePlayersList } from '@/features/players/hooks/usePlayersList';
+import { canViewSensitivePlayerData } from '@/features/players/player-permissions';
 import { useLocale } from '@/contexts/locale-context';
 import { AppShell } from '../../components/layout/AppShell';
 import { PageHeader, StatusBadge } from '../../components/ui';
@@ -29,7 +30,9 @@ import {
 function PlayersPageContent() {
   const searchParams = useSearchParams();
   const requestedTab = searchParams.get('tab') === 'applications' ? 'applications' : 'roster';
-  const { user, isLoading } = useAuth();
+  const { user, activeTenant, isLoading } = useAuth();
+  // F22: UI mirrors the server rule (API already omits the value for these roles).
+  const canViewSensitive = canViewSensitivePlayerData(activeTenant?.role);
   const { t, locale, isRtl } = useLocale();
 
   const [activeTab, setActiveTab] = useState<'roster' | 'applications'>(requestedTab);
@@ -136,9 +139,13 @@ function PlayersPageContent() {
                     value={filters.searchTerm}
                     onChange={(e) => setFilter('searchTerm', e.target.value)}
                     placeholder={
-                      locale === 'ar'
-                        ? 'بحث بالاسم أو الرقم القومي...'
-                        : 'Search name or national ID...'
+                      canViewSensitive
+                        ? locale === 'ar'
+                          ? 'بحث بالاسم أو الرقم القومي...'
+                          : 'Search name or national ID...'
+                        : locale === 'ar'
+                          ? 'بحث بالاسم أو رقم الهاتف...'
+                          : 'Search name or phone...'
                     }
                     className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) ps-10 pe-9 py-2.5 text-xs text-(--text-main) placeholder-(--text-muted) focus:border-(--accent-primary) focus:bg-[var(--bg-surface)] transition-all outline-none"
                   />
@@ -291,7 +298,7 @@ function PlayersPageContent() {
                                   >
                                     {p.firstName} {p.lastName}
                                   </Link>
-                                  {p.nationalId && (
+                                  {canViewSensitive && p.nationalId && (
                                     <div className="text-[10px] text-(--text-muted) font-mono mt-0.5">
                                       {locale === 'ar' ? 'هوية:' : 'ID:'} {p.nationalId}
                                     </div>

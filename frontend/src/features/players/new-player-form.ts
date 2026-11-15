@@ -20,6 +20,8 @@ export interface NewPlayerFormValues {
   guardianPhone: string;
   guardianEmail: string;
   branchId: string;
+  /** "Enrollment Start Date" input (YYYY-MM-DD); empty → server default (today). */
+  enrollmentStartDate: string;
 }
 
 const pick = (locale: Locale, ar: string, en: string) => (locale === 'ar' ? ar : en);
@@ -112,6 +114,8 @@ export function buildCreatePlayerPayload(
     emergencyContactPhone: values.emergencyContactPhone.trim(),
     medicalNotes: values.medicalNotes.trim() || undefined,
     initialBranchId: values.branchId,
+    // F21: previously collected but never sent; the API now honours it (default: today).
+    initialEnrollmentStartDate: values.enrollmentStartDate || undefined,
     sport: 'FOOTBALL',
     primaryGuardian: {
       firstName: guardianFirstName,

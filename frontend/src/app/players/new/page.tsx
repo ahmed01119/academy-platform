@@ -89,6 +89,7 @@ export default function NewPlayerPage() {
       guardianPhone,
       guardianEmail,
       branchId,
+      enrollmentStartDate: startDate,
     };
     const lang = locale === 'ar' ? 'ar' : 'en';
     const validationError = validateNewPlayerForm(values, lang);

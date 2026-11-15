@@ -118,8 +118,12 @@ Permissions are a static map (`ROLE_PERMISSIONS`). Current code:
 - **Create** (`players.create`): branch-scoped users can only create in their branch; branch must be ACTIVE and below
   `capacity`; recording `medicalNotes` requires `players.sensitive.read`; `nationalId` unique per academy.
   Player gets a membership number and a QR card code.
-- **Read**: branch-scoped users may only open players actively enrolled in their branch. `nationalId` and
-  `medicalNotes` are masked on the detail view without `players.sensitive.read`.
+- **Read**: branch-scoped users may only open players actively enrolled in their branch. Without
+  `players.sensitive.read`, `nationalId` and `medicalNotes` are returned as `null` by **every** player endpoint
+  (list, detail, create and update responses), and the roster search does not match on national ID
+  (`backend/src/modules/players/player-sensitive-data.ts`).
+- **Initial enrollment start date**: `POST /players` accepts optional `initialEnrollmentStartDate`
+  (YYYY-MM-DD, real calendar date); omitted → the enrollment starts today.
 - **Update**: same branch and sensitive-data rules as create.
 - **QR card**: get / rotate (new code, old one invalid) / revoke; revoked cards are refused at scan time.
 - **Delete** (`players.delete`): `deletion-impact` previews linked records; `DELETE` performs a **safe archive**
