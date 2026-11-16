@@ -38,7 +38,7 @@ build and start locally after every phase.
 | 1     | Complete audit                                                    | ✅ Done 2026-11-15; plan approved                                                                                                            |
 | 2A    | Structure and code hygiene                                        | ✅ Done 2026-11-15, including the approved follow-ups (Prisma generation, test type checking, Next.js lint rules, Node 22). Awaiting review. |
 | 3A.1  | Security: K1 + K13 + K13b + S1, S5 retired                        | ✅ Done 2026-11-15 (`45624c2`…`fb0ccad`); M1 applied to Neon dev after a verified backup. See DEVELOPMENT_STATUS §9c. Awaiting review.       |
-| 3A.2  | Security: S4 (M2) + S3 (M3, runtime role)                         | SQL clarifications and isolated Neon branch tests first; needs separate approval                                                             |
+| 3A.2  | Security: S4 (M2) + S3/S6 (M3, runtime role)                      | ✅ Done 2026-11-16 (`63cf332`…`5110e57`); applied to Neon dev; API verified as `sportexus_app`. Dev `DATABASE_URL` switch: owner action      |
 | 3A.3  | Security: S2 trusted origins                                      | Needs the owner's list of origins per environment                                                                                            |
 | 3B    | Backend performance                                               | Approved in principle; detailed proposal before start                                                                                        |
 | 3C    | Database: Decimal money, unique receipt numbers                   | Approved in principle; migrations need backup and review                                                                                     |
@@ -343,7 +343,7 @@ architecture.
 - 3A Security:
   - ✅ K1 + K13 + K13b, password reset and session invalidation (3A.1);
   - ✅ S1, correct client-IP handling (3A.1);
-  - S4 + S3 (3A.2), S2 (3A.3);
+  - ✅ S4 + S3 + S6 (3A.2); S2 (3A.3);
   - K3, K8, after business decisions.
 - 3B Query performance: batch the N+1 loops; move the dashboard, rankings and reports to SQL aggregation; paginate the
   growing lists.

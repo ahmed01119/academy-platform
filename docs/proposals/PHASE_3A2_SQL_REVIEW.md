@@ -1,8 +1,9 @@
 # Phase 3A.2: SQL for review (S3, S4, S6)
 
-> **Status: drafts for owner review. Nothing has been applied to the Neon database.** M2 and M3 are not in
-> `packages/database/prisma/migrations`, so no `prisma migrate deploy` can pick them up. They ran only on isolated,
-> throwaway PostgreSQL 18 databases with synthetic data. No Neon branch was created.
+> **Status (2026-11-16): approved and applied.** The owner approved the SQL and decisions B1–B8 (B7: a REJECTED
+> application can no longer be approved). The files now live in `packages/database/prisma/migrations` and
+> `packages/database/tests`; M2 and M3 are applied to the Neon development database (see `DEVELOPMENT_STATUS.md` §9d).
+> The paths in §0 below are the original draft locations.
 >
 > Date: 2026-11-15. Branch: `frontend-architecture-uiux-audit` (not pushed).
 

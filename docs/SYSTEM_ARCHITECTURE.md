@@ -192,15 +192,22 @@ lookups (`tenantId_id`). Monetary columns are `Float` (double precision).
 ### 6.2 Security features in SQL
 
 - **RLS** is enabled on 31 of 34 tables and forced on 21 (verified on the development database, 2026-11-15); policies
-  key on `current_setting('app.tenant_id')` / actor / super-admin context. RLS binds only roles without `BYPASSRLS`;
-  the API currently connects as the database owner (finding S3, Phase 3A.2).
+  key on `current_setting('app.tenant_id')` / actor / super-admin context. RLS binds only roles without `BYPASSRLS`.
+  Since Phase 3A.2 every API query path works under the restricted runtime role (`sportexus_app` on Neon,
+  `academy_runtime` self-host, `academy_runtime_ci` in CI); production refuses to start as a superuser, BYPASSRLS or
+  table-owning role (`backend/src/modules/database/runtime-role-guard.ts`). Migrations run as the owner
+  (`DATABASE_ADMIN_URL`) and own every object privilege of the runtime roles (M3 baseline).
 - **Append-only** triggers on `audit_logs` (blocks UPDATE/DELETE) and attendance corrections.
 - **Least-privilege runtime role** (`academy_runtime_ci` in CI, e.g. `sportexus_app` in prod;
   `infrastructure/postgres/01-runtime-role.sql`): column-restricted updates on `users`;
   production env validation refuses admin DB users (`postgres`, `academy`, `root`).
 - **SECURITY DEFINER** functions for token flows: `request_password_reset`, `request_password_reset_with_link`,
   `complete_password_reset_for_email`, `complete_password_reset_by_link`, `invalidate_password_reset_code_for_email`,
-  `complete_password_reset` (legacy link fallback),
+  `complete_password_reset` (legacy link fallback); Phase 3A.2: `append_audit_log` (the only audit write path; actor and
+  tenant from the context), `create_app_notification` (sender/recipient checks), `submit_player_join_request`,
+  `list_public_academies`, `redeem_portal_claim`, `academy_slug_in_use`, `change_own_password`, and the platform
+  functions `platform_create_user`, `platform_set_user_platform_role`, `platform_update_user_security`,
+  `platform_revoke_user_sessions`, `platform_approve_academy_application`, `platform_delete_academy`,
   `verify_user_email`, `request_email_verification`, invitation redemption / onboarding.
 - SQL test suites: `packages/database/tests/*.sql` (run in CI).
 
