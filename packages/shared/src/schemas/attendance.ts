@@ -64,6 +64,30 @@ export const AttendanceRosterItemSchema = z.object({
 
 export type AttendanceRosterItem = z.infer<typeof AttendanceRosterItemSchema>;
 
+/**
+ * Response of POST /attendance/records (I1: single contract for API and web). Replayed verbatim when an idempotency
+ * key repeats.
+ */
+export interface RecordAttendanceResult {
+  record: {
+    recordId: string;
+    playerId: string;
+    playerName: string;
+    photoUrl: string | null;
+    status: AttendanceStatus;
+    checkInTime: string | null;
+    remarks: string | null;
+    version: number;
+  };
+  previousStatus: AttendanceStatus;
+}
+
+/** Response of POST /attendance/records/bulk: the number of records written and the written records. */
+export interface BulkRecordAttendanceResult {
+  count: number;
+  records: Array<{ id: string; playerId: string; status: AttendanceStatus; version: number }>;
+}
+
 export const BulkMarkAttendanceRequestSchema = z.object({
   sessionId: z.string().uuid(),
   idempotencyKey: z.string().uuid(),

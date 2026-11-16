@@ -9,10 +9,12 @@ import type {
   AttendanceReportSummary,
   AttendanceRosterItem,
   BulkAttendanceSubmission,
+  BulkRecordAttendanceResult,
   CreateAttendanceSession,
   GenerateQrRequest,
   GenerateQrResponse,
   QrCheckInRequest,
+  RecordAttendanceResult,
   SessionDetails,
   SessionQuery,
   SessionSummary,
@@ -96,16 +98,14 @@ export const attendanceApi = {
     });
   },
 
-  async recordAttendance(data: AttendanceMutation): Promise<AttendanceRosterItem> {
+  async recordAttendance(data: AttendanceMutation): Promise<RecordAttendanceResult> {
     return request('/attendance/records', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   },
 
-  async bulkRecordAttendance(
-    data: BulkAttendanceSubmission,
-  ): Promise<{ count: number; updated: AttendanceRosterItem[] }> {
+  async bulkRecordAttendance(data: BulkAttendanceSubmission): Promise<BulkRecordAttendanceResult> {
     return request('/attendance/records/bulk', {
       method: 'POST',
       body: JSON.stringify(data),

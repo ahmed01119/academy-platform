@@ -461,7 +461,7 @@ export default function SessionAttendancePage() {
 
     try {
       const idempotencyKey = crypto.randomUUID();
-      const updatedItem = await api.attendance.recordAttendance({
+      const { record: serverItem } = await api.attendance.recordAttendance({
         sessionId,
         playerId: item.playerId,
         status: newStatus,
@@ -469,12 +469,7 @@ export default function SessionAttendancePage() {
         expectedVersion: item.version,
       });
 
-      // Synchronize exact server version while safely preserving playerName and photoUrl
-      const rawRecord = (
-        updatedItem as { record?: Partial<AttendanceRosterItem> & { id?: string } }
-      )?.record;
-      const serverItem: Partial<AttendanceRosterItem> & { id?: string } =
-        rawRecord || (updatedItem as Partial<AttendanceRosterItem> & { id?: string });
+      // Synchronize the exact server version while preserving playerName and photoUrl (I1: typed contract).
       setSession((curr) => {
         if (!curr) return null;
         return {
@@ -484,7 +479,7 @@ export default function SessionAttendancePage() {
               ? {
                   ...r,
                   ...serverItem,
-                  recordId: serverItem.id || serverItem.recordId || r.recordId,
+                  recordId: serverItem.recordId || r.recordId,
                   playerName:
                     serverItem.playerName ||
                     r.playerName ||

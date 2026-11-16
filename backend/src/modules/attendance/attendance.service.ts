@@ -28,33 +28,10 @@ import {
   type SessionDetails,
   type SessionQuery,
   type TenantContext,
+  type RecordAttendanceResult,
+  type BulkRecordAttendanceResult,
 } from '@academy/shared';
 import { AttendanceRosterService } from './attendance-roster.service';
-import type { AttendanceRecord, AttendanceStatus } from '@academy/database';
-
-/** Response of POST /attendance/records. Replayed verbatim when an idempotency key repeats. */
-type RecordAttendanceResult = {
-  record: {
-    recordId: string;
-    playerId: string;
-    playerName: string;
-    photoUrl: string | null;
-    status: AttendanceStatus;
-    checkInTime: string | null;
-    remarks: string | null;
-    version: number;
-  };
-  previousStatus: AttendanceStatus;
-};
-
-/**
- * Response of POST /attendance/records/bulk. Replayed verbatim when an idempotency key repeats
- * (the stored copy is the JSON-serialised form of the same payload).
- */
-type BulkRecordAttendanceResult = {
-  count: number;
-  records: AttendanceRecord[];
-};
 
 @Injectable()
 export class AttendanceService {
