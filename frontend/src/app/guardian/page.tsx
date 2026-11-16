@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/auth-context';
+import { MyJoinRequests } from '@/features/portal/components/MyJoinRequests';
 import { useAccessGuard } from '@/hooks/useAccessGuard';
 import { useLocale } from '@/contexts/locale-context';
 import { translateDataString } from '@/utils/data-translator';
@@ -257,6 +258,9 @@ export default function GuardianPortalPage() {
             </button>
           }
         />
+
+        {/* K6: requests for more children (another child or academy) and their status */}
+        <MyJoinRequests ar={ar} requesterType="GUARDIAN" />
 
         {/* Multi-Child Selector Tabs */}
         {guardianData.children.length > 1 && (

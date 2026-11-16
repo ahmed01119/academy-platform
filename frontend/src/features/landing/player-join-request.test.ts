@@ -10,6 +10,7 @@ import {
 
 const form: PlayerJoinFormValues = {
   tenantId: '22222222-2222-4222-8222-222222222222',
+  requesterType: 'GUARDIAN',
   firstName: ' Omar ',
   lastName: ' Ali ',
   gender: 'MALE',
@@ -25,13 +26,17 @@ const form: PlayerJoinFormValues = {
   guardianRelationship: 'FATHER',
   phone: '',
   email: ' parent@example.com ',
+  password: 'Str0ng-Passw0rd!',
+  confirmPassword: 'Str0ng-Passw0rd!',
 };
 
 describe('buildPlayerJoinRequest', () => {
-  it('produces exactly the current API contract (unchanged mapping)', () => {
+  it('produces exactly the API contract, with the password for a new account', () => {
     const { payload } = buildPlayerJoinRequest(form);
     expect(payload).toEqual({
       tenantId: form.tenantId,
+      requesterType: 'GUARDIAN',
+      password: 'Str0ng-Passw0rd!',
       playerName: 'Omar Ali',
       contactEmail: 'parent@example.com',
       contactPhone: '0100000001', // falls back to the emergency phone
@@ -39,6 +44,12 @@ describe('buildPlayerJoinRequest', () => {
       guardianName: 'Ali Hassan',
     });
     expect(CreatePlayerJoinRequestSchema.safeParse(payload).success).toBe(true);
+  });
+
+  it('never sends a password for a signed-in applicant (the API links their account)', () => {
+    const { payload } = buildPlayerJoinRequest(form, true);
+    expect(payload).not.toHaveProperty('password');
+    expect(payload.requesterType).toBe('GUARDIAN');
   });
 
   it('uses Jan 1st when only the birth year is known', () => {
@@ -76,14 +87,14 @@ describe('buildPlayerJoinRequest', () => {
   });
 
   it('pending list matches what the API contract really lacks (detects contract drift)', () => {
-    const contractKeys = Object.keys(CreatePlayerJoinRequestSchema.shape);
+    const contractKeys = Object.keys(CreatePlayerJoinRequestSchema.innerType().shape);
     for (const field of JOIN_FIELDS_PENDING_BACKEND_SUPPORT) {
       expect(contractKeys).not.toContain(field);
     }
   });
 });
 
-describe('validatePlayerJoinForm (order: academy → name → guardian → email)', () => {
+describe('validatePlayerJoinForm (order: academy → name → guardian → email → password)', () => {
   it('accepts a complete form', () => {
     expect(validatePlayerJoinForm(form, 'en')).toBeNull();
   });
@@ -93,8 +104,16 @@ describe('validatePlayerJoinForm (order: academy → name → guardian → email
     [{ firstName: ' ', lastName: '' }, 'Please enter player first and last name'],
     [{ guardianName: ' ' }, 'Please enter guardian name'],
     [{ email: '' }, 'Please enter contact email address'],
+    [{ password: 'short', confirmPassword: 'short' }, 'Password must be at least 8 characters'],
+    [{ confirmPassword: 'Different-1' }, 'Passwords do not match'],
   ])('%j → %s', (patch, message) => {
     expect(validatePlayerJoinForm({ ...form, ...patch }, 'en')).toBe(message);
+  });
+
+  it('does not ask a signed-in applicant for a password', () => {
+    expect(
+      validatePlayerJoinForm({ ...form, password: '', confirmPassword: '' }, 'en', true),
+    ).toBeNull();
   });
 
   it('does not require the pending fields', () => {

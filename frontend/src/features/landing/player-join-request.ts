@@ -1,10 +1,21 @@
-import type { CreatePlayerJoinRequest } from '@academy/shared';
+import type { CreatePlayerJoinRequest, JoinRequesterType } from '@academy/shared';
 
 type Locale = 'ar' | 'en';
 
-/** Every value the public "join an academy" form collects. */
+/** Same minimum as the API's PasswordSchema; the API re-validates the full rule. */
+export const JOIN_PASSWORD_MIN_LENGTH = 8;
+
+/**
+ * Every value the "join an academy" form collects.
+ *
+ * Who is asking (K6): `requesterType` PLAYER = the athlete for themself, GUARDIAN = a parent/guardian for a child.
+ * (Academy owners/coaches use the separate academy registration form.) Either way the request belongs to an account:
+ * a signed-in user's own account, or a new one created from `email` + `password`, which stays pending until the
+ * academy reviews the request.
+ */
 export interface PlayerJoinFormValues {
   tenantId: string;
+  requesterType: JoinRequesterType;
   // Athlete
   firstName: string;
   lastName: string;
@@ -23,6 +34,9 @@ export interface PlayerJoinFormValues {
   guardianRelationship: string;
   phone: string;
   email: string;
+  // New account (only when not signed in)
+  password: string;
+  confirmPassword: string;
 }
 
 /**
@@ -64,10 +78,16 @@ export interface PlayerJoinRequestBuild {
   pendingBackendSupport: Record<PendingJoinField, string>;
 }
 
-/** Client-side checks moved verbatim from the landing page. Order: academy → name → guardian → email. */
+/**
+ * Client-side checks. Order: academy → name → guardian → email → password.
+ * The guardian's name is required for a GUARDIAN request (it is the applicant's own name) and stays required for a
+ * PLAYER request as the athlete's emergency guardian contact (unchanged). The password is checked only when a new
+ * account will be created (`isSignedIn` false).
+ */
 export function validatePlayerJoinForm(
   values: PlayerJoinFormValues,
   locale: Locale,
+  isSignedIn = false,
 ): string | null {
   if (!values.tenantId) {
     return locale === 'ar' ? 'يرجى اختيار الأكاديمية الرياضية' : 'Please select an academy';
@@ -85,11 +105,27 @@ export function validatePlayerJoinForm(
       ? 'يرجى إدخال البريد الإلكتروني للتواصل'
       : 'Please enter contact email address';
   }
+  if (!isSignedIn) {
+    if (values.password.length < JOIN_PASSWORD_MIN_LENGTH) {
+      return locale === 'ar'
+        ? `كلمة المرور يجب ألا تقل عن ${JOIN_PASSWORD_MIN_LENGTH} أحرف`
+        : `Password must be at least ${JOIN_PASSWORD_MIN_LENGTH} characters`;
+    }
+    if (values.password !== values.confirmPassword) {
+      return locale === 'ar' ? 'كلمتا المرور غير متطابقتين' : 'Passwords do not match';
+    }
+  }
   return null;
 }
 
-/** Maps the form to the API payload (unchanged mapping) and the explicitly-held fields. */
-export function buildPlayerJoinRequest(values: PlayerJoinFormValues): PlayerJoinRequestBuild {
+/**
+ * Maps the form to the API payload and the explicitly-held fields. The password is sent only when a new account is
+ * created (`isSignedIn` false); a signed-in user's request is linked to their account by the API.
+ */
+export function buildPlayerJoinRequest(
+  values: PlayerJoinFormValues,
+  isSignedIn = false,
+): PlayerJoinRequestBuild {
   const dateOfBirth = values.birthYearOnly
     ? values.birthYear.trim()
       ? `${values.birthYear.trim()}-01-01`
@@ -99,6 +135,8 @@ export function buildPlayerJoinRequest(values: PlayerJoinFormValues): PlayerJoin
   return {
     payload: {
       tenantId: values.tenantId,
+      requesterType: values.requesterType,
+      ...(isSignedIn ? {} : { password: values.password }),
       playerName: `${values.firstName.trim()} ${values.lastName.trim()}`.trim(),
       contactEmail: values.email.trim(),
       contactPhone: values.phone.trim() || values.emergencyContactPhone.trim() || undefined,

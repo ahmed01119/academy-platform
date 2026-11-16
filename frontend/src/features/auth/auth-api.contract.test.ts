@@ -116,6 +116,7 @@ describe('auth/public page API contracts', () => {
   it('player join request: POST /v1/portal/player-join-requests with contract fields only', async () => {
     const payload = {
       tenantId: '22222222-2222-4222-8222-222222222222',
+      requesterType: 'GUARDIAN' as const,
       playerName: 'Omar Ali',
       contactEmail: 'p@x.co',
       contactPhone: '0100',
@@ -128,6 +129,11 @@ describe('auth/public page API contracts', () => {
       path: '/v1/portal/player-join-requests',
       body: payload,
     });
+  });
+
+  it('my join requests: GET /v1/portal/my-join-requests', async () => {
+    await portalApi.listMyJoinRequests();
+    expect(last()).toMatchObject({ method: 'GET', path: '/v1/portal/my-join-requests' });
   });
 
   it('never puts credentials or tokens into the URL', async () => {

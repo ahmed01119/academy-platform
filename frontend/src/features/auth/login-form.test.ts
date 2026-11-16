@@ -48,6 +48,18 @@ describe('resolveLoginError', () => {
     });
   });
 
+  it.each([
+    ['ACADEMY_PENDING_APPROVAL', 'under review by the platform'],
+    ['PLAYER_PENDING_APPROVAL', 'Your join request is under review by the academy'],
+    ['GUARDIAN_PENDING_APPROVAL', "Your child's join request is under review"],
+    ['JOIN_MORE_INFO_REQUESTED', 'needs more information'],
+    ['GUARDIAN_REJECTED', 'rejected by the academy'],
+  ])('shows the applicant state for 401 %s instead of "wrong password"', (code, text) => {
+    const err = new ApiError('server text', 401, code);
+    expect(resolveLoginError(err, 'en').formError).toContain(text);
+    expect(resolveLoginError(err, 'ar').formError).not.toContain('غير صحيحة');
+  });
+
   it('maps backend validation issues to field errors', () => {
     const err = new ApiError('Validation failed', 400, 'VALIDATION_FAILED', {
       issues: [

@@ -268,8 +268,9 @@ export function PlayerJoinRequestsTab() {
             {/* Application Data Card */}
             <div className="rounded-xl border border-(--border-subtle) bg-(--bg-base)p-4 space-y-2.5 text-xs text-(--text-muted)">
               <div className="flex items-center justify-between pb-2 border-b border-(--border-subtle)">
-                <span className="font-semibold text-sm text-(--text-main)">
+                <span className="font-semibold text-sm text-(--text-main) flex items-center gap-2">
                   {selectedRequest.playerName}
+                  <RequesterBadge requesterType={selectedRequest.requesterType} ar={ar} />
                 </span>
                 <span
                   className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold ${statusConfig[selectedRequest.status as keyof typeof statusConfig]?.color}`}
@@ -546,6 +547,7 @@ export function PlayerJoinRequestsTab() {
                   <div>
                     <div className="font-semibold text-sm text-(--text-main) flex items-center gap-2">
                       <span>{req.playerName}</span>
+                      <RequesterBadge requesterType={req.requesterType} ar={ar} />
                       {req.guardianName && (
                         <span className="text-[10px] text-(--text-muted) font-normal">
                           ({ar ? 'ولي الأمر:' : 'Guardian:'} {req.guardianName})
@@ -615,5 +617,37 @@ export function PlayerJoinRequestsTab() {
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * Who submitted the join request (K6). On approval the applicant's account is linked to the player record (PLAYER) or
+ * to the child's guardian record (GUARDIAN). Requests sent before K6 have no account and show no badge.
+ */
+function RequesterBadge({
+  requesterType,
+  ar,
+}: {
+  requesterType?: 'PLAYER' | 'GUARDIAN';
+  ar: boolean;
+}) {
+  if (!requesterType) return null;
+  const isGuardian = requesterType === 'GUARDIAN';
+  return (
+    <span
+      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold ${
+        isGuardian
+          ? 'border-purple-500/30 bg-purple-500/10 text-purple-600 dark:text-purple-300'
+          : 'border-sky-500/30 bg-sky-500/10 text-sky-600 dark:text-sky-300'
+      }`}
+    >
+      {isGuardian
+        ? ar
+          ? 'مقدّم من ولي الأمر'
+          : 'By guardian'
+        : ar
+          ? 'مقدّم من اللاعب'
+          : 'By player'}
+    </span>
   );
 }

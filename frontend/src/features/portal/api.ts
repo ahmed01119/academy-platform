@@ -68,10 +68,16 @@ export const portalApi = {
     return request('/portal/academies', { method: 'GET' });
   },
 
+  /** PLAYER or GUARDIAN join request (K6). Not signed in: include `password` (a pending account is created). */
   async submitPlayerJoinRequest(data: CreatePlayerJoinRequest): Promise<PlayerJoinRequestItem> {
     return request('/portal/player-join-requests', {
       method: 'POST',
       body: JSON.stringify(data),
     });
+  },
+
+  /** The signed-in user's own join requests (any status), newest first. */
+  async listMyJoinRequests(): Promise<PlayerJoinRequestItem[]> {
+    return request('/portal/my-join-requests', { method: 'GET' });
   },
 };

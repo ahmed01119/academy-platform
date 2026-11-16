@@ -40,6 +40,7 @@ describe('UnsavedFieldsNotice (F17)', () => {
   it('the "only sent" sentence matches the real payload fields', () => {
     const { payload } = buildPlayerJoinRequest({
       tenantId: '22222222-2222-4222-8222-222222222222',
+      requesterType: 'PLAYER',
       firstName: 'A',
       lastName: 'B',
       gender: 'MALE',
@@ -55,15 +56,19 @@ describe('UnsavedFieldsNotice (F17)', () => {
       guardianRelationship: 'FATHER',
       phone: '010',
       email: 'e@x.co',
+      password: 'Str0ng-Passw0rd!',
+      confirmPassword: 'Str0ng-Passw0rd!',
     });
-    // academy, player name, date of birth, guardian name, contact email, phone
+    // academy, who is applying, player name, date of birth, guardian name, contact email, phone, account password
     expect(Object.keys(payload).sort()).toEqual(
       [
         'contactEmail',
         'contactPhone',
         'dateOfBirth',
         'guardianName',
+        'password',
         'playerName',
+        'requesterType',
         'tenantId',
       ].sort(),
     );

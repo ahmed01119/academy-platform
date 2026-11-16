@@ -6,16 +6,20 @@ import {
   Building2,
   CheckCircle2,
   Heart,
+  KeyRound,
   Save,
   User,
   UserPlus,
   Users,
   X,
 } from 'lucide-react';
+import type { JoinRequesterType } from '@academy/shared';
 import { useLocale } from '@/contexts/locale-context';
+import { useAuth } from '@/contexts/auth-context';
 import { getErrorMessage } from '@/lib/http/api-error';
 import { portalApi } from '@/features/portal/api';
 import {
+  JOIN_PASSWORD_MIN_LENGTH,
   buildPlayerJoinRequest,
   validatePlayerJoinForm,
   type PlayerJoinFormValues,
@@ -25,6 +29,10 @@ import { UnsavedFieldsNotice } from './UnsavedFieldsNotice';
 export interface PlayerJoinRequestModalProps {
   isOpen: boolean;
   onClose: () => void;
+  /** Pre-selected "who is applying" (e.g. GUARDIAN from the guardian portal). Defaults to GUARDIAN. */
+  defaultRequesterType?: JoinRequesterType;
+  /** Called after a request was accepted by the API (e.g. to refresh the portal's request list). */
+  onSubmitted?: () => void;
 }
 
 /**
@@ -34,9 +42,27 @@ export interface PlayerJoinRequestModalProps {
  * F17 (owner decision 2026-11-14): all fields are kept. Fields the API does not accept yet
  * are listed in `JOIN_FIELDS_PENDING_BACKEND_SUPPORT` (features/landing/player-join-request.ts)
  * and will be supported in the backend phase; until then only the contract payload is sent.
+ *
+ * K6 (owner decision 2026-11-16) — who is applying:
+ *  - PLAYER: the athlete for themself; after approval their account opens the player portal (/player).
+ *  - GUARDIAN: a parent/guardian for a child; after approval their account opens the guardian portal (/guardian).
+ *  (Academy owners/coaches apply with the academy registration form, /register.)
+ * Not signed in: the form also asks for a password and the API creates a pending account for the e-mail; it cannot
+ * sign in until the academy approves. Signed in: the request is linked to the current account and shows as pending
+ * in the portal.
  */
-export function PlayerJoinRequestModal({ isOpen, onClose }: PlayerJoinRequestModalProps) {
+export function PlayerJoinRequestModal({
+  isOpen,
+  onClose,
+  defaultRequesterType = 'GUARDIAN',
+  onSubmitted,
+}: PlayerJoinRequestModalProps) {
   const { locale } = useLocale();
+  const { user } = useAuth();
+  const isSignedIn = Boolean(user);
+  const isAr = locale === 'ar';
+  // Section 0: who is applying (K6)
+  const [requesterType, setRequesterType] = useState<JoinRequesterType>(defaultRequesterType);
   const [publicAcademies, setPublicAcademies] = useState<
     Array<{ id: string; name: string; slug: string }>
   >([]);
@@ -60,6 +86,9 @@ export function PlayerJoinRequestModal({ isOpen, onClose }: PlayerJoinRequestMod
   const [joinGuardianRelationship, setJoinGuardianRelationship] = useState('FATHER');
   const [joinPhone, setJoinPhone] = useState('');
   const [joinEmail, setJoinEmail] = useState('');
+  // Section 5: new account (only when not signed in)
+  const [joinPassword, setJoinPassword] = useState('');
+  const [joinConfirmPassword, setJoinConfirmPassword] = useState('');
   // Submission Status
   const [isSubmittingJoin, setIsSubmittingJoin] = useState(false);
   const [joinSubmitted, setJoinSubmitted] = useState(false);
@@ -74,6 +103,9 @@ export function PlayerJoinRequestModal({ isOpen, onClose }: PlayerJoinRequestMod
 
     setJoinSubmitted(false);
     setJoinError(null);
+    setRequesterType(defaultRequesterType);
+    // A signed-in applicant's request is linked to their account; their e-mail is the natural contact address.
+    if (user?.email) setJoinEmail((current) => current || user.email);
     if (publicAcademies.length > 0) return;
 
     let cancelled = false;
@@ -95,12 +127,13 @@ export function PlayerJoinRequestModal({ isOpen, onClose }: PlayerJoinRequestMod
     return () => {
       cancelled = true;
     };
-  }, [isOpen, publicAcademies.length]);
+  }, [isOpen, publicAcademies.length, defaultRequesterType, user?.email]);
 
   const handlePlayerJoinSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const values: PlayerJoinFormValues = {
       tenantId: joinTenantId,
+      requesterType,
       firstName: joinFirstName,
       lastName: joinLastName,
       gender: joinGender,
@@ -116,9 +149,11 @@ export function PlayerJoinRequestModal({ isOpen, onClose }: PlayerJoinRequestMod
       guardianRelationship: joinGuardianRelationship,
       phone: joinPhone,
       email: joinEmail,
+      password: joinPassword,
+      confirmPassword: joinConfirmPassword,
     };
 
-    const validationError = validatePlayerJoinForm(values, locale);
+    const validationError = validatePlayerJoinForm(values, locale, isSignedIn);
     if (validationError) {
       setJoinError(validationError);
       return;
@@ -126,13 +161,17 @@ export function PlayerJoinRequestModal({ isOpen, onClose }: PlayerJoinRequestMod
 
     // F17: `pendingBackendSupport` (gender, jersey, national ID, emergency contact name,
     // medical notes, relationship) is intentionally not sent until the API supports it.
-    const { payload } = buildPlayerJoinRequest(values);
+    const { payload } = buildPlayerJoinRequest(values, isSignedIn);
 
     setIsSubmittingJoin(true);
     setJoinError(null);
     try {
       await portalApi.submitPlayerJoinRequest(payload);
       setJoinSubmitted(true);
+      // The password is not kept once the account exists.
+      setJoinPassword('');
+      setJoinConfirmPassword('');
+      onSubmitted?.();
     } catch (err: unknown) {
       setJoinError(getErrorMessage(err, 'Failed to submit player join request'));
     } finally {
@@ -191,6 +230,15 @@ export function PlayerJoinRequestModal({ isOpen, onClose }: PlayerJoinRequestMod
                     ? 'سيقوم الجهاز الإداري للأكاديمية بمراجعة طلبك وتسكين اللاعب في المجموعة والفرع المناسب وتوليد بطاقة العضوية الذكية.'
                     : 'The academy administration will review your request, assign the appropriate team and branch, and issue the digital membership pass.'}
                 </p>
+                <p className="text-sm font-semibold text-(--text-main) max-w-md mx-auto leading-relaxed">
+                  {isSignedIn
+                    ? isAr
+                      ? 'تم ربط الطلب بحسابك ويظهر في بوابتك بحالة "قيد المراجعة".'
+                      : 'The request is linked to your account and shows as "pending" in your portal.'
+                    : isAr
+                      ? 'تم إنشاء حسابك وهو قيد المراجعة: يمكنك تسجيل الدخول بنفس البريد وكلمة المرور بعد موافقة الأكاديمية، وستصلك رسالة على بريدك الإلكتروني.'
+                      : 'Your account was created and is pending: you can sign in with the same e-mail and password once the academy approves; you will be notified by e-mail.'}
+                </p>
                 <div className="pt-2">
                   <button
                     type="button"
@@ -212,6 +260,52 @@ export function PlayerJoinRequestModal({ isOpen, onClose }: PlayerJoinRequestMod
 
                 {/* F17: fields that are not submitted/saved yet — shown before the applicant types */}
                 <UnsavedFieldsNotice locale={locale === 'ar' ? 'ar' : 'en'} />
+
+                {/* Section 0 (K6): who is applying. Academy owners/coaches use the academy registration form. */}
+                <fieldset className="rounded-2xl border border-(--border-subtle) bg-(--bg-surface-subtle)/40 p-5 shadow-xs space-y-3">
+                  <legend className="px-1 text-sm font-bold text-(--text-main)">
+                    {isAr ? 'من يقدّم الطلب؟ *' : 'Who is applying? *'}
+                  </legend>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {(
+                      [
+                        {
+                          value: 'GUARDIAN',
+                          title: isAr ? 'أنا ولي الأمر' : 'I am the guardian',
+                          hint: isAr
+                            ? 'أسجّل ابني / ابنتي، وأتابعه من بوابة ولي الأمر.'
+                            : 'I am registering my child and will follow them in the guardian portal.',
+                        },
+                        {
+                          value: 'PLAYER',
+                          title: isAr ? 'أنا اللاعب نفسه' : 'I am the player',
+                          hint: isAr
+                            ? 'أسجّل نفسي، وأتابع تدريبي من بوابة اللاعب.'
+                            : 'I am registering myself and will follow my training in the player portal.',
+                        },
+                      ] as const
+                    ).map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        aria-pressed={requesterType === option.value}
+                        onClick={() => setRequesterType(option.value)}
+                        className={`rounded-xl border p-3 text-start transition-colors cursor-pointer ${
+                          requesterType === option.value
+                            ? 'border-(--accent-primary) bg-(--accent-primary)/10'
+                            : 'border-(--border-subtle) bg-[var(--bg-surface)] hover:border-(--accent-primary)/50'
+                        }`}
+                      >
+                        <span className="block text-xs font-bold text-(--text-main)">
+                          {option.title}
+                        </span>
+                        <span className="block text-[11px] text-(--text-muted) mt-1">
+                          {option.hint}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </fieldset>
 
                 {/* Section 1: Target Sports Academy */}
                 <div className="rounded-2xl border border-(--border-subtle) bg-(--bg-surface-subtle)/40 p-5 shadow-xs space-y-4">
@@ -464,9 +558,13 @@ export function PlayerJoinRequestModal({ isOpen, onClose }: PlayerJoinRequestMod
                   <div className="flex items-center gap-2 border-b border-(--border-subtle) pb-3 text-sm font-bold text-(--text-main)">
                     <Users className="h-4 w-4 text-[var(--accent-primary)]" />
                     <span>
-                      {locale === 'ar'
-                        ? '4. بيانات ولي الأمر الأساسي'
-                        : '4. Primary Guardian Information'}
+                      {requesterType === 'GUARDIAN'
+                        ? isAr
+                          ? '4. بياناتك (ولي الأمر)'
+                          : '4. Your Details (Guardian)'
+                        : isAr
+                          ? '4. بيانات ولي الأمر الأساسي'
+                          : '4. Primary Guardian Information'}
                     </span>
                   </div>
 
@@ -538,6 +636,68 @@ export function PlayerJoinRequestModal({ isOpen, onClose }: PlayerJoinRequestMod
                       />
                     </div>
                   </div>
+                </div>
+
+                {/* Section 5 (K6): the applicant's account */}
+                <div className="rounded-2xl border border-(--border-subtle) bg-(--bg-surface-subtle)/40 p-5 shadow-xs space-y-4">
+                  <div className="flex items-center gap-2 border-b border-(--border-subtle) pb-3 text-sm font-bold text-(--text-main)">
+                    <KeyRound className="h-4 w-4 text-[var(--accent-primary)]" />
+                    <span>{isAr ? '5. حسابك على المنصة' : '5. Your Account'}</span>
+                  </div>
+
+                  {isSignedIn ? (
+                    <p className="text-xs text-(--text-muted) leading-relaxed">
+                      {isAr
+                        ? `سيتم ربط الطلب بحسابك الحالي (${user?.email ?? ''}) ويظهر في بوابتك بحالة "قيد المراجعة".`
+                        : `The request will be linked to your current account (${user?.email ?? ''}) and shows as "pending" in your portal.`}
+                    </p>
+                  ) : (
+                    <>
+                      <p className="text-xs text-(--text-muted) leading-relaxed">
+                        {isAr
+                          ? 'سيتم إنشاء حساب بالبريد الإلكتروني أعلاه وكلمة المرور التالية. يبقى الحساب قيد المراجعة ولا يمكن تسجيل الدخول به حتى توافق الأكاديمية على الطلب. لديك حساب بالفعل؟ سجّل الدخول أولاً ثم أرسل الطلب.'
+                          : 'An account is created with the e-mail above and this password. It stays pending and cannot sign in until the academy approves the request. Already have an account? Sign in first, then send the request.'}
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label
+                            htmlFor="join-password"
+                            className="block text-xs font-semibold text-(--text-muted) mb-1.5"
+                          >
+                            {isAr ? 'كلمة المرور *' : 'Password *'}
+                          </label>
+                          <input
+                            id="join-password"
+                            type="password"
+                            required
+                            minLength={JOIN_PASSWORD_MIN_LENGTH}
+                            autoComplete="new-password"
+                            value={joinPassword}
+                            onChange={(e) => setJoinPassword(e.target.value)}
+                            className="w-full rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors"
+                          />
+                        </div>
+                        <div>
+                          <label
+                            htmlFor="join-confirm-password"
+                            className="block text-xs font-semibold text-(--text-muted) mb-1.5"
+                          >
+                            {isAr ? 'تأكيد كلمة المرور *' : 'Confirm Password *'}
+                          </label>
+                          <input
+                            id="join-confirm-password"
+                            type="password"
+                            required
+                            minLength={JOIN_PASSWORD_MIN_LENGTH}
+                            autoComplete="new-password"
+                            value={joinConfirmPassword}
+                            onChange={(e) => setJoinConfirmPassword(e.target.value)}
+                            className="w-full rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors"
+                          />
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 {/* Actions Bar */}

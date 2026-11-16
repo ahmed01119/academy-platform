@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/auth-context';
+import { MyJoinRequests } from '@/features/portal/components/MyJoinRequests';
 import { useAccessGuard } from '@/hooks/useAccessGuard';
 import { useLocale } from '@/contexts/locale-context';
 import { translateDataString } from '@/utils/data-translator';
@@ -276,6 +277,9 @@ export default function PlayerPortalPage() {
             ) : undefined
           }
         />
+
+        {/* K6: this account's own join requests and their status */}
+        <MyJoinRequests ar={ar} requesterType="PLAYER" />
 
         {/* Hero Quick KPI Card */}
         <div className="rounded-2xl border border-(--border-subtle) bg-[var(--bg-surface)] p-6 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-6">
