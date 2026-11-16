@@ -70,6 +70,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       isEmailVerified: user.isEmailVerified,
       isPlatformSuperAdmin: user.isPlatformSuperAdmin ?? false,
       isPlatformOwner: user.isPlatformOwner ?? false,
+      mustResetPassword: user.mustResetPassword ?? false,
       memberships: user.memberships,
       activeTenantId: payload.tenantId,
     };

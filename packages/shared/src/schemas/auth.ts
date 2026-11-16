@@ -127,6 +127,8 @@ export const UserSummarySchema = z.object({
   isPlatformOwner: z.boolean().default(false),
   hasPlayerProfile: z.boolean().optional(),
   hasGuardianProfile: z.boolean().optional(),
+  /** A platform administrator requires a password change; the API refuses other requests until it is done. */
+  mustResetPassword: z.boolean().optional(),
   createdAt: z.string(),
 });
 

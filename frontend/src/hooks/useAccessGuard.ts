@@ -53,6 +53,9 @@ export interface AccessGuardResult {
  *
  * Pages keep rendering their own loading/empty states; this hook only owns redirects.
  */
+/** Where a user who must change their password is kept (it holds the change-password form). */
+export const PASSWORD_CHANGE_ROUTE = '/account';
+
 export function useAccessGuard(
   rule: AccessRule,
   options: UseAccessGuardOptions = {},
@@ -62,7 +65,14 @@ export function useAccessGuard(
   const { user, activeTenant, isLoading } = useAuth();
 
   const decision = resolveAccess(rule, { user, activeTenant, isLoading });
-  const target = decision.status === 'redirect' ? decision.to : null;
+  // Item 6: a user who must change their password (set by a platform administrator) is kept on the account page,
+  // where the change-password form is, until they do; the API refuses their other requests meanwhile.
+  const mustChangePassword = !isLoading && Boolean(user?.mustResetPassword);
+  const target = mustChangePassword
+    ? PASSWORD_CHANGE_ROUTE
+    : decision.status === 'redirect'
+      ? decision.to
+      : null;
   const isForbidden = decision.status === 'redirect' && decision.reason === 'forbidden';
 
   // Keep the latest callback without making it an effect dependency (inline lambdas are new each render).

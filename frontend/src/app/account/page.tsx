@@ -128,6 +128,8 @@ export default function AccountPage() {
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
+      // The database clears must_reset_password with the change; reload the user so the app unlocks.
+      await refreshUser().catch(() => undefined);
     } catch (err: unknown) {
       const msg =
         err instanceof Error
@@ -160,6 +162,17 @@ export default function AccountPage() {
         }
         icon={User}
       />
+
+      {user.mustResetPassword && (
+        <div
+          role="alert"
+          className="mb-6 rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm font-semibold text-amber-700 dark:text-amber-300"
+        >
+          {locale === 'ar'
+            ? 'طلبت إدارة المنصة تغيير كلمة المرور. غيّرها من النموذج أدناه لمتابعة استخدام النظام.'
+            : 'The platform team requires you to change your password. Change it below to continue.'}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Profile Information Card */}

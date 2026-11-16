@@ -19,6 +19,7 @@ import { Public } from './guards/public.decorator';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CsrfGuard } from './guards/csrf.guard';
 import { CurrentUser } from './decorators/auth-user.decorator';
+import { AllowWhilePasswordChangeRequired } from './guards/password-change-required.decorator';
 import {
   ErrorCode,
   ForgotPasswordRequestSchema,
@@ -244,6 +245,7 @@ export class AuthController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @AllowWhilePasswordChangeRequired()
   @Get('me')
   async getMe(@CurrentUser('id') userId: string, @Req() req: Request) {
     const activeTenantId = (req.headers['x-tenant-id'] as string) || req.cookies?.tenant_id;
@@ -251,6 +253,7 @@ export class AuthController {
   }
 
   @UseGuards(JwtAuthGuard, CsrfGuard)
+  @AllowWhilePasswordChangeRequired()
   @Post('change-password')
   @HttpCode(HttpStatus.OK)
   async changePassword(

@@ -489,6 +489,7 @@ export class AuthService {
       isEmailVerified: user.isEmailVerified,
       isPlatformSuperAdmin: user.isPlatformSuperAdmin,
       isPlatformOwner: user.isPlatformOwner,
+      mustResetPassword: user.mustResetPassword,
       ...portalAccess,
       createdAt: user.createdAt.toISOString(),
     };
@@ -564,6 +565,7 @@ export class AuthService {
       isEmailVerified: user.isEmailVerified,
       isPlatformSuperAdmin: user.isPlatformSuperAdmin,
       isPlatformOwner: user.isPlatformOwner,
+      mustResetPassword: user.mustResetPassword,
       ...portalAccess,
       createdAt: user.createdAt.toISOString(),
     };
@@ -990,6 +992,7 @@ export class AuthService {
         isEmailVerified: user.isEmailVerified,
         isPlatformSuperAdmin: user.isPlatformSuperAdmin,
         isPlatformOwner: user.isPlatformOwner,
+        mustResetPassword: user.mustResetPassword,
         hasPlayerProfile: Boolean(user.playerProfile),
         hasGuardianProfile: (user.guardianProfiles?.length ?? 0) > 0,
         createdAt: user.createdAt.toISOString(),
