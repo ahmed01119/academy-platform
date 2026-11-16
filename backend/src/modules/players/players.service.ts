@@ -11,6 +11,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
+import { databaseFunctionErrorCode } from '../../common/db-function-error';
 import type { Prisma } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
 import {
@@ -40,6 +41,16 @@ import {
   type PlayerDeletionResponse,
 } from '@academy/shared';
 import { NotificationsService } from '../notifications/notifications.service';
+
+/** Error codes of link_join_request_account that the review maps to HTTP errors. */
+const ACCOUNT_LINK_ERRORS = [
+  'LINK_CONTEXT_REQUIRED',
+  'LINK_NOT_PERMITTED',
+  'REQUEST_NOT_LINKABLE',
+  'RECORD_NOT_FOUND',
+  'RECORD_ALREADY_LINKED',
+  'PLAYER_PROFILE_EXISTS',
+] as const;
 
 @Injectable()
 export class PlayersService {
@@ -1105,6 +1116,9 @@ export class PlayersService {
         });
       }
 
+      // The record (player or guardian) the applicant's account is linked to once the request is APPROVED.
+      let accountLinkRecordId: string | null = null;
+
       if (dto.status === 'APPROVED') {
         // Enforce SaaS plan player capacity limit
         const sub = await tx.tenantSubscription.findUnique({
@@ -1164,6 +1178,7 @@ export class PlayersService {
             : null;
 
         if (!player && linksPlayer) {
+          // (checked again, atomically, by link_join_request_account)
           // players.user_id is unique: one account holds at most one player profile (in any academy).
           const otherProfile = await this.applicantHasPlayerProfile(applicantId as string);
           if (otherProfile) {
@@ -1182,7 +1197,6 @@ export class PlayersService {
           player = await tx.player.create({
             data: {
               tenantId: tenantContext.tenantId,
-              userId: linksPlayer ? applicantId : null,
               firstName,
               lastName,
               emergencyContactName: request.guardianName || 'Guardian',
@@ -1197,6 +1211,10 @@ export class PlayersService {
           });
         }
 
+        if (linksPlayer && player.userId !== applicantId) {
+          accountLinkRecordId = player.id;
+        }
+
         if (linksGuardian) {
           // GUARDIAN: the applicant's own guardian record for this child, linked to the account. An existing
           // guardian record already linked to this account (same child, earlier request) is reused.
@@ -1208,11 +1226,10 @@ export class PlayersService {
             const hasPrimary = await tx.guardian.count({
               where: { tenantId: tenantContext.tenantId, playerId: player.id, isPrimary: true },
             });
-            await tx.guardian.create({
+            const guardian = await tx.guardian.create({
               data: {
                 tenantId: tenantContext.tenantId,
                 playerId: player.id,
-                userId: applicantId,
                 firstName: guardianName.split(' ')[0] || guardianName,
                 lastName: guardianName.split(' ').slice(1).join(' ') || '-',
                 phone: request.contactPhone || '-',
@@ -1221,6 +1238,7 @@ export class PlayersService {
                 isPrimary: hasPrimary === 0,
               },
             });
+            accountLinkRecordId = guardian.id;
           }
         } else if (request.guardianName && request.contactPhone) {
           // PLAYER (or anonymous) request that names a guardian: contact-only guardian record, no account.
@@ -1297,6 +1315,30 @@ export class PlayersService {
           reviewedAt: new Date(),
         },
       });
+
+      // Item 5 (owner decision 2026-11-16): the runtime role cannot write players.user_id / guardians.user_id, so the
+      // applicant's account is linked by link_join_request_account (definer). It re-checks that the caller reviews
+      // join requests in this academy and that the request is APPROVED, so staff cannot link arbitrary accounts.
+      if (accountLinkRecordId) {
+        try {
+          await tx.$executeRaw`SELECT public.link_join_request_account(${requestId}::uuid, ${accountLinkRecordId}::uuid)`;
+        } catch (err) {
+          const code = databaseFunctionErrorCode(err, ACCOUNT_LINK_ERRORS);
+          if (code === 'PLAYER_PROFILE_EXISTS' || code === 'RECORD_ALREADY_LINKED') {
+            throw new ConflictException({
+              code: ErrorCode.CONFLICT,
+              message: 'The applicant account is already linked to another player profile',
+            });
+          }
+          if (code === 'LINK_NOT_PERMITTED') {
+            throw new ForbiddenException({
+              code: ErrorCode.INSUFFICIENT_PERMISSIONS,
+              message: 'You are not allowed to review join requests in this academy',
+            });
+          }
+          throw err;
+        }
+      }
 
       await this.auditService.logEvent(
         {

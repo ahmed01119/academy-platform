@@ -28,7 +28,9 @@ DECLARE
     'platform_revoke_user_sessions(uuid)', 'platform_approve_academy_application(uuid,text,text)',
     'platform_delete_academy(uuid,text)',
     -- K6 (replaces the M2 six-argument version)
-    'submit_player_join_request(uuid,text,text,text,date,text,text)'
+    'submit_player_join_request(uuid,text,text,text,date,text,text)',
+    -- account links (item 5)
+    'link_join_request_account(uuid,uuid)'
   ];
   f text;
 BEGIN
@@ -42,8 +44,9 @@ BEGIN
   WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL
     AND migration_name IN ('20261104105500_academy_applications_insert_rls',
                            '20261117090000_s4_rls_context_functions', '20261117100000_s3_runtime_privileges',
-                           '20261118090000_k6_join_request_accounts', '20261118100000_portal_user_read_policies');
-  IF n <> 5 THEN RAISE EXCEPTION 'FAIL 01 migration history: % of 5 expected rows', n; END IF;
+                           '20261118090000_k6_join_request_accounts', '20261118100000_portal_user_read_policies',
+                           '20261118110000_account_links_definer_only', '20261118120000_must_reset_password_cleared');
+  IF n <> 7 THEN RAISE EXCEPTION 'FAIL 01 migration history: % of 7 expected rows', n; END IF;
   RAISE NOTICE 'PASS 01 migration history';
 
   -- 2. Ownership: one owner for every public table; it must bypass RLS (definer functions write FORCE-RLS tables).
@@ -218,6 +221,19 @@ BEGIN
       RAISE EXCEPTION 'FAIL 08 % can delete academy_applications', r;
     END IF;
 
+    -- Item 5: account links are written only by definer functions (redeem_portal_claim, link_join_request_account).
+    IF has_column_privilege(r, 'public.players', 'user_id', 'INSERT')
+       OR has_column_privilege(r, 'public.players', 'user_id', 'UPDATE')
+       OR has_column_privilege(r, 'public.guardians', 'user_id', 'INSERT')
+       OR has_column_privilege(r, 'public.guardians', 'user_id', 'UPDATE')
+       OR has_table_privilege(r, 'public.players', 'UPDATE')
+       OR has_table_privilege(r, 'public.guardians', 'UPDATE') THEN
+      RAISE EXCEPTION 'FAIL 08 % can write players.user_id / guardians.user_id', r;
+    END IF;
+    IF NOT has_column_privilege(r, 'public.players', 'first_name', 'UPDATE')
+       OR NOT has_column_privilege(r, 'public.guardians', 'phone', 'INSERT') THEN
+      RAISE EXCEPTION 'FAIL 08 % lost the ordinary players / guardians column privileges', r;
+    END IF;
     -- player_registration_requests: no INSERT/DELETE; UPDATE review columns only.
     SELECT string_agg(attname, ',' ORDER BY attname) INTO v FROM pg_attribute
     WHERE attrelid = 'public.player_registration_requests'::regclass AND attnum > 0 AND NOT attisdropped

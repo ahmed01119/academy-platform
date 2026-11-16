@@ -36,6 +36,7 @@ interface TxMock {
   guardian: { findFirst: MockFn; count: MockFn; create: MockFn };
   playerEnrollment: { findFirst: MockFn; create: MockFn };
   tenant: { findUnique: MockFn };
+  $executeRaw: MockFn;
 }
 
 function makeRequest(overrides: Record<string, unknown> = {}) {
@@ -58,6 +59,14 @@ function makeRequest(overrides: Record<string, unknown> = {}) {
     ...overrides,
   };
 }
+
+/** Arguments of the link_join_request_account call, if any (tagged-template $executeRaw). */
+const linkCall = (tx: { $executeRaw: MockFn }) => {
+  const call = tx.$executeRaw.mock.calls.find((c) =>
+    ((c[0] ?? []) as string[]).join('?').includes('link_join_request_account'),
+  );
+  return call ? call.slice(1) : null;
+};
 
 describe('PlayersService.reviewPlayerJoinRequest (K6 account linking)', () => {
   let tx: TxMock;
@@ -95,6 +104,7 @@ describe('PlayersService.reviewPlayerJoinRequest (K6 account linking)', () => {
         create: vi.fn().mockResolvedValue({}),
       },
       tenant: { findUnique: vi.fn().mockResolvedValue({ name: 'Academy' }) },
+      $executeRaw: vi.fn().mockResolvedValue(1),
     };
     prisma = {
       withTenantTransaction: vi.fn().mockImplementation((_c, fn) => fn(tx)),
@@ -116,7 +126,9 @@ describe('PlayersService.reviewPlayerJoinRequest (K6 account linking)', () => {
     expect(tx.player.findFirst).toHaveBeenCalledWith({
       where: { tenantId: TENANT, userId: APPLICANT },
     });
-    expect(tx.player.create.mock.calls[0]?.[0].data.userId).toBe(APPLICANT);
+    // the runtime role cannot write players.user_id: the record is created unlinked, then linked by the definer
+    expect(tx.player.create.mock.calls[0]?.[0].data).not.toHaveProperty('userId');
+    expect(linkCall(tx)).toEqual([REQUEST_ID, 'player-new']);
     expect(tx.guardian.create).not.toHaveBeenCalled();
     expect(result.requesterType).toBe('PLAYER');
     expect(notifications.createNotification).toHaveBeenCalledWith(
@@ -148,11 +160,12 @@ describe('PlayersService.reviewPlayerJoinRequest (K6 account linking)', () => {
         guardians: { some: { userId: APPLICANT } },
       },
     });
-    expect(tx.player.create.mock.calls[0]?.[0].data.userId).toBeNull();
+    expect(tx.player.create.mock.calls[0]?.[0].data).not.toHaveProperty('userId');
+    expect(linkCall(tx)).toEqual([REQUEST_ID, 'guardian-new']);
+    expect(tx.guardian.create.mock.calls[0]?.[0].data).not.toHaveProperty('userId');
     expect(tx.guardian.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         playerId: 'player-new',
-        userId: APPLICANT,
         firstName: 'Ahmed',
         lastName: 'Sharif',
         isPrimary: true,
@@ -173,6 +186,16 @@ describe('PlayersService.reviewPlayerJoinRequest (K6 account linking)', () => {
 
     expect(tx.player.create).not.toHaveBeenCalled();
     expect(tx.guardian.create).not.toHaveBeenCalled();
+    expect(linkCall(tx)).toBeNull(); // already linked
+  });
+
+  it('maps a refused link (account already has a profile) to 409', async () => {
+    useRequest(makeRequest());
+    tx.$executeRaw.mockRejectedValue(new Error('ERROR: PLAYER_PROFILE_EXISTS'));
+
+    await expect(
+      service.reviewPlayerJoinRequest(ctx, REQUEST_ID, { status: 'APPROVED' }),
+    ).rejects.toBeInstanceOf(ConflictException);
   });
 
   it('request without an applicant (before K6): nothing is linked', async () => {
@@ -180,8 +203,9 @@ describe('PlayersService.reviewPlayerJoinRequest (K6 account linking)', () => {
 
     await service.reviewPlayerJoinRequest(ctx, REQUEST_ID, { status: 'APPROVED' });
 
-    expect(tx.player.create.mock.calls[0]?.[0].data.userId).toBeNull();
+    expect(tx.player.create.mock.calls[0]?.[0].data).not.toHaveProperty('userId');
     expect(tx.guardian.create.mock.calls[0]?.[0].data.userId).toBeUndefined();
+    expect(linkCall(tx)).toBeNull();
     expect(notifications.createNotification).not.toHaveBeenCalled();
   });
 
