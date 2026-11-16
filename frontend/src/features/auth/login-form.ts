@@ -108,6 +108,10 @@ const LOGIN_ACCOUNT_STATE_MESSAGES: Record<string, { ar: string; en: string }> =
     ar: 'تم رفض طلب الانضمام من إدارة الأكاديمية.',
     en: 'The join request was rejected by the academy.',
   },
+  ACADEMY_SUSPENDED: {
+    ar: 'تم إيقاف الأكاديمية مؤقتاً من إدارة المنصة. يرجى التواصل مع إدارة الأكاديمية.',
+    en: 'This academy is currently suspended by the platform. Please contact the academy.',
+  },
   RATE_LIMIT_EXCEEDED: {
     ar: 'محاولات تسجيل دخول كثيرة. يرجى المحاولة لاحقاً.',
     en: 'Too many sign-in attempts. Please try again later.',

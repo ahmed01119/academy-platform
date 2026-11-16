@@ -65,6 +65,7 @@ export class TenantGuard implements CanActivate {
             userId: user.id,
           },
         },
+        include: { tenant: { select: { status: true } } },
       }),
     );
 
@@ -93,6 +94,15 @@ export class TenantGuard implements CanActivate {
       throw new ForbiddenException({
         code: ErrorCode.MEMBERSHIP_REQUIRED,
         message: `Your membership is currently ${membership.status}`,
+      });
+    }
+
+    // K3 (owner decision 2026-11-16): a suspended academy is closed for every member at once. This check runs on every
+    // academy request, so suspension takes effect immediately without waiting for tokens to expire.
+    if (membership.tenant?.status !== 'ACTIVE') {
+      throw new ForbiddenException({
+        code: 'ACADEMY_SUSPENDED',
+        message: 'This academy is currently suspended by the platform',
       });
     }
 

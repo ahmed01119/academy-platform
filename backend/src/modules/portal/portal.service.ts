@@ -100,7 +100,8 @@ export class PortalService {
   }> {
     return this.prisma.withPortalUserTransaction({ actorUserId }, async (tx) => {
       const player = await tx.player.findFirst({
-        where: { userId: actorUserId },
+        // K3: a suspended academy's records are not shown in the portal
+        where: { userId: actorUserId, tenant: { status: 'ACTIVE' } },
         include: {
           tenant: { select: { id: true, name: true, slug: true } },
           groupMemberships: {
@@ -245,7 +246,8 @@ export class PortalService {
   async getGuardianPortalData(actorUserId: string): Promise<GuardianPortalData> {
     return this.prisma.withPortalUserTransaction({ actorUserId }, async (tx) => {
       const guardians = await tx.guardian.findMany({
-        where: { userId: actorUserId },
+        // K3: children in a suspended academy are not shown in the portal
+        where: { userId: actorUserId, tenant: { status: 'ACTIVE' } },
         include: {
           tenant: { select: { id: true, name: true, slug: true } },
           player: {
@@ -465,7 +467,8 @@ export class PortalService {
   async getMyPlayerQrCard(actorUserId: string): Promise<PlayerQrCardResponse> {
     return this.prisma.withPortalUserTransaction({ actorUserId }, async (tx) => {
       const player = await tx.player.findFirst({
-        where: { userId: actorUserId },
+        // K3: no QR card for a suspended academy
+        where: { userId: actorUserId, tenant: { status: 'ACTIVE' } },
         include: { tenant: { select: { id: true, name: true, slug: true } } },
       });
 

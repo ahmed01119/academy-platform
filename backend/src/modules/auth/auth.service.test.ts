@@ -28,6 +28,7 @@ interface MockPrisma {
   };
   tenantMembership: {
     findMany: MockFn;
+    count: MockFn;
   };
   player: { count: MockFn };
   guardian: { count: MockFn };
@@ -102,6 +103,7 @@ describe('AuthService', () => {
       },
       tenantMembership: {
         findMany: vi.fn(),
+        count: vi.fn().mockResolvedValue(0),
       },
       player: { count: vi.fn().mockResolvedValue(0) },
       guardian: { count: vi.fn().mockResolvedValue(0) },
@@ -350,7 +352,7 @@ describe('AuthService', () => {
           role: 'COACH',
           status: 'ACTIVE',
           branchId: 'branch-1',
-          tenant: { id: 'tenant-1', name: 'Nankatsu SC', slug: 'nankatsu-sc' },
+          tenant: { id: 'tenant-1', name: 'Nankatsu SC', slug: 'nankatsu-sc', status: 'ACTIVE' },
           branch: { id: 'branch-1', name: 'الفرع الرئيسي' },
         },
       ]);
@@ -424,6 +426,13 @@ describe('AuthService', () => {
       ).rejects.toMatchObject({ response: { code: 'JOIN_MORE_INFO_REQUESTED' } });
     });
 
+    it('K3: an account whose only academy is suspended is told so at login', async () => {
+      mockPrisma.tenantMembership.count.mockResolvedValue(1);
+      await expect(
+        authService.login({ email: applicant.email, password: 'x' }),
+      ).rejects.toMatchObject({ response: { code: 'ACADEMY_SUSPENDED' } });
+    });
+
     it('lets a guardian who already uses the portal sign in while a new request is pending', async () => {
       mockPrisma.guardian.count.mockResolvedValue(1);
       mockPrisma.playerRegistrationRequest.findFirst.mockResolvedValue({
@@ -445,7 +454,9 @@ describe('AuthService', () => {
       const result = await authService.login({ email: applicant.email, password: 'x' });
 
       expect(result.response.user.hasPlayerProfile).toBe(true);
-      expect(mockPrisma.player.count).toHaveBeenCalledWith({ where: { userId: 'user-9' } });
+      expect(mockPrisma.player.count).toHaveBeenCalledWith({
+        where: { userId: 'user-9', tenant: { status: 'ACTIVE' } },
+      });
       expect(mockPrisma.withAuthLookupTransaction).toHaveBeenCalledWith(
         { actorUserId: 'user-9' },
         expect.any(Function),
@@ -902,7 +913,7 @@ describe('AuthService', () => {
             role: 'COACH',
             status: 'ACTIVE',
             branchId: 'branch-1',
-            tenant: { id: 'tenant-1', name: 'Nankatsu SC', slug: 'nankatsu-sc' },
+            tenant: { id: 'tenant-1', name: 'Nankatsu SC', slug: 'nankatsu-sc', status: 'ACTIVE' },
             branch: { id: 'branch-1', name: 'الفرع الرئيسي' },
           },
           {
@@ -911,7 +922,12 @@ describe('AuthService', () => {
             role: 'ADMIN',
             status: 'ACTIVE',
             branchId: null,
-            tenant: { id: 'tenant-2', name: 'Toho Academy', slug: 'toho-academy' },
+            tenant: {
+              id: 'tenant-2',
+              name: 'Toho Academy',
+              slug: 'toho-academy',
+              status: 'ACTIVE',
+            },
             branch: null,
           },
         ],
@@ -938,7 +954,7 @@ describe('AuthService', () => {
             role: 'COACH',
             status: 'ACTIVE',
             branchId: null,
-            tenant: { id: 'tenant-1', name: 'Nankatsu SC', slug: 'nankatsu-sc' },
+            tenant: { id: 'tenant-1', name: 'Nankatsu SC', slug: 'nankatsu-sc', status: 'ACTIVE' },
             branch: null,
           },
           {
@@ -947,7 +963,12 @@ describe('AuthService', () => {
             role: 'COACH',
             status: 'REVOKED',
             branchId: null,
-            tenant: { id: 'tenant-revoked', name: 'Revoked SC', slug: 'revoked-sc' },
+            tenant: {
+              id: 'tenant-revoked',
+              name: 'Revoked SC',
+              slug: 'revoked-sc',
+              status: 'ACTIVE',
+            },
             branch: null,
           },
         ],

@@ -235,8 +235,13 @@ export class AuthService {
     userId: string,
   ): Promise<{ hasPlayerProfile: boolean; hasGuardianProfile: boolean }> {
     return this.prisma.withAuthLookupTransaction({ actorUserId: userId }, async (tx) => {
-      const playerProfiles = await tx.player.count({ where: { userId } });
-      const guardianProfiles = await tx.guardian.count({ where: { userId } });
+      // K3: links to records of a suspended academy give no portal access
+      const playerProfiles = await tx.player.count({
+        where: { userId, tenant: { status: 'ACTIVE' } },
+      });
+      const guardianProfiles = await tx.guardian.count({
+        where: { userId, tenant: { status: 'ACTIVE' } },
+      });
       return { hasPlayerProfile: playerProfiles > 0, hasGuardianProfile: guardianProfiles > 0 };
     });
   }
@@ -268,6 +273,21 @@ export class AuthService {
       portalAccess.hasPlayerProfile ||
       portalAccess.hasGuardianProfile;
     if (hasAccess) return;
+
+    // K3: the account's only academy access is a suspended academy.
+    const suspendedMemberships = await this.prisma.withAuthLookupTransaction(
+      { actorUserId: user.id },
+      (tx) =>
+        tx.tenantMembership.count({
+          where: { userId: user.id, status: 'ACTIVE', tenant: { status: { not: 'ACTIVE' } } },
+        }),
+    );
+    if (suspendedMemberships > 0) {
+      throw new UnauthorizedException({
+        code: 'ACADEMY_SUSPENDED',
+        message: 'تم إيقاف الأكاديمية مؤقتاً من إدارة المنصة. يرجى التواصل مع إدارة الأكاديمية.',
+      });
+    }
 
     // Actor context (password already verified): RLS shows the user's own applications and join requests only.
     const { application, joinRequest } = await this.prisma.withAuthLookupTransaction(
@@ -397,7 +417,8 @@ export class AuthService {
       { actorUserId: user.id },
       (tx) =>
         tx.tenantMembership.findMany({
-          where: { userId: user.id, status: 'ACTIVE' },
+          // K3: memberships of suspended academies give no access
+          where: { userId: user.id, status: 'ACTIVE', tenant: { status: 'ACTIVE' } },
           include: { tenant: true, branch: true },
         }),
     );
@@ -508,7 +529,8 @@ export class AuthService {
       { actorUserId: userId },
       (tx) =>
         tx.tenantMembership.findMany({
-          where: { userId, status: 'ACTIVE' },
+          // K3: memberships of suspended academies give no access
+          where: { userId, status: 'ACTIVE', tenant: { status: 'ACTIVE' } },
           include: { tenant: true, branch: true },
         }),
     );
@@ -939,7 +961,8 @@ export class AuthService {
       });
 
       const memberships: TenantMembershipSummary[] = user.memberships
-        .filter((m) => m.status === 'ACTIVE')
+        // K3: memberships of suspended academies give no access
+        .filter((m) => m.status === 'ACTIVE' && m.tenant.status === 'ACTIVE')
         .map((m) => ({
           id: m.id,
           tenantId: m.tenantId,
