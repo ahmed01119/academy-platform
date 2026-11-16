@@ -27,9 +27,11 @@ wildcard is accepted in production.
 
 ## First deployment
 
-1. **Database (Neon).** The production database must be a separate Neon project or branch with its own data. Set a
-   password for the runtime role `sportexus_app` (created by the migrations' provisioning script) in the Neon
-   console.
+1. **Database (Neon).** The production database must be a separate Neon project or branch with its own data. Create
+   the runtime role **before the first deploy**, because the migrations grant it its privileges: run
+   `packages/database/scripts/provision-runtime-role.sql` as the owner (it only creates `sportexus_app`; replace the
+   password placeholder in a local copy, never commit it), or create the role in the Neon console. A role created
+   after the migrations gets no privileges until the privilege migrations are re-applied.
 2. **Blueprint.** In Render: _New → Blueprint_, pick the repository and the branch in `render.yaml` (`main`).
 3. **Secrets** (Render dashboard → each service → Environment):
 

@@ -221,7 +221,7 @@ docker compose -f docker-compose.prod.yml start
 
 ### Production Security Invariants
 
-1. **No Static SuperAdmin in Production**: The database seed script (`packages/database/scripts/seed-local-demo.js`) is strictly protected against execution in `NODE_ENV=production`. If emergency administrative bootstrapping is required, `SUPERADMIN_INITIAL_PASSWORD` must be explicitly passed in the environment.
+1. **No Static SuperAdmin in Production**: The database seed script (`packages/database/scripts/seed-demo.cjs`, random passwords written outside the repository) is strictly protected against execution in `NODE_ENV=production`. If emergency administrative bootstrapping is required, `SUPERADMIN_INITIAL_PASSWORD` must be explicitly passed in the environment.
 2. **Platform Owner Isolation**: The Platform Super Admin role possesses sovereign platform authority (tenant creation, tenant suspension, plan limits, security policy modification). Demo environments MUST NOT provide unrestricted Platform Owner credentials to anonymous public visitors.
 3. **Sandboxed Demo Tenant**: Public demonstrations should only provide scoped access to a dedicated demo academy (`stars-academy`) using:
    - **Academy Owner**: `admin@academy.sa` (Scoped strictly to `stars-academy` tenant RLS boundary).
