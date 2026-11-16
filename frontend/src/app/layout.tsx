@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import { IBM_Plex_Sans, IBM_Plex_Sans_Arabic } from 'next/font/google';
 import { DEFAULT_LOCALE, LOCALE_DIRECTION } from '@academy/shared';
 import { AuthProvider } from '@/contexts/auth-context';
 import { ThemeProvider, themeInitScript } from '@/contexts/theme-context';
@@ -8,6 +9,21 @@ import { ConfirmProvider } from '../components/ui/ConfirmDialog';
 import { ServiceWorkerRegistrar } from '../components/pwa/ServiceWorkerRegistrar';
 import { SyncStatus } from '../components/pwa/SyncStatus';
 import './globals.css';
+
+// Fonts are downloaded at build time and served by this app (next/font): no request to Google from the browser and
+// no layout shift. globals.css uses the two CSS variables.
+const plexSans = IBM_Plex_Sans({
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700'],
+  display: 'swap',
+  variable: '--font-plex-sans',
+});
+const plexSansArabic = IBM_Plex_Sans_Arabic({
+  subsets: ['arabic', 'latin'],
+  weight: ['300', '400', '500', '600', '700'],
+  display: 'swap',
+  variable: '--font-plex-arabic',
+});
 
 export const metadata: Metadata = {
   title: 'SPORTEXUS | سبورتكسس — One Platform. Every Academy.',
@@ -46,16 +62,15 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   const dir = LOCALE_DIRECTION[locale];
 
   return (
-    <html lang={locale} dir={dir} suppressHydrationWarning>
+    <html
+      lang={locale}
+      dir={dir}
+      className={`${plexSans.variable} ${plexSansArabic.variable}`}
+      suppressHydrationWarning
+    >
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <script dangerouslySetInnerHTML={{ __html: localeInitScript }} />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap"
-          rel="stylesheet"
-        />
       </head>
       <body>
         <ThemeProvider>

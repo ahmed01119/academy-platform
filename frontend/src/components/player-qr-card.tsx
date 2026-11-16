@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
+import Image from 'next/image';
 import QRCode from 'qrcode';
 import {
   QrCode,
@@ -185,9 +186,13 @@ export function PlayerQrCard({ card, isAdmin = false, onCardUpdated, onClose }: 
         <div className="mt-5 flex items-center gap-4">
           <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-linear-to-br from-[#0d1f3c] to-[#0a1628] border border-[#0A3BFF]/40 text-xl font-bold text-[#00D6FF] shadow-inner print:border-gray-400 print:text-black">
             {card.photoUrl ? (
-              <img
+              // unoptimized: the photo can live on any host, and the card is printed as-is
+              <Image
                 src={card.photoUrl}
                 alt={card.playerName}
+                width={64}
+                height={64}
+                unoptimized
                 className="h-full w-full rounded-2xl object-cover"
               />
             ) : (
@@ -218,9 +223,13 @@ export function PlayerQrCard({ card, isAdmin = false, onCardUpdated, onClose }: 
         <div className="mt-6 flex flex-col items-center justify-center rounded-2xl border border-[#1e3a5f] bg-[#060d1a] p-4 shadow-inner print:bg-white print:border-gray-300">
           {qrDataUrl ? (
             <div className="rounded-xl bg-white p-2.5 shadow-md">
-              <img
+              {/* unoptimized: a data URL generated in the browser, nothing to optimize */}
+              <Image
                 src={qrDataUrl}
                 alt={`QR ${card.membershipNumber}`}
+                width={176}
+                height={176}
+                unoptimized
                 className="h-44 w-44 object-contain"
               />
             </div>
