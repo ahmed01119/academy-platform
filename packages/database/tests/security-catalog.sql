@@ -21,12 +21,14 @@ DECLARE
     -- M2
     'academy_slug_in_use(text)', 'append_audit_log(text,text,text,jsonb,text,text,uuid,uuid)',
     'create_app_notification(uuid,uuid,text,text,text,text)', 'list_public_academies()',
-    'submit_player_join_request(uuid,text,text,text,date,text)', 'redeem_portal_claim(text)',
+    'redeem_portal_claim(text)',
     -- M3
     'change_own_password(text)', 'platform_create_user(text,text,text,boolean,boolean)',
     'platform_set_user_platform_role(uuid,text)', 'platform_update_user_security(uuid,boolean,boolean,text)',
     'platform_revoke_user_sessions(uuid)', 'platform_approve_academy_application(uuid,text,text)',
-    'platform_delete_academy(uuid,text)'
+    'platform_delete_academy(uuid,text)',
+    -- K6 (replaces the M2 six-argument version)
+    'submit_player_join_request(uuid,text,text,text,date,text,text)'
   ];
   f text;
 BEGIN
@@ -35,12 +37,13 @@ BEGIN
   END IF;
   RAISE NOTICE 'runtime roles checked: %', roles;
 
-  -- 1. Migration history: both migrations finished; 104105500 recorded (baseline exception on Neon).
+  -- 1. Migration history: M2, M3, K6 and the portal read policies finished; 104105500 recorded (baseline exception on Neon).
   SELECT count(*) INTO n FROM public._prisma_migrations
   WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL
     AND migration_name IN ('20261104105500_academy_applications_insert_rls',
-                           '20261117090000_s4_rls_context_functions', '20261117100000_s3_runtime_privileges');
-  IF n <> 3 THEN RAISE EXCEPTION 'FAIL 01 migration history: % of 3 expected rows', n; END IF;
+                           '20261117090000_s4_rls_context_functions', '20261117100000_s3_runtime_privileges',
+                           '20261118090000_k6_join_request_accounts', '20261118100000_portal_user_read_policies');
+  IF n <> 5 THEN RAISE EXCEPTION 'FAIL 01 migration history: % of 5 expected rows', n; END IF;
   RAISE NOTICE 'PASS 01 migration history';
 
   -- 2. Ownership: one owner for every public table; it must bypass RLS (definer functions write FORCE-RLS tables).
@@ -126,6 +129,10 @@ BEGIN
       END IF;
     END LOOP;
   END LOOP;
+  -- K6: the M2 six-argument join request function is gone (no stale overload with the old checks).
+  IF to_regprocedure('public.submit_player_join_request(uuid,text,text,text,date,text)') IS NOT NULL THEN
+    RAISE EXCEPTION 'FAIL 06 the old submit_player_join_request(6 arguments) still exists';
+  END IF;
   -- RLS helpers stay invoker (inlinable) and executable; trigger functions pin search_path.
   IF EXISTS (SELECT 1 FROM pg_proc WHERE oid IN ('public.current_app_tenant_id()'::regprocedure,
              'public.current_app_user_id()'::regprocedure, 'public.is_current_user_super_admin()'::regprocedure,

@@ -118,12 +118,13 @@ jobs:
           PGPASSWORD: academy
         run: psql -v ON_ERROR_STOP=1 -h localhost -U academy -d academy -f packages/database/tests/security-catalog.sql
 
-      - name: Test Phase 3A.2 access boundaries
+      - name: Test Phase 3A.2 and K6 access boundaries
         env:
           PGPASSWORD: academy
         run: >-
           psql -v ON_ERROR_STOP=1 -v runtime_role=academy_runtime_ci -h localhost -U academy -d academy
           -f packages/database/tests/phase3a2-fixtures.sql -f packages/database/tests/phase3a2-boundaries.sql
+          -f packages/database/tests/k6-join-request-boundaries.sql
 
       - name: Format check
         run: pnpm format:check

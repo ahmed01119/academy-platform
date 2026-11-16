@@ -105,6 +105,13 @@ enum ApplicationStatus {
   REJECTED
 }
 
+/// Who submitted a player join request (K6): the athlete (PLAYER) or the child's parent/guardian (GUARDIAN).
+/// Academy owners/coaches apply through AcademyApplication instead.
+enum JoinRequesterType {
+  PLAYER
+  GUARDIAN
+}
+
 enum NotificationType {
   ACADEMY_APPLICATION
   PLAYER_REGISTRATION
@@ -1081,6 +1088,8 @@ model PlayerRegistrationRequest {
   id               String            @id @default(uuid()) @db.Uuid
   tenantId         String            @map("tenant_id") @db.Uuid
   applicantUserId  String?           @map("applicant_user_id") @db.Uuid
+  /// PLAYER: the applicant is the athlete; GUARDIAN: the applicant is the child's guardian (K6).
+  requesterType    JoinRequesterType @default(PLAYER) @map("requester_type")
   playerName       String            @map("player_name")
   contactEmail     String            @map("contact_email")
   contactPhone     String?           @map("contact_phone")
@@ -1098,6 +1107,7 @@ model PlayerRegistrationRequest {
   reviewedBy User?  @relation("PlayerJoinReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
 
   @@index([tenantId, status])
+  @@index([applicantUserId])
   @@map("player_registration_requests")
 }
 
