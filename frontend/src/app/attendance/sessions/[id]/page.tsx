@@ -27,6 +27,8 @@ import type {
   SessionDetails,
   SessionCashierSummary,
 } from '@academy/shared';
+import { Permission } from '@academy/shared';
+import { can } from '@/lib/auth/permissions';
 import {
   Calendar,
   Clock,
@@ -57,6 +59,9 @@ export default function SessionAttendancePage() {
   const params = useParams();
   const sessionId = params.id as string;
   const { user, activeTenant, isLoading } = useAuth();
+  // Cashier actions follow the permission matrix (the API checks the same permissions).
+  const canCloseCashier = can(user, activeTenant, Permission.SESSION_CASHIER_CLOSE);
+  const canClaimExpense = can(user, activeTenant, Permission.SESSION_EXPENSES_CREATE);
   const { locale, t } = useLocale();
   const { toast } = useToast();
   const requestConfirmation = useConfirm();
@@ -891,18 +896,23 @@ export default function SessionAttendancePage() {
               {/* Cashier Actions */}
               <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
                 <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setIsExpenseModalOpen(true)}
-                    disabled={cashierSummary?.isReconciled}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3.5 py-2 text-xs font-bold text-(--text-main) hover:border-(--accent-primary) disabled:opacity-50 transition-all cursor-pointer"
-                  >
-                    <PlusCircle className="h-4 w-4 text-rose-500" />
-                    <span>{locale === 'en' ? 'Record Session Expense' : 'تسجيل مصروف للحصة'}</span>
-                  </button>
+                  {canClaimExpense && (
+                    <button
+                      type="button"
+                      onClick={() => setIsExpenseModalOpen(true)}
+                      disabled={cashierSummary?.isReconciled}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3.5 py-2 text-xs font-bold text-(--text-main) hover:border-(--accent-primary) disabled:opacity-50 transition-all cursor-pointer"
+                    >
+                      <PlusCircle className="h-4 w-4 text-rose-500" />
+                      <span>
+                        {locale === 'en' ? 'Record Session Expense' : 'تسجيل مصروف للحصة'}
+                      </span>
+                    </button>
+                  )}
                 </div>
 
-                {!cashierSummary?.isReconciled && (
+                {/* K8: only management and the accountant close the cashier, and only once */}
+                {canCloseCashier && !cashierSummary?.isReconciled && (
                   <button
                     type="button"
                     onClick={() => setIsCloseCashierModalOpen(true)}

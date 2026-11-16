@@ -168,8 +168,9 @@ export class FinanceController {
     return this.financeService.rejectSessionExpense(tenantContext, transactionId, dto);
   }
 
+  /** K8: management (owner, manager, branch manager) and the accountant close a session cashier, once. */
   @Post('sessions/:sessionId/close')
-  @RequirePermissions(Permission.SESSION_EXPENSES_READ)
+  @RequirePermissions(Permission.SESSION_CASHIER_CLOSE)
   async closeSessionCashier(
     @Param('sessionId') rawId: string,
     @Body() body: unknown,

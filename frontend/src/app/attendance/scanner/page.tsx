@@ -24,6 +24,8 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { useAccessGuard } from '@/hooks/useAccessGuard';
+import { Permission } from '@academy/shared';
+import type { AccessRule } from '@/lib/auth/access-rules';
 import { useLocale } from '@/contexts/locale-context';
 import { translateDataString } from '@/utils/data-translator';
 import { AppShell } from '../../../components/layout/AppShell';
@@ -33,6 +35,9 @@ import { apiClient } from '@/api/client';
 import { offlineStore } from '@/utils/offline-attendance-store';
 import { prepareForOfflineUse } from '@/utils/offline-engine';
 import type { ScanPlayerQrResponse, SessionSummary } from '@academy/shared';
+
+/** Who may open this page (permission matrix; the API enforces the same permissions). */
+const PAGE_ACCESS: AccessRule = { anyOf: [Permission.ATTENDANCE_MARK] };
 
 interface ScanFeedback {
   type: 'ON_TIME' | 'LATE' | 'DUPLICATE' | 'OFFLINE_QUEUED' | 'ERROR';
@@ -312,12 +317,12 @@ export default function MobileAttendanceScannerPage() {
   }, [handleSyncPendingScans, refreshPendingCount]);
 
   // Auth Guard
-  useAccessGuard('no-coach', {
+  useAccessGuard(PAGE_ACCESS, {
     onForbidden: () =>
       toast.error(
         locale === 'en'
-          ? 'Coaches are not authorized to scan or record attendance per academy policy'
-          : 'غير مصرح للمدربين بمسح أو تسجيل الحضور وفقاً للسياسات الإدارية المعتمدة',
+          ? 'Your role does not include scanning attendance.'
+          : 'صلاحيات دورك لا تشمل مسح الحضور.',
       ),
   });
 

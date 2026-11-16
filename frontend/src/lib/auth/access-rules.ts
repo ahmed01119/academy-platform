@@ -1,5 +1,6 @@
-import type { TenantMembershipSummary, UserSummary } from '@academy/shared';
+import type { Permission, TenantMembershipSummary, UserSummary } from '@academy/shared';
 import { canAccessAdminRoutes, canAccessCoachRoutes, getRoleHomeRoute } from '@/utils/role-routing';
+import { canAny } from './permissions';
 
 /**
  * Client-side page access rules. These are UX redirects only — every endpoint is
@@ -15,10 +16,13 @@ export type AccessRule =
   | 'admin'
   /** Admin pages OR coach workspace (`canAccessAdminRoutes || canAccessCoachRoutes`). */
   | 'admin-or-coach'
-  /** Signed-in users except the COACH role (coaches may not record attendance) → /attendance. */
-  | 'no-coach'
   /** Platform Super Admin or Platform Owner. Anyone else (incl. signed out) → /dashboard. */
-  | 'platform-staff';
+  | 'platform-staff'
+  /**
+   * Users holding at least one of the permissions in the active academy (see lib/auth/permissions.ts).
+   * Otherwise → role home. Declare it once at module level so its identity is stable across renders.
+   */
+  | { anyOf: readonly Permission[] };
 
 export interface AccessState {
   isLoading: boolean;
@@ -38,7 +42,6 @@ export type AccessDecision =
     };
 
 const LOGIN_ROUTE = '/login';
-const ATTENDANCE_ROUTE = '/attendance';
 const DASHBOARD_ROUTE = '/dashboard';
 
 export function resolveAccess(rule: AccessRule, state: AccessState): AccessDecision {
@@ -55,6 +58,12 @@ export function resolveAccess(rule: AccessRule, state: AccessState): AccessDecis
 
   if (!user) return { status: 'redirect', to: LOGIN_ROUTE, reason: 'unauthenticated' };
 
+  if (typeof rule === 'object') {
+    return canAny(user, activeTenant, rule.anyOf)
+      ? { status: 'allowed' }
+      : { status: 'redirect', to: getRoleHomeRoute(user, activeTenant), reason: 'forbidden' };
+  }
+
   switch (rule) {
     case 'authenticated':
       return { status: 'allowed' };
@@ -69,9 +78,5 @@ export function resolveAccess(rule: AccessRule, state: AccessState): AccessDecis
         ? { status: 'allowed' }
         : { status: 'redirect', to: getRoleHomeRoute(user, activeTenant), reason: 'forbidden' };
 
-    case 'no-coach':
-      return activeTenant?.role === 'COACH'
-        ? { status: 'redirect', to: ATTENDANCE_ROUTE, reason: 'forbidden' }
-        : { status: 'allowed' };
   }
 }

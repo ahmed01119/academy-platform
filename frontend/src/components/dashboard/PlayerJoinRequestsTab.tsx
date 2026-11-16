@@ -25,7 +25,13 @@ import {
   Users,
   Eye,
 } from 'lucide-react';
-import type { PlayerJoinRequestItem, BranchSummary, TrainingGroupSummary } from '@academy/shared';
+import {
+  Permission,
+  type PlayerJoinRequestItem,
+  type BranchSummary,
+  type TrainingGroupSummary,
+} from '@academy/shared';
+import { can } from '@/lib/auth/permissions';
 
 type StatusFilter = 'ALL' | 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED' | 'MORE_INFO_REQUESTED';
 
@@ -58,7 +64,7 @@ const statusConfig = {
 
 export function PlayerJoinRequestsTab() {
   const { locale } = useLocale();
-  const { activeTenant } = useAuth();
+  const { user, activeTenant } = useAuth();
   const { toast } = useToast();
   const ar = locale === 'ar';
 
@@ -79,14 +85,9 @@ export function PlayerJoinRequestsTab() {
   const [reviewNotes, setReviewNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Authorization checks
-  const isOwnerOrManager =
-    activeTenant?.role === 'OWNER' ||
-    activeTenant?.role === 'MANAGER' ||
-    activeTenant?.role === 'BRANCH_MANAGER';
-  const canCoachReview =
-    activeTenant?.role === 'COACH' && Boolean(activeTenant?.canReviewApplications);
-  const canReview = isOwnerOrManager || canCoachReview;
+  // Who may approve/reject: player.application.review (owner, manager, branch manager, receptionist, and a coach
+  // whose membership is delegated). Same rule as the API's PermissionsGuard.
+  const canReview = can(user, activeTenant, Permission.PLAYER_APPLICATION_REVIEW);
   const isCoachWithoutDelegation =
     activeTenant?.role === 'COACH' && !activeTenant?.canReviewApplications;
 

@@ -4,6 +4,8 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/auth-context';
 import { useLocale } from '@/contexts/locale-context';
+import { Permission } from '@academy/shared';
+import { canAny } from '@/lib/auth/permissions';
 import { ThemeToggle } from './ThemeToggle';
 import { LocaleToggle } from './LocaleToggle';
 import { SportexusLogo } from './brand/SportexusLogo';
@@ -47,11 +49,12 @@ export function Navbar() {
 
   const isSuperAdmin = Boolean(user?.isPlatformSuperAdmin);
   const isCoach = activeTenant?.role === 'COACH';
-  const isStaffOrOwner =
-    activeTenant &&
-    ['OWNER', 'MANAGER', 'BRANCH_MANAGER', 'RECEPTIONIST', 'ACCOUNTANT'].includes(
-      activeTenant.role,
-    );
+  // Academy staff of every non-coach role (VIEWER included); each link below is shown only when the role's permissions
+  // allow the page (same matrix the API enforces, see lib/auth/permissions.ts).
+  const isStaffOrOwner = Boolean(
+    activeTenant && activeTenant.status === 'ACTIVE' && activeTenant.role !== 'COACH',
+  );
+  const show = (permissions: readonly Permission[]) => canAny(user, activeTenant, permissions);
   const hasPlayerProfile = Boolean(user?.hasPlayerProfile);
   const hasGuardianProfile = Boolean(user?.hasGuardianProfile);
 
@@ -90,30 +93,36 @@ export function Navbar() {
                     <UserCheck className="h-4 w-4" />
                     <span>{t('nav.coachWorkspace')}</span>
                   </Link>
-                  <Link
-                    href="/evaluations"
-                    id="nav-link-coach-evaluations"
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-(--text-main) hover:text-(--accent-primary) hover:bg-[var(--bg-surface)] transition-all"
-                  >
-                    <Award className="h-4 w-4 text-[var(--accent-primary)]" />
-                    <span>{t('nav.evaluations')}</span>
-                  </Link>
-                  <Link
-                    href="/sessions"
-                    id="nav-link-coach-sessions"
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-(--text-main) hover:text-(--accent-primary) hover:bg-[var(--bg-surface)] transition-all"
-                  >
-                    <CalendarCheck className="h-4 w-4 text-[var(--accent-primary)]" />
-                    <span>{t('nav.sessions')}</span>
-                  </Link>
-                  <Link
-                    href="/attendance/scanner"
-                    id="nav-link-coach-scanner"
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500/20 transition-all"
-                  >
-                    <QrCode className="h-4 w-4 text-emerald-400" />
-                    <span>{t('nav.scanner')}</span>
-                  </Link>
+                  {show([Permission.EVALUATIONS_READ]) && (
+                    <Link
+                      href="/evaluations"
+                      id="nav-link-coach-evaluations"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-(--text-main) hover:text-(--accent-primary) hover:bg-[var(--bg-surface)] transition-all"
+                    >
+                      <Award className="h-4 w-4 text-[var(--accent-primary)]" />
+                      <span>{t('nav.evaluations')}</span>
+                    </Link>
+                  )}
+                  {show([Permission.SESSIONS_READ]) && (
+                    <Link
+                      href="/sessions"
+                      id="nav-link-coach-sessions"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-(--text-main) hover:text-(--accent-primary) hover:bg-[var(--bg-surface)] transition-all"
+                    >
+                      <CalendarCheck className="h-4 w-4 text-[var(--accent-primary)]" />
+                      <span>{t('nav.sessions')}</span>
+                    </Link>
+                  )}
+                  {show([Permission.ATTENDANCE_MARK]) && (
+                    <Link
+                      href="/attendance/scanner"
+                      id="nav-link-coach-scanner"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500/20 transition-all"
+                    >
+                      <QrCode className="h-4 w-4 text-emerald-400" />
+                      <span>{t('nav.scanner')}</span>
+                    </Link>
+                  )}
                 </>
               )}
 
@@ -128,62 +137,76 @@ export function Navbar() {
                     <LayoutDashboard className="h-4 w-4 text-[var(--accent-primary)]" />
                     <span>{t('nav.home')}</span>
                   </Link>
-                  <Link
-                    href="/players"
-                    id="nav-link-players"
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-(--text-main) hover:text-(--accent-primary) hover:bg-[var(--bg-surface)] transition-all"
-                  >
-                    <Users className="h-4 w-4 text-[var(--accent-primary)]" />
-                    <span>{t('nav.players')}</span>
-                  </Link>
-                  <Link
-                    href="/groups"
-                    id="nav-link-groups"
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-(--text-main) hover:text-(--accent-primary) hover:bg-[var(--bg-surface)] transition-all"
-                  >
-                    <Layers className="h-4 w-4 text-[var(--accent-primary)]" />
-                    <span>{t('nav.groups')}</span>
-                  </Link>
-                  <Link
-                    href="/evaluations"
-                    id="nav-link-evaluations"
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-(--text-main) hover:text-(--accent-primary) hover:bg-[var(--bg-surface)] transition-all"
-                  >
-                    <Award className="h-4 w-4 text-[var(--accent-primary)]" />
-                    <span>{t('nav.evaluations')}</span>
-                  </Link>
-                  <Link
-                    href="/sessions"
-                    id="nav-link-sessions"
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-(--text-main) hover:text-(--accent-primary) hover:bg-[var(--bg-surface)] transition-all"
-                  >
-                    <CalendarCheck className="h-4 w-4 text-[var(--accent-primary)]" />
-                    <span>{t('nav.sessions')}</span>
-                  </Link>
-                  <Link
-                    href="/attendance/scanner"
-                    id="nav-link-scanner"
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500/20 transition-all"
-                  >
-                    <QrCode className="h-4 w-4 text-emerald-400" />
-                    <span>{t('nav.scanner')}</span>
-                  </Link>
-                  <Link
-                    href="/attendance/reports"
-                    id="nav-link-reports"
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-(--text-main) hover:text-(--accent-primary) hover:bg-[var(--bg-surface)] transition-all"
-                  >
-                    <BarChart3 className="h-4 w-4 text-[var(--accent-primary)]" />
-                    <span>{t('nav.reports')}</span>
-                  </Link>
-                  <Link
-                    href="/branches"
-                    id="nav-link-branches"
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-(--text-main) hover:text-(--accent-primary) hover:bg-[var(--bg-surface)] transition-all"
-                  >
-                    <GitBranch className="h-4 w-4 text-[var(--accent-primary)]" />
-                    <span>{t('nav.branches')}</span>
-                  </Link>
+                  {show([Permission.PLAYERS_READ]) && (
+                    <Link
+                      href="/players"
+                      id="nav-link-players"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-(--text-main) hover:text-(--accent-primary) hover:bg-[var(--bg-surface)] transition-all"
+                    >
+                      <Users className="h-4 w-4 text-[var(--accent-primary)]" />
+                      <span>{t('nav.players')}</span>
+                    </Link>
+                  )}
+                  {show([Permission.GROUPS_READ]) && (
+                    <Link
+                      href="/groups"
+                      id="nav-link-groups"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-(--text-main) hover:text-(--accent-primary) hover:bg-[var(--bg-surface)] transition-all"
+                    >
+                      <Layers className="h-4 w-4 text-[var(--accent-primary)]" />
+                      <span>{t('nav.groups')}</span>
+                    </Link>
+                  )}
+                  {show([Permission.EVALUATIONS_READ]) && (
+                    <Link
+                      href="/evaluations"
+                      id="nav-link-evaluations"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-(--text-main) hover:text-(--accent-primary) hover:bg-[var(--bg-surface)] transition-all"
+                    >
+                      <Award className="h-4 w-4 text-[var(--accent-primary)]" />
+                      <span>{t('nav.evaluations')}</span>
+                    </Link>
+                  )}
+                  {show([Permission.SESSIONS_READ]) && (
+                    <Link
+                      href="/sessions"
+                      id="nav-link-sessions"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-(--text-main) hover:text-(--accent-primary) hover:bg-[var(--bg-surface)] transition-all"
+                    >
+                      <CalendarCheck className="h-4 w-4 text-[var(--accent-primary)]" />
+                      <span>{t('nav.sessions')}</span>
+                    </Link>
+                  )}
+                  {show([Permission.ATTENDANCE_MARK]) && (
+                    <Link
+                      href="/attendance/scanner"
+                      id="nav-link-scanner"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500/20 transition-all"
+                    >
+                      <QrCode className="h-4 w-4 text-emerald-400" />
+                      <span>{t('nav.scanner')}</span>
+                    </Link>
+                  )}
+                  {show([Permission.ATTENDANCE_READ]) && (
+                    <Link
+                      href="/attendance/reports"
+                      id="nav-link-reports"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-(--text-main) hover:text-(--accent-primary) hover:bg-[var(--bg-surface)] transition-all"
+                    >
+                      <BarChart3 className="h-4 w-4 text-[var(--accent-primary)]" />
+                      <span>{t('nav.reports')}</span>
+                    </Link>
+                  )}
+                  {show([Permission.BRANCHES_READ]) && (
+                    <Link
+                      href="/branches"
+                      id="nav-link-branches"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-(--text-main) hover:text-(--accent-primary) hover:bg-[var(--bg-surface)] transition-all"
+                    >
+                      <GitBranch className="h-4 w-4 text-[var(--accent-primary)]" />
+                      <span>{t('nav.branches')}</span>
+                    </Link>
+                  )}
                   <Link
                     href="/settings"
                     id="nav-link-settings"
@@ -387,30 +410,36 @@ export function Navbar() {
                   <UserCheck className="h-4 w-4 shrink-0" />
                   <span>{t('nav.coachWorkspace')}</span>
                 </Link>
-                <Link
-                  href="/attendance/scanner"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-2 p-2 rounded-lg text-xs font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/30"
-                >
-                  <QrCode className="h-4 w-4 shrink-0" />
-                  <span>{t('nav.scanner')}</span>
-                </Link>
-                <Link
-                  href="/evaluations"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-2 p-2 rounded-lg text-xs font-medium text-(--text-main) hover:bg-(--bg-surface-subtle)"
-                >
-                  <Award className="h-4 w-4 shrink-0 text-[var(--accent-primary)]" />
-                  <span>{t('nav.evaluations')}</span>
-                </Link>
-                <Link
-                  href="/sessions"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-2 p-2 rounded-lg text-xs font-medium text-(--text-main) hover:bg-(--bg-surface-subtle)"
-                >
-                  <CalendarCheck className="h-4 w-4 shrink-0 text-[var(--accent-primary)]" />
-                  <span>{t('nav.sessions')}</span>
-                </Link>
+                {show([Permission.ATTENDANCE_MARK]) && (
+                  <Link
+                    href="/attendance/scanner"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="flex items-center gap-2 p-2 rounded-lg text-xs font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/30"
+                  >
+                    <QrCode className="h-4 w-4 shrink-0" />
+                    <span>{t('nav.scanner')}</span>
+                  </Link>
+                )}
+                {show([Permission.EVALUATIONS_READ]) && (
+                  <Link
+                    href="/evaluations"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="flex items-center gap-2 p-2 rounded-lg text-xs font-medium text-(--text-main) hover:bg-(--bg-surface-subtle)"
+                  >
+                    <Award className="h-4 w-4 shrink-0 text-[var(--accent-primary)]" />
+                    <span>{t('nav.evaluations')}</span>
+                  </Link>
+                )}
+                {show([Permission.SESSIONS_READ]) && (
+                  <Link
+                    href="/sessions"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="flex items-center gap-2 p-2 rounded-lg text-xs font-medium text-(--text-main) hover:bg-(--bg-surface-subtle)"
+                  >
+                    <CalendarCheck className="h-4 w-4 shrink-0 text-[var(--accent-primary)]" />
+                    <span>{t('nav.sessions')}</span>
+                  </Link>
+                )}
               </>
             )}
 
@@ -424,62 +453,76 @@ export function Navbar() {
                   <LayoutDashboard className="h-4 w-4 shrink-0 text-[var(--accent-primary)]" />
                   <span>{t('nav.home')}</span>
                 </Link>
-                <Link
-                  href="/attendance/scanner"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-2 p-2 rounded-lg text-xs font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/30"
-                >
-                  <QrCode className="h-4 w-4 shrink-0" />
-                  <span>{t('nav.scanner')}</span>
-                </Link>
-                <Link
-                  href="/players"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-2 p-2 rounded-lg text-xs font-medium text-(--text-main) hover:bg-(--bg-surface-subtle)"
-                >
-                  <Users className="h-4 w-4 shrink-0 text-[var(--accent-primary)]" />
-                  <span>{t('nav.players')}</span>
-                </Link>
-                <Link
-                  href="/groups"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-2 p-2 rounded-lg text-xs font-medium text-(--text-main) hover:bg-(--bg-surface-subtle)"
-                >
-                  <Layers className="h-4 w-4 shrink-0 text-[var(--accent-primary)]" />
-                  <span>{t('nav.groups')}</span>
-                </Link>
-                <Link
-                  href="/evaluations"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-2 p-2 rounded-lg text-xs font-medium text-(--text-main) hover:bg-(--bg-surface-subtle)"
-                >
-                  <Award className="h-4 w-4 shrink-0 text-[var(--accent-primary)]" />
-                  <span>{t('nav.evaluations')}</span>
-                </Link>
-                <Link
-                  href="/sessions"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-2 p-2 rounded-lg text-xs font-medium text-(--text-main) hover:bg-(--bg-surface-subtle)"
-                >
-                  <CalendarCheck className="h-4 w-4 shrink-0 text-[var(--accent-primary)]" />
-                  <span>{t('nav.sessions')}</span>
-                </Link>
-                <Link
-                  href="/attendance/reports"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-2 p-2 rounded-lg text-xs font-medium text-(--text-main) hover:bg-(--bg-surface-subtle)"
-                >
-                  <BarChart3 className="h-4 w-4 shrink-0 text-[var(--accent-primary)]" />
-                  <span>{t('nav.reports')}</span>
-                </Link>
-                <Link
-                  href="/branches"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-2 p-2 rounded-lg text-xs font-medium text-(--text-main) hover:bg-(--bg-surface-subtle)"
-                >
-                  <GitBranch className="h-4 w-4 shrink-0 text-[var(--accent-primary)]" />
-                  <span>{t('nav.branches')}</span>
-                </Link>
+                {show([Permission.ATTENDANCE_MARK]) && (
+                  <Link
+                    href="/attendance/scanner"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="flex items-center gap-2 p-2 rounded-lg text-xs font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/30"
+                  >
+                    <QrCode className="h-4 w-4 shrink-0" />
+                    <span>{t('nav.scanner')}</span>
+                  </Link>
+                )}
+                {show([Permission.PLAYERS_READ]) && (
+                  <Link
+                    href="/players"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="flex items-center gap-2 p-2 rounded-lg text-xs font-medium text-(--text-main) hover:bg-(--bg-surface-subtle)"
+                  >
+                    <Users className="h-4 w-4 shrink-0 text-[var(--accent-primary)]" />
+                    <span>{t('nav.players')}</span>
+                  </Link>
+                )}
+                {show([Permission.GROUPS_READ]) && (
+                  <Link
+                    href="/groups"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="flex items-center gap-2 p-2 rounded-lg text-xs font-medium text-(--text-main) hover:bg-(--bg-surface-subtle)"
+                  >
+                    <Layers className="h-4 w-4 shrink-0 text-[var(--accent-primary)]" />
+                    <span>{t('nav.groups')}</span>
+                  </Link>
+                )}
+                {show([Permission.EVALUATIONS_READ]) && (
+                  <Link
+                    href="/evaluations"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="flex items-center gap-2 p-2 rounded-lg text-xs font-medium text-(--text-main) hover:bg-(--bg-surface-subtle)"
+                  >
+                    <Award className="h-4 w-4 shrink-0 text-[var(--accent-primary)]" />
+                    <span>{t('nav.evaluations')}</span>
+                  </Link>
+                )}
+                {show([Permission.SESSIONS_READ]) && (
+                  <Link
+                    href="/sessions"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="flex items-center gap-2 p-2 rounded-lg text-xs font-medium text-(--text-main) hover:bg-(--bg-surface-subtle)"
+                  >
+                    <CalendarCheck className="h-4 w-4 shrink-0 text-[var(--accent-primary)]" />
+                    <span>{t('nav.sessions')}</span>
+                  </Link>
+                )}
+                {show([Permission.ATTENDANCE_READ]) && (
+                  <Link
+                    href="/attendance/reports"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="flex items-center gap-2 p-2 rounded-lg text-xs font-medium text-(--text-main) hover:bg-(--bg-surface-subtle)"
+                  >
+                    <BarChart3 className="h-4 w-4 shrink-0 text-[var(--accent-primary)]" />
+                    <span>{t('nav.reports')}</span>
+                  </Link>
+                )}
+                {show([Permission.BRANCHES_READ]) && (
+                  <Link
+                    href="/branches"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="flex items-center gap-2 p-2 rounded-lg text-xs font-medium text-(--text-main) hover:bg-(--bg-surface-subtle)"
+                  >
+                    <GitBranch className="h-4 w-4 shrink-0 text-[var(--accent-primary)]" />
+                    <span>{t('nav.branches')}</span>
+                  </Link>
+                )}
                 <Link
                   href="/settings"
                   onClick={() => setIsMobileMenuOpen(false)}

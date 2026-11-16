@@ -26,11 +26,11 @@ const ROLES: TenantRole[] = [
   'VIEWER',
 ];
 
-describe('player permissions ≡ previous hard-coded role checks', () => {
-  // Verbatim from the page before Step 4.
+describe('player permissions follow the documented matrix', () => {
+  // docs/security/ROLE_PERMISSION_MATRIX.md: players.sensitive.read and players.delete.
   const legacySensitive = (role?: TenantRole) =>
     role === 'OWNER' || role === 'MANAGER' || role === 'BRANCH_MANAGER';
-  const legacyDelete = (role?: TenantRole) => role === 'OWNER';
+  const legacyDelete = (role?: TenantRole) => role === 'OWNER' || role === 'MANAGER';
 
   it.each([...ROLES, undefined])('role %s', (role) => {
     expect(canViewSensitivePlayerData(role)).toBe(legacySensitive(role));

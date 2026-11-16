@@ -65,6 +65,8 @@ export const Permission = {
   SESSION_EXPENSES_READ: 'session_expenses.read',
   SESSION_EXPENSES_CREATE: 'session_expenses.create',
   SESSION_EXPENSES_APPROVE: 'session_expenses.approve',
+  /** Close (reconcile) a session's cashier; a closed cashier cannot be closed again (K8). */
+  SESSION_CASHIER_CLOSE: 'session_cashier.close',
   PLATFORM_MANAGE: 'platform.manage',
   PLAYER_APPLICATION_REVIEW: 'player.application.review',
 } as const;
@@ -73,7 +75,18 @@ export type Permission = (typeof Permission)[keyof typeof Permission];
 
 export const PermissionSchema = z.nativeEnum(Permission);
 
+/**
+ * Tenant RBAC matrix. Source of truth: docs/security/ROLE_PERMISSION_MATRIX.md (owner decision 2026-11-16), plus
+ * `session_cashier.close` (K8). The API enforces it (PermissionsGuard); the web app uses the same map to decide what each
+ * role sees, so a role is never shown a page or button it cannot use.
+ *
+ * Narrower rules that a permission alone cannot express are enforced in the services:
+ *  - COACH `attendance.mark` / `session_expenses.*`: only sessions the coach is assigned to (session coach or group coach);
+ *  - COACH `player.application.review`: only when the membership has `canReviewApplications` (PermissionsGuard);
+ *  - BRANCH_MANAGER, RECEPTIONIST, COACH: pinned to their branch (TenantGuard).
+ */
 export const ROLE_PERMISSIONS: Record<TenantRole, readonly Permission[]> = {
+  // Academy owner: everything in the academy.
   [TenantRole.OWNER]: [
     Permission.TENANT_UPDATE,
     Permission.BRANCHES_MANAGE,
@@ -96,6 +109,7 @@ export const ROLE_PERMISSIONS: Record<TenantRole, readonly Permission[]> = {
     Permission.SESSION_EXPENSES_READ,
     Permission.SESSION_EXPENSES_CREATE,
     Permission.SESSION_EXPENSES_APPROVE,
+    Permission.SESSION_CASHIER_CLOSE,
     Permission.REPORTS_READ,
     Permission.GROUPS_READ,
     Permission.GROUPS_MANAGE,
@@ -105,6 +119,7 @@ export const ROLE_PERMISSIONS: Record<TenantRole, readonly Permission[]> = {
     Permission.EVALUATIONS_CREATE,
     Permission.EVALUATIONS_MANAGE,
   ],
+  // General manager: everything except the academy profile itself.
   [TenantRole.MANAGER]: [
     Permission.BRANCHES_MANAGE,
     Permission.BRANCHES_READ,
@@ -113,6 +128,7 @@ export const ROLE_PERMISSIONS: Record<TenantRole, readonly Permission[]> = {
     Permission.PLAYERS_READ,
     Permission.PLAYERS_CREATE,
     Permission.PLAYERS_UPDATE,
+    Permission.PLAYERS_DELETE,
     Permission.PLAYERS_SENSITIVE_READ,
     Permission.PLAYER_APPLICATION_REVIEW,
     Permission.ATTENDANCE_READ,
@@ -125,6 +141,7 @@ export const ROLE_PERMISSIONS: Record<TenantRole, readonly Permission[]> = {
     Permission.SESSION_EXPENSES_READ,
     Permission.SESSION_EXPENSES_CREATE,
     Permission.SESSION_EXPENSES_APPROVE,
+    Permission.SESSION_CASHIER_CLOSE,
     Permission.REPORTS_READ,
     Permission.GROUPS_READ,
     Permission.GROUPS_MANAGE,
@@ -134,6 +151,7 @@ export const ROLE_PERMISSIONS: Record<TenantRole, readonly Permission[]> = {
     Permission.EVALUATIONS_CREATE,
     Permission.EVALUATIONS_MANAGE,
   ],
+  // Branch manager: runs one branch (players, attendance, groups, sessions, collections); no refunds, approvals or reports.
   [TenantRole.BRANCH_MANAGER]: [
     Permission.BRANCHES_READ,
     Permission.STAFF_READ,
@@ -150,8 +168,7 @@ export const ROLE_PERMISSIONS: Record<TenantRole, readonly Permission[]> = {
     Permission.PAYMENTS_CREATE,
     Permission.SESSION_EXPENSES_READ,
     Permission.SESSION_EXPENSES_CREATE,
-    Permission.SESSION_EXPENSES_APPROVE,
-    Permission.REPORTS_READ,
+    Permission.SESSION_CASHIER_CLOSE,
     Permission.GROUPS_READ,
     Permission.GROUPS_MANAGE,
     Permission.SESSIONS_READ,
@@ -159,24 +176,28 @@ export const ROLE_PERMISSIONS: Record<TenantRole, readonly Permission[]> = {
     Permission.EVALUATIONS_READ,
     Permission.EVALUATIONS_CREATE,
   ],
+  // Front desk: registers players, reviews join requests, marks attendance, collects payments.
   [TenantRole.RECEPTIONIST]: [
     Permission.BRANCHES_READ,
+    Permission.STAFF_READ,
     Permission.PLAYERS_READ,
     Permission.PLAYERS_CREATE,
     Permission.PLAYERS_UPDATE,
+    Permission.PLAYER_APPLICATION_REVIEW,
     Permission.ATTENDANCE_READ,
     Permission.ATTENDANCE_MARK,
-    Permission.ATTENDANCE_CORRECT,
-    Permission.PAYMENTS_CREATE,
     Permission.PAYMENTS_READ,
-    Permission.SESSION_EXPENSES_READ,
+    Permission.PAYMENTS_CREATE,
     Permission.GROUPS_READ,
     Permission.SESSIONS_READ,
   ],
+  // Coach: own sessions (attendance, expense claims, evaluations); no player administration or money.
   [TenantRole.COACH]: [
     Permission.BRANCHES_READ,
+    Permission.STAFF_READ,
     Permission.PLAYERS_READ,
-    Permission.ATTENDANCE_READ, // Coaches can view attendance, but are strictly prohibited from marking/recording attendance
+    Permission.ATTENDANCE_READ,
+    Permission.ATTENDANCE_MARK,
     Permission.SESSION_EXPENSES_READ,
     Permission.SESSION_EXPENSES_CREATE,
     Permission.GROUPS_READ,
@@ -184,27 +205,28 @@ export const ROLE_PERMISSIONS: Record<TenantRole, readonly Permission[]> = {
     Permission.EVALUATIONS_READ,
     Permission.EVALUATIONS_CREATE,
   ],
+  // Accountant: money and financial reports; no attendance, groups or sessions.
   [TenantRole.ACCOUNTANT]: [
     Permission.BRANCHES_READ,
+    Permission.STAFF_READ,
     Permission.PLAYERS_READ,
     Permission.PAYMENTS_READ,
     Permission.PAYMENTS_CREATE,
     Permission.PAYMENTS_REFUND,
     Permission.SESSION_EXPENSES_READ,
-    Permission.SESSION_EXPENSES_CREATE,
     Permission.SESSION_EXPENSES_APPROVE,
+    Permission.SESSION_CASHIER_CLOSE,
     Permission.REPORTS_READ,
-    Permission.GROUPS_READ,
-    Permission.SESSIONS_READ,
   ],
+  // Viewer: read-only view of the sporting side (no money, no sensitive data).
   [TenantRole.VIEWER]: [
     Permission.BRANCHES_READ,
+    Permission.STAFF_READ,
     Permission.PLAYERS_READ,
     Permission.ATTENDANCE_READ,
-    Permission.SESSION_EXPENSES_READ,
-    Permission.REPORTS_READ,
     Permission.GROUPS_READ,
     Permission.SESSIONS_READ,
+    Permission.EVALUATIONS_READ,
   ],
 };
 

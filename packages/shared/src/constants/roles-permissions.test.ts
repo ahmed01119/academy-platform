@@ -1,5 +1,59 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { hasPermission, isBranchScopedRole, Permission, TenantRole } from './roles-permissions';
+import {
+  hasPermission,
+  isBranchScopedRole,
+  Permission,
+  ROLE_PERMISSIONS,
+  TenantRole,
+} from './roles-permissions';
+
+/**
+ * docs/security/ROLE_PERMISSION_MATRIX.md is the source of truth for tenant permissions. Reads its table: one row per
+ * permission, one column per role. "Delegated*" (COACH application review) is granted per membership by
+ * PermissionsGuard, so it counts as not in the static map; "Self only" counts as granted (scoped in the service).
+ */
+function documentedMatrix(): Map<string, Record<string, boolean>> {
+  const doc = readFileSync(join(__dirname, '../../../../docs/security/ROLE_PERMISSION_MATRIX.md'), 'utf8');
+  const lines = doc.split('\n');
+  const header = lines.find((l) => l.startsWith('| Permission Key'));
+  if (!header) throw new Error('matrix header not found');
+  const roles = header
+    .split('|')
+    .slice(3, -1)
+    .map((c) => c.trim());
+  const rows = new Map<string, Record<string, boolean>>();
+  for (const line of lines) {
+    const m = /^\| `([a-z_.]+)`/.exec(line);
+    if (!m?.[1]) continue;
+    const cells = line
+      .split('|')
+      .slice(3, -1)
+      .map((c) => c.trim());
+    const grants: Record<string, boolean> = {};
+    roles.forEach((role, i) => {
+      const cell = cells[i] ?? '';
+      grants[role] = cell === '✅' || cell === 'Self only';
+    });
+    rows.set(m[1], grants);
+  }
+  return rows;
+}
+
+describe('ROLE_PERMISSIONS matches docs/security/ROLE_PERMISSION_MATRIX.md', () => {
+  const doc = documentedMatrix();
+
+  it('documents every tenant permission except platform.manage', () => {
+    const codePermissions = Object.values(Permission).filter((p) => p !== Permission.PLATFORM_MANAGE);
+    expect([...doc.keys()].sort()).toEqual([...codePermissions].sort());
+  });
+
+  it.each(Object.values(TenantRole))('%s has exactly the documented permissions', (role) => {
+    const documented = [...doc.entries()].filter(([, grants]) => grants[role]).map(([p]) => p);
+    expect([...ROLE_PERMISSIONS[role]].sort()).toEqual(documented.sort());
+  });
+});
 import { EmailSchema, PasswordSchema } from '../schemas/auth';
 
 describe('roles and permissions', () => {
@@ -10,9 +64,9 @@ describe('roles and permissions', () => {
     expect(hasPermission(TenantRole.OWNER, Permission.PAYMENTS_REFUND)).toBe(true);
   });
 
-  it('coach only has attendance and player read access, and strictly prohibited from marking attendance', () => {
+  it('coach marks attendance (own sessions, checked in the service) but has no admin or money rights', () => {
     expect(hasPermission(TenantRole.COACH, Permission.ATTENDANCE_READ)).toBe(true);
-    expect(hasPermission(TenantRole.COACH, Permission.ATTENDANCE_MARK)).toBe(false);
+    expect(hasPermission(TenantRole.COACH, Permission.ATTENDANCE_MARK)).toBe(true);
     expect(hasPermission(TenantRole.COACH, Permission.ATTENDANCE_CLOSE)).toBe(false);
     expect(hasPermission(TenantRole.COACH, Permission.PLAYERS_READ)).toBe(true);
     expect(hasPermission(TenantRole.COACH, Permission.PAYMENTS_CREATE)).toBe(false);
@@ -27,6 +81,11 @@ describe('roles and permissions', () => {
     expect(hasPermission(TenantRole.ACCOUNTANT, Permission.REPORTS_READ)).toBe(true);
     expect(hasPermission(TenantRole.ACCOUNTANT, Permission.ATTENDANCE_MARK)).toBe(false);
     expect(hasPermission(TenantRole.ACCOUNTANT, Permission.STAFF_MANAGE)).toBe(false);
+  });
+
+  it('K8: only management and the accountant close a session cashier', () => {
+    const closers = Object.values(TenantRole).filter((r) => hasPermission(r, Permission.SESSION_CASHIER_CLOSE));
+    expect(closers.sort()).toEqual(['ACCOUNTANT', 'BRANCH_MANAGER', 'MANAGER', 'OWNER']);
   });
 
   it('correctly identifies branch-scoped roles', () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { TenantMembershipSummary, TenantRole, UserSummary } from '@academy/shared';
+import { Permission, type TenantMembershipSummary, type TenantRole, type UserSummary } from '@academy/shared';
 import { canAccessAdminRoutes, canAccessCoachRoutes, getRoleHomeRoute } from '@/utils/role-routing';
 import { resolveAccess, type AccessRule, type AccessState } from './access-rules';
 
@@ -55,8 +55,10 @@ const TENANTS: Array<TenantMembershipSummary | null> = [
 // ─── Reference: the inline page logic, copied verbatim before the refactor ───────────
 // Returns the route a page pushed to, or null when it stayed. `isLoading` → never pushes.
 type Legacy = (s: AccessState) => string | null;
+/** The named (string) rules; permission rules ({ anyOf }) are tested separately below. */
+type NamedRule = Exclude<AccessRule, object>;
 
-const LEGACY: Record<AccessRule, Legacy> = {
+const LEGACY: Record<NamedRule, Legacy> = {
   // account, attendance, attendance/sessions/[id], finance, groups/[id], players/[id],
   // players/new, coach, guardian, player
   authenticated: ({ isLoading, user }) => (!isLoading && !user ? '/login' : null),
@@ -81,15 +83,6 @@ const LEGACY: Record<AccessRule, Legacy> = {
     return null;
   },
 
-  // attendance/quick, attendance/scanner
-  'no-coach': ({ isLoading, user, activeTenant }) => {
-    if (!isLoading) {
-      if (!user) return '/login';
-      if (activeTenant?.role === 'COACH') return '/attendance';
-    }
-    return null;
-  },
-
   // platform
   'platform-staff': ({ isLoading, user }) => {
     const isPlatformStaff = Boolean(user?.isPlatformSuperAdmin || user?.isPlatformOwner);
@@ -97,7 +90,7 @@ const LEGACY: Record<AccessRule, Legacy> = {
   },
 };
 
-const RULES = Object.keys(LEGACY) as AccessRule[];
+const RULES = Object.keys(LEGACY) as NamedRule[];
 
 function decisionTarget(rule: AccessRule, state: AccessState): string | null {
   const d = resolveAccess(rule, state);
@@ -138,7 +131,12 @@ describe('resolveAccess behaviour', () => {
   });
 
   it('sends signed-out users to /login on every staff rule', () => {
-    for (const rule of ['authenticated', 'admin', 'admin-or-coach', 'no-coach'] as const) {
+    for (const rule of [
+      'authenticated',
+      'admin',
+      'admin-or-coach',
+      { anyOf: [Permission.ATTENDANCE_MARK] },
+    ] as const) {
       expect(at(rule, null, null)).toEqual({
         status: 'redirect',
         to: '/login',
@@ -166,28 +164,41 @@ describe('resolveAccess behaviour', () => {
     expect(at('admin', USERS.guardian, null)).toMatchObject({ to: '/guardian' });
   });
 
-  it('admin: VIEWER resolves to its own home (/dashboard) — the hook will not self-redirect', () => {
-    expect(at('admin', USERS.staff, tenant('VIEWER'))).toMatchObject({
-      status: 'redirect',
-      to: '/dashboard',
-    });
+  it('admin: VIEWER (read-only staff) has the dashboard too', () => {
+    expect(at('admin', USERS.staff, tenant('VIEWER')).status).toBe('allowed');
   });
 
-  it('admin-or-coach: COACH is allowed; ACCOUNTANT allowed via admin; VIEWER is not', () => {
+  it('admin-or-coach: COACH is allowed; ACCOUNTANT and VIEWER allowed via admin', () => {
     expect(at('admin-or-coach', USERS.staff, tenant('COACH')).status).toBe('allowed');
     expect(at('admin-or-coach', USERS.staff, tenant('ACCOUNTANT')).status).toBe('allowed');
-    expect(at('admin-or-coach', USERS.staff, tenant('VIEWER')).status).toBe('redirect');
+    expect(at('admin-or-coach', USERS.staff, tenant('VIEWER')).status).toBe('allowed');
   });
 
-  it('no-coach: COACH is sent to /attendance as forbidden; other roles stay', () => {
-    expect(at('no-coach', USERS.staff, tenant('COACH'))).toEqual({
+  it('permission rule: follows the RBAC matrix, forbidden roles go to their home', () => {
+    const markAttendance: AccessRule = { anyOf: [Permission.ATTENDANCE_MARK] };
+    for (const role of ['OWNER', 'MANAGER', 'BRANCH_MANAGER', 'RECEPTIONIST', 'COACH'] as const) {
+      expect(at(markAttendance, USERS.staff, tenant(role)).status, role).toBe('allowed');
+    }
+    expect(at(markAttendance, USERS.staff, tenant('ACCOUNTANT'))).toEqual({
       status: 'redirect',
-      to: '/attendance',
+      to: '/dashboard',
       reason: 'forbidden',
     });
-    for (const role of ROLES.filter((r) => r !== 'COACH')) {
-      expect(at('no-coach', USERS.staff, tenant(role)).status).toBe('allowed');
-    }
+    expect(at(markAttendance, USERS.staff, tenant('VIEWER')).status).toBe('redirect');
+    // suspended memberships have no academy permissions
+    expect(at(markAttendance, USERS.staff, tenant('OWNER', 'SUSPENDED')).status).toBe('redirect');
+    // players and guardians have no academy permissions
+    expect(at(markAttendance, USERS.guardian, null)).toMatchObject({ to: '/guardian' });
+    expect(at(markAttendance, USERS.superAdmin, null).status).toBe('allowed');
+  });
+
+  it('permission rule with several permissions allows any of them (finance)', () => {
+    const finance: AccessRule = {
+      anyOf: [Permission.PAYMENTS_READ, Permission.SESSION_EXPENSES_READ, Permission.REPORTS_READ],
+    };
+    expect(at(finance, USERS.staff, tenant('COACH')).status).toBe('allowed'); // own session expenses
+    expect(at(finance, USERS.staff, tenant('ACCOUNTANT')).status).toBe('allowed');
+    expect(at(finance, USERS.staff, tenant('VIEWER')).status).toBe('redirect');
   });
 
   it('platform-staff: super admins and owners allowed; everyone else → /dashboard', () => {
@@ -220,7 +231,7 @@ describe('resolveAccess behaviour', () => {
         for (const [start, rule] of Object.entries({
           '/players': 'admin',
           '/groups': 'admin-or-coach',
-          '/attendance/quick': 'no-coach',
+          '/attendance/quick': { anyOf: [Permission.ATTENDANCE_MARK] },
           '/platform': 'platform-staff',
         } as Record<string, AccessRule>)) {
           const visited = new Set<string>([start]);

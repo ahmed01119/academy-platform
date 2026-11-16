@@ -806,27 +806,54 @@ describe('AttendanceService', () => {
       role: 'COACH',
     };
 
-    it('strictly prohibits coaches from recording player attendance', async () => {
+    it('refuses a coach on a session they are not assigned to', async () => {
       mockPrisma.attendanceSession.findUnique.mockResolvedValue({
-        id: 'session-assigned',
+        id: 'session-other',
         tenantId: tenantContext.tenantId,
         branchId: tenantContext.branchId,
-        coachUserId: coachContext.actorUserId,
-        groupId: null,
+        coachUserId: 'another-coach',
+        groupId: 'group-1',
         sessionDate: new Date(),
         status: 'SCHEDULED',
       });
+      mockPrisma.groupCoach.findFirst.mockResolvedValue(null);
 
       await expect(
         service.recordAttendance(coachContext, {
-          sessionId: 'session-assigned',
+          sessionId: 'session-other',
           playerId: 'player-1',
           status: 'PRESENT',
           idempotencyKey: 'idem-coach-1',
         }),
-      ).rejects.toThrow(
-        'Coaches are not permitted to record player attendance through QR or manual entry',
-      );
+      ).rejects.toThrow('Coaches can only record attendance for sessions they are assigned to');
+    });
+
+    it.each([
+      ['the session coach', { coachUserId: 'SELF', groupId: null }, null],
+      ['a coach of the session group', { coachUserId: 'another-coach', groupId: 'group-1' }, { id: 'gc-1' }],
+    ])('lets %s past the coach rule', async (_label, sessionPatch, groupCoachRow) => {
+      mockPrisma.attendanceSession.findUnique.mockResolvedValue({
+        id: 'session-assigned',
+        tenantId: tenantContext.tenantId,
+        branchId: tenantContext.branchId,
+        sessionDate: new Date(),
+        status: 'SCHEDULED',
+        ...sessionPatch,
+        coachUserId:
+          sessionPatch.coachUserId === 'SELF' ? coachContext.actorUserId : sessionPatch.coachUserId,
+      });
+      mockPrisma.groupCoach.findFirst.mockResolvedValue(groupCoachRow);
+
+      const outcome = await service
+        .recordAttendance(coachContext, {
+          sessionId: 'session-assigned',
+          playerId: 'player-1',
+          status: 'PRESENT',
+          idempotencyKey: 'idem-coach-2',
+        })
+        .catch((e: Error) => e);
+      // Later steps may still fail on the minimal mocks; the coach rule itself must not refuse.
+      expect(String((outcome as Error)?.message ?? '')).not.toContain('assigned to');
     });
 
     it('rejects recording attendance on future sessions beyond valid window for managers', async () => {

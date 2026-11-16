@@ -383,13 +383,29 @@ export class AttendanceService {
     },
     _targetPlayerIds: string[],
   ): Promise<void> {
-    // 1. Strict Coach Attendance Prohibition (Product requirement: Coaches must NOT be allowed to record player attendance)
+    // 1. Coaches mark attendance only for sessions they are assigned to: the session's coach or a coach of its group
+    //    (permission matrix, owner decision 2026-11-16; before that coaches could not mark attendance at all).
     if (tenantContext.role === 'COACH') {
-      throw new ForbiddenException({
-        code: ErrorCode.FORBIDDEN,
-        message:
-          'Coaches are not permitted to record player attendance through QR or manual entry.',
-      });
+      const isSessionCoach = session.coachUserId === tenantContext.actorUserId;
+      const isGroupCoach =
+        !isSessionCoach &&
+        Boolean(session.groupId) &&
+        Boolean(
+          await tx.groupCoach.findFirst({
+            where: {
+              tenantId: tenantContext.tenantId,
+              groupId: session.groupId,
+              coachUserId: tenantContext.actorUserId,
+            },
+            select: { id: true },
+          }),
+        );
+      if (!isSessionCoach && !isGroupCoach) {
+        throw new ForbiddenException({
+          code: ErrorCode.FORBIDDEN,
+          message: 'Coaches can only record attendance for sessions they are assigned to.',
+        });
+      }
     }
 
     // 3. Enforce valid session window (prevent marking attendance more than 24h into the future)

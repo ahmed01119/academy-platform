@@ -1,56 +1,67 @@
 import { describe, expect, it } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import type { AccessRule } from './access-rules';
 
 /**
- * Pins every guarded page to the access rule it enforced before Phase 1 Step 2.
- * Changing a page's rule is a permissions change and must be a deliberate decision.
+ * Pins every guarded page to its access rule. Changing a page's rule is a permissions change and must be a deliberate
+ * decision. Named rules are written as-is; permission rules as "anyOf:Permission.X|Permission.Y" (the page's
+ * module-level PAGE_ACCESS constant, see lib/auth/access-rules.ts).
  */
 const APP_DIR = path.resolve(__dirname, '../../app');
 
-const PAGE_RULES: Record<string, AccessRule> = {
+const PAGE_RULES: Record<string, string> = {
   'account/page.tsx': 'authenticated',
   'attendance/page.tsx': 'authenticated',
   'attendance/sessions/[id]/page.tsx': 'authenticated',
   'coach/page.tsx': 'authenticated',
-  'finance/page.tsx': 'authenticated',
   'groups/[id]/page.tsx': 'authenticated',
   'guardian/page.tsx': 'authenticated',
   'player/page.tsx': 'authenticated',
   'players/[id]/page.tsx': 'authenticated',
   'players/new/page.tsx': 'authenticated',
-  'attendance/reports/page.tsx': 'admin',
-  'branches/page.tsx': 'admin',
   'dashboard/page.tsx': 'admin',
-  'players/page.tsx': 'admin',
   'settings/page.tsx': 'admin',
-  'groups/page.tsx': 'admin-or-coach',
-  'sessions/page.tsx': 'admin-or-coach',
-  'attendance/quick/page.tsx': 'no-coach',
-  'attendance/scanner/page.tsx': 'no-coach',
   'platform/page.tsx': 'platform-staff',
+  'attendance/reports/page.tsx': 'anyOf:Permission.ATTENDANCE_READ',
+  'branches/page.tsx': 'anyOf:Permission.BRANCHES_READ',
+  'players/page.tsx': 'anyOf:Permission.PLAYERS_READ',
+  'groups/page.tsx': 'anyOf:Permission.GROUPS_READ',
+  'sessions/page.tsx': 'anyOf:Permission.SESSIONS_READ',
+  'attendance/quick/page.tsx': 'anyOf:Permission.ATTENDANCE_MARK',
+  'attendance/scanner/page.tsx': 'anyOf:Permission.ATTENDANCE_MARK',
+  'finance/page.tsx':
+    'anyOf:Permission.PAYMENTS_READ|Permission.SESSION_EXPENSES_READ|Permission.REPORTS_READ',
 };
+
+/** The rule a page passes to useAccessGuard, in the notation of PAGE_RULES. */
+function pageRule(source: string): string[] {
+  const named = [...source.matchAll(/useAccessGuard\('([a-z-]+)'/g)].map((m) => m[1] ?? '');
+  if (!source.includes('useAccessGuard(PAGE_ACCESS')) return named;
+  const def = /const PAGE_ACCESS: AccessRule = \{ anyOf: \[([^\]]*)\] \};/.exec(source);
+  const perms = (def?.[1] ?? '')
+    .split(',')
+    .map((p) => p.trim())
+    .filter(Boolean);
+  return [...named, `anyOf:${perms.join('|')}`];
+}
 
 const read = (rel: string) => fs.readFileSync(path.join(APP_DIR, rel), 'utf8');
 
 describe('page access map', () => {
-  it.each(Object.entries(PAGE_RULES))('%s uses useAccessGuard(%s) exactly once', (rel, rule) => {
-    const source = read(rel);
-    const calls = source.match(/useAccessGuard\('([a-z-]+)'/g) ?? [];
-    expect(calls).toEqual([`useAccessGuard('${rule}'`]);
+  it.each(Object.entries(PAGE_RULES))('%s uses access rule %s exactly once', (rel, rule) => {
+    expect(pageRule(read(rel))).toEqual([rule]);
   });
 
   it.each(Object.keys(PAGE_RULES))('%s no longer carries an inline login redirect', (rel) => {
     expect(read(rel)).not.toMatch(/router\.(push|replace)\('\/login'\)/);
   });
 
-  it('coach-restricted attendance pages keep their policy toast', () => {
+  it('attendance-marking pages explain a refused visit', () => {
     expect(read('attendance/quick/page.tsx')).toContain(
-      'Coaches are not permitted to record player attendance.',
+      'Your role does not include recording attendance.',
     );
     expect(read('attendance/scanner/page.tsx')).toContain(
-      'Coaches are not authorized to scan or record attendance per academy policy',
+      'Your role does not include scanning attendance.',
     );
   });
 

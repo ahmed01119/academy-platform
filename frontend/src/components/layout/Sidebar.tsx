@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { useLocale } from '@/contexts/locale-context';
+import { Permission } from '@academy/shared';
+import { canAny } from '@/lib/auth/permissions';
 import { SportexusLogo } from '../brand/SportexusLogo';
 import {
   LayoutDashboard,
@@ -44,6 +46,8 @@ interface NavItem {
   icon: React.ElementType;
   badge?: string;
   id: string;
+  /** Shown only to users holding at least one of these permissions (lib/auth/permissions.ts). */
+  anyOf?: readonly Permission[];
 }
 
 interface NavSection {
@@ -91,13 +95,12 @@ export function Sidebar({ isMobileOpen = false, onCloseMobile }: SidebarProps) {
 
   const isSuperAdmin = Boolean(user?.isPlatformSuperAdmin);
   const isCoach = activeTenant?.role === 'COACH';
-  const isStaffOrOwner =
-    activeTenant &&
-    ['OWNER', 'MANAGER', 'BRANCH_MANAGER', 'RECEPTIONIST', 'ACCOUNTANT'].includes(
-      activeTenant.role,
-    );
+  // Academy members of any role (incl. VIEWER) get the academy menu; what each item shows follows the permission
+  // matrix, so nobody sees a page their role cannot use. The API enforces the same permissions.
+  const isAcademyMember = Boolean(activeTenant && activeTenant.status === 'ACTIVE');
   const hasPlayerProfile = Boolean(user?.hasPlayerProfile);
   const hasGuardianProfile = Boolean(user?.hasGuardianProfile);
+  const visible = (item: NavItem) => !item.anyOf || canAny(user, activeTenant, item.anyOf);
 
   // Role labels
   const roleLabels: Record<string, string> = {
@@ -112,188 +115,170 @@ export function Sidebar({ isMobileOpen = false, onCloseMobile }: SidebarProps) {
 
   // Build role-specific navigation sections
   const sections: NavSection[] = [];
+  const pushSection = (title: string, items: NavItem[]) => {
+    const shown = items.filter(visible);
+    if (shown.length > 0) sections.push({ title, items: shown });
+  };
 
-  // Overview / Dashboard is always the first item at the top of the sidebar
-  if (isSuperAdmin || isStaffOrOwner) {
-    sections.push({
-      title: locale === 'ar' ? 'نظرة عامة' : 'Overview',
-      items: [
-        {
-          href: '/dashboard',
-          label: t('nav.dashboard', 'لوحة التحكم'),
-          icon: LayoutDashboard,
-          id: 'sidebar-nav-dashboard',
-        },
-      ],
-    });
+  // Overview first: the coach workspace for coaches, the dashboard for everyone else in the academy.
+  if (isSuperAdmin || (isAcademyMember && !isCoach)) {
+    pushSection(locale === 'ar' ? 'نظرة عامة' : 'Overview', [
+      {
+        href: '/dashboard',
+        label: t('nav.dashboard', 'لوحة التحكم'),
+        icon: LayoutDashboard,
+        id: 'sidebar-nav-dashboard',
+      },
+    ]);
+  }
+  if (isCoach) {
+    pushSection(locale === 'ar' ? 'المساحة التدريبية' : 'Coach Operations', [
+      {
+        href: '/coach',
+        label: t('nav.coachWorkspace', 'مساحة المدرب'),
+        icon: LayoutDashboard,
+        id: 'sidebar-nav-coach-workspace',
+      },
+    ]);
   }
 
   if (isSuperAdmin) {
-    sections.push({
-      title: locale === 'ar' ? 'إدارة المنصة المركزية' : 'Platform Operations',
-      items: [
-        {
-          href: '/platform?tab=academies',
-          label: locale === 'ar' ? 'سجل الأكاديميات' : 'Academies Registry',
-          icon: Building2,
-          id: 'sidebar-nav-platform-academies',
-        },
-        {
-          href: '/platform?tab=applications',
-          label: locale === 'ar' ? 'طلبات التأسيس' : 'Applications',
-          icon: Inbox,
-          id: 'sidebar-nav-platform-applications',
-        },
-        {
-          href: '/platform?tab=users',
-          label: locale === 'ar' ? 'المستخدمين والجلسات' : 'Users & Sessions',
-          icon: Users,
-          id: 'sidebar-nav-platform-users',
-        },
-        {
-          href: '/platform?tab=plans',
-          label: locale === 'ar' ? 'باقات الاشتراك (SaaS)' : 'SaaS Plans',
-          icon: Layers,
-          id: 'sidebar-nav-platform-plans',
-        },
-        {
-          href: '/platform?tab=storage',
-          label: locale === 'ar' ? 'التخزين والبيانات' : 'Storage & Lifecycle',
-          icon: Database,
-          id: 'sidebar-nav-platform-storage',
-        },
-        {
-          href: '/platform?tab=coowner',
-          label: locale === 'ar' ? 'ملكية المنصة والشركاء' : 'Platform Ownership',
-          icon: Crown,
-          id: 'sidebar-nav-platform-coowner',
-        },
-        {
-          href: '/platform?tab=governance',
-          label: locale === 'ar' ? 'حوكمة النظام المركزي' : 'Governance',
-          icon: ShieldCheck,
-          id: 'sidebar-nav-platform-governance',
-        },
-        {
-          href: '/platform?tab=security',
-          label: locale === 'ar' ? 'الأمان والحماية' : 'Platform Security',
-          icon: ShieldAlert,
-          id: 'sidebar-nav-platform-security',
-        },
-        {
-          href: '/platform?tab=audit',
-          label: locale === 'ar' ? 'سجلات المراجعة' : 'Audit Logs',
-          icon: Activity,
-          id: 'sidebar-nav-platform-audit',
-        },
-      ],
-    });
+    pushSection(locale === 'ar' ? 'إدارة المنصة المركزية' : 'Platform Operations', [
+      {
+        href: '/platform?tab=academies',
+        label: locale === 'ar' ? 'سجل الأكاديميات' : 'Academies Registry',
+        icon: Building2,
+        id: 'sidebar-nav-platform-academies',
+      },
+      {
+        href: '/platform?tab=applications',
+        label: locale === 'ar' ? 'طلبات التأسيس' : 'Applications',
+        icon: Inbox,
+        id: 'sidebar-nav-platform-applications',
+      },
+      {
+        href: '/platform?tab=users',
+        label: locale === 'ar' ? 'المستخدمين والجلسات' : 'Users & Sessions',
+        icon: Users,
+        id: 'sidebar-nav-platform-users',
+      },
+      {
+        href: '/platform?tab=plans',
+        label: locale === 'ar' ? 'باقات الاشتراك (SaaS)' : 'SaaS Plans',
+        icon: Layers,
+        id: 'sidebar-nav-platform-plans',
+      },
+      {
+        href: '/platform?tab=storage',
+        label: locale === 'ar' ? 'التخزين والبيانات' : 'Storage & Lifecycle',
+        icon: Database,
+        id: 'sidebar-nav-platform-storage',
+      },
+      {
+        href: '/platform?tab=coowner',
+        label: locale === 'ar' ? 'ملكية المنصة والشركاء' : 'Platform Ownership',
+        icon: Crown,
+        id: 'sidebar-nav-platform-coowner',
+      },
+      {
+        href: '/platform?tab=governance',
+        label: locale === 'ar' ? 'حوكمة النظام المركزي' : 'Governance',
+        icon: ShieldCheck,
+        id: 'sidebar-nav-platform-governance',
+      },
+      {
+        href: '/platform?tab=security',
+        label: locale === 'ar' ? 'الأمان والحماية' : 'Platform Security',
+        icon: ShieldAlert,
+        id: 'sidebar-nav-platform-security',
+      },
+      {
+        href: '/platform?tab=audit',
+        label: locale === 'ar' ? 'سجلات المراجعة' : 'Audit Logs',
+        icon: Activity,
+        id: 'sidebar-nav-platform-audit',
+      },
+    ]);
   }
 
-  if (isStaffOrOwner) {
-    sections.push({
-      title: t('common.athletics', 'اللاعبين والفرق'),
-      items: [
-        {
-          href: '/players',
-          label: t('nav.players', 'اللاعبين والناشئين'),
-          icon: Users,
-          id: 'sidebar-nav-players',
-        },
-        {
-          href: '/groups',
-          label: t('nav.groups', 'المجموعات التدريبية'),
-          icon: Layers,
-          id: 'sidebar-nav-groups',
-        },
-        {
-          href: '/evaluations',
-          label: t('nav.evaluations', 'تقييمات الأداء'),
-          icon: Award,
-          id: 'sidebar-nav-evaluations',
-        },
-      ],
-    });
+  if (isAcademyMember) {
+    pushSection(t('common.athletics', 'اللاعبين والفرق'), [
+      {
+        href: '/players',
+        label: t('nav.players', 'اللاعبين والناشئين'),
+        icon: Users,
+        id: 'sidebar-nav-players',
+        anyOf: [Permission.PLAYERS_READ],
+      },
+      {
+        href: '/groups',
+        label: t('nav.groups', 'المجموعات التدريبية'),
+        icon: Layers,
+        id: 'sidebar-nav-groups',
+        anyOf: [Permission.GROUPS_READ],
+      },
+      {
+        href: '/evaluations',
+        label: t('nav.evaluations', 'تقييمات الأداء'),
+        icon: Award,
+        id: 'sidebar-nav-evaluations',
+        anyOf: [Permission.EVALUATIONS_READ],
+      },
+    ]);
 
-    sections.push({
-      title: t('common.operations', 'العمليات والتشغيل'),
-      items: [
-        {
-          href: '/sessions',
-          label: t('nav.sessions', 'الحصص التدريبية'),
-          icon: CalendarCheck,
-          id: 'sidebar-nav-sessions',
-        },
-        {
-          href: '/attendance/scanner',
-          label: t('nav.scanner', 'ماسح الحضور QR'),
-          icon: QrCode,
-          badge: locale === 'ar' ? 'مباشر' : 'Live',
-          id: 'sidebar-nav-scanner',
-        },
-        {
-          href: '/attendance/reports',
-          label: t('nav.reports', 'تقارير الحضور'),
-          icon: BarChart3,
-          id: 'sidebar-nav-reports',
-        },
-        {
-          href: '/branches',
-          label: t('nav.branches', 'الفروع والملاعب'),
-          icon: GitBranch,
-          id: 'sidebar-nav-branches',
-        },
-        {
-          href: '/finance',
-          label: t('finance.title', 'العمليات المالية والاشتراكات'),
-          icon: Wallet,
-          id: 'sidebar-nav-finance',
-        },
-      ],
-    });
+    pushSection(t('common.operations', 'العمليات والتشغيل'), [
+      {
+        href: '/sessions',
+        label: t('nav.sessions', 'الحصص التدريبية'),
+        icon: CalendarCheck,
+        id: 'sidebar-nav-sessions',
+        anyOf: [Permission.SESSIONS_READ],
+      },
+      {
+        href: '/attendance/scanner',
+        label: t('nav.scanner', 'ماسح الحضور QR'),
+        icon: QrCode,
+        badge: locale === 'ar' ? 'مباشر' : 'Live',
+        id: 'sidebar-nav-scanner',
+        anyOf: [Permission.ATTENDANCE_MARK],
+      },
+      {
+        href: '/attendance/reports',
+        label: t('nav.reports', 'تقارير الحضور'),
+        icon: BarChart3,
+        id: 'sidebar-nav-reports',
+        anyOf: [Permission.ATTENDANCE_READ],
+      },
+      {
+        href: '/branches',
+        label: t('nav.branches', 'الفروع والملاعب'),
+        icon: GitBranch,
+        id: 'sidebar-nav-branches',
+        anyOf: [Permission.BRANCHES_READ],
+      },
+      {
+        href: '/finance',
+        label: t('finance.title', 'العمليات المالية والاشتراكات'),
+        icon: Wallet,
+        id: 'sidebar-nav-finance',
+        anyOf: [
+          Permission.PAYMENTS_READ,
+          Permission.SESSION_EXPENSES_READ,
+          Permission.REPORTS_READ,
+        ],
+      },
+    ]);
 
-    sections.push({
-      title: t('common.administration', 'الإدارة والنظام'),
-      items: [
+    if (!isCoach) {
+      pushSection(t('common.administration', 'الإدارة والنظام'), [
         {
           href: '/settings',
           label: t('nav.settings', 'الإعدادات العامة'),
           icon: Settings,
           id: 'sidebar-nav-settings',
         },
-      ],
-    });
-  } else if (isCoach) {
-    sections.push({
-      title: locale === 'ar' ? 'المساحة التدريبية' : 'Coach Operations',
-      items: [
-        {
-          href: '/coach',
-          label: t('nav.coachWorkspace', 'مساحة المدرب'),
-          icon: LayoutDashboard,
-          id: 'sidebar-nav-coach-workspace',
-        },
-        {
-          href: '/sessions',
-          label: t('nav.sessions', 'الحصص التدريبية'),
-          icon: CalendarCheck,
-          id: 'sidebar-nav-coach-sessions',
-        },
-        {
-          href: '/attendance/scanner',
-          label: t('nav.scanner', 'ماسح الحضور QR'),
-          icon: QrCode,
-          badge: locale === 'ar' ? 'مباشر' : 'Live',
-          id: 'sidebar-nav-coach-scanner',
-        },
-        {
-          href: '/evaluations',
-          label: t('nav.evaluations', 'تقييمات الأداء'),
-          icon: Award,
-          id: 'sidebar-nav-coach-evaluations',
-        },
-      ],
-    });
+      ]);
+    }
   }
 
   // Cross-role portals for players and guardians

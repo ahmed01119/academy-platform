@@ -3,6 +3,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { useAccessGuard } from '@/hooks/useAccessGuard';
+import { Permission } from '@academy/shared';
+import type { AccessRule } from '@/lib/auth/access-rules';
 import { useLocale } from '@/contexts/locale-context';
 import { AppShell } from '../../components/layout/AppShell';
 import { PageHeader } from '../../components/ui/PageHeader';
@@ -43,6 +45,9 @@ import {
   PlansTab,
 } from '@/components/finance';
 
+/** Who may open this page (permission matrix; the API enforces the same permissions). */
+const PAGE_ACCESS: AccessRule = { anyOf: [Permission.PAYMENTS_READ, Permission.SESSION_EXPENSES_READ, Permission.REPORTS_READ] };
+
 export default function FinanceDashboardPage() {
   const { user, activeTenant, isLoading: authLoading } = useAuth();
   const { t, locale } = useLocale();
@@ -68,7 +73,7 @@ export default function FinanceDashboardPage() {
   const [isCreatePlanOpen, setIsCreatePlanOpen] = useState(false);
 
   // Ensure authorized staff
-  useAccessGuard('authenticated');
+  useAccessGuard(PAGE_ACCESS);
 
   const loadFinancialData = useCallback(async () => {
     setIsLoadingData(true);

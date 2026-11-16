@@ -41,6 +41,7 @@ Within an academy workspace (`Tenant`), permissions are evaluated dynamically us
 | `session_expenses.read`     | View coach session allowances             |  ✅   |   ✅    |       ✅       |      ❌      | Self only  |     ✅     |   ❌   |
 | `session_expenses.create`   | Submit session expense claims             |  ✅   |   ✅    |       ✅       |      ❌      |     ✅     |     ❌     |   ❌   |
 | `session_expenses.approve`  | Approve and disburse session payouts      |  ✅   |   ✅    |       ❌       |      ❌      |     ❌     |     ✅     |   ❌   |
+| `session_cashier.close`     | Close (reconcile) a session cashier once  |  ✅   |   ✅    |       ✅       |      ❌      |     ❌     |     ✅     |   ❌   |
 | `reports.read`              | View financial and operational reports    |  ✅   |   ✅    |       ❌       |      ❌      |     ❌     |     ✅     |   ❌   |
 | `groups.read`               | View squads, rosters, and age categories  |  ✅   |   ✅    |       ✅       |      ✅      |     ✅     |     ❌     |   ✅   |
 | `groups.manage`             | Create squads, assign coaches/players     |  ✅   |   ✅    |       ✅       |      ❌      |     ❌     |     ❌     |   ❌   |
@@ -51,6 +52,10 @@ Within an academy workspace (`Tenant`), permissions are evaluated dynamically us
 | `evaluations.manage`        | Define evaluation criteria and templates  |  ✅   |   ✅    |       ❌       |      ❌      |     ❌     |     ❌     |   ❌   |
 
 _\*Note: Coaches may only review player applications if explicitly granted `canReviewApplications: true` on their `TenantMembership`._
+
+"Self only" (and COACH `attendance.mark`): limited to the sessions the coach is assigned to (session coach or group coach).
+This table is the source of truth (owner decision 2026-11-16); `packages/shared/src/constants/roles-permissions.test.ts`
+parses it and fails if `ROLE_PERMISSIONS` differs in any cell.
 
 ---
 

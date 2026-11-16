@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { useAccessGuard } from '@/hooks/useAccessGuard';
+import { Permission } from '@academy/shared';
+import type { AccessRule } from '@/lib/auth/access-rules';
 import { usePlayersList } from '@/features/players/hooks/usePlayersList';
 import { canViewSensitivePlayerData } from '@/features/players/player-permissions';
 import { useLocale } from '@/contexts/locale-context';
@@ -27,6 +29,9 @@ import {
   Inbox,
 } from 'lucide-react';
 
+/** Who may open this page (permission matrix; the API enforces the same permissions). */
+const PAGE_ACCESS: AccessRule = { anyOf: [Permission.PLAYERS_READ] };
+
 function PlayersPageContent() {
   const searchParams = useSearchParams();
   const requestedTab = searchParams.get('tab') === 'applications' ? 'applications' : 'roster';
@@ -36,7 +41,7 @@ function PlayersPageContent() {
   const { t, locale, isRtl } = useLocale();
 
   const [activeTab, setActiveTab] = useState<'roster' | 'applications'>(requestedTab);
-  useAccessGuard('admin');
+  useAccessGuard(PAGE_ACCESS);
 
   const list = usePlayersList(
     locale === 'ar' ? 'فشل تحميل قائمة اللاعبين' : 'Failed to load players',

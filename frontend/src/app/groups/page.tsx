@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { useAccessGuard } from '@/hooks/useAccessGuard';
+import { Permission } from '@academy/shared';
+import type { AccessRule } from '@/lib/auth/access-rules';
 import { useLocale } from '@/contexts/locale-context';
 import { AppShell } from '../../components/layout/AppShell';
 import { PageHeader, StatusBadge } from '../../components/ui';
@@ -26,6 +28,9 @@ import {
   Building2,
   Trophy,
 } from 'lucide-react';
+
+/** Who may open this page (permission matrix; the API enforces the same permissions). */
+const PAGE_ACCESS: AccessRule = { anyOf: [Permission.GROUPS_READ] };
 
 export default function GroupsPage() {
   const router = useRouter();
@@ -56,7 +61,7 @@ export default function GroupsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
-  useAccessGuard('admin-or-coach');
+  useAccessGuard(PAGE_ACCESS);
 
   const loadGroups = useCallback(
     async (currentPage = page) => {

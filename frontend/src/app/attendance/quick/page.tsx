@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { useAccessGuard } from '@/hooks/useAccessGuard';
+import { Permission } from '@academy/shared';
+import type { AccessRule } from '@/lib/auth/access-rules';
 import { AppShell } from '../../../components/layout/AppShell';
 import { PageHeader } from '../../../components/ui/PageHeader';
 import { useToast } from '../../../components/ui/Toast';
@@ -26,6 +28,9 @@ import {
   WifiOff,
 } from 'lucide-react';
 import { useLocale } from '@/contexts/locale-context';
+
+/** Who may open this page (permission matrix; the API enforces the same permissions). */
+const PAGE_ACCESS: AccessRule = { anyOf: [Permission.ATTENDANCE_MARK] };
 
 function QuickAttendanceContent() {
   const searchParams = useSearchParams();
@@ -61,12 +66,12 @@ function QuickAttendanceContent() {
   }, []);
 
   // Auth gate
-  useAccessGuard('no-coach', {
+  useAccessGuard(PAGE_ACCESS, {
     onForbidden: () =>
       toast.error(
         isRtl
-          ? 'غير مصرح للمدربين بتسجيل الحضور وفقاً للسياسات الإدارية المعتمدة'
-          : 'Coaches are not permitted to record player attendance.',
+          ? 'صلاحيات دورك لا تشمل تسجيل الحضور.'
+          : 'Your role does not include recording attendance.',
       ),
   });
 

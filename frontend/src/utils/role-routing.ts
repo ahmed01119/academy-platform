@@ -20,13 +20,14 @@ export function getRoleHomeRoute(
     if (activeTenant.role === 'COACH') {
       return '/coach';
     }
-    // Academy Owner, Manager, Branch Manager, Accountant, Receptionist
+    // Academy Owner, Manager, Branch Manager, Accountant, Receptionist, Viewer
     if (
       activeTenant.role === 'OWNER' ||
       activeTenant.role === 'MANAGER' ||
       activeTenant.role === 'BRANCH_MANAGER' ||
       activeTenant.role === 'ACCOUNTANT' ||
-      activeTenant.role === 'RECEPTIONIST'
+      activeTenant.role === 'RECEPTIONIST' ||
+      activeTenant.role === 'VIEWER'
     ) {
       return '/dashboard';
     }
@@ -62,7 +63,8 @@ export function canAccessAdminRoutes(
     return false;
   }
 
-  const adminRoles = ['OWNER', 'MANAGER', 'BRANCH_MANAGER', 'ACCOUNTANT', 'RECEPTIONIST'];
+  // Academy staff with a dashboard. VIEWER was missing, so read-only members had no pages at all.
+  const adminRoles = ['OWNER', 'MANAGER', 'BRANCH_MANAGER', 'ACCOUNTANT', 'RECEPTIONIST', 'VIEWER'];
   return adminRoles.includes(activeTenant.role);
 }
 

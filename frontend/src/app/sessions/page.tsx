@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { useAccessGuard } from '@/hooks/useAccessGuard';
+import { Permission } from '@academy/shared';
+import type { AccessRule } from '@/lib/auth/access-rules';
 import { useLocale } from '@/contexts/locale-context';
 import { AppShell } from '../../components/layout/AppShell';
 import { PageHeader, StatusBadge, useConfirm, useToast } from '../../components/ui';
@@ -30,6 +32,9 @@ import {
   CheckCircle2,
   QrCode,
 } from 'lucide-react';
+
+/** Who may open this page (permission matrix; the API enforces the same permissions). */
+const PAGE_ACCESS: AccessRule = { anyOf: [Permission.SESSIONS_READ] };
 
 export default function SessionsPage() {
   return (
@@ -88,7 +93,7 @@ function SessionsContent() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
-  useAccessGuard('admin-or-coach');
+  useAccessGuard(PAGE_ACCESS);
 
   const loadSessions = useCallback(
     async (currentPage = page) => {

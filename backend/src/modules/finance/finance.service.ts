@@ -7,6 +7,7 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  ConflictException,
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
@@ -14,6 +15,9 @@ import { AuditService } from '../audit/audit.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import {
   ErrorCode,
+  Permission,
+  hasPermission,
+  type TenantRole,
   type TenantContext,
   type TenantSubscriptionItem,
   type PlayerSubscriptionPlanItem,
@@ -679,24 +683,12 @@ export class FinanceService {
           });
         }
 
-        // 4. Verify coach assignment for COACH role
-        const isOwnerOrManager =
-          tenantContext.role === 'OWNER' ||
-          tenantContext.role === 'MANAGER' ||
-          tenantContext.role === 'ACCOUNTANT';
-
-        if (!isOwnerOrManager) {
-          const isAssigned =
-            session.coachUserId === tenantContext.actorUserId ||
-            session.group?.coaches.some((c) => c.coachUserId === tenantContext.actorUserId);
-
-          if (!isAssigned) {
-            throw new ForbiddenException({
-              code: ErrorCode.FORBIDDEN,
-              message: 'You are only permitted to submit expenses for sessions you are assigned to',
-            });
-          }
-        }
+        // 4. Who may claim an expense for this session (see assertSessionMoneyAccess)
+        assertSessionMoneyAccess(
+          tenantContext,
+          session,
+          'You are only permitted to submit expenses for sessions you are assigned to',
+        );
 
         // 5. Check Idempotency Key
         if (dto.idempotencyKey) {
@@ -739,12 +731,15 @@ export class FinanceService {
           return this.mapFinancialTransaction(duplicateExpense);
         }
 
-        // 7. Determine status: COACH expenses are PENDING review; OWNER/MANAGER/ACCOUNTANT are auto-approved (COMPLETED)
+        // 7. Determine status: claims by someone who may approve expenses (session_expenses.approve: owner, manager,
+        //    accountant) are auto-approved (COMPLETED); everyone else's (branch manager, coach) wait for review (PENDING).
         const now = new Date();
         const receiptNumber =
           dto.receiptNumber ||
           `EXP-${now.getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
-        const isAutoApproved = isOwnerOrManager;
+        const isAutoApproved =
+          Boolean(tenantContext.role) &&
+          hasPermission(tenantContext.role as TenantRole, Permission.SESSION_EXPENSES_APPROVE);
 
         const transaction = await tx.academyFinancialTransaction.create({
           data: {
@@ -1056,25 +1051,12 @@ export class FinanceService {
           });
         }
 
-        // Verify coach authorization to view session cashier
-        const isOwnerOrManager =
-          tenantContext.role === 'OWNER' ||
-          tenantContext.role === 'MANAGER' ||
-          tenantContext.role === 'ACCOUNTANT';
-
-        if (!isOwnerOrManager) {
-          const isAssigned =
-            session.coachUserId === tenantContext.actorUserId ||
-            session.group?.coaches.some((c) => c.coachUserId === tenantContext.actorUserId);
-
-          if (!isAssigned) {
-            throw new ForbiddenException({
-              code: ErrorCode.FORBIDDEN,
-              message:
-                'You are only permitted to view cashier summary for sessions you are assigned to',
-            });
-          }
-        }
+        // Who may see this session's cashier (see assertSessionMoneyAccess)
+        assertSessionMoneyAccess(
+          tenantContext,
+          session,
+          'You are only permitted to view cashier summary for sessions you are assigned to',
+        );
 
         // Transactions recorded for this session (all statuses for visibility)
         const transactions = await tx.academyFinancialTransaction.findMany({
@@ -1171,12 +1153,20 @@ export class FinanceService {
   ): Promise<SessionCashierSummary> {
     const summary = await this.getSessionCashierSummary(tenantContext, sessionId);
 
+    // K8: a closed cashier is final. Closing again used to overwrite the reconciled totals and the closer.
+    if (summary.isReconciled) {
+      throw new ConflictException({
+        code: ErrorCode.CONFLICT,
+        message: 'This session cashier is already closed',
+      });
+    }
+
     return this.prisma.withTenantTransaction(
       { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
       async (tx) => {
-        await tx.sessionCashierClosing.upsert({
-          where: { sessionId },
-          create: {
+        // create (not upsert): the unique session_id also refuses a concurrent second close.
+        await tx.sessionCashierClosing.create({
+          data: {
             tenantId: tenantContext.tenantId,
             branchId: summary.branchId,
             sessionId,
@@ -1192,21 +1182,6 @@ export class FinanceService {
             netCashMovement: summary.netCashMovement,
             isReconciled: true,
             notes: dto.notes,
-          },
-          update: {
-            closedByUserId: tenantContext.actorUserId,
-            totalAttendees: summary.totalAttendees,
-            totalAbsent: summary.totalAbsent,
-            totalLate: summary.totalLate,
-            totalActiveSubscribers: summary.totalActiveSubscribers,
-            totalOverdueSubscribers: summary.totalOverdueSubscribers,
-            totalCashCollected: summary.totalCashCollected,
-            totalElectronicCollected: summary.totalElectronicCollected,
-            totalExpenses: summary.totalExpenses,
-            netCashMovement: summary.netCashMovement,
-            isReconciled: true,
-            notes: dto.notes,
-            reconciledAt: new Date(),
           },
         });
 
@@ -1351,4 +1326,30 @@ export class FinanceService {
       },
     );
   }
+}
+
+/**
+ * Who may see or claim money for a training session (cashier summary, expense claims):
+ *  - OWNER, MANAGER, ACCOUNTANT: any session of the academy;
+ *  - BRANCH_MANAGER: sessions of their own branch;
+ *  - COACH: only sessions they are assigned to (session coach or group coach) - "self only" in the permission matrix.
+ * The permission itself (session_expenses.read / .create) is checked by PermissionsGuard before this.
+ */
+function assertSessionMoneyAccess(
+  tenantContext: TenantContext,
+  session: {
+    branchId: string;
+    coachUserId: string | null;
+    group?: { coaches: Array<{ coachUserId: string }> } | null;
+  },
+  message: string,
+): void {
+  const role = tenantContext.role;
+  if (role === 'OWNER' || role === 'MANAGER' || role === 'ACCOUNTANT') return;
+  if (role === 'BRANCH_MANAGER' && session.branchId === tenantContext.branchId) return;
+  const isAssigned =
+    session.coachUserId === tenantContext.actorUserId ||
+    Boolean(session.group?.coaches.some((c) => c.coachUserId === tenantContext.actorUserId));
+  if (role === 'COACH' && isAssigned) return;
+  throw new ForbiddenException({ code: ErrorCode.FORBIDDEN, message });
 }

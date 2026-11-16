@@ -4,6 +4,8 @@ import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/auth-context';
 import { useAccessGuard } from '@/hooks/useAccessGuard';
+import { Permission } from '@academy/shared';
+import type { AccessRule } from '@/lib/auth/access-rules';
 import { useLocale } from '@/contexts/locale-context';
 import { translateDataString } from '@/utils/data-translator';
 import { AppShell } from '../../components/layout/AppShell';
@@ -30,6 +32,9 @@ import {
   Building,
 } from 'lucide-react';
 
+/** Who may open this page (permission matrix; the API enforces the same permissions). */
+const PAGE_ACCESS: AccessRule = { anyOf: [Permission.BRANCHES_READ] };
+
 export default function BranchesPage() {
   const { user, activeTenant, isLoading } = useAuth();
   const { locale, t } = useLocale();
@@ -55,7 +60,7 @@ export default function BranchesPage() {
   const [status, setStatus] = useState<BranchStatus>('ACTIVE');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useAccessGuard('admin');
+  useAccessGuard(PAGE_ACCESS);
 
   const loadBranches = useCallback(async () => {
     if (!user || !activeTenant) return;
