@@ -1,3 +1,4 @@
+import { money } from '../../common/money';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { HealthService } from '../health/health.service';
@@ -91,15 +92,12 @@ export class PlatformMetricsService {
         const expiredAcademies = expiredSubscriptions;
 
         // Calculate Monthly Recurring Revenue (MRR) based on active subscription prices
-        const mrr = (
-          activeSubs as Array<{
-            negotiatedPrice: number | null;
-            plan: { priceMonthly: number | null };
-          }>
-        ).reduce((acc: number, sub) => {
-          const monthly = sub.negotiatedPrice ?? sub.plan.priceMonthly ?? 0;
-          return acc + monthly;
-        }, 0);
+        const mrr = money(
+          activeSubs.reduce(
+            (acc: number, sub) => acc + money(sub.negotiatedPrice ?? sub.plan.priceMonthly),
+            0,
+          ),
+        );
 
         return {
           totalAcademies,
@@ -118,7 +116,7 @@ export class PlatformMetricsService {
           upcomingRenewals,
           expiredSubscriptions,
           mrr,
-          collectedRevenue: paidInvoicesSum._sum.amount ?? 0,
+          collectedRevenue: money(paidInvoicesSum._sum.amount),
           outstandingInvoices: pendingInvoicesCount,
           failedPayments: overdueInvoicesCount,
           systemHealth,

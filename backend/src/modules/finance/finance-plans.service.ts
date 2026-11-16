@@ -1,3 +1,4 @@
+import { money } from '../../common/money';
 import { Inject, Injectable } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { AuditService } from '../audit/audit.service';
@@ -44,7 +45,7 @@ export class FinancePlansService {
           name: p.name,
           description: p.description,
           billingPeriod: p.billingPeriod as any,
-          feeAmount: p.feeAmount,
+          feeAmount: money(p.feeAmount),
           currency: p.currency,
           isActive: p.isActive,
           createdAt: p.createdAt.toISOString(),
@@ -71,7 +72,7 @@ export class FinancePlansService {
             name: dto.name,
             description: dto.description,
             billingPeriod: dto.billingPeriod as any,
-            feeAmount: dto.feeAmount,
+            feeAmount: money(dto.feeAmount),
             currency: dto.currency || 'EGP',
           },
           include: { branch: { select: { name: true } } },
@@ -83,7 +84,7 @@ export class FinancePlansService {
           action: 'PLAYER_SUBSCRIPTION_PLAN_CREATED',
           resourceType: 'PlayerSubscriptionPlan',
           resourceId: plan.id,
-          metadata: { name: plan.name, feeAmount: plan.feeAmount },
+          metadata: { name: plan.name, feeAmount: money(plan.feeAmount) },
         });
 
         return {
@@ -95,7 +96,7 @@ export class FinancePlansService {
           name: plan.name,
           description: plan.description,
           billingPeriod: plan.billingPeriod as any,
-          feeAmount: plan.feeAmount,
+          feeAmount: money(plan.feeAmount),
           currency: plan.currency,
           isActive: plan.isActive,
           createdAt: plan.createdAt.toISOString(),

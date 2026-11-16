@@ -1,3 +1,4 @@
+import { money, moneyOrNull } from '../../common/money';
 import {
   Inject,
   Injectable,
@@ -728,8 +729,8 @@ export class PlatformService {
         code: p.code as SaaSPlanItem['code'],
         name: p.name,
         description: p.description,
-        priceMonthly: p.priceMonthly,
-        priceYearly: p.priceYearly,
+        priceMonthly: money(p.priceMonthly),
+        priceYearly: money(p.priceYearly),
         currency: p.currency,
         maxBranches: p.maxBranches,
         maxPlayers: p.maxPlayers,
@@ -765,8 +766,8 @@ export class PlatformService {
         data: {
           name: dto.name,
           description: dto.description,
-          priceMonthly: dto.priceMonthly,
-          priceYearly: dto.priceYearly,
+          priceMonthly: money(dto.priceMonthly),
+          priceYearly: money(dto.priceYearly),
           maxBranches: dto.maxBranches,
           maxPlayers: dto.maxPlayers,
           maxCoaches: dto.maxCoaches,
@@ -788,8 +789,8 @@ export class PlatformService {
         code: updated.code as SaaSPlanItem['code'],
         name: updated.name,
         description: updated.description,
-        priceMonthly: updated.priceMonthly,
-        priceYearly: updated.priceYearly,
+        priceMonthly: money(updated.priceMonthly),
+        priceYearly: money(updated.priceYearly),
         currency: updated.currency,
         maxBranches: updated.maxBranches,
         maxPlayers: updated.maxPlayers,
@@ -842,7 +843,7 @@ export class PlatformService {
           planCode: (dto.planCode as any) ?? 'STARTER',
           status: (dto.status as any) ?? 'ACTIVE',
           billingCycle: (dto.billingCycle as any) ?? 'MONTHLY',
-          negotiatedPrice: dto.negotiatedPrice,
+          negotiatedPrice: moneyOrNull(dto.negotiatedPrice),
           renewalDate: dto.renewalDate
             ? new Date(dto.renewalDate)
             : new Date(Date.now() + 30 * 86400000),
@@ -861,7 +862,7 @@ export class PlatformService {
         metadata: { updates: dto },
       });
 
-      const currentPrice = updated.negotiatedPrice ?? updated.plan.priceMonthly;
+      const currentPrice = money(updated.negotiatedPrice ?? updated.plan.priceMonthly);
 
       return {
         id: updated.id,
@@ -871,7 +872,7 @@ export class PlatformService {
         planName: updated.plan.name,
         status: updated.status as any,
         billingCycle: updated.billingCycle as any,
-        negotiatedPrice: updated.negotiatedPrice,
+        negotiatedPrice: moneyOrNull(updated.negotiatedPrice),
         currentPrice,
         currency: updated.currency,
         startDate: updated.startDate.toISOString(),

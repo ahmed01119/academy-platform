@@ -1,3 +1,5 @@
+import * as crypto from 'node:crypto';
+import { money, moneyOrNull } from '../../common/money';
 import { EmailService } from '../email/email.service';
 import { FinancePlansService } from './finance-plans.service';
 import {
@@ -86,7 +88,7 @@ export class FinanceService {
           });
         }
 
-        const currentPrice = sub.negotiatedPrice ?? sub.plan.priceMonthly;
+        const currentPrice = money(sub.negotiatedPrice ?? sub.plan.priceMonthly);
 
         return {
           id: sub.id,
@@ -96,7 +98,7 @@ export class FinanceService {
           planName: sub.plan.name,
           status: sub.status as any,
           billingCycle: sub.billingCycle as any,
-          negotiatedPrice: sub.negotiatedPrice,
+          negotiatedPrice: moneyOrNull(sub.negotiatedPrice),
           currentPrice,
           currency: sub.currency,
           startDate: sub.startDate.toISOString(),
@@ -193,11 +195,11 @@ export class FinanceService {
           startDate: s.startDate.toISOString().slice(0, 10),
           dueDate: s.dueDate.toISOString().slice(0, 10),
           renewalDate: s.renewalDate ? s.renewalDate.toISOString().slice(0, 10) : null,
-          feeAmount: s.feeAmount,
-          discountAmount: s.discountAmount,
+          feeAmount: money(s.feeAmount),
+          discountAmount: money(s.discountAmount),
           discountReason: s.discountReason,
-          paidAmount: s.paidAmount,
-          outstandingBalance: s.outstandingBalance,
+          paidAmount: money(s.paidAmount),
+          outstandingBalance: money(s.outstandingBalance),
           lastPaymentDate: s.lastPaymentDate ? s.lastPaymentDate.toISOString() : null,
           notes: s.notes,
         }));
@@ -237,11 +239,11 @@ export class FinanceService {
           startDate: sub.startDate.toISOString().slice(0, 10),
           dueDate: sub.dueDate.toISOString().slice(0, 10),
           renewalDate: sub.renewalDate ? sub.renewalDate.toISOString().slice(0, 10) : null,
-          feeAmount: sub.feeAmount,
-          discountAmount: sub.discountAmount,
+          feeAmount: money(sub.feeAmount),
+          discountAmount: money(sub.discountAmount),
           discountReason: sub.discountReason,
-          paidAmount: sub.paidAmount,
-          outstandingBalance: sub.outstandingBalance,
+          paidAmount: money(sub.paidAmount),
+          outstandingBalance: money(sub.outstandingBalance),
           lastPaymentDate: sub.lastPaymentDate ? sub.lastPaymentDate.toISOString() : null,
           notes: sub.notes,
         };
@@ -281,7 +283,7 @@ export class FinanceService {
             startDate: dto.startDate ? new Date(dto.startDate) : new Date(),
             dueDate: new Date(dto.dueDate),
             renewalDate: new Date(dto.dueDate),
-            feeAmount: dto.feeAmount,
+            feeAmount: money(dto.feeAmount),
             discountAmount: dto.discountAmount || 0,
             discountReason: dto.discountReason,
             paidAmount: 0,
@@ -314,11 +316,11 @@ export class FinanceService {
           startDate: sub.startDate.toISOString().slice(0, 10),
           dueDate: sub.dueDate.toISOString().slice(0, 10),
           renewalDate: sub.renewalDate ? sub.renewalDate.toISOString().slice(0, 10) : null,
-          feeAmount: sub.feeAmount,
-          discountAmount: sub.discountAmount,
+          feeAmount: money(sub.feeAmount),
+          discountAmount: money(sub.discountAmount),
           discountReason: sub.discountReason,
-          paidAmount: sub.paidAmount,
-          outstandingBalance: sub.outstandingBalance,
+          paidAmount: money(sub.paidAmount),
+          outstandingBalance: money(sub.outstandingBalance),
           lastPaymentDate: null,
           notes: sub.notes,
         };
@@ -334,7 +336,10 @@ export class FinanceService {
     tenantContext: TenantContext,
     dto: RecordPlayerPaymentRequest,
   ): Promise<FinancialTransactionItem> {
-    return this.prisma.withTenantTransaction(
+    // K12: the receipt e-mail is prepared inside the transaction and sent after the commit. Sending it (with retries)
+    // inside the transaction kept the database transaction open for the whole e-mail round trip.
+    let pendingReceipt: Parameters<EmailService['sendPaymentReceipt']>[0] | null = null;
+    const result = await this.prisma.withTenantTransaction(
       { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
       async (tx) => {
         const player = await tx.player.findUnique({
@@ -349,9 +354,7 @@ export class FinanceService {
         }
 
         const now = new Date();
-        const year = now.getFullYear();
-        const rand = Math.floor(1000 + Math.random() * 9000);
-        const receiptNumber = dto.receiptNumber || `REC-${year}-${rand}`;
+        const receiptNumber = dto.receiptNumber || generateReceiptNumber('REC', now);
 
         // 1. Create financial transaction in ledger, in the academy's own currency (K4)
         const currency = await academyCurrency(tx, tenantContext.tenantId);
@@ -364,7 +367,7 @@ export class FinanceService {
             subscriptionId: dto.subscriptionId,
             recordedByUserId: tenantContext.actorUserId,
             type: 'MEMBERSHIP_FEE',
-            amount: dto.amount,
+            amount: money(dto.amount),
             currency,
             paymentMethod: dto.paymentMethod as any,
             status: 'COMPLETED',
@@ -388,8 +391,8 @@ export class FinanceService {
             });
 
         if (sub) {
-          const newPaidAmount = sub.paidAmount + dto.amount;
-          const newOutstanding = Math.max(0, sub.outstandingBalance - dto.amount);
+          const newPaidAmount = money(sub.paidAmount) + dto.amount;
+          const newOutstanding = Math.max(0, money(sub.outstandingBalance) - dto.amount);
           const newStatus = newOutstanding <= 0 ? 'ACTIVE' : 'PARTIAL';
 
           await tx.playerSubscription.update({
@@ -411,13 +414,13 @@ export class FinanceService {
           resourceId: transaction.id,
           metadata: {
             playerId: dto.playerId,
-            amount: dto.amount,
+            amount: money(dto.amount),
             paymentMethod: dto.paymentMethod,
             receiptNumber,
           },
         });
 
-        // Dispatch official payment receipt email to guardian if email exists
+        // Official payment receipt for the guardian (sent after the commit, see pendingReceipt)
         if (this.emailService) {
           try {
             const guardian = await tx.guardian.findFirst({
@@ -431,22 +434,22 @@ export class FinanceService {
                 select: { name: true },
               });
 
-              await this.emailService.sendPaymentReceipt({
+              pendingReceipt = {
                 to: guardian.email,
                 recipientName: `${guardian.firstName} ${guardian.lastName}`.trim(),
                 academyName: academy?.name || 'Sportexus Academy',
                 receiptNumber,
-                amount: dto.amount,
+                amount: money(dto.amount),
                 currency: transaction.currency,
                 paymentMethod: dto.paymentMethod,
                 description: dto.notes || 'سداد رسوم اشتراك تدريبي',
                 date: now,
                 locale: 'ar',
-              });
+              };
             }
           } catch (mailErr: unknown) {
             this.logger.warn(
-              `Failed to dispatch payment receipt email: ${(mailErr as Error)?.message}`,
+              `Failed to prepare payment receipt email: ${(mailErr as Error)?.message}`,
             );
           }
         }
@@ -463,7 +466,7 @@ export class FinanceService {
           recordedByUserId: transaction.recordedByUserId,
           recordedByName: transaction.recordedByUser.name,
           type: transaction.type as any,
-          amount: transaction.amount,
+          amount: money(transaction.amount),
           currency: transaction.currency,
           paymentMethod: transaction.paymentMethod as any,
           status: transaction.status as any,
@@ -476,6 +479,17 @@ export class FinanceService {
         };
       },
     );
+
+    // After the commit: a slow or failing mail provider never affects the recorded payment.
+    const receipt = pendingReceipt as Parameters<EmailService['sendPaymentReceipt']>[0] | null;
+    if (receipt && this.emailService) {
+      void this.emailService.sendPaymentReceipt(receipt).catch((mailErr: unknown) => {
+        this.logger.warn(
+          `Failed to dispatch payment receipt email: ${(mailErr as Error)?.message}`,
+        );
+      });
+    }
+    return result;
   }
 
   /**
@@ -535,8 +549,8 @@ export class FinanceService {
           });
 
           if (sub) {
-            const reOutstanding = sub.outstandingBalance + transaction.amount;
-            const rePaid = Math.max(0, sub.paidAmount - transaction.amount);
+            const reOutstanding = money(sub.outstandingBalance) + money(transaction.amount);
+            const rePaid = Math.max(0, money(sub.paidAmount) - money(transaction.amount));
             const reStatus = reOutstanding > 0 ? (rePaid > 0 ? 'PARTIAL' : 'OVERDUE') : 'ACTIVE';
 
             await tx.playerSubscription.update({
@@ -556,7 +570,7 @@ export class FinanceService {
           action: 'FINANCIAL_TRANSACTION_REVERSED',
           resourceType: 'AcademyFinancialTransaction',
           resourceId: transactionId,
-          metadata: { reason: dto.reason, amount: transaction.amount },
+          metadata: { reason: dto.reason, amount: money(transaction.amount) },
         });
 
         return {
@@ -573,7 +587,7 @@ export class FinanceService {
           recordedByUserId: updated.recordedByUserId,
           recordedByName: updated.recordedByUser.name,
           type: updated.type as any,
-          amount: updated.amount,
+          amount: money(updated.amount),
           currency: updated.currency,
           paymentMethod: updated.paymentMethod as any,
           status: updated.status as any,
@@ -601,7 +615,7 @@ export class FinanceService {
       recordedByUserId: t.recordedByUserId,
       recordedByName: t.recordedByUser?.name ?? null,
       type: t.type as any,
-      amount: t.amount,
+      amount: money(t.amount),
       currency: t.currency,
       paymentMethod: t.paymentMethod as any,
       status: t.status as any,
@@ -735,9 +749,7 @@ export class FinanceService {
         // 7. Determine status: claims by someone who may approve expenses (session_expenses.approve: owner, manager,
         //    accountant) are auto-approved (COMPLETED); everyone else's (branch manager, coach) wait for review (PENDING).
         const now = new Date();
-        const receiptNumber =
-          dto.receiptNumber ||
-          `EXP-${now.getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+        const receiptNumber = dto.receiptNumber || generateReceiptNumber('EXP', now);
         const isAutoApproved =
           Boolean(tenantContext.role) &&
           hasPermission(tenantContext.role as TenantRole, Permission.SESSION_EXPENSES_APPROVE);
@@ -897,7 +909,7 @@ export class FinanceService {
           resourceType: 'AcademyFinancialTransaction',
           resourceId: transactionId,
           metadata: {
-            amount: transaction.amount,
+            amount: money(transaction.amount),
             sessionId: transaction.sessionId,
             submitterUserId: transaction.recordedByUserId,
             approvedByUserId: tenantContext.actorUserId,
@@ -989,7 +1001,7 @@ export class FinanceService {
           resourceType: 'AcademyFinancialTransaction',
           resourceId: transactionId,
           metadata: {
-            amount: transaction.amount,
+            amount: money(transaction.amount),
             sessionId: transaction.sessionId,
             rejectionReason: dto.reason,
             rejectedByUserId: tenantContext.actorUserId,
@@ -1103,12 +1115,12 @@ export class FinanceService {
           if (t.status === 'COMPLETED') {
             if (t.type === 'MEMBERSHIP_FEE' || t.type === 'REGISTRATION_FEE') {
               if (t.paymentMethod === 'CASH') {
-                totalCashCollected += t.amount;
+                totalCashCollected += money(t.amount);
               } else {
-                totalElectronicCollected += t.amount;
+                totalElectronicCollected += money(t.amount);
               }
             } else if (t.type === 'SESSION_EXPENSE') {
-              totalExpenses += t.amount;
+              totalExpenses += money(t.amount);
             }
           }
         }
@@ -1177,10 +1189,10 @@ export class FinanceService {
             totalLate: summary.totalLate,
             totalActiveSubscribers: summary.totalActiveSubscribers,
             totalOverdueSubscribers: summary.totalOverdueSubscribers,
-            totalCashCollected: summary.totalCashCollected,
-            totalElectronicCollected: summary.totalElectronicCollected,
-            totalExpenses: summary.totalExpenses,
-            netCashMovement: summary.netCashMovement,
+            totalCashCollected: money(summary.totalCashCollected),
+            totalElectronicCollected: money(summary.totalElectronicCollected),
+            totalExpenses: money(summary.totalExpenses),
+            netCashMovement: money(summary.netCashMovement),
             isReconciled: true,
             notes: dto.notes,
           },
@@ -1194,9 +1206,9 @@ export class FinanceService {
           resourceId: sessionId,
           metadata: {
             sessionId,
-            netCashMovement: summary.netCashMovement,
-            totalExpenses: summary.totalExpenses,
-            totalCashCollected: summary.totalCashCollected,
+            netCashMovement: money(summary.netCashMovement),
+            totalExpenses: money(summary.totalExpenses),
+            totalCashCollected: money(summary.totalCashCollected),
           },
         });
 
@@ -1255,24 +1267,24 @@ export class FinanceService {
 
           if (isRevenue) {
             paymentMethodBreakdown[t.paymentMethod] =
-              (paymentMethodBreakdown[t.paymentMethod] || 0) + t.amount;
+              (paymentMethodBreakdown[t.paymentMethod] || 0) + money(t.amount);
 
             const bName = t.branch.name;
-            branchRevenue[bName] = (branchRevenue[bName] || 0) + t.amount;
+            branchRevenue[bName] = (branchRevenue[bName] || 0) + money(t.amount);
 
             if (t.createdAt >= startOfDay) {
-              todayCollections += t.amount;
+              todayCollections += money(t.amount);
             }
             if (t.sessionId) {
-              sessionCollections += t.amount;
+              sessionCollections += money(t.amount);
             }
             if (t.createdAt >= startOfMonth) {
-              monthlyRevenue += t.amount;
+              monthlyRevenue += money(t.amount);
             }
           } else if (isExpense) {
-            totalExpenses += t.amount;
+            totalExpenses += money(t.amount);
             const category = 'تشغيل وتدريب';
-            expensesByCategory[category] = (expensesByCategory[category] || 0) + t.amount;
+            expensesByCategory[category] = (expensesByCategory[category] || 0) + money(t.amount);
           }
         }
 
@@ -1281,7 +1293,7 @@ export class FinanceService {
         });
 
         const outstandingPlayerBalances = playerSubs.reduce(
-          (acc, s) => acc + s.outstandingBalance,
+          (acc, s) => acc + money(s.outstandingBalance),
           0,
         );
         const overdueSubscriptionsCount = playerSubs.filter(
@@ -1312,7 +1324,7 @@ export class FinanceService {
             recordedByUserId: t.recordedByUserId,
             recordedByName: t.recordedByUser.name,
             type: t.type as any,
-            amount: t.amount,
+            amount: money(t.amount),
             currency: t.currency,
             paymentMethod: t.paymentMethod as any,
             status: t.status as any,
@@ -1375,4 +1387,18 @@ async function academyCurrency(
     select: { currency: true },
   });
   return tenant?.currency ?? 'EGP';
+}
+
+const RECEIPT_CODE_ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ'; // Crockford base 32
+
+/**
+ * K11: receipt / expense numbers. They used to be 4 random digits per year (REC-2026-1234), so collisions were likely
+ * and nothing prevented them. Now: prefix, UTC date and 8 Crockford base-32 characters from a CSPRNG (40 bits), e.g.
+ * REC-20261116-7K3M9QX2; the database enforces one number per academy (unique index), so a manual duplicate is a 409.
+ */
+export function generateReceiptNumber(prefix: 'REC' | 'EXP', now = new Date()): string {
+  const date = now.toISOString().slice(0, 10).replace(/-/g, '');
+  let code = '';
+  for (const byte of crypto.randomBytes(8)) code += RECEIPT_CODE_ALPHABET[byte & 31];
+  return `${prefix}-${date}-${code}`;
 }

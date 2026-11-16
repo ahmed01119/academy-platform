@@ -1,3 +1,4 @@
+import { money } from '../../common/money';
 import {
   BadRequestException,
   ConflictException,
@@ -253,7 +254,7 @@ export class AttendanceService {
             remarks: r.remarks,
             version: r.version,
             subscriptionStatus: (s?.status as any) ?? 'OVERDUE',
-            outstandingBalance: s?.outstandingBalance ?? 0,
+            outstandingBalance: money(s?.outstandingBalance),
             amountDue: s?.outstandingBalance ?? 0,
             nextPaymentDate: s?.dueDate ? s.dueDate.toISOString().slice(0, 10) : null,
             lastPaymentDate: s?.lastPaymentDate ? s.lastPaymentDate.toISOString() : null,
@@ -1524,8 +1525,8 @@ export class AttendanceService {
         const paymentStatusPayload = playerSub
           ? {
               status: playerSub.status as any,
-              outstandingBalance: playerSub.outstandingBalance,
-              feeAmount: playerSub.feeAmount,
+              outstandingBalance: money(playerSub.outstandingBalance),
+              feeAmount: money(playerSub.feeAmount),
               dueDate: playerSub.dueDate.toISOString().slice(0, 10),
               lastPaymentDate: playerSub.lastPaymentDate
                 ? playerSub.lastPaymentDate.toISOString()
