@@ -3,10 +3,13 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  HttpException,
+  HttpStatus,
   Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import type { TenantTransactionClient } from '@academy/database';
 import { PrismaService } from '../database/prisma.service';
 import {
   ErrorCode,
@@ -19,14 +22,25 @@ import {
   type CreatePlayerJoinRequest,
   type PlayerJoinRequestItem,
   type ApplicationStatus,
+  type JoinRequesterType,
 } from '@academy/shared';
 import { RedisService } from '../redis/redis.service';
+import { PasswordService } from '../auth/password.service';
+import { insertApplicantAccount, isDuplicateEmailError } from '../auth/applicant-account';
+import { rateLimitIpKey } from '../../common/client-ip';
 import { databaseFunctionErrorCode, singleRow } from '../../common/db-function-error';
 
 const CLAIM_ATTEMPT_LIMIT = 10;
 const CLAIM_ATTEMPT_WINDOW_SECONDS = 60 * 60;
 const CLAIM_CODE_ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ'; // Crockford base 32
+/** Public join form: new applicant accounts per IP and hour. */
+const JOIN_ACCOUNT_LIMIT = 10;
+const JOIN_ACCOUNT_WINDOW_SECONDS = 60 * 60;
 const JOIN_REQUEST_ERRORS = [
+  'REQUESTER_TYPE_INVALID',
+  'GUARDIAN_NAME_REQUIRED',
+  'PLAYER_PROFILE_EXISTS',
+  'DUPLICATE_PENDING_REQUEST',
   'ACADEMY_NOT_AVAILABLE',
   'TOO_MANY_PENDING_REQUESTS',
   'APPLICANT_NOT_PERMITTED',
@@ -59,6 +73,7 @@ export class PortalService {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(RedisService) private readonly redisService: RedisService,
+    @Inject(PasswordService) private readonly passwordService: PasswordService,
   ) {}
 
   /**
@@ -511,39 +526,36 @@ export class PortalService {
   }
 
   /**
-   * Submits a player/guardian request to join an existing academy (public endpoint).
+   * Join request from a PLAYER (for themself) or a GUARDIAN (for a child). Academy owners/coaches apply through
+   * AuthService.register instead.
    *
-   * submit_player_join_request (definer function) requires the academy to be ACTIVE (B1), validates the input, caps
-   * pending requests per academy and e-mail (B2), creates the request as PENDING_REVIEW and notifies the academy's
-   * managers in the same transaction. The applicant is the signed-in user when there is one, otherwise none.
+   * Every request belongs to an account (K6, owner decision 2026-11-16):
+   *  - signed in (`applicantUserId` set): the request is linked to that account. A player or guardian who already uses
+   *    the portal keeps signing in; the new request shows as pending in the portal (GET /portal/my-join-requests).
+   *  - not signed in: a new account is created for `contactEmail` with `password`, in the same transaction as the
+   *    request (one fails, both roll back). The account is pending: login gating refuses sign-in until the academy
+   *    reviews the request. An e-mail that already has an account must sign in first, so nobody can attach requests to
+   *    someone else's account.
+   *
+   * submit_player_join_request (definer function) requires the academy to be ACTIVE, validates the input, refuses
+   * requests that could never be approved (second player profile, duplicate pending request), caps pending requests per
+   * academy and e-mail, and notifies the academy's managers in the same statement.
    */
   async submitPlayerJoinRequest(
     dto: CreatePlayerJoinRequest,
     applicantUserId?: string,
+    ipAddress?: string,
   ): Promise<PlayerJoinRequestItem> {
     try {
-      const rows = await this.prisma.withAuthLookupTransaction(
-        { actorUserId: applicantUserId },
-        (tx) =>
-          tx.$queryRaw<
-            Array<{
-              request_id: string;
-              tenant_name: string;
-              applicant_user_id: string | null;
-              created_at: Date;
-            }>
-          >`SELECT request_id::text AS request_id, tenant_name, applicant_user_id::text AS applicant_user_id, created_at
-           FROM public.submit_player_join_request(
-             ${dto.tenantId}::uuid, ${dto.playerName}, ${dto.contactEmail}, ${dto.contactPhone ?? null},
-             ${dto.dateOfBirth ?? null}::date, ${dto.guardianName ?? null}
-           )`,
-      );
-      const created = singleRow(rows);
+      const created = applicantUserId
+        ? await this.submitJoinRequestForSignedInUser(dto, applicantUserId)
+        : await this.submitJoinRequestWithNewAccount(dto, ipAddress);
       return {
         id: created.request_id,
         tenantId: dto.tenantId,
         tenantName: created.tenant_name,
         applicantUserId: created.applicant_user_id,
+        requesterType: created.requester_type,
         playerName: dto.playerName.trim(),
         contactEmail: dto.contactEmail.trim().toLowerCase(),
         contactPhone: dto.contactPhone?.trim() || null,
@@ -556,30 +568,168 @@ export class PortalService {
         createdAt: new Date(created.created_at).toISOString(),
       };
     } catch (err) {
-      const code = databaseFunctionErrorCode(err, JOIN_REQUEST_ERRORS);
-      if (code === 'ACADEMY_NOT_AVAILABLE') {
-        throw new NotFoundException({ code: ErrorCode.NOT_FOUND, message: 'Academy not found' });
-      }
-      if (code === 'TOO_MANY_PENDING_REQUESTS') {
-        throw new BadRequestException({
+      throw this.mapJoinRequestError(err);
+    }
+  }
+
+  /** Signed-in applicant: the request is linked to the current account (the transaction's actor). */
+  private submitJoinRequestForSignedInUser(dto: CreatePlayerJoinRequest, applicantUserId: string) {
+    return this.prisma.withAuthLookupTransaction({ actorUserId: applicantUserId }, (tx) =>
+      this.callSubmitJoinRequest(tx, dto),
+    );
+  }
+
+  /** Anonymous applicant: new pending account + request, atomically. */
+  private async submitJoinRequestWithNewAccount(dto: CreatePlayerJoinRequest, ipAddress?: string) {
+    if (!dto.password) {
+      throw new BadRequestException({
+        code: ErrorCode.VALIDATION_FAILED,
+        message: 'A password is required to create the applicant account',
+      });
+    }
+
+    // Account creation from a public form: at most JOIN_ACCOUNT_LIMIT new accounts per IP and hour.
+    const { count } = await this.redisService.incrementRateLimit(
+      `ratelimit:join-account:${rateLimitIpKey(ipAddress)}`,
+      JOIN_ACCOUNT_WINDOW_SECONDS,
+    );
+    if (count > JOIN_ACCOUNT_LIMIT) {
+      throw new HttpException(
+        {
           code: ErrorCode.RATE_LIMIT_EXCEEDED,
-          message: 'There are already several pending requests for this e-mail at this academy',
+          message: 'Too many join requests from this network. Please try again later.',
+        },
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
+    const email = dto.contactEmail.trim().toLowerCase();
+    const existing = await this.prisma.user.findUnique({ where: { email }, select: { id: true } });
+    if (existing) {
+      throw new ConflictException({
+        code: ErrorCode.EMAIL_ALREADY_EXISTS,
+        message:
+          'An account with this e-mail already exists. Please sign in first, then send the join request.',
+      });
+    }
+
+    // Account name: the athlete for a PLAYER request, the guardian (the person asking) for a GUARDIAN request.
+    const accountName =
+      dto.requesterType === 'GUARDIAN' ? (dto.guardianName ?? dto.playerName) : dto.playerName;
+    const passwordHash = await this.passwordService.hash(dto.password);
+
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        await insertApplicantAccount(tx, {
+          email,
+          passwordHash,
+          name: accountName,
+          phone: dto.contactPhone,
         });
-      }
-      if (code === 'APPLICANT_NOT_PERMITTED') {
-        throw new ForbiddenException({
-          code: ErrorCode.FORBIDDEN,
-          message: 'This account cannot submit requests',
-        });
-      }
-      if (code) {
-        throw new BadRequestException({
-          code: ErrorCode.VALIDATION_FAILED,
-          message: `Invalid request: ${code}`,
+        return this.callSubmitJoinRequest(tx, dto);
+      });
+    } catch (err) {
+      if (isDuplicateEmailError(err)) {
+        throw new ConflictException({
+          code: ErrorCode.EMAIL_ALREADY_EXISTS,
+          message:
+            'An account with this e-mail already exists. Please sign in first, then send the join request.',
         });
       }
       throw err;
     }
+  }
+
+  /** Calls submit_player_join_request; the applicant is the transaction's actor (or none). */
+  private async callSubmitJoinRequest(tx: TenantTransactionClient, dto: CreatePlayerJoinRequest) {
+    const rows = await tx.$queryRaw<
+      Array<{
+        request_id: string;
+        tenant_name: string;
+        applicant_user_id: string | null;
+        requester_type: JoinRequesterType;
+        created_at: Date;
+      }>
+    >`SELECT request_id::text AS request_id, tenant_name, applicant_user_id::text AS applicant_user_id,
+              requester_type, created_at
+       FROM public.submit_player_join_request(
+         ${dto.tenantId}::uuid, ${dto.playerName}, ${dto.contactEmail}, ${dto.contactPhone ?? null},
+         ${dto.dateOfBirth ?? null}::date, ${dto.guardianName ?? null}, ${dto.requesterType}
+       )`;
+    return singleRow(rows);
+  }
+
+  /** Maps submit_player_join_request error codes to HTTP errors; anything else is rethrown unchanged. */
+  private mapJoinRequestError(err: unknown): unknown {
+    const code = databaseFunctionErrorCode(err, JOIN_REQUEST_ERRORS);
+    switch (code) {
+      case undefined:
+        return err;
+      case 'ACADEMY_NOT_AVAILABLE':
+        return new NotFoundException({ code: ErrorCode.NOT_FOUND, message: 'Academy not found' });
+      case 'TOO_MANY_PENDING_REQUESTS':
+        return new BadRequestException({
+          code: ErrorCode.RATE_LIMIT_EXCEEDED,
+          message: 'There are already several pending requests for this e-mail at this academy',
+        });
+      case 'APPLICANT_NOT_PERMITTED':
+        return new ForbiddenException({
+          code: ErrorCode.FORBIDDEN,
+          message: 'This account cannot submit requests',
+        });
+      case 'PLAYER_PROFILE_EXISTS':
+        return new ConflictException({
+          code: ErrorCode.CONFLICT,
+          message:
+            'This account already has a player profile. To register a child, choose "I am the guardian".',
+        });
+      case 'DUPLICATE_PENDING_REQUEST':
+        return new ConflictException({
+          code: ErrorCode.CONFLICT,
+          message: 'You already have a pending request for this player at this academy',
+        });
+      default:
+        return new BadRequestException({
+          code: ErrorCode.VALIDATION_FAILED,
+          message: `Invalid request: ${code}`,
+        });
+    }
+  }
+
+  /**
+   * The signed-in user's own join requests, newest first. RLS player_registration_requests_applicant shows only rows
+   * whose applicant is the current actor, so no other applicant's request can appear.
+   */
+  async listMyJoinRequests(actorUserId: string): Promise<PlayerJoinRequestItem[]> {
+    return this.prisma.withAuthLookupTransaction({ actorUserId }, async (tx) => {
+      const requests = await tx.playerRegistrationRequest.findMany({
+        where: { applicantUserId: actorUserId },
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+      });
+      // Academy names through the public directory (the applicant cannot read tenants directly). An academy that is no
+      // longer active is not listed there, so its name is left out.
+      const academies = await tx.$queryRaw<Array<{ id: string; name: string }>>`
+        SELECT id::text AS id, name FROM public.list_public_academies()`;
+      const academyNames = new Map(academies.map((a) => [a.id, a.name]));
+      return requests.map((r) => ({
+        id: r.id,
+        tenantId: r.tenantId,
+        tenantName: academyNames.get(r.tenantId),
+        applicantUserId: r.applicantUserId,
+        requesterType: r.requesterType,
+        playerName: r.playerName,
+        contactEmail: r.contactEmail,
+        contactPhone: r.contactPhone,
+        dateOfBirth: r.dateOfBirth ? r.dateOfBirth.toISOString().split('T')[0] : null,
+        guardianName: r.guardianName,
+        status: r.status as ApplicationStatus,
+        reviewNotes: r.reviewNotes,
+        reviewedByUserId: null,
+        reviewedAt: r.reviewedAt?.toISOString() ?? null,
+        createdAt: r.createdAt.toISOString(),
+      }));
+    });
   }
 
   /**

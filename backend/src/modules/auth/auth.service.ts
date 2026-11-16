@@ -12,6 +12,7 @@ import { PrismaService } from '../database/prisma.service';
 import { PasswordService } from './password.service';
 import { TokenService, type GeneratedTokens } from './token.service';
 import { rateLimitIpKey } from '../../common/client-ip';
+import { insertApplicantAccount, isDuplicateEmailError } from './applicant-account';
 import { databaseFunctionErrorCode, singleRow } from '../../common/db-function-error';
 import { RedisService } from '../redis/redis.service';
 import { AuditService } from '../audit/audit.service';
@@ -126,22 +127,23 @@ export class AuthService {
     const initialNotes = rawSport !== 'FOOTBALL' ? `Sport: ${rawSport}` : null;
     const academyName = dto.academyName.trim();
 
-    // Both inserts name their columns explicitly. The runtime database role may insert only the 7 registration columns
-    // of users and the applicant columns of academy_applications (Phase 3A.2); Prisma's create() would also send every
-    // column that has a default (is_email_verified, session_version, the platform flags, status), which the database
-    // correctly refuses. Defaults therefore come from the database.
+    // COACH / academy owner applicant: the account and the academy application are created together. The account
+    // stays pending (login gating) until the platform approves the application. Both inserts name their columns
+    // explicitly: the runtime database role may insert only the registration columns (Phase 3A.2); Prisma's create()
+    // would also send every column that has a default, which the database correctly refuses.
     let result: { user: { id: string }; application: { id: string; academyName: string } };
     try {
       result = await this.prisma.$transaction(async (tx) => {
-        const userRows = await tx.$queryRaw<Array<{ id: string }>>`
-          INSERT INTO public.users (id, email, password_hash, name, phone, created_at, updated_at)
-          VALUES (gen_random_uuid(), ${email}, ${passwordHash}, ${dto.name.trim()}, ${dto.phone?.trim() ?? null}, now(), now())
-          RETURNING id::text AS id`;
-        const user = singleRow(userRows);
-
         // The applicant becomes the transaction's actor: RLS academy_applications_insert accepts only the actor's own
         // PENDING_REVIEW application (the status default), with empty review fields.
-        await tx.$executeRaw`SELECT set_config('app.actor_user_id', ${user.id}, true)`;
+        const user = {
+          id: await insertApplicantAccount(tx, {
+            email,
+            passwordHash,
+            name: dto.name,
+            phone: dto.phone,
+          }),
+        };
         const applicationRows = await tx.$queryRaw<Array<{ id: string }>>`
           INSERT INTO public.academy_applications (
             id, applicant_user_id, academy_name, academy_slug, sport, city, contact_email, contact_phone, notes,
@@ -155,7 +157,7 @@ export class AuthService {
         return { user, application: { id: singleRow(applicationRows).id, academyName } };
       });
     } catch (err) {
-      if (/users_email_key|duplicate key/.test(String((err as Error)?.message))) {
+      if (isDuplicateEmailError(err)) {
         throw new ConflictException({
           code: ErrorCode.EMAIL_ALREADY_EXISTS,
           message: 'An account with this email address already exists',
@@ -223,6 +225,110 @@ export class AuthService {
   }
 
   /**
+   * Portal links of a user: a player profile (the athlete themself) and guardian records (their children).
+   *
+   * Read under the user's own actor context: RLS players_portal_user / guardians_portal_user show only rows linked to
+   * this user. Without a context the restricted runtime role sees no rows at all, so a plain `include` on the user
+   * would always report "no portal" for players and guardians.
+   */
+  private async loadPortalAccess(
+    userId: string,
+  ): Promise<{ hasPlayerProfile: boolean; hasGuardianProfile: boolean }> {
+    return this.prisma.withAuthLookupTransaction({ actorUserId: userId }, async (tx) => {
+      const playerProfiles = await tx.player.count({ where: { userId } });
+      const guardianProfiles = await tx.guardian.count({ where: { userId } });
+      return { hasPlayerProfile: playerProfiles > 0, hasGuardianProfile: guardianProfiles > 0 };
+    });
+  }
+
+  /**
+   * Login gating for applicants. There are three kinds of applicant, and each is "pending" until reviewed:
+   *
+   *  - COACH / academy owner: academy application (POST /auth/register), reviewed by the platform;
+   *  - PLAYER: join request for themself (requesterType PLAYER), reviewed by the academy;
+   *  - GUARDIAN: join request for a child (requesterType GUARDIAN), reviewed by the academy.
+   *
+   * Gating applies only to accounts that have nothing else yet: no platform role, no active academy membership and no
+   * player/guardian link. A guardian or player who already uses the portal keeps signing in while a NEW request is
+   * pending (owner decision 2026-11-16); the portal shows them that request as pending instead.
+   *
+   * The latest application and the latest join request are checked; pending, more-info and rejected all refuse
+   * sign-in with their own code, so the login page can show the reason. An approved request has already linked the
+   * account (membership or portal link), so it never reaches this point.
+   */
+  private async assertApplicantMayLogIn(
+    user: { id: string; isPlatformSuperAdmin: boolean; isPlatformOwner: boolean },
+    activeMembershipCount: number,
+    portalAccess: { hasPlayerProfile: boolean; hasGuardianProfile: boolean },
+  ): Promise<void> {
+    const hasAccess =
+      user.isPlatformSuperAdmin ||
+      user.isPlatformOwner ||
+      activeMembershipCount > 0 ||
+      portalAccess.hasPlayerProfile ||
+      portalAccess.hasGuardianProfile;
+    if (hasAccess) return;
+
+    // Actor context (password already verified): RLS shows the user's own applications and join requests only.
+    const { application, joinRequest } = await this.prisma.withAuthLookupTransaction(
+      { actorUserId: user.id },
+      async (tx) => ({
+        application: await tx.academyApplication.findFirst({
+          where: { applicantUserId: user.id },
+          orderBy: { createdAt: 'desc' },
+        }),
+        joinRequest: await tx.playerRegistrationRequest.findFirst({
+          where: { applicantUserId: user.id },
+          orderBy: { createdAt: 'desc' },
+        }),
+      }),
+    );
+
+    // COACH / academy owner
+    if (application) {
+      if (application.status === 'PENDING_REVIEW' || application.status === 'MORE_INFO_REQUESTED') {
+        throw new UnauthorizedException({
+          code: 'ACADEMY_PENDING_APPROVAL',
+          message:
+            'طلب تسجيل الأكاديمية قيد المراجعة حالياً من قبل إدارة المنصة. ستصلك رسالة تأكيد عبر البريد الإلكتروني فور الموافقة.',
+        });
+      }
+      if (application.status === 'REJECTED') {
+        throw new UnauthorizedException({
+          code: 'ACADEMY_REJECTED',
+          message: 'تم رفض طلب تسجيل الأكاديمية. يرجى مراجعة إدارة المنصة للمزيد من التفاصيل.',
+        });
+      }
+    }
+
+    // PLAYER / GUARDIAN
+    if (joinRequest) {
+      const isGuardian = joinRequest.requesterType === 'GUARDIAN';
+      if (joinRequest.status === 'PENDING_REVIEW') {
+        throw new UnauthorizedException({
+          code: isGuardian ? 'GUARDIAN_PENDING_APPROVAL' : 'PLAYER_PENDING_APPROVAL',
+          message: isGuardian
+            ? 'طلب انضمام الطفل قيد المراجعة حالياً من قبل إدارة الأكاديمية. ستصلك رسالة عبر البريد الإلكتروني فور الموافقة.'
+            : 'طلب انضمام اللاعب قيد المراجعة حالياً من قبل إدارة الأكاديمية. ستصلك رسالة عبر البريد الإلكتروني فور الموافقة.',
+        });
+      }
+      if (joinRequest.status === 'MORE_INFO_REQUESTED') {
+        throw new UnauthorizedException({
+          code: 'JOIN_MORE_INFO_REQUESTED',
+          message:
+            'طلبت إدارة الأكاديمية معلومات إضافية عن طلب الانضمام. يرجى مراجعة بريدك الإلكتروني أو التواصل مع الأكاديمية.',
+        });
+      }
+      if (joinRequest.status === 'REJECTED') {
+        throw new UnauthorizedException({
+          code: isGuardian ? 'GUARDIAN_REJECTED' : 'PLAYER_REJECTED',
+          message: 'تم رفض طلب الانضمام من إدارة الأكاديمية.',
+        });
+      }
+    }
+  }
+
+  /**
    * Logs in a user with brute-force rate limiting and timing-attack protection.
    */
   async login(
@@ -249,10 +355,6 @@ export class AuthService {
     // Credential lookup must not depend on tenant-scoped RLS visibility.
     const user = await this.prisma.user.findUnique({
       where: { email: normalizedEmail },
-      include: {
-        playerProfile: { select: { id: true } },
-        guardianProfiles: { select: { id: true } },
-      },
     });
 
     // Timing-attack prevention: If user does not exist, run a dummy hash verification
@@ -300,56 +402,11 @@ export class AuthService {
         }),
     );
 
-    // Enforce approval & tenant status gating
-    if (!user.isPlatformSuperAdmin && !user.isPlatformOwner && userMemberships.length === 0) {
-      // Actor context (password already verified): RLS shows the user's own applications and join requests of every
-      // status, so pending, more-info and rejected applicants are all gated.
-      const { application, joinRequest } = await this.prisma.withAuthLookupTransaction(
-        { actorUserId: user.id },
-        async (tx) => ({
-          application: await tx.academyApplication.findFirst({
-            where: { applicantUserId: user.id },
-            orderBy: { createdAt: 'desc' },
-          }),
-          joinRequest: await tx.playerRegistrationRequest.findFirst({
-            where: { applicantUserId: user.id },
-            orderBy: { createdAt: 'desc' },
-          }),
-        }),
-      );
-      if (application) {
-        if (
-          application.status === 'PENDING_REVIEW' ||
-          application.status === 'MORE_INFO_REQUESTED'
-        ) {
-          throw new UnauthorizedException({
-            code: 'ACADEMY_PENDING_APPROVAL',
-            message:
-              'طلب تسجيل الأكاديمية قيد المراجعة حالياً من قبل إدارة المنصة. ستصلك رسالة تأكيد عبر البريد الإلكتروني فور الموافقة.',
-          });
-        }
-        if (application.status === 'REJECTED') {
-          throw new UnauthorizedException({
-            code: 'ACADEMY_REJECTED',
-            message: 'تم رفض طلب تسجيل الأكاديمية. يرجى مراجعة إدارة المنصة للمزيد من التفاصيل.',
-          });
-        }
-      }
-      if (joinRequest) {
-        if (joinRequest.status === 'PENDING_REVIEW') {
-          throw new UnauthorizedException({
-            code: 'PLAYER_PENDING_APPROVAL',
-            message: 'طلب انضمام اللاعب قيد المراجعة حالياً من قبل إدارة الأكاديمية.',
-          });
-        }
-        if (joinRequest.status === 'REJECTED') {
-          throw new UnauthorizedException({
-            code: 'PLAYER_REJECTED',
-            message: 'تم رفض طلب انضمام اللاعب من إدارة الأكاديمية.',
-          });
-        }
-      }
-    }
+    // Player / guardian portal links, read under the user's own context (see loadPortalAccess).
+    const portalAccess = await this.loadPortalAccess(user.id);
+
+    // Applicants (coach, player, guardian) cannot sign in while their request is under review.
+    await this.assertApplicantMayLogIn(user, userMemberships.length, portalAccess);
 
     // Map memberships
     const memberships: TenantMembershipSummary[] = userMemberships
@@ -410,8 +467,7 @@ export class AuthService {
       isEmailVerified: user.isEmailVerified,
       isPlatformSuperAdmin: user.isPlatformSuperAdmin,
       isPlatformOwner: user.isPlatformOwner,
-      hasPlayerProfile: Boolean(user.playerProfile),
-      hasGuardianProfile: (user.guardianProfiles?.length ?? 0) > 0,
+      ...portalAccess,
       createdAt: user.createdAt.toISOString(),
     };
 
@@ -443,11 +499,8 @@ export class AuthService {
 
     const user = await this.prisma.user.findUniqueOrThrow({
       where: { id: userId },
-      include: {
-        playerProfile: { select: { id: true } },
-        guardianProfiles: { select: { id: true } },
-      },
     });
+    const portalAccess = await this.loadPortalAccess(userId);
 
     // Refresh tokens authenticate the user, but must not bypass tenant RLS.
     // Reload active memberships using the verified actor's discovery context.
@@ -487,8 +540,7 @@ export class AuthService {
       isEmailVerified: user.isEmailVerified,
       isPlatformSuperAdmin: user.isPlatformSuperAdmin,
       isPlatformOwner: user.isPlatformOwner,
-      hasPlayerProfile: Boolean(user.playerProfile),
-      hasGuardianProfile: (user.guardianProfiles?.length ?? 0) > 0,
+      ...portalAccess,
       createdAt: user.createdAt.toISOString(),
     };
 

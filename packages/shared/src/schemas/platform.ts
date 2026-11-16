@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PasswordSchema } from './auth';
 
 export const PlatformOverviewMetricsSchema = z.object({
   totalAcademies: z.number(),
@@ -257,15 +258,48 @@ export type AcademyApplicationItem = z.infer<typeof AcademyApplicationItemSchema
 // Player Join Requests & Approvals
 // ==========================================
 
-export const CreatePlayerJoinRequestSchema = z.object({
-  tenantId: z.string().uuid(),
-  playerName: z.string().min(2).max(100),
-  contactEmail: z.string().email(),
-  contactPhone: z.string().max(30).optional(),
-  dateOfBirth: z.string().optional(),
-  guardianName: z.string().max(100).optional(),
-  branchId: z.string().uuid().optional(),
-});
+/**
+ * Who is asking to join an academy (K6). The platform has three kinds of applicant:
+ *  - COACH / academy owner: applies for a new academy with `RegisterRequestSchema` (reviewed by the platform);
+ *  - PLAYER: an athlete asking to join for themself (reviewed by the academy);
+ *  - GUARDIAN: a parent or guardian asking for their child (reviewed by the academy).
+ * PLAYER and GUARDIAN share this join request; `requesterType` tells them apart.
+ */
+export const JoinRequesterTypeSchema = z.enum(['PLAYER', 'GUARDIAN']);
+export type JoinRequesterType = z.infer<typeof JoinRequesterTypeSchema>;
+
+/**
+ * Public join request. The applicant always ends up with an account:
+ *  - signed in: the request is linked to the current account and `password` is ignored;
+ *  - not signed in: `password` is required and a new account is created for `contactEmail`
+ *    (name = the player for PLAYER, the guardian for GUARDIAN). The account stays pending (cannot sign in) until the
+ *    academy reviews the request.
+ * On approval the account is linked to the player record (PLAYER) or the child's guardian record (GUARDIAN).
+ */
+export const CreatePlayerJoinRequestSchema = z
+  .object({
+    tenantId: z.string().uuid(),
+    /** Defaults to PLAYER so older clients keep their meaning. */
+    requesterType: JoinRequesterTypeSchema.default('PLAYER'),
+    playerName: z.string().trim().min(2).max(100),
+    contactEmail: z.string().trim().toLowerCase().email().max(254),
+    contactPhone: z.string().trim().max(30).optional(),
+    dateOfBirth: z.string().optional(),
+    /** The guardian's full name. Required for GUARDIAN requests (it is the applicant's own name). */
+    guardianName: z.string().trim().max(100).optional(),
+    /** Password for the new account; only used when the applicant is not signed in. */
+    password: PasswordSchema.optional(),
+    branchId: z.string().uuid().optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.requesterType === 'GUARDIAN' && (value.guardianName?.length ?? 0) < 2) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['guardianName'],
+        message: 'Guardian name is required for a guardian request',
+      });
+    }
+  });
 
 export type CreatePlayerJoinRequest = z.infer<typeof CreatePlayerJoinRequestSchema>;
 
@@ -283,6 +317,7 @@ export const PlayerJoinRequestItemSchema = z.object({
   tenantId: z.string().uuid(),
   tenantName: z.string().optional(),
   applicantUserId: z.string().uuid().nullable().optional(),
+  requesterType: JoinRequesterTypeSchema.optional(),
   playerName: z.string(),
   contactEmail: z.string(),
   contactPhone: z.string().nullable().optional(),

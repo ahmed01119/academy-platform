@@ -7,7 +7,7 @@ import { PrismaService } from '../../database/prisma.service';
 import type { JwtPayload } from '../token.service';
 import { ErrorCode } from '@academy/shared';
 
-function cookieOrBearerExtractor(req: Request): string | null {
+export function cookieOrBearerExtractor(req: Request): string | null {
   if (req && req.cookies && req.cookies.access_token) {
     return req.cookies.access_token;
   }

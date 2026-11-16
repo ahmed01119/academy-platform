@@ -6,10 +6,13 @@ import {
   HttpStatus,
   Inject,
   Post,
+  Req,
   UseGuards,
 } from '@nestjs/common';
+import type { Request } from 'express';
 import { PortalService } from './portal.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { CsrfGuard } from '../auth/guards/csrf.guard';
 import { TenantGuard } from '../auth/guards/tenant.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
@@ -72,11 +75,28 @@ export class PortalController {
     return this.portalService.generateClaimToken(tenantContext, dto.targetType, dto.targetId);
   }
 
+  /**
+   * Join request from a PLAYER (for themself) or a GUARDIAN (for a child); see CreatePlayerJoinRequestSchema.
+   * Anonymous callers get a new pending account; signed-in callers' requests are linked to their account.
+   * CsrfGuard applies when the caller is cookie-authenticated.
+   */
   @Post('player-join-requests')
+  @UseGuards(OptionalJwtAuthGuard, CsrfGuard)
   @HttpCode(HttpStatus.CREATED)
-  async submitPlayerJoinRequest(@Body() body: unknown, @CurrentUser('id') actorUserId?: string) {
+  async submitPlayerJoinRequest(
+    @Body() body: unknown,
+    @Req() req: Request,
+    @CurrentUser('id') actorUserId?: string,
+  ) {
     const dto: CreatePlayerJoinRequest = CreatePlayerJoinRequestSchema.parse(body);
-    return this.portalService.submitPlayerJoinRequest(dto, actorUserId);
+    return this.portalService.submitPlayerJoinRequest(dto, actorUserId, req.clientIp);
+  }
+
+  /** The signed-in user's own join requests (any status), newest first: the "pending" list in the portal. */
+  @Get('my-join-requests')
+  @UseGuards(JwtAuthGuard, CsrfGuard)
+  async listMyJoinRequests(@CurrentUser('id') actorUserId: string) {
+    return this.portalService.listMyJoinRequests(actorUserId);
   }
 
   @Get('academies')

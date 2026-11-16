@@ -1,7 +1,8 @@
-import { EmailService } from '../email/email.service';
+import { EmailService, escapeHtml } from '../email/email.service';
 import crypto from 'node:crypto';
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Inject,
   Injectable,
@@ -1037,6 +1038,7 @@ export class PlayersService {
         contactPhone: req.contactPhone,
         dateOfBirth: req.dateOfBirth ? req.dateOfBirth.toISOString().split('T')[0] : null,
         guardianName: req.guardianName,
+        requesterType: req.requesterType,
         status: req.status as ApplicationStatus,
         reviewNotes: req.reviewNotes,
         reviewedByUserId: req.reviewedByUserId,
@@ -1134,16 +1136,43 @@ export class PlayersService {
           effectiveBranchId = mainBranch?.id;
         }
 
-        // Prevent duplicate player records for applicant / name
+        // K6: who the approval links to the applicant's account depends on who asked.
+        //  - PLAYER: the applicant IS the athlete -> players.user_id = applicant (player portal, /player).
+        //  - GUARDIAN: the applicant is the child's guardian -> a guardian record with user_id = applicant
+        //    (guardian portal, /guardian). The child's player record has no account.
+        //  - no applicant (requests made before K6): nothing is linked, as before.
+        const applicantId = request.applicantUserId;
+        const linksPlayer = Boolean(applicantId) && request.requesterType === 'PLAYER';
+        const linksGuardian = Boolean(applicantId) && request.requesterType === 'GUARDIAN';
+
+        // Re-use an existing player record only when it is certainly the same person: the applicant's own player
+        // profile (PLAYER), or a child of the same name this guardian is already linked to (GUARDIAN). Requests
+        // without an applicant keep the old first+last name match (K9, owner decision pending). Matching a linked
+        // request by name alone could attach the account to a different child of the same name.
         let player = await tx.player.findFirst({
-          where: {
-            tenantId: tenantContext.tenantId,
-            OR: [
-              request.applicantUserId ? { userId: request.applicantUserId } : undefined,
-              { firstName, lastName },
-            ].filter(Boolean) as any,
-          },
+          where: linksPlayer
+            ? { tenantId: tenantContext.tenantId, userId: applicantId }
+            : linksGuardian
+              ? {
+                  tenantId: tenantContext.tenantId,
+                  firstName,
+                  lastName,
+                  guardians: { some: { userId: applicantId } },
+                }
+              : { tenantId: tenantContext.tenantId, firstName, lastName },
         });
+
+        if (!player && linksPlayer) {
+          // players.user_id is unique: one account holds at most one player profile (in any academy).
+          const otherProfile = await this.applicantHasPlayerProfile(applicantId as string);
+          if (otherProfile) {
+            throw new ConflictException({
+              code: ErrorCode.CONFLICT,
+              message:
+                'The applicant account already has a player profile; it cannot be linked to a second one',
+            });
+          }
+        }
 
         if (!player) {
           const membershipNumber = `MEM-${new Date().getFullYear()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
@@ -1152,7 +1181,7 @@ export class PlayersService {
           player = await tx.player.create({
             data: {
               tenantId: tenantContext.tenantId,
-              userId: request.applicantUserId,
+              userId: linksPlayer ? applicantId : null,
               firstName,
               lastName,
               emergencyContactName: request.guardianName || 'Guardian',
@@ -1167,8 +1196,33 @@ export class PlayersService {
           });
         }
 
-        // Handle minor guardian linkage safely
-        if (request.guardianName && request.contactPhone) {
+        if (linksGuardian) {
+          // GUARDIAN: the applicant's own guardian record for this child, linked to the account. An existing
+          // guardian record already linked to this account (same child, earlier request) is reused.
+          const linkedGuardian = await tx.guardian.findFirst({
+            where: { tenantId: tenantContext.tenantId, playerId: player.id, userId: applicantId },
+          });
+          if (!linkedGuardian) {
+            const guardianName = (request.guardianName ?? '').trim();
+            const hasPrimary = await tx.guardian.count({
+              where: { tenantId: tenantContext.tenantId, playerId: player.id, isPrimary: true },
+            });
+            await tx.guardian.create({
+              data: {
+                tenantId: tenantContext.tenantId,
+                playerId: player.id,
+                userId: applicantId,
+                firstName: guardianName.split(' ')[0] || guardianName,
+                lastName: guardianName.split(' ').slice(1).join(' ') || '-',
+                phone: request.contactPhone || '-',
+                email: request.contactEmail,
+                relationship: 'GUARDIAN',
+                isPrimary: hasPrimary === 0,
+              },
+            });
+          }
+        } else if (request.guardianName && request.contactPhone) {
+          // PLAYER (or anonymous) request that names a guardian: contact-only guardian record, no account.
           const existingGuardian = await tx.guardian.findFirst({
             where: {
               tenantId: tenantContext.tenantId,
@@ -1231,38 +1285,6 @@ export class PlayersService {
             });
           }
         }
-
-        if (request.applicantUserId) {
-          await this.notificationsService.createNotification({
-            userId: request.applicantUserId,
-            senderUserId: tenantContext.actorUserId,
-            tenantId: tenantContext.tenantId,
-            type: 'PLAYER_REGISTRATION',
-            title: 'Academy Registration Approved',
-            body: `Your request to join the academy for "${request.playerName}" has been approved!`,
-            href: '/player',
-          });
-        }
-      } else if (dto.status === 'REJECTED' && request.applicantUserId) {
-        await this.notificationsService.createNotification({
-          userId: request.applicantUserId,
-          senderUserId: tenantContext.actorUserId,
-          tenantId: tenantContext.tenantId,
-          type: 'PLAYER_REGISTRATION',
-          title: 'Registration Request Update',
-          body: `Your registration request for "${request.playerName}" was rejected: ${dto.reviewNotes ?? 'Not accepted at this time.'}`,
-          href: '/',
-        });
-      } else if (dto.status === 'MORE_INFO_REQUESTED' && request.applicantUserId) {
-        await this.notificationsService.createNotification({
-          userId: request.applicantUserId,
-          senderUserId: tenantContext.actorUserId,
-          tenantId: tenantContext.tenantId,
-          type: 'PLAYER_REGISTRATION',
-          title: 'Additional Information Required',
-          body: `Additional details required for "${request.playerName}": ${dto.reviewNotes ?? 'Please check your application.'}`,
-          href: '/player',
-        });
       }
 
       const updated = await tx.playerRegistrationRequest.update({
@@ -1299,6 +1321,7 @@ export class PlayersService {
         contactPhone: updated.contactPhone,
         dateOfBirth: updated.dateOfBirth ? updated.dateOfBirth.toISOString().split('T')[0] : null,
         guardianName: updated.guardianName,
+        requesterType: updated.requesterType,
         status: updated.status as ApplicationStatus,
         reviewNotes: updated.reviewNotes,
         reviewedByUserId: updated.reviewedByUserId,
@@ -1306,6 +1329,8 @@ export class PlayersService {
         createdAt: updated.createdAt.toISOString(),
         _meta: {
           email: updated.contactEmail,
+          applicantUserId: updated.applicantUserId,
+          requesterType: updated.requesterType,
           tenantId: updated.tenantId,
           playerName: updated.playerName,
           status: dto.status,
@@ -1314,10 +1339,23 @@ export class PlayersService {
       };
     });
 
+    // In-app notification for the applicant, after the commit (a failure never undoes the review).
+    if (result._meta.applicantUserId) {
+      await this.notifyJoinRequestApplicant(tenantContext, {
+        applicantUserId: result._meta.applicantUserId,
+        requesterType: result._meta.requesterType,
+        playerName: result._meta.playerName,
+        status: result._meta.status,
+        reviewNotes: result._meta.reviewNotes ?? null,
+      });
+    }
+
     // Dispatch email outside transaction (fire-and-forget)
     if (
       result._meta.email &&
-      (result._meta.status === 'APPROVED' || result._meta.status === 'REJECTED')
+      (result._meta.status === 'APPROVED' ||
+        result._meta.status === 'REJECTED' ||
+        result._meta.status === 'MORE_INFO_REQUESTED')
     ) {
       const tenant = await this.prisma
         .withTenantTransaction(
@@ -1341,7 +1379,70 @@ export class PlayersService {
   }
 
   /**
-   * Dispatch approval/rejection email to the player applicant (outside the transaction for safety).
+   * Whether an account already holds a player profile in any academy. Read under the account's own actor context
+   * (RLS players_portal_user), because the reviewing staff member cannot see other academies' players.
+   */
+  private async applicantHasPlayerProfile(applicantUserId: string): Promise<boolean> {
+    const count = await this.prisma.withAuthLookupTransaction(
+      { actorUserId: applicantUserId },
+      (tx) => tx.player.count({ where: { userId: applicantUserId } }),
+    );
+    return count > 0;
+  }
+
+  /**
+   * In-app notification for a reviewed join request. The link opens the portal that matches the requester:
+   * /player for a PLAYER, /guardian for a GUARDIAN. Failures are logged, never thrown (the review is committed).
+   */
+  private async notifyJoinRequestApplicant(
+    tenantContext: TenantContext,
+    review: {
+      applicantUserId: string;
+      requesterType: 'PLAYER' | 'GUARDIAN';
+      playerName: string;
+      status: string;
+      reviewNotes: string | null;
+    },
+  ): Promise<void> {
+    const portalHref = review.requesterType === 'GUARDIAN' ? '/guardian' : '/player';
+    const content =
+      review.status === 'APPROVED'
+        ? {
+            title: 'Join Request Approved',
+            body: `Your request to join the academy for "${review.playerName}" has been approved!`,
+            href: portalHref,
+          }
+        : review.status === 'REJECTED'
+          ? {
+              title: 'Join Request Update',
+              body: `Your join request for "${review.playerName}" was rejected: ${review.reviewNotes ?? 'Not accepted at this time.'}`,
+              href: '/',
+            }
+          : review.status === 'MORE_INFO_REQUESTED'
+            ? {
+                title: 'Additional Information Required',
+                body: `Additional details required for "${review.playerName}": ${review.reviewNotes ?? 'Please contact the academy.'}`,
+                href: portalHref,
+              }
+            : null;
+    if (!content) return;
+    try {
+      await this.notificationsService.createNotification({
+        userId: review.applicantUserId,
+        senderUserId: tenantContext.actorUserId,
+        tenantId: tenantContext.tenantId,
+        type: 'PLAYER_REGISTRATION',
+        ...content,
+      });
+    } catch (err) {
+      this.logger.warn(`Failed to notify join request applicant: ${(err as Error)?.message}`);
+    }
+  }
+
+  /**
+   * Review e-mail to the join request's contact address (outside the transaction). For an applicant whose account is
+   * still pending this is the only channel: they cannot sign in to read in-app notifications until approval.
+   * Every user-supplied value is HTML-escaped.
    */
   private async dispatchPlayerReviewEmail(
     email: string,
@@ -1351,18 +1452,20 @@ export class PlayersService {
     reviewNotes?: string | null,
   ): Promise<void> {
     if (!this.emailService) return;
+    const player = escapeHtml(playerName);
+    const academy = escapeHtml(academyName);
+    const notes = reviewNotes ? escapeHtml(reviewNotes) : '';
     try {
       if (status === 'APPROVED') {
-        // Reuse sendPlayerEnrollmentWelcome or similar — here we send a generic approval note
         await this.emailService.sendEmailDetailed({
           to: email,
           subject: `تمت الموافقة على طلب الانضمام — ${academyName} | Join Request Approved`,
           html: `<div dir='rtl' style='font-family:Arial;padding:20px;'>
             <h2 style='color:#0A3BFF;'>تمت الموافقة على طلب الانضمام 🎉</h2>
-            <p>مرحباً، تمت الموافقة على طلب الانضمام لـ <strong>${playerName}</strong> في أكاديمية <strong>${academyName}</strong>.</p>
-            <p>يمكنك الآن تسجيل الدخول لمتابعة تفاصيل الاشتراك والحصص التدريبية.</p>
+            <p>مرحباً، تمت الموافقة على طلب الانضمام لـ <strong>${player}</strong> في أكاديمية <strong>${academy}</strong>.</p>
+            <p>يمكنك الآن تسجيل الدخول بالحساب الذي أنشأته مع الطلب لمتابعة تفاصيل الاشتراك والحصص التدريبية.</p>
             <hr style='border-color:#334155;margin:20px 0;'/>
-            <p dir='ltr' style='color:#64748b;'>Your join request for <strong>${playerName}</strong> at <strong>${academyName}</strong> has been <strong>approved</strong>. You can now log in to access training details.</p>
+            <p dir='ltr' style='color:#64748b;'>Your join request for <strong>${player}</strong> at <strong>${academy}</strong> has been <strong>approved</strong>. You can now sign in with the account you created with the request.</p>
           </div>`,
           text: `تمت الموافقة على طلب انضمام ${playerName} في ${academyName}. | Join request for ${playerName} at ${academyName} has been approved.`,
         });
@@ -1372,13 +1475,27 @@ export class PlayersService {
           subject: `تحديث طلب الانضمام — ${academyName} | Join Request Update`,
           html: `<div dir='rtl' style='font-family:Arial;padding:20px;'>
             <h2 style='color:#ef4444;'>تحديث طلب الانضمام</h2>
-            <p>نأسف لإبلاغك بأنه تم رفض طلب الانضمام لـ <strong>${playerName}</strong> في أكاديمية <strong>${academyName}</strong>.</p>
-            ${reviewNotes ? `<p><strong>السبب:</strong> ${reviewNotes}</p>` : ''}
+            <p>نأسف لإبلاغك بأنه تم رفض طلب الانضمام لـ <strong>${player}</strong> في أكاديمية <strong>${academy}</strong>.</p>
+            ${notes ? `<p><strong>السبب:</strong> ${notes}</p>` : ''}
             <p>للمزيد من التفاصيل، يرجى التواصل مع إدارة الأكاديمية.</p>
             <hr style='border-color:#334155;margin:20px 0;'/>
-            <p dir='ltr' style='color:#64748b;'>The join request for <strong>${playerName}</strong> at <strong>${academyName}</strong> was <strong>not accepted</strong>. ${reviewNotes ? 'Reason: ' + reviewNotes : ''}</p>
+            <p dir='ltr' style='color:#64748b;'>The join request for <strong>${player}</strong> at <strong>${academy}</strong> was <strong>not accepted</strong>. ${notes ? 'Reason: ' + notes : ''}</p>
           </div>`,
           text: `تم رفض طلب انضمام ${playerName} في ${academyName}. | Join request for ${playerName} at ${academyName} was rejected.`,
+        });
+      } else if (status === 'MORE_INFO_REQUESTED') {
+        await this.emailService.sendEmailDetailed({
+          to: email,
+          subject: `مطلوب معلومات إضافية — ${academyName} | More Information Needed`,
+          html: `<div dir='rtl' style='font-family:Arial;padding:20px;'>
+            <h2 style='color:#f59e0b;'>مطلوب معلومات إضافية</h2>
+            <p>تحتاج أكاديمية <strong>${academy}</strong> إلى معلومات إضافية عن طلب الانضمام لـ <strong>${player}</strong>.</p>
+            ${notes ? `<p><strong>المطلوب:</strong> ${notes}</p>` : ''}
+            <p>يرجى التواصل مع إدارة الأكاديمية.</p>
+            <hr style='border-color:#334155;margin:20px 0;'/>
+            <p dir='ltr' style='color:#64748b;'><strong>${academy}</strong> needs more information about the join request for <strong>${player}</strong>. ${notes ? 'Details: ' + notes : ''} Please contact the academy.</p>
+          </div>`,
+          text: `مطلوب معلومات إضافية عن طلب انضمام ${playerName} في ${academyName}. | ${academyName} needs more information about the join request for ${playerName}.`,
         });
       }
     } catch (err: any) {

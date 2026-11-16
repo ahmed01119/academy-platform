@@ -29,6 +29,9 @@ interface MockPrisma {
   tenantMembership: {
     findMany: MockFn;
   };
+  player: { count: MockFn };
+  guardian: { count: MockFn };
+  playerRegistrationRequest: { findFirst: MockFn };
   $queryRaw: MockFn;
   $executeRaw: MockFn;
   $transaction: MockFn;
@@ -100,6 +103,9 @@ describe('AuthService', () => {
       tenantMembership: {
         findMany: vi.fn(),
       },
+      player: { count: vi.fn().mockResolvedValue(0) },
+      guardian: { count: vi.fn().mockResolvedValue(0) },
+      playerRegistrationRequest: { findFirst: vi.fn().mockResolvedValue(null) },
       $queryRaw: vi.fn().mockResolvedValue([
         {
           tenant_id: 'tenant-1',
@@ -364,6 +370,85 @@ describe('AuthService', () => {
       );
       expect(mockAudit.logEvent).toHaveBeenCalledWith(
         expect.objectContaining({ action: 'AUTH_LOGIN_SUCCESS' }),
+      );
+    });
+  });
+
+  describe('login gating for applicants (K6)', () => {
+    const applicant = {
+      id: 'user-9',
+      email: 'parent@example.com',
+      passwordHash: 'stored-hash',
+      name: 'Parent',
+      phone: null,
+      isEmailVerified: false,
+      isPlatformSuperAdmin: false,
+      isPlatformOwner: false,
+      isSuspended: false,
+      createdAt: new Date(),
+    };
+
+    beforeEach(() => {
+      mockPrisma.user.findUnique.mockResolvedValue(applicant);
+      mockPassword.verify.mockResolvedValue(true);
+      mockPrisma.tenantMembership.findMany.mockResolvedValue([]);
+    });
+
+    it('refuses a PLAYER applicant whose join request is pending', async () => {
+      mockPrisma.playerRegistrationRequest.findFirst.mockResolvedValue({
+        status: 'PENDING_REVIEW',
+        requesterType: 'PLAYER',
+      });
+      await expect(
+        authService.login({ email: applicant.email, password: 'x' }),
+      ).rejects.toMatchObject({ response: { code: 'PLAYER_PENDING_APPROVAL' } });
+    });
+
+    it('refuses a GUARDIAN applicant whose join request is pending, with its own code', async () => {
+      mockPrisma.playerRegistrationRequest.findFirst.mockResolvedValue({
+        status: 'PENDING_REVIEW',
+        requesterType: 'GUARDIAN',
+      });
+      await expect(
+        authService.login({ email: applicant.email, password: 'x' }),
+      ).rejects.toMatchObject({ response: { code: 'GUARDIAN_PENDING_APPROVAL' } });
+    });
+
+    it('refuses an applicant while more information is requested', async () => {
+      mockPrisma.playerRegistrationRequest.findFirst.mockResolvedValue({
+        status: 'MORE_INFO_REQUESTED',
+        requesterType: 'GUARDIAN',
+      });
+      await expect(
+        authService.login({ email: applicant.email, password: 'x' }),
+      ).rejects.toMatchObject({ response: { code: 'JOIN_MORE_INFO_REQUESTED' } });
+    });
+
+    it('lets a guardian who already uses the portal sign in while a new request is pending', async () => {
+      mockPrisma.guardian.count.mockResolvedValue(1);
+      mockPrisma.playerRegistrationRequest.findFirst.mockResolvedValue({
+        status: 'PENDING_REVIEW',
+        requesterType: 'GUARDIAN',
+      });
+
+      const result = await authService.login({ email: applicant.email, password: 'x' });
+
+      expect(result.response.user.hasGuardianProfile).toBe(true);
+      expect(result.response.user.hasPlayerProfile).toBe(false);
+      // the pending request is not even read: the account already has access
+      expect(mockPrisma.playerRegistrationRequest.findFirst).not.toHaveBeenCalled();
+    });
+
+    it("reads the portal links under the user's own actor context", async () => {
+      mockPrisma.player.count.mockResolvedValue(1);
+
+      const result = await authService.login({ email: applicant.email, password: 'x' });
+
+      expect(result.response.user.hasPlayerProfile).toBe(true);
+      expect(mockPrisma.player.count).toHaveBeenCalledWith({ where: { userId: 'user-9' } });
+      expect(mockPrisma.withAuthLookupTransaction).toHaveBeenCalledWith(
+        { actorUserId: 'user-9' },
+        expect.any(Function),
       );
     });
   });
