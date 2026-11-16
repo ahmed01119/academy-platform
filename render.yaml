@@ -1,12 +1,34 @@
+# Render Blueprint: Sportexus on Render (frontend + backend) with the database on Neon.
+#
+#   Browser ──HTTPS──► sportexus-web (Next.js) ──/v1 proxy──► sportexus-api (NestJS) ──► Neon PostgreSQL
+#                                                                     └──────────────► sportexus-redis (rate limits)
+#
+# Each part is independent: the API and the web app build, start and scale separately and talk only over HTTP
+# (the browser always calls the web app's own /v1, which forwards to the API). The database is a separate Neon
+# project; Render never stores data itself.
+#
+# Values marked `sync: false` are entered once in the Render dashboard (they are secrets or depend on the final URLs):
+#   sportexus-api  DATABASE_URL        Neon connection as the restricted runtime role sportexus_app (pooled endpoint)
+#                  DATABASE_ADMIN_URL  Neon owner connection (direct endpoint); used ONLY by `prisma migrate deploy`
+#                  CORS_ORIGIN         https://<web service>.onrender.com   (exact origin, no wildcard - S2)
+#                  NEXT_PUBLIC_APP_URL https://<web service>.onrender.com   (links in e-mails)
+#                  RESEND_API_KEY      e-mail provider key (or SMTP_* instead)
+#   sportexus-web  INTERNAL_API_URL    https://<api service>.onrender.com
+# INTERNAL_PROXY_SECRET is generated once on the API and copied to the web app by Render (fromService).
+#
+# Migrations run in the API build (as DATABASE_ADMIN_URL): a failed migration fails the deploy and the previous
+# version keeps serving. See docs/deployment/RENDER.md.
 services:
+  # ------------------------------------------------------------------------------------------------------------ API
   - type: web
-    name: sportexus-staging-api
+    name: sportexus-api
     runtime: node
     plan: free
     region: frankfurt
-    branch: staging/cloud-zero-cost
-    repo: https://github.com/ahmed01119/academy-platform
-    buildCommand: pnpm install --frozen-lockfile && pnpm db:generate && pnpm turbo run build --filter=@academy/api...
+    branch: main
+    buildCommand: >-
+      corepack enable && pnpm install --frozen-lockfile && pnpm db:generate &&
+      pnpm --filter @academy/api... build && pnpm db:migrate:deploy
     startCommand: node backend/dist/main.js
     healthCheckPath: /v1/health/ready
     envVars:
@@ -16,31 +38,71 @@ services:
       - key: NODE_ENV
         value: production
       - key: PORT
-        value: 10000
-      - key: CORS_ORIGIN
-        value: '*.pages.dev,http://localhost:3000'
+        value: '10000'
       - key: DATABASE_URL
         sync: false
-      - key: DIRECT_URL
+      - key: DATABASE_ADMIN_URL
+        sync: false
+      - key: CORS_ORIGIN
+        sync: false
+      - key: NEXT_PUBLIC_APP_URL
         sync: false
       - key: JWT_SECRET
         generateValue: true
-      # S1: must equal the web service's INTERNAL_PROXY_SECRET (set both by hand; never commit the value).
+      - key: COOKIE_SECURE
+        value: 'true'
+      # S1: shared with the web proxy, which sends it with every forwarded request.
       - key: INTERNAL_PROXY_SECRET
-        sync: false
+        generateValue: true
+      # One trusted hop: Render's edge in front of the web proxy.
       - key: TRUST_PROXY_HOPS
         value: '1'
-      - key: JWT_ACCESS_SECRET
-        generateValue: true
-      - key: JWT_REFRESH_SECRET
-        generateValue: true
-      - key: JWT_CSRF_SECRET
-        generateValue: true
-      - key: JWT_ACCESS_EXPIRES_IN
-        value: 900
-      - key: JWT_REFRESH_EXPIRES_IN
-        value: 604800
-      - key: COOKIE_SECURE
-        value: true
-      - key: ALLOW_IN_MEMORY_RATE_LIMIT
-        value: 'true'
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: sportexus-redis
+          property: connectionString
+      - key: MAIL_PROVIDER
+        value: resend
+      - key: RESEND_API_KEY
+        sync: false
+      - key: MAIL_FROM_EMAIL
+        sync: false
+
+  # ------------------------------------------------------------------------------------------------------------ Web
+  - type: web
+    name: sportexus-web
+    runtime: node
+    plan: free
+    region: frankfurt
+    branch: main
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter @academy/web... build
+    startCommand: pnpm --filter @academy/web start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_VERSION
+        value: '22'
+      - key: NODE_ENV
+        value: production
+      # `next start` listens on 3000 (frontend/package.json).
+      - key: PORT
+        value: '3000'
+      - key: INTERNAL_API_URL
+        sync: false
+      - key: INTERNAL_PROXY_SECRET
+        fromService:
+          type: web
+          name: sportexus-api
+          envVarKey: INTERNAL_PROXY_SECRET
+      # One trusted hop: Render's edge in front of the web app (frontend/src/lib/http/proxy-forwarding.ts).
+      - key: WEB_TRUSTED_PROXY_HOPS
+        value: '1'
+
+  # ------------------------------------------------------------------------------------------------- Rate limits
+  # Login, reset and join-request limits must be shared by every API instance (no in-memory fallback in production).
+  - type: keyvalue
+    name: sportexus-redis
+    plan: free
+    region: frankfurt
+    maxmemoryPolicy: noeviction
+    ipAllowList: [] # private network only
