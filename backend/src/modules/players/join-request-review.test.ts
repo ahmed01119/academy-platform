@@ -185,6 +185,16 @@ describe('PlayersService.reviewPlayerJoinRequest (K6 account linking)', () => {
     expect(notifications.createNotification).not.toHaveBeenCalled();
   });
 
+  it('K9: never merges into an existing player of the same name (a different child)', async () => {
+    useRequest(makeRequest({ applicantUserId: null }));
+    tx.player.findFirst.mockResolvedValue({ id: 'same-name-other-child' });
+
+    await service.reviewPlayerJoinRequest(ctx, REQUEST_ID, { status: 'APPROVED' });
+
+    expect(tx.player.findFirst).not.toHaveBeenCalled();
+    expect(tx.player.create).toHaveBeenCalledTimes(1);
+  });
+
   it('notification failure after the commit does not fail the review', async () => {
     useRequest(makeRequest());
     notifications.createNotification.mockRejectedValue(

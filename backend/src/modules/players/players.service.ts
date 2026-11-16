@@ -1146,21 +1146,22 @@ export class PlayersService {
         const linksGuardian = Boolean(applicantId) && request.requesterType === 'GUARDIAN';
 
         // Re-use an existing player record only when it is certainly the same person: the applicant's own player
-        // profile (PLAYER), or a child of the same name this guardian is already linked to (GUARDIAN). Requests
-        // without an applicant keep the old first+last name match (K9, owner decision pending). Matching a linked
-        // request by name alone could attach the account to a different child of the same name.
-        let player = await tx.player.findFirst({
-          where: linksPlayer
-            ? { tenantId: tenantContext.tenantId, userId: applicantId }
-            : linksGuardian
-              ? {
+        // profile (PLAYER), or a child of the same name this guardian is already linked to (GUARDIAN). K9: a name alone
+        // is never enough - two different children can share a name - so any other request creates a new player.
+        let player = linksPlayer
+          ? await tx.player.findFirst({
+              where: { tenantId: tenantContext.tenantId, userId: applicantId },
+            })
+          : linksGuardian
+            ? await tx.player.findFirst({
+                where: {
                   tenantId: tenantContext.tenantId,
                   firstName,
                   lastName,
                   guardians: { some: { userId: applicantId } },
-                }
-              : { tenantId: tenantContext.tenantId, firstName, lastName },
-        });
+                },
+              })
+            : null;
 
         if (!player && linksPlayer) {
           // players.user_id is unique: one account holds at most one player profile (in any academy).
