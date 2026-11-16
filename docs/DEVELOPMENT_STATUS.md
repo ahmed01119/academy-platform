@@ -325,9 +325,7 @@ Still open (reported, not changed):
 - **Node 22 end of life:** Node 22 is in maintenance LTS until 2027-04-30. Moving to Node 24 or 26 LTS needs a
   separate proposal (base-image change, verification on that version). The local machine runs Node 25 (non-LTS); pnpm
   now warns about it.
-- **I1 (attendance contract drift):** the frontend types `recordAttendance` as a roster item and the bulk result as
-  `{ count, updated }`; the API returns `{ record, previousStatus }` and `{ count, records }`. The session page
-  works around this with casts. Fix with shared response types (Phase 4/5).
+- ✅ **I1 (attendance contract drift)**: fixed in `29d6fff`. `RecordAttendanceResult` and `BulkRecordAttendanceResult` are shared types used by the API and the web client; the session page no longer casts.
 - **S2, S3, S4:** security findings recorded in `docs/proposals/PHASE_3A_SECURITY.md` §9.
 
 ## 9c. Phase 3A.1 security (2026-11-15)
