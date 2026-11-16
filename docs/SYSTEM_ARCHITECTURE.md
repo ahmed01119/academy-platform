@@ -204,7 +204,7 @@ lookups (`tenantId_id`). Monetary columns are `Float` (double precision).
 - **SECURITY DEFINER** functions for token flows: `request_password_reset`, `request_password_reset_with_link`,
   `complete_password_reset_for_email`, `complete_password_reset_by_link`, `invalidate_password_reset_code_for_email`,
   `complete_password_reset` (legacy link fallback); Phase 3A.2: `append_audit_log` (the only audit write path; actor and
-  tenant from the context), `create_app_notification` (sender/recipient checks), `submit_player_join_request`,
+  tenant from the context), `create_app_notification` (sender/recipient checks), `submit_player_join_request` (K6: requester type PLAYER/GUARDIAN),
   `list_public_academies`, `redeem_portal_claim`, `academy_slug_in_use`, `change_own_password`, and the platform
   functions `platform_create_user`, `platform_set_user_platform_role`, `platform_update_user_security`,
   `platform_revoke_user_sessions`, `platform_approve_academy_application`, `platform_delete_academy`,

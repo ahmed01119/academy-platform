@@ -56,8 +56,9 @@ One user account can hold memberships in several academies and switch between th
 4. **Branches** — CRUD with capacity and branch manager; safe archive with deletion-impact report.
 5. **Players & guardians** — create/update with sensitive-data permission gates (medical notes,
    national ID), QR membership card (issue/rotate/revoke), deletion impact + safe archive.
-6. **Player join requests** — public form per academy; staff (or delegated coach) review;
-   approval auto-creates Player, Guardian, Enrollment and Group membership.
+6. **Player join requests** — public form per academy, sent by the player or by a guardian for a child; the applicant's
+   account stays pending until staff (or a delegated coach) review; approval auto-creates Player, Guardian, Enrollment
+   and Group membership and links the applicant's account (player or guardian portal).
 7. **Enrollments** — enroll a player into a branch, transfer between branches (capacity-checked).
 8. **Training groups** — capacity, coaches (head coach), members, weekly schedules.
 9. **Attendance** — sessions per branch/group, manual/bulk marking with optimistic
