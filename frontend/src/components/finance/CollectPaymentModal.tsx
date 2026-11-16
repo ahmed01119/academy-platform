@@ -1,5 +1,6 @@
 'use client';
 
+import { useAcademyCurrency } from '@/hooks/useAcademyCurrency';
 import React, { useState, useEffect } from 'react';
 import { useLocale } from '@/contexts/locale-context';
 import { useToast } from '@/components/ui/Toast';
@@ -25,6 +26,7 @@ export function CollectPaymentModal({
   onSuccess,
 }: CollectPaymentModalProps) {
   const { locale } = useLocale();
+  const { label: currencyLabel } = useAcademyCurrency();
   const isAr = locale === 'ar';
   const { toast } = useToast();
 
@@ -95,13 +97,13 @@ export function CollectPaymentModal({
             {isAr ? 'المتبقي على الاشتراك:' : 'Remaining Outstanding:'}
           </span>
           <span className="font-extrabold text-(--accent-primary)">
-            {subscription.outstandingBalance} {isAr ? 'ر.س' : 'SAR'}
+            {subscription.outstandingBalance} {currencyLabel}
           </span>
         </div>
 
         <div>
           <label className="block text-xs font-semibold text-(--text-main) mb-1">
-            {isAr ? 'المبلغ المحصل (ر.س) *' : 'Collected Amount (SAR) *'}
+            {isAr ? `المبلغ المحصل (${currencyLabel}) *` : `Collected Amount (${currencyLabel}) *`}
           </label>
           <input
             type="number"

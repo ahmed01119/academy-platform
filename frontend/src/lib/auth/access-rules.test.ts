@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { Permission, type TenantMembershipSummary, type TenantRole, type UserSummary } from '@academy/shared';
+import {
+  Permission,
+  type TenantMembershipSummary,
+  type TenantRole,
+  type UserSummary,
+} from '@academy/shared';
 import { canAccessAdminRoutes, canAccessCoachRoutes, getRoleHomeRoute } from '@/utils/role-routing';
 import { resolveAccess, type AccessRule, type AccessState } from './access-rules';
 

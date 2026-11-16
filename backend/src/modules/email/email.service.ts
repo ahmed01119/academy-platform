@@ -1002,7 +1002,7 @@ export class EmailService {
     const safeDesc = escapeHtml(
       options.description || (isAr ? 'سداد اشتراك تدريبي' : 'Subscription payment'),
     );
-    const safeCurrency = escapeHtml(options.currency || 'SAR');
+    const safeCurrency = escapeHtml(options.currency || 'EGP');
     const safeAmount = Number(options.amount).toFixed(2);
     const paymentDate = (options.date || new Date()).toLocaleDateString(isAr ? 'ar-SA' : 'en-US', {
       year: 'numeric',

@@ -1,5 +1,6 @@
 'use client';
 
+import { useAcademyCurrency } from '@/hooks/useAcademyCurrency';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import jsQR from 'jsqr';
 import {
@@ -54,6 +55,7 @@ interface ScanFeedback {
 export default function MobileAttendanceScannerPage() {
   const { user, activeTenant } = useAuth();
   const { t, locale } = useLocale();
+  const { label: currencyLabel } = useAcademyCurrency();
   const { toast } = useToast();
 
   // Session State
@@ -140,13 +142,13 @@ export default function MobileAttendanceScannerPage() {
             outstandingBalance: 0,
             feeAmount: activeFeedback.paymentStatus?.feeAmount || 650,
           },
-          message: `${activeFeedback.message} • ${locale === 'en' ? `${paymentAmount} SAR collected successfully!` : `تم تحصيل ${paymentAmount} ر.س بنجاح!`}`,
+          message: `${activeFeedback.message} • ${locale === 'en' ? `${paymentAmount} ${currencyLabel} collected successfully!` : `تم تحصيل ${paymentAmount} ${currencyLabel} بنجاح!`}`,
         });
       }
       toast.success(
         locale === 'en'
-          ? `${paymentAmount} SAR collected and player status updated`
-          : `تم تحصيل ${paymentAmount} ر.س بنجاح وتحديث حالة اللاعب`,
+          ? `${paymentAmount} ${currencyLabel} collected and player status updated`
+          : `تم تحصيل ${paymentAmount} ${currencyLabel} بنجاح وتحديث حالة اللاعب`,
       );
     } catch (err) {
       toast.error(
@@ -983,8 +985,8 @@ export default function MobileAttendanceScannerPage() {
                           {activeFeedback.paymentStatus.status === 'PARTIAL' && (
                             <span className="text-amber-300">
                               {locale === 'en'
-                                ? `⚠ Remaining: ${activeFeedback.paymentStatus.outstandingBalance} SAR`
-                                : `⚠ متبقي: ${activeFeedback.paymentStatus.outstandingBalance} ر.س`}
+                                ? `⚠ Remaining: ${activeFeedback.paymentStatus.outstandingBalance} ${currencyLabel}`
+                                : `⚠ متبقي: ${activeFeedback.paymentStatus.outstandingBalance} ${currencyLabel}`}
                             </span>
                           )}
                           {activeFeedback.paymentStatus.status === 'OVERDUE' && (
@@ -992,7 +994,7 @@ export default function MobileAttendanceScannerPage() {
                               {locale === 'en' ? '✕ Overdue: ' : '✕ متأخر: '}
                               {activeFeedback.paymentStatus.outstandingBalance ||
                                 activeFeedback.paymentStatus.feeAmount}{' '}
-                              {locale === 'en' ? 'SAR' : 'ر.س'}
+                              {currencyLabel}
                             </span>
                           )}
                           {(activeFeedback.paymentStatus.status === 'EXEMPT' ||
@@ -1181,13 +1183,15 @@ export default function MobileAttendanceScannerPage() {
                   {locale === 'en' ? 'Outstanding Balance:' : 'الرصيد المستحق:'}
                 </span>
                 <span className="font-extrabold text-[var(--accent-primary)]">
-                  {paymentPlayer.outstandingBalance} {locale === 'en' ? 'SAR' : 'ر.س'}
+                  {paymentPlayer.outstandingBalance} {currencyLabel}
                 </span>
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-(--text-main) mb-1">
-                  {locale === 'en' ? 'Amount Collected (SAR) *' : 'المبلغ المحصل (ر.س) *'}
+                  {locale === 'en'
+                    ? `Amount Collected (${currencyLabel}) *`
+                    : `المبلغ المحصل (${currencyLabel}) *`}
                 </label>
                 <input
                   type="number"

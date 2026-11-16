@@ -15,7 +15,10 @@ import {
  * PermissionsGuard, so it counts as not in the static map; "Self only" counts as granted (scoped in the service).
  */
 function documentedMatrix(): Map<string, Record<string, boolean>> {
-  const doc = readFileSync(join(__dirname, '../../../../docs/security/ROLE_PERMISSION_MATRIX.md'), 'utf8');
+  const doc = readFileSync(
+    join(__dirname, '../../../../docs/security/ROLE_PERMISSION_MATRIX.md'),
+    'utf8',
+  );
   const lines = doc.split('\n');
   const header = lines.find((l) => l.startsWith('| Permission Key'));
   if (!header) throw new Error('matrix header not found');
@@ -45,7 +48,9 @@ describe('ROLE_PERMISSIONS matches docs/security/ROLE_PERMISSION_MATRIX.md', () 
   const doc = documentedMatrix();
 
   it('documents every tenant permission except platform.manage', () => {
-    const codePermissions = Object.values(Permission).filter((p) => p !== Permission.PLATFORM_MANAGE);
+    const codePermissions = Object.values(Permission).filter(
+      (p) => p !== Permission.PLATFORM_MANAGE,
+    );
     expect([...doc.keys()].sort()).toEqual([...codePermissions].sort());
   });
 
@@ -84,7 +89,9 @@ describe('roles and permissions', () => {
   });
 
   it('K8: only management and the accountant close a session cashier', () => {
-    const closers = Object.values(TenantRole).filter((r) => hasPermission(r, Permission.SESSION_CASHIER_CLOSE));
+    const closers = Object.values(TenantRole).filter((r) =>
+      hasPermission(r, Permission.SESSION_CASHIER_CLOSE),
+    );
     expect(closers.sort()).toEqual(['ACCOUNTANT', 'BRANCH_MANAGER', 'MANAGER', 'OWNER']);
   });
 

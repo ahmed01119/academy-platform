@@ -77,6 +77,5 @@ export function resolveAccess(rule: AccessRule, state: AccessState): AccessDecis
       return canAccessAdminRoutes(user, activeTenant) || canAccessCoachRoutes(user, activeTenant)
         ? { status: 'allowed' }
         : { status: 'redirect', to: getRoleHomeRoute(user, activeTenant), reason: 'forbidden' };
-
   }
 }

@@ -59,7 +59,7 @@ import { PromptModal, type PromptModalConfig } from '../../components/ui/PromptM
 
 function PlatformSuperAdminContent() {
   const { user } = useAuth();
-  const { t, locale } = useLocale();
+  const { t, locale, formatCurrency } = useLocale();
   const { toast } = useToast();
   const requestConfirmation = useConfirm();
   const searchParams = useSearchParams();
@@ -469,7 +469,7 @@ function PlatformSuperAdminContent() {
             />
             <StatCard
               label={locale === 'ar' ? 'إجمالي الإيرادات السحابية (MRR)' : 'Platform SaaS MRR'}
-              value={`${metrics?.mrr ? metrics.mrr.toLocaleString() : '0'} ${locale === 'ar' ? 'ر.س' : 'SAR'}`}
+              value={formatCurrency(metrics?.mrr ?? 0, PLATFORM_CURRENCY)}
               icon={DollarSign}
               trend={{
                 value: `${plans.length} ${locale === 'ar' ? 'باقات تجارية متاحة' : 'plans'}`,
@@ -573,6 +573,9 @@ function PlatformSuperAdminContent() {
     </AppShell>
   );
 }
+
+/** Currency of SaaS plan prices (saas_plans.currency default). */
+const PLATFORM_CURRENCY = 'EGP';
 
 export default function PlatformSuperAdminPage() {
   return (

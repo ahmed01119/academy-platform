@@ -1,5 +1,6 @@
 'use client';
 
+import { useAcademyCurrency } from '@/hooks/useAcademyCurrency';
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/auth-context';
@@ -58,6 +59,7 @@ function getStoredDashboardCache(cacheKey: string): DashboardCacheData | null {
 export default function DashboardPage() {
   const { user, activeTenant, memberships, isLoading, refreshUser, switchTenant } = useAuth();
   const { t, locale, isRtl } = useLocale();
+  const { label: currencyLabel } = useAcademyCurrency();
 
   const cacheKey = activeTenant
     ? `sportexus_dash_${activeTenant.tenantId}`
@@ -394,7 +396,7 @@ export default function DashboardPage() {
             >
               <StatCard
                 title={locale === 'ar' ? 'الإيراد الشهري (MRR)' : 'Monthly Recurring (MRR)'}
-                value={`${platformMetrics?.mrr ?? 799} SAR`}
+                value={`${platformMetrics?.mrr ?? 799} ${currencyLabel}`}
                 subtitle={
                   locale === 'ar' ? 'مؤشرات الاشتراكات النشطة' : 'Active subscription revenue'
                 }

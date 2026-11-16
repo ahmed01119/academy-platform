@@ -1,5 +1,6 @@
 'use client';
 
+import { useAcademyCurrency } from '@/hooks/useAcademyCurrency';
 import React, { useMemo, useState } from 'react';
 import { useLocale } from '@/contexts/locale-context';
 import { translateDataString } from '@/utils/data-translator';
@@ -14,6 +15,7 @@ export interface SubscriptionsTabProps {
 
 export function SubscriptionsTab({ subscriptions, onCollectPayment }: SubscriptionsTabProps) {
   const { locale } = useLocale();
+  const { label: currencyLabel } = useAcademyCurrency();
   const isAr = locale === 'ar';
 
   const [subSearch, setSubSearch] = useState('');
@@ -110,10 +112,10 @@ export function SubscriptionsTab({ subscriptions, onCollectPayment }: Subscripti
                       {String(sub.dueDate).slice(0, 10)}
                     </td>
                     <td className="py-3 px-4 font-mono font-bold text-(--text-main)">
-                      {sub.feeAmount.toLocaleString()} {isAr ? 'ر.س' : 'SAR'}
+                      {sub.feeAmount.toLocaleString()} {currencyLabel}
                     </td>
                     <td className="py-3 px-4 font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                      {sub.paidAmount.toLocaleString()} {isAr ? 'ر.س' : 'SAR'}
+                      {sub.paidAmount.toLocaleString()} {currencyLabel}
                     </td>
                     <td className="py-3 px-4 font-mono font-bold">
                       <span
@@ -121,7 +123,7 @@ export function SubscriptionsTab({ subscriptions, onCollectPayment }: Subscripti
                           sub.outstandingBalance > 0 ? 'text-amber-500' : 'text-(--text-muted)'
                         }
                       >
-                        {sub.outstandingBalance.toLocaleString()} {isAr ? 'ر.س' : 'SAR'}
+                        {sub.outstandingBalance.toLocaleString()} {currencyLabel}
                       </span>
                     </td>
                     <td className="py-3 px-4">

@@ -137,6 +137,8 @@ export const TenantMembershipSummarySchema = z.object({
   tenantId: z.string().uuid(),
   tenantName: z.string(),
   tenantSlug: z.string(),
+  /** ISO 4217 code of the academy's currency (K4); money in this academy is shown and recorded in it. */
+  tenantCurrency: z.string().length(3).optional(),
   role: TenantRoleSchema,
   status: z.enum(['INVITED', 'ACTIVE', 'SUSPENDED', 'REVOKED']),
   branchId: z.string().uuid().nullable().optional(),

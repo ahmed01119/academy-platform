@@ -1,5 +1,6 @@
 'use client';
 
+import { useAcademyCurrency } from '@/hooks/useAcademyCurrency';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { useAccessGuard } from '@/hooks/useAccessGuard';
@@ -46,11 +47,14 @@ import {
 } from '@/components/finance';
 
 /** Who may open this page (permission matrix; the API enforces the same permissions). */
-const PAGE_ACCESS: AccessRule = { anyOf: [Permission.PAYMENTS_READ, Permission.SESSION_EXPENSES_READ, Permission.REPORTS_READ] };
+const PAGE_ACCESS: AccessRule = {
+  anyOf: [Permission.PAYMENTS_READ, Permission.SESSION_EXPENSES_READ, Permission.REPORTS_READ],
+};
 
 export default function FinanceDashboardPage() {
   const { user, activeTenant, isLoading: authLoading } = useAuth();
   const { t, locale } = useLocale();
+  const { label: currencyLabel } = useAcademyCurrency();
   const isAr = locale === 'ar';
 
   // Active Tab
@@ -120,7 +124,7 @@ export default function FinanceDashboardPage() {
           'المستفيد / اللاعب',
           'الفرع',
           'النوع',
-          'المبلغ (ر.س)',
+          `المبلغ (${currencyLabel})`,
           'طريقة الدفع',
           'الحالة',
           'ملاحظات',
@@ -297,7 +301,7 @@ export default function FinanceDashboardPage() {
               </div>
               <div className="text-xl font-extrabold text-emerald-600 dark:text-emerald-400">
                 {metrics.todayCollections.toLocaleString()}{' '}
-                <span className="text-xs font-normal">{isAr ? 'ر.س' : 'SAR'}</span>
+                <span className="text-xs font-normal">{currencyLabel}</span>
               </div>
             </div>
 
@@ -310,7 +314,7 @@ export default function FinanceDashboardPage() {
               </div>
               <div className="text-xl font-extrabold text-blue-600 dark:text-blue-400">
                 {metrics.sessionCollections.toLocaleString()}{' '}
-                <span className="text-xs font-normal">{isAr ? 'ر.س' : 'SAR'}</span>
+                <span className="text-xs font-normal">{currencyLabel}</span>
               </div>
             </div>
 
@@ -323,7 +327,7 @@ export default function FinanceDashboardPage() {
               </div>
               <div className="text-xl font-extrabold text-(--text-main)">
                 {metrics.monthlyRevenue.toLocaleString()}{' '}
-                <span className="text-xs font-normal">{isAr ? 'ر.س' : 'SAR'}</span>
+                <span className="text-xs font-normal">{currencyLabel}</span>
               </div>
             </div>
 
@@ -336,7 +340,7 @@ export default function FinanceDashboardPage() {
               </div>
               <div className="text-xl font-extrabold text-amber-600 dark:text-amber-400">
                 {metrics.outstandingPlayerBalances.toLocaleString()}{' '}
-                <span className="text-xs font-normal">{isAr ? 'ر.س' : 'SAR'}</span>
+                <span className="text-xs font-normal">{currencyLabel}</span>
               </div>
             </div>
 
@@ -362,7 +366,7 @@ export default function FinanceDashboardPage() {
               </div>
               <div className="text-xl font-extrabold text-violet-600 dark:text-violet-400">
                 {metrics.netCashMovement.toLocaleString()}{' '}
-                <span className="text-xs font-normal">{isAr ? 'ر.س' : 'SAR'}</span>
+                <span className="text-xs font-normal">{currencyLabel}</span>
               </div>
             </div>
           </div>

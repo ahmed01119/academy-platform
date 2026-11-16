@@ -22,7 +22,8 @@ const LocaleContext = createContext<LocaleContextValue | undefined>(undefined);
 const LOCALE_STORAGE_KEY = 'academy_locale';
 const DEFAULT_TIMEZONE = 'Africa/Cairo';
 
-const CURRENCY_ARABIC_SYMBOLS: Record<string, string> = {
+/** Arabic symbols of the currencies an academy can use (English shows the ISO code). */
+export const CURRENCY_ARABIC_SYMBOLS: Record<string, string> = {
   EGP: 'ج.م',
   SAR: 'ر.س',
   USD: '$',

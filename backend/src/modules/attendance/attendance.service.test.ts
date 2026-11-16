@@ -830,7 +830,11 @@ describe('AttendanceService', () => {
 
     it.each([
       ['the session coach', { coachUserId: 'SELF', groupId: null }, null],
-      ['a coach of the session group', { coachUserId: 'another-coach', groupId: 'group-1' }, { id: 'gc-1' }],
+      [
+        'a coach of the session group',
+        { coachUserId: 'another-coach', groupId: 'group-1' },
+        { id: 'gc-1' },
+      ],
     ])('lets %s past the coach rule', async (_label, sessionPatch, groupCoachRow) => {
       mockPrisma.attendanceSession.findUnique.mockResolvedValue({
         id: 'session-assigned',

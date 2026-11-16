@@ -1,5 +1,6 @@
 'use client';
 
+import { useAcademyCurrency } from '@/hooks/useAcademyCurrency';
 import React, { useMemo, useState } from 'react';
 import { useLocale } from '@/contexts/locale-context';
 import type { AcademyFinancialDashboardMetrics, FinancialTransactionItem } from '@academy/shared';
@@ -12,6 +13,7 @@ export interface OverviewTabProps {
 
 export function OverviewTab({ metrics, onReverseTransaction }: OverviewTabProps) {
   const { locale } = useLocale();
+  const { label: currencyLabel } = useAcademyCurrency();
   const isAr = locale === 'ar';
 
   const [txSearch, setTxSearch] = useState('');
@@ -75,7 +77,7 @@ export function OverviewTab({ metrics, onReverseTransaction }: OverviewTabProps)
                                 : method}
                       </span>
                       <span className="font-mono text-(--text-muted)">
-                        {amount.toLocaleString()} {isAr ? 'ر.س' : 'SAR'} ({percentage}%)
+                        {amount.toLocaleString()} {currencyLabel} ({percentage}%)
                       </span>
                     </div>
                     <div className="h-2 w-full rounded-full bg-(--bg-surface-subtle) overflow-hidden">
@@ -115,7 +117,7 @@ export function OverviewTab({ metrics, onReverseTransaction }: OverviewTabProps)
                 >
                   <span className="font-semibold text-(--text-main)">{branchName}</span>
                   <span className="font-extrabold text-emerald-600 dark:text-emerald-400">
-                    {amount.toLocaleString()} {isAr ? 'ر.س' : 'SAR'}
+                    {amount.toLocaleString()} {currencyLabel}
                   </span>
                 </div>
               ))
@@ -242,7 +244,7 @@ export function OverviewTab({ metrics, onReverseTransaction }: OverviewTabProps)
                         }
                       >
                         {tx.type === 'SESSION_EXPENSE' ? '-' : '+'}
-                        {tx.amount.toLocaleString()} {isAr ? 'ر.س' : 'SAR'}
+                        {tx.amount.toLocaleString()} {currencyLabel}
                       </span>
                     </td>
                     <td className="py-3 px-3 text-(--text-muted)">{tx.paymentMethod}</td>

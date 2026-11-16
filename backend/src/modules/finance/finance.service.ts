@@ -353,7 +353,8 @@ export class FinanceService {
         const rand = Math.floor(1000 + Math.random() * 9000);
         const receiptNumber = dto.receiptNumber || `REC-${year}-${rand}`;
 
-        // 1. Create financial transaction in ledger
+        // 1. Create financial transaction in ledger, in the academy's own currency (K4)
+        const currency = await academyCurrency(tx, tenantContext.tenantId);
         const transaction = await tx.academyFinancialTransaction.create({
           data: {
             tenantId: tenantContext.tenantId,
@@ -364,7 +365,7 @@ export class FinanceService {
             recordedByUserId: tenantContext.actorUserId,
             type: 'MEMBERSHIP_FEE',
             amount: dto.amount,
-            currency: 'SAR',
+            currency,
             paymentMethod: dto.paymentMethod as any,
             status: 'COMPLETED',
             receiptNumber,
@@ -436,7 +437,7 @@ export class FinanceService {
                 academyName: academy?.name || 'Sportexus Academy',
                 receiptNumber,
                 amount: dto.amount,
-                currency: 'SAR',
+                currency: transaction.currency,
                 paymentMethod: dto.paymentMethod,
                 description: dto.notes || 'سداد رسوم اشتراك تدريبي',
                 date: now,
@@ -749,7 +750,7 @@ export class FinanceService {
             recordedByUserId: tenantContext.actorUserId,
             type: 'SESSION_EXPENSE',
             amount: sanitizedAmount,
-            currency: 'SAR',
+            currency: await academyCurrency(tx, tenantContext.tenantId),
             paymentMethod: dto.paymentMethod as any,
             status: isAutoApproved ? 'COMPLETED' : 'PENDING',
             approvedByUserId: isAutoApproved ? tenantContext.actorUserId : null,
@@ -1352,4 +1353,26 @@ function assertSessionMoneyAccess(
     Boolean(session.group?.coaches.some((c) => c.coachUserId === tenantContext.actorUserId));
   if (role === 'COACH' && isAssigned) return;
   throw new ForbiddenException({ code: ErrorCode.FORBIDDEN, message });
+}
+
+/**
+ * K4 (owner decision 2026-11-16): money is recorded in the academy's own currency (`tenants.currency`, default EGP),
+ * never a fixed one. Read under the caller's tenant context.
+ */
+async function academyCurrency(
+  tx: {
+    tenant: {
+      findUnique: (args: {
+        where: { id: string };
+        select: { currency: true };
+      }) => Promise<{ currency: string } | null>;
+    };
+  },
+  tenantId: string,
+): Promise<string> {
+  const tenant = await tx.tenant.findUnique({
+    where: { id: tenantId },
+    select: { currency: true },
+  });
+  return tenant?.currency ?? 'EGP';
 }

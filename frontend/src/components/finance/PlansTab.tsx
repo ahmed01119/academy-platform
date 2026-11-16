@@ -1,5 +1,6 @@
 'use client';
 
+import { useAcademyCurrency } from '@/hooks/useAcademyCurrency';
 import React from 'react';
 import { useLocale } from '@/contexts/locale-context';
 import type { PlayerSubscriptionPlanItem, TenantSubscriptionItem } from '@academy/shared';
@@ -14,6 +15,7 @@ export interface PlansTabProps {
 
 export function PlansTab({ tenantSub, plans, onOpenCreatePlan }: PlansTabProps) {
   const { locale } = useLocale();
+  const { label: currencyLabel } = useAcademyCurrency();
   const isAr = locale === 'ar';
 
   return (
@@ -50,7 +52,7 @@ export function PlansTab({ tenantSub, plans, onOpenCreatePlan }: PlansTabProps) 
                 {isAr ? 'قيمة الاشتراك الشهري (MRR)' : 'Monthly SaaS Tier (MRR)'}
               </span>
               <span className="text-xl font-black text-[var(--accent-primary)]">
-                {tenantSub.currentPrice.toLocaleString()} {tenantSub.currency || 'ر.س'}
+                {tenantSub.currentPrice.toLocaleString()} {tenantSub.currency || `${currencyLabel}`}
               </span>
             </div>
           </div>
@@ -141,7 +143,7 @@ export function PlansTab({ tenantSub, plans, onOpenCreatePlan }: PlansTabProps) 
                     {p.feeAmount.toLocaleString()}
                   </span>
                   <span className="text-xs text-(--text-muted) font-semibold mx-1">
-                    {isAr ? 'ر.س / دورة' : 'SAR / cycle'}
+                    {isAr ? `${currencyLabel} / دورة` : `${currencyLabel} / cycle`}
                   </span>
                 </div>
                 <span className="text-xs text-[var(--accent-primary)] font-bold">

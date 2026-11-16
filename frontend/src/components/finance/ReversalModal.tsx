@@ -1,5 +1,6 @@
 'use client';
 
+import { useAcademyCurrency } from '@/hooks/useAcademyCurrency';
 import React, { useState } from 'react';
 import { useLocale } from '@/contexts/locale-context';
 import { useToast } from '@/components/ui/Toast';
@@ -17,6 +18,7 @@ export interface ReversalModalProps {
 
 export function ReversalModal({ transaction, onClose, onSuccess }: ReversalModalProps) {
   const { locale } = useLocale();
+  const { label: currencyLabel } = useAcademyCurrency();
   const isAr = locale === 'ar';
   const { toast } = useToast();
 
@@ -65,8 +67,8 @@ export function ReversalModal({ transaction, onClose, onSuccess }: ReversalModal
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-700 dark:text-rose-300">
           {isAr
-            ? `سيتم إلغاء هذه المعاملة (${transaction.amount} ر.س) وعكس أثرها المالي على رصيد اللاعب وسجل الأكاديمية فوراً مع توثيق سبب الإلغاء في سجل التدقيق.`
-            : `This transaction (${transaction.amount} SAR) will be voided and reversed immediately on athlete ledger and audited in security logs.`}
+            ? `سيتم إلغاء هذه المعاملة (${transaction.amount} ${currencyLabel}) وعكس أثرها المالي على رصيد اللاعب وسجل الأكاديمية فوراً مع توثيق سبب الإلغاء في سجل التدقيق.`
+            : `This transaction (${transaction.amount} ${currencyLabel}) will be voided and reversed immediately on athlete ledger and audited in security logs.`}
         </div>
 
         <div>

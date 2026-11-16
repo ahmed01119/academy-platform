@@ -1,5 +1,6 @@
 'use client';
 
+import { useAcademyCurrency } from '@/hooks/useAcademyCurrency';
 import React, { useState, useEffect } from 'react';
 import { useLocale } from '@/contexts/locale-context';
 import { useToast } from '@/components/ui/Toast';
@@ -23,6 +24,7 @@ export function CreateSubscriptionModal({
   onSuccess,
 }: CreateSubscriptionModalProps) {
   const { locale } = useLocale();
+  const { label: currencyLabel } = useAcademyCurrency();
   const isAr = locale === 'ar';
   const { toast } = useToast();
 
@@ -140,7 +142,7 @@ export function CreateSubscriptionModal({
             </option>
             {plans.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.name} ({p.feeAmount} {isAr ? 'ر.س' : 'SAR'})
+                {p.name} ({p.feeAmount} {currencyLabel})
               </option>
             ))}
           </select>
@@ -149,7 +151,9 @@ export function CreateSubscriptionModal({
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-xs font-semibold text-(--text-main) mb-1">
-              {isAr ? 'قيمة الاشتراك (ر.س) *' : 'Subscription Fee (SAR) *'}
+              {isAr
+                ? `قيمة الاشتراك (${currencyLabel}) *`
+                : `Subscription Fee (${currencyLabel}) *`}
             </label>
             <input
               type="number"
@@ -164,7 +168,7 @@ export function CreateSubscriptionModal({
 
           <div>
             <label className="block text-xs font-semibold text-(--text-main) mb-1">
-              {isAr ? 'خصم ممنوح (ر.س)' : 'Discount (SAR)'}
+              {isAr ? `خصم ممنوح (${currencyLabel})` : `Discount (${currencyLabel})`}
             </label>
             <input
               type="number"

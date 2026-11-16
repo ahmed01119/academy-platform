@@ -37,7 +37,7 @@ const PAGE_RULES: Record<string, string> = {
 function pageRule(source: string): string[] {
   const named = [...source.matchAll(/useAccessGuard\('([a-z-]+)'/g)].map((m) => m[1] ?? '');
   if (!source.includes('useAccessGuard(PAGE_ACCESS')) return named;
-  const def = /const PAGE_ACCESS: AccessRule = \{ anyOf: \[([^\]]*)\] \};/.exec(source);
+  const def = /const PAGE_ACCESS: AccessRule = \{\s*anyOf: \[([^\]]*)\],?\s*\};/.exec(source);
   const perms = (def?.[1] ?? '')
     .split(',')
     .map((p) => p.trim())

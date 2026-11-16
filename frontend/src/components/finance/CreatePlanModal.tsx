@@ -1,5 +1,6 @@
 'use client';
 
+import { useAcademyCurrency } from '@/hooks/useAcademyCurrency';
 import React, { useState } from 'react';
 import { useLocale } from '@/contexts/locale-context';
 import { useToast } from '@/components/ui/Toast';
@@ -16,6 +17,7 @@ export interface CreatePlanModalProps {
 
 export function CreatePlanModal({ isOpen, onClose, onSuccess }: CreatePlanModalProps) {
   const { locale } = useLocale();
+  const { label: currencyLabel, code: currencyCode } = useAcademyCurrency();
   const isAr = locale === 'ar';
   const { toast } = useToast();
 
@@ -35,7 +37,7 @@ export function CreatePlanModal({ isOpen, onClose, onSuccess }: CreatePlanModalP
       await apiClient.finance.createPlayerPlan({
         name: planName.trim(),
         feeAmount: Number(planPrice),
-        currency: 'SAR',
+        currency: currencyCode,
         billingPeriod: planPeriod,
         sport: 'FOOTBALL',
         description: planDescription.trim() || undefined,
@@ -95,7 +97,7 @@ export function CreatePlanModal({ isOpen, onClose, onSuccess }: CreatePlanModalP
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-xs font-semibold text-(--text-main) mb-1">
-              {isAr ? 'السعر (ر.س) *' : 'Price (SAR) *'}
+              {isAr ? `السعر (${currencyLabel}) *` : `Price (${currencyLabel}) *`}
             </label>
             <input
               type="number"

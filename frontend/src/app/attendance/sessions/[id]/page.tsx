@@ -1,5 +1,6 @@
 'use client';
 
+import { useAcademyCurrency } from '@/hooks/useAcademyCurrency';
 import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
@@ -63,6 +64,7 @@ export default function SessionAttendancePage() {
   const canCloseCashier = can(user, activeTenant, Permission.SESSION_CASHIER_CLOSE);
   const canClaimExpense = can(user, activeTenant, Permission.SESSION_EXPENSES_CREATE);
   const { locale, t } = useLocale();
+  const { label: currencyLabel } = useAcademyCurrency();
   const { toast } = useToast();
   const requestConfirmation = useConfirm();
 
@@ -856,7 +858,7 @@ export default function SessionAttendancePage() {
                   </span>
                   <span className="text-lg font-extrabold text-(--text-main)">
                     {cashierSummary?.totalCashCollected ?? 0}{' '}
-                    <span className="text-xs font-normal">{locale === 'en' ? 'SAR' : 'ر.س'}</span>
+                    <span className="text-xs font-normal">{currencyLabel}</span>
                   </span>
                 </div>
 
@@ -868,7 +870,7 @@ export default function SessionAttendancePage() {
                   </span>
                   <span className="text-lg font-extrabold text-(--text-main)">
                     {cashierSummary?.totalElectronicCollected ?? 0}{' '}
-                    <span className="text-xs font-normal">{locale === 'en' ? 'SAR' : 'ر.س'}</span>
+                    <span className="text-xs font-normal">{currencyLabel}</span>
                   </span>
                 </div>
 
@@ -878,7 +880,7 @@ export default function SessionAttendancePage() {
                   </span>
                   <span className="text-lg font-extrabold text-(--text-main)">
                     {cashierSummary?.totalExpenses ?? 0}{' '}
-                    <span className="text-xs font-normal">{locale === 'en' ? 'SAR' : 'ر.س'}</span>
+                    <span className="text-xs font-normal">{currencyLabel}</span>
                   </span>
                 </div>
 
@@ -888,7 +890,7 @@ export default function SessionAttendancePage() {
                   </span>
                   <span className="text-lg font-extrabold text-(--text-main)">
                     {cashierSummary?.netCashMovement ?? 0}{' '}
-                    <span className="text-xs font-normal">{locale === 'en' ? 'SAR' : 'ر.س'}</span>
+                    <span className="text-xs font-normal">{currencyLabel}</span>
                   </span>
                 </div>
               </div>
@@ -1068,7 +1070,7 @@ export default function SessionAttendancePage() {
                               }`}
                             >
                               {tx.type === 'SESSION_EXPENSE' ? '-' : '+'}
-                              {tx.amount} {locale === 'en' ? 'SAR' : 'ر.س'}
+                              {tx.amount} {currencyLabel}
                             </span>
                             <div className="text-[10px] text-(--text-muted)">
                               {tx.createdAt
@@ -1335,8 +1337,8 @@ export default function SessionAttendancePage() {
                             <AlertTriangle className="h-3 w-3" />
                             <span>
                               {locale === 'en'
-                                ? `Remaining: ${item.outstandingBalance ?? 0} SAR`
-                                : `متبقي: ${item.outstandingBalance ?? 0} ر.س`}
+                                ? `Remaining: ${item.outstandingBalance ?? 0} ${currencyLabel}`
+                                : `متبقي: ${item.outstandingBalance ?? 0} ${currencyLabel}`}
                             </span>
                           </span>
                         )}
@@ -1345,8 +1347,8 @@ export default function SessionAttendancePage() {
                             <XCircle className="h-3 w-3" />
                             <span>
                               {locale === 'en'
-                                ? `Overdue: ${item.outstandingBalance || item.amountDue || 0} SAR`
-                                : `متأخر: ${item.outstandingBalance || item.amountDue || 0} ر.س`}
+                                ? `Overdue: ${item.outstandingBalance || item.amountDue || 0} ${currencyLabel}`
+                                : `متأخر: ${item.outstandingBalance || item.amountDue || 0} ${currencyLabel}`}
                             </span>
                           </span>
                         )}
@@ -1696,13 +1698,15 @@ export default function SessionAttendancePage() {
                   {selectedPlayerForPayment.outstandingBalance ??
                     selectedPlayerForPayment.amountDue ??
                     0}{' '}
-                  {locale === 'en' ? 'SAR' : 'ر.س'}
+                  {currencyLabel}
                 </span>
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-(--text-main) mb-1.5">
-                  {locale === 'en' ? 'Amount Collected (SAR) *' : 'المبلغ المحصل (ر.س) *'}
+                  {locale === 'en'
+                    ? `Amount Collected (${currencyLabel}) *`
+                    : `المبلغ المحصل (${currencyLabel}) *`}
                 </label>
                 <input
                   type="number"
@@ -1833,7 +1837,9 @@ export default function SessionAttendancePage() {
             <form onSubmit={handleSubmitExpense} className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-(--text-main) mb-1.5">
-                  {locale === 'en' ? 'Expense Amount (SAR) *' : 'قيمة المصروف (ر.س) *'}
+                  {locale === 'en'
+                    ? `Expense Amount (${currencyLabel}) *`
+                    : `قيمة المصروف (${currencyLabel}) *`}
                 </label>
                 <input
                   type="number"
@@ -1925,7 +1931,7 @@ export default function SessionAttendancePage() {
                     {locale === 'en' ? 'Cash Collected:' : 'الكاش المحصل:'}
                   </span>
                   <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                    +{cashierSummary?.totalCashCollected ?? 0} {locale === 'en' ? 'SAR' : 'ر.س'}
+                    +{cashierSummary?.totalCashCollected ?? 0} {currencyLabel}
                   </span>
                 </div>
                 <div className="flex justify-between">
@@ -1933,7 +1939,7 @@ export default function SessionAttendancePage() {
                     {locale === 'en' ? 'Expenses:' : 'المصروفات:'}
                   </span>
                   <span className="font-bold text-rose-600 dark:text-rose-400">
-                    -{cashierSummary?.totalExpenses ?? 0} {locale === 'en' ? 'SAR' : 'ر.س'}
+                    -{cashierSummary?.totalExpenses ?? 0} {currencyLabel}
                   </span>
                 </div>
                 <div className="flex justify-between border-t border-(--border-subtle) pt-2 font-bold text-(--text-main)">
@@ -1941,7 +1947,7 @@ export default function SessionAttendancePage() {
                     {locale === 'en' ? 'Net Cash to Hand Over:' : 'صافي النقد المطلوب تسليمه:'}
                   </span>
                   <span>
-                    {cashierSummary?.netCashMovement ?? 0} {locale === 'en' ? 'SAR' : 'ر.س'}
+                    {cashierSummary?.netCashMovement ?? 0} {currencyLabel}
                   </span>
                 </div>
               </div>
