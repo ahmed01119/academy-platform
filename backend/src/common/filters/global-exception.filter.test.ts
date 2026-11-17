@@ -89,6 +89,23 @@ describe('GlobalExceptionFilter', () => {
     expect(sent.message).toContain('email');
   });
 
+  it.each([
+    { name: 'PrismaClientKnownRequestError', code: 'P1001' },
+    { name: 'PrismaClientKnownRequestError', code: 'P2024' },
+    { name: 'PrismaClientInitializationError', errorCode: 'P1001' },
+  ])(
+    'maps an unreachable database ($name $code$errorCode) to 503 DATABASE_UNAVAILABLE',
+    (prismaError) => {
+      const { host, statusMock, jsonMock } = createMockHost('/v1/auth/login');
+      filter.catch({ ...prismaError, clientVersion: '6.19.3' }, host);
+
+      expect(statusMock).toHaveBeenCalledWith(HttpStatus.SERVICE_UNAVAILABLE);
+      const sent = firstCallArg(jsonMock);
+      expect(sent.code).toBe('DATABASE_UNAVAILABLE');
+      expect(sent.message).not.toContain('constraint');
+    },
+  );
+
   it('normalizes unexpected runtime errors to 500 without crashing', () => {
     const error = new Error('Database connection reset abruptly');
 

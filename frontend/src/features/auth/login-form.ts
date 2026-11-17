@@ -172,6 +172,16 @@ export function resolveLoginError(err: unknown, locale: Locale): LoginErrorResol
       return { formError: locale === 'ar' ? accountState.ar : accountState.en };
     }
 
+    // The database is briefly unreachable (e.g. waking up after being idle): ask for a retry, not a different password.
+    if (err.statusCode === 503) {
+      return {
+        formError:
+          locale === 'ar'
+            ? 'الخدمة غير متاحة مؤقتاً. يرجى المحاولة مرة أخرى بعد لحظات.'
+            : 'The service is temporarily unavailable. Please try again in a moment.',
+      };
+    }
+
     if (err.statusCode === 401) {
       return {
         formError:

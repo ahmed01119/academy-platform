@@ -48,6 +48,16 @@ describe('resolveLoginError', () => {
     });
   });
 
+  it('maps 503 (database briefly unreachable) to a retry message', () => {
+    const err = new ApiError(
+      'The service is temporarily unavailable.',
+      503,
+      'DATABASE_UNAVAILABLE',
+    );
+    expect(resolveLoginError(err, 'en').formError).toContain('try again');
+    expect(resolveLoginError(err, 'ar').formError).toContain('المحاولة مرة أخرى');
+  });
+
   it.each([
     ['ACADEMY_PENDING_APPROVAL', 'under review by the platform'],
     ['PLAYER_PENDING_APPROVAL', 'Your join request is under review by the academy'],

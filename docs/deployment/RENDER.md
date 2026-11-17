@@ -37,7 +37,7 @@ wildcard is accepted in production.
 
    | Service         | Variable                            | Value                                                                    |
    | --------------- | ----------------------------------- | ------------------------------------------------------------------------ |
-   | `sportexus-api` | `DATABASE_URL`                      | Neon **pooled** connection string as `sportexus_app`                     |
+   | `sportexus-api` | `DATABASE_URL`                      | Neon **pooled** URL as `sportexus_app`, ending `&connect_timeout=15`     |
    |                 | `DATABASE_ADMIN_URL`                | Neon **direct** connection string as the owner (used only by migrations) |
    |                 | `CORS_ORIGIN`                       | `https://<web service>.onrender.com`                                     |
    |                 | `NEXT_PUBLIC_APP_URL`               | `https://<web service>.onrender.com` (links in e-mails)                  |

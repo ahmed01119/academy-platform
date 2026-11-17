@@ -10,6 +10,8 @@ import type { Request, Response } from 'express';
 import { ZodError } from 'zod';
 import { CORRELATION_HEADER } from '../correlation.middleware';
 
+const DATABASE_UNAVAILABLE_CODES = new Set(['P1001', 'P1002', 'P1008', 'P1017', 'P2024']);
+
 export interface StandardErrorResponse {
   success: false;
   statusCode: number;
@@ -93,7 +95,17 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         details = resObj.details || resObj.error || undefined;
       }
     }
-    // 3. Prisma Known Database Request Errors
+    // 3. Database unreachable (server down, waking up, pool exhausted): a temporary outage, not a bad request.
+    else if (this.isDatabaseUnavailableError(exception)) {
+      statusCode = HttpStatus.SERVICE_UNAVAILABLE;
+      code = 'DATABASE_UNAVAILABLE';
+      message = 'The service is temporarily unavailable. Please try again in a moment.';
+      const err = exception as { code?: string; errorCode?: string };
+      this.logger.warn(
+        `[${requestId || 'no-req-id'}] Database unavailable [${err.code ?? err.errorCode ?? 'init'}] on ${request.method} ${request.url}`,
+      );
+    }
+    // 4. Prisma Known Database Request Errors
     else if (this.isPrismaClientKnownRequestError(exception)) {
       const prismaError = exception as { code: string; meta?: Record<string, unknown> };
 
@@ -137,7 +149,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         `[${requestId || 'no-req-id'}] Prisma error [${prismaError.code}] on ${request.method} ${request.url}: ${message}`,
       );
     }
-    // 4. Other Unhandled Runtime Errors
+    // 5. Other Unhandled Runtime Errors
     else {
       const err = exception instanceof Error ? exception : new Error(String(exception));
       this.logger.error(
@@ -170,6 +182,22 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     };
 
     response.status(statusCode).json(payload);
+  }
+
+  /**
+   * Prisma connection failures: P1001 can't reach server, P1002 timed out, P1008 operation timed out,
+   * P1017 server closed the connection, P2024 connection-pool timeout; and PrismaClientInitializationError
+   * (the first connection failed). A serverless database waking up from idle produces these.
+   */
+  private isDatabaseUnavailableError(error: unknown): boolean {
+    if (typeof error !== 'object' || error === null) return false;
+    const err = error as { name?: string; code?: string };
+    if (err.name === 'PrismaClientInitializationError') return true;
+    return (
+      err.name === 'PrismaClientKnownRequestError' &&
+      typeof err.code === 'string' &&
+      DATABASE_UNAVAILABLE_CODES.has(err.code)
+    );
   }
 
   private isPrismaClientKnownRequestError(error: unknown): boolean {
