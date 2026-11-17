@@ -1,6 +1,6 @@
 # Development Status
 
-> Last updated: **2026-11-16**: K6 (three applicant kinds, pending accounts, portal read policies) applied; see §9e.
+> Last updated: **2026-11-16**: owner decisions applied (K2-K4, K8, K9, items 5-7, S2, Render, demo data); see §9f.
 > Phase 2A: §9b and `docs/IMPROVEMENT_ROADMAP.md`.
 > Update this file after every task (see CLAUDE.md §15).
 
@@ -59,21 +59,21 @@ Severity is an engineering estimate; none of these were changed.
 | #   | Sev                       | Issue                                                                                                                                                                                                                                                  | Location                                                                                                             |
 | --- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
 | K1  | ✅ Fixed `1e31a60` (3A.1) | **OTP reset brute-force guard is ineffective**: the attempt counter key is the hash of the _submitted_ code, so every wrong guess uses a new key; reset accepts the 6-digit code without the email, so any pending reset in the system can be guessed. | `backend/src/modules/auth/auth.service.ts:570`, `packages/shared/src/schemas/auth.ts:75`                             |
-| K2  | High                      | **Committed data dump** with 29 users incl. `passwordHash` and token columns, tenants, players.                                                                                                                                                        | `packages/database/backup_pre_migration_coach_delegation.json` (tracked in git)                                      |
-| K3  | High                      | **Suspended academies keep working**: `TenantGuard` and login never check `tenant.status`; plain suspension does not revoke sessions (only Owner archive does).                                                                                        | `backend/src/modules/auth/guards/tenant.guard.ts`, `platform.service.ts:252`                                         |
-| K4  | Med                       | **Currency hard-coded to `SAR`** on payments and expenses (and across finance UI), while tenants, plans and settings default to `EGP`.                                                                                                                 | `finance.service.ts:440, 512, 834`; `frontend/src/components/finance/*`, `app/finance/page.tsx`, `app/attendance/**` |
+| K2  | ✅ Fixed `a38429b`        | **Committed data dump** with 29 users incl. `passwordHash` and token columns, tenants, players.                                                                                                                                                        | `packages/database/backup_pre_migration_coach_delegation.json` (tracked in git)                                      |
+| K3  | ✅ Fixed `0d5c62f`        | **Suspended academies keep working**: `TenantGuard` and login never check `tenant.status`; plain suspension does not revoke sessions (only Owner archive does).                                                                                        | `backend/src/modules/auth/guards/tenant.guard.ts`, `platform.service.ts:252`                                         |
+| K4  | ✅ Fixed `cd184d0`        | **Currency hard-coded to `SAR`** on payments and expenses (and across finance UI), while tenants, plans and settings default to `EGP`.                                                                                                                 | `finance.service.ts:440, 512, 834`; `frontend/src/components/finance/*`, `app/finance/page.tsx`, `app/attendance/**` |
 | K5  | ✅ Fixed `5110e57` (3A.2) | **Storage maintenance cannot purge audit logs**: `auditLog.deleteMany` hits the append-only trigger → the whole maintenance transaction (incl. token purge) fails when old logs exist.                                                                 | `platform.service.ts:2078` vs migration `20261016000100_audit_log_append_only`                                       |
 | K6  | ✅ Fixed (§9e)            | **Public join requests never link the applicant**: `POST /portal/player-join-requests` has no JWT guard, so `@CurrentUser('id')` is always undefined → `applicantUserId` null → no applicant notifications, no login gating for players.               | `backend/src/modules/portal/portal.controller.ts:75`                                                                 |
 | K7  | ✅ Fixed `f1ddeca` (F22)  | **National ID leaks in player list** to every `players.read` role (COACH, VIEWER, ACCOUNTANT); detail view masks it.                                                                                                                                   | `players.service.ts:156` vs `:263`                                                                                   |
-| K8  | Med                       | **Cashier close requires only `session_expenses.read`** (granted to RECEPTIONIST, COACH, VIEWER).                                                                                                                                                      | `finance.controller.ts:171-172`                                                                                      |
-| K9  | Med                       | Join-request approval may **merge different children with the same first+last name** into one player; defaults gender MALE / DOB 2012-01-01 when unknown.                                                                                              | `players.service.ts` (`reviewPlayerJoinRequest`)                                                                     |
+| K8  | ✅ Fixed `af61196`        | **Cashier close requires only `session_expenses.read`** (granted to RECEPTIONIST, COACH, VIEWER).                                                                                                                                                      | `finance.controller.ts:171-172`                                                                                      |
+| K9  | ✅ Fixed `ee1eebd`        | Join-request approval may **merge different children with the same first+last name** into one player; defaults gender MALE / DOB 2012-01-01 when unknown.                                                                                              | `players.service.ts` (`reviewPlayerJoinRequest`)                                                                     |
 | K10 | Low                       | Invitation API response returns the raw invitation token to the inviter.                                                                                                                                                                               | `tenancy.service.ts:246`                                                                                             |
-| K11 | Low                       | Receipt/expense numbers use `Math.random()` 4 digits (`REC-YYYY-####`) — collisions likely at volume; no uniqueness constraint.                                                                                                                        | `finance.service.ts:426, 823`                                                                                        |
-| K12 | Low                       | Payment receipt email is sent (with retries) **inside** the DB transaction, holding the transaction open.                                                                                                                                              | `finance.service.ts:506`                                                                                             |
+| K11 | ✅ Fixed `e25d30f`        | Receipt/expense numbers use `Math.random()` 4 digits (`REC-YYYY-####`) — collisions likely at volume; no uniqueness constraint.                                                                                                                        | `finance.service.ts:426, 823`                                                                                        |
+| K12 | ✅ Fixed `e25d30f`        | Payment receipt email is sent (with retries) **inside** the DB transaction, holding the transaction open.                                                                                                                                              | `finance.service.ts:506`                                                                                             |
 | K13 | ✅ Fixed `1e31a60` (3A.1) | `changePassword` does not revoke other refresh tokens (reset does).                                                                                                                                                                                    | `auth.service.ts` (`changePassword`)                                                                                 |
 | K14 | Low                       | Missing space in class list: `bg-(--bg-base)text-(--text-main)` → text colour class not applied.                                                                                                                                                       | `frontend/src/components/layout/AppShell.tsx:22`                                                                     |
 | K15 | ✅ Fixed `b33d68f`        | Stale tests in `packages/database/src/tenant-transaction.test.ts` (see §9b).                                                                                                                                                                           |                                                                                                                      |
-| K16 | Low                       | Monetary amounts stored as `Float` (double) — rounding risk for ledger sums.                                                                                                                                                                           | `schema.prisma` (finance models)                                                                                     |
+| K16 | ✅ Fixed `e25d30f`        | Monetary amounts stored as `Float` (double) — rounding risk for ledger sums.                                                                                                                                                                           | `schema.prisma` (finance models)                                                                                     |
 
 ## 6. Documentation vs implementation discrepancies
 
@@ -87,16 +87,16 @@ Severity is an engineering estimate; none of these were changed.
 
 ## 7. Open questions (need product-owner decision)
 
-1. **Permissions**: Which is intended — the code matrix or `ROLE_PERMISSION_MATRIX.md`? (18 differences.)
-2. **Currency**: Is the product EGP, SAR, or per-tenant (`tenant.currency`)? Finance currently writes SAR.
-3. **Tenant suspension**: Should a SUSPENDED academy block all staff/portal access immediately?
-4. **Cashier close**: Which roles may close a session's cashier? Should a closed cashier be re-closable (currently overwritten)?
+1. ~~**Permissions**~~ Decided 2026-11-16: `ROLE_PERMISSION_MATRIX.md` is the source of truth (§9f).
+2. ~~**Currency**~~ Decided 2026-11-16: each academy's own currency (§9f, K4).
+3. ~~**Tenant suspension**~~ Decided 2026-11-16: closed for everyone at once (§9f, K3).
+4. ~~**Cashier close**~~ Decided 2026-11-16: owner, manager, branch manager, accountant; once (§9f, K8).
 5. **Plan limits**: Should `maxBranches`, `maxCoaches` and manual player creation be enforced? What happens on downgrade?
 6. ~~**Join requests**: Must applicants be logged in?~~ Decided 2026-11-16: every applicant gets a pending account (§9e).
 7. **Coach attendance**: Code forbids coaches from recording attendance (explicit product rule) — confirm, as the role-matrix doc says otherwise.
 8. **Platform Owner without Super Admin flag**: frontend checks only `isPlatformSuperAdmin`; backend accepts either. Can an Owner-only account exist? (`scripts/create-superadmin.js` sets both.)
 9. **`academy_platform_mysql.sql`** (untracked, 84 KB, MySQL 8 schema + seed): purpose? The stack is PostgreSQL-only.
-10. **`backup_pre_migration_coach_delegation.json`**: demo or real data? Should it be removed from git history?
+10. ~~**`backup_pre_migration_coach_delegation.json`**~~ Removed 2026-11-16 (K2), history not rewritten.
 11. **Support access**: is a real time-boxed read-only access mechanism required?
 12. **SaaS invoices**: manual, automatic, or out of scope?
 13. **Audit log retention**: should operational logs be purgeable (conflicts with the append-only trigger)?
@@ -109,7 +109,7 @@ Severity is an engineering estimate; none of these were changed.
 - [ ] Commit or otherwise stabilise the ~140 uncommitted working-tree changes before restructuring.
 - [ ] Fix stale database tests (K15) so the suite is green before refactors.
 - [ ] Run lint, format:check, build and SQL tests to complete the baseline.
-- [x] K1 fixed (Phase 3A.1). K2 and K3 still open.
+- [x] K1 fixed (Phase 3A.1). K2 and K3 fixed 2026-11-16 (§9f).
 
 ## 9. Phase 1 (frontend refactor) — analysis baseline, 2026-11-14
 
@@ -427,8 +427,8 @@ Open after 3A.2:
 
 - K6: done in §9e (owner decision 2026-11-16).
 - S2: exact trusted origins per environment.
-- Residual: `users` readable on every column by the runtime role; staff can set `players.user_id` /
-  `guardians.user_id` within their tenant; `must_reset_password` is never cleared.
+- Residual: `users` readable on every column by the runtime role. (Account links and `must_reset_password`: fixed
+  in §9f, items 5 and 6.)
 
 ## 9e. K6 join requests: three applicant kinds, pending accounts (2026-11-16)
 
@@ -467,6 +467,55 @@ Neon development database:
 
 Still open: K9 (name-only match for requests made before K6; defaults gender MALE / DOB 2012-01-01); a confirmation
 e-mail when a join request is received (academy registration has one); BR-1 status codes (401 kept).
+
+## 9f. Owner decisions of 2026-11-16 applied (K2-K4, K8, K9, items 5-7, S2, Render, demo data)
+
+Decisions: wipe the development data and replace it with synthetic Arabic/English data; one repository with independent
+web, API and database; a suspended academy is closed for everyone at once (K3); each academy's own currency (K4);
+cashier close by management and the accountant only, once (K8); the permission matrix of
+`docs/security/ROLE_PERMISSION_MATRIX.md` is the source of truth; remove the committed dump without rewriting history
+(K2); deploy web and API on Render (database on Neon).
+
+| Item        | Change                                                                                                                                                                                                                                                                   | Commit    |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------- |
+| K2          | Committed dump removed; data dumps ignored                                                                                                                                                                                                                               | `a38429b` |
+| RBAC        | `ROLE_PERMISSIONS` = documented matrix (a test parses the doc); `session_cashier.close`; coaches mark attendance / claim expenses for their own sessions only; web menu, navbar, page guards and buttons use one `can()` over the same matrix; VIEWER had no menu at all | `af61196` |
+| K8          | Cashier close needs `session_cashier.close`; a closed cashier cannot be closed again                                                                                                                                                                                     | `af61196` |
+| K3          | Suspended academy refused on every academy request (TenantGuard), at login and in the portals                                                                                                                                                                            | `0d5c62f` |
+| K4          | Money recorded and shown in the academy's currency (`tenantCurrency` on memberships, `useAcademyCurrency`)                                                                                                                                                               | `cd184d0` |
+| K9          | Join approval never merges two children by name alone                                                                                                                                                                                                                    | `ee1eebd` |
+| 5           | `players.user_id` / `guardians.user_id` writable only by definer functions; `link_join_request_account`                                                                                                                                                                  | `ff3d19d` |
+| 6           | `must_reset_password` enforced (403 `PASSWORD_CHANGE_REQUIRED`, account page) and cleared by a trigger on a real password change                                                                                                                                         | `0334632` |
+| 3C          | K16 money `numeric(12,2)`; K11 CSPRNG receipt numbers + unique per academy; K12 receipt e-mail after the commit                                                                                                                                                          | `e25d30f` |
+| Warnings    | Web lint 0 warnings (next/font, next/image)                                                                                                                                                                                                                              | `0720693` |
+| S2 / Render | `render.yaml`: `sportexus-web`, `sportexus-api`, private Key Value; exact `CORS_ORIGIN`; `docs/deployment/RENDER.md`                                                                                                                                                     | `675e36f` |
+| Demo data   | `seed-demo.cjs` replaces `seed-local-demo.js`; four leftover debug scripts removed                                                                                                                                                                                       | `06e49b7` |
+
+Migrations added: `20261118110000_account_links_definer_only`, `20261118120000_must_reset_password_cleared`,
+`20261118130000_money_numeric`, `20261118140000_unique_receipt_numbers` (32 in total).
+
+Verification:
+
+| Check                                                           | Result                                                                                  |
+| --------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Unit tests                                                      | ✅ api 366, web 360, shared 44+, database 10                                            |
+| Integration tests (real PostgreSQL)                             | ✅ 8                                                                                    |
+| CI database steps emulated in order (32 migrations)             | ✅ 9/9, incl. `account-links-boundaries.sql` (13 checks)                                |
+| Schema vs migrations drift (`prisma migrate diff`)              | ✅ empty                                                                                |
+| Full API as `sportexus_app`, isolated Neon-like database        | ✅ 67/67 workflow checks, 0 log errors                                                  |
+| Every web API call has a backend route                          | ✅ 123/123                                                                              |
+| Demo data, every role, API as `sportexus_app`                   | ✅ 44/44 on the isolated copy and 44/44 on Neon dev with the owner's real configuration |
+| Production web build + proxy + API + Neon (login through `/v1`) | ✅                                                                                      |
+| Typecheck, lint (0 errors; web 0 warnings), format, build       | ✅                                                                                      |
+
+Neon development database: backup `neon-dev-pre-wipe-20261116-213233` (34 tables, 230 rows, restore verified 34/34),
+the four migrations applied (up to date, 32), all data replaced by the demo seed (18 accounts, 3 academies, 14
+players), `security-catalog.sql` all 9 sections pass. Demo credentials: `C:/Users/IT/sportexus-demo-accounts.txt`
+(outside the repository).
+
+Not changed (needs a decision or a later phase): BR-1 status codes (401 kept, messages now shown), BR-2 extra join-form
+fields, BR-3, the root Windows helper scripts (`*.ps1`, run from the repository root), `academy_platform_mysql.sql`
+(now ignored, still on disk), API lint warnings (86, not errors), Phase 5 screens for platform features.
 
 ## 10. Backend requirements (recorded by owner decisions)
 
@@ -517,6 +566,7 @@ with e-mail verification, so invitees can accept invitations.
 
 | Date       | Change                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | Files                                                                                                                                                                                                                                                                                                                                                                                 |
 | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-11-16 | **Owner decisions applied** (§9f): documented RBAC matrix, K8, K3, K4, K9, account links via definer functions, must-reset-password, K16/K11/K12, web lint warnings, Render blueprint + S2, demo seed; Neon dev data replaced after a verified backup.                                                                                                                                                                                                                                                     | `packages/{shared,database}`, `backend/src`, `frontend/src`, `render.yaml`, `docs/{deployment,security}`                                                                                                                                                                                                                                                                              |
 | 2026-11-16 | **K6** (§9e): join requests from PLAYER / GUARDIAN with pending accounts, login gating per applicant kind, approval links the account, portal "join requests" card, login page shows account-state messages; portal read policies (portals were broken under the runtime role) and portal flags read under the actor context. Both migrations applied to Neon dev after a verified backup.                                                                                                                 | `packages/database/{prisma,tests}`, `packages/shared/src/schemas/platform.ts`, `backend/src/modules/{auth,players,portal}`, `frontend/src/{app/{guardian,player},components/dashboard,features/{auth,landing,portal}}`, `.github/workflows/ci.yml`                                                                                                                                    |
 | 2026-11-16 | **Phase 3A.2 applied** (§9d): migrations M2/M3 (S4, S6, definer functions, runtime privilege baseline), API runs under the restricted runtime role (verified end to end as `sportexus_app`), CI database steps, self-host compose, K5. M2/M3 applied to Neon dev after a verified backup.                                                                                                                                                                                                                  | `packages/database/{prisma/migrations,tests,scripts,prisma.config.ts}`, `backend/src/{common,modules/{audit,auth,database,evaluations,finance,notifications,platform,players,portal}}`, `frontend/src/{app/{guardian,player},components/platform/StorageTab.tsx}`, `packages/shared/src/schemas/platform.ts`, `.github/workflows/ci.yml`, `docker-compose.selfhost.yml`, env examples |
 | 2026-11-15 | **Phase 3A.2 SQL review package** (§9d): M2/M3 drafts, boundary tests, catalog verification; `provision-runtime-role.sql` keeps the `session_version` grant (S7); policy-count wording corrected in §9c. No migration applied.                                                                                                                                                                                                                                                                             | `docs/proposals/PHASE_3A2_SQL_REVIEW.md`, `docs/proposals/phase-3a2/**`, `packages/database/scripts/provision-runtime-role.sql`                                                                                                                                                                                                                                                       |

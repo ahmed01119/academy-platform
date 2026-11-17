@@ -207,18 +207,19 @@ lookups (`tenantId_id`). Monetary columns are `Float` (double precision).
   tenant from the context), `create_app_notification` (sender/recipient checks), `submit_player_join_request` (K6: requester type PLAYER/GUARDIAN),
   `list_public_academies`, `redeem_portal_claim`, `academy_slug_in_use`, `change_own_password`, and the platform
   functions `platform_create_user`, `platform_set_user_platform_role`, `platform_update_user_security`,
-  `platform_revoke_user_sessions`, `platform_approve_academy_application`, `platform_delete_academy`,
+  `platform_revoke_user_sessions`, `platform_approve_academy_application`, `platform_delete_academy`, and
+  `link_join_request_account` (the only staff path that links an account to a player/guardian record),
   `verify_user_email`, `request_email_verification`, invitation redemption / onboarding.
 - SQL test suites: `packages/database/tests/*.sql` (run in CI).
 
 ## 7. Deployment topologies
 
-| Topology        | File                                          | Components                                                 |
-| --------------- | --------------------------------------------- | ---------------------------------------------------------- |
-| Local dev       | `docker-compose.yml`                          | Postgres 16 + Redis 7 (apps run via `pnpm dev`)            |
-| Local no-Docker | `packages/database/scripts/start-local-pg.js` | embedded-postgres                                          |
-| Production VPS  | `docker-compose.prod.yml`, `deploy-vps.sh`    | postgres, redis, migrate (one-shot), api, web, caddy (TLS) |
-| Self-host       | `docker-compose.selfhost.yml`                 | + nginx + cloudflared tunnel                               |
-| PaaS            | `render.yaml`                                 | Render blueprint                                           |
+| Topology        | File                                          | Components                                                                                                                  |
+| --------------- | --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Local dev       | `docker-compose.yml`                          | Postgres 16 + Redis 7 (apps run via `pnpm dev`)                                                                             |
+| Local no-Docker | `packages/database/scripts/start-local-pg.js` | embedded-postgres                                                                                                           |
+| Production VPS  | `docker-compose.prod.yml`, `deploy-vps.sh`    | postgres, redis, migrate (one-shot), api, web, caddy (TLS)                                                                  |
+| Self-host       | `docker-compose.selfhost.yml`                 | + nginx + cloudflared tunnel                                                                                                |
+| PaaS            | `render.yaml`                                 | Render blueprint: `sportexus-web` + `sportexus-api` + private Key Value; database on Neon (see `docs/deployment/RENDER.md`) |
 
 Runbooks: `docs/operations/*`, `docs/deployment/*`.

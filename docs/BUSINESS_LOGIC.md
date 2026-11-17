@@ -21,7 +21,12 @@
 
 ### 1.2 Academy (tenant) roles — `TenantRole`
 
-Permissions are a static map (`ROLE_PERMISSIONS`). Current code:
+Permissions are a static map (`ROLE_PERMISSIONS`) that equals `docs/security/ROLE_PERMISSION_MATRIX.md` (owner decision
+2026-11-16; a test fails on any difference). The table below is the pre-2026-11-16 code version, kept for history; the
+matrix document is authoritative. Narrower rules: a COACH marks attendance and claims expenses only for sessions they are
+assigned to; `session_cashier.close` (owner, manager, branch manager, accountant) closes a cashier once (K8).
+
+Pre-2026-11-16 code:
 
 | Permission                           | OWNER | MANAGER | BRANCH_MGR | RECEPTION | COACH | ACCOUNTANT | VIEWER |
 | ------------------------------------ | :---: | :-----: | :--------: | :-------: | :---: | :--------: | :----: |
@@ -53,7 +58,7 @@ Permissions are a static map (`ROLE_PERMISSIONS`). Current code:
 \* COACH only when the membership has `canReviewApplications = true` (set by staff with `staff.manage`).
 `platform.manage` exists in the enum but is assigned to no tenant role.
 
-> ⚠️ `docs/security/ROLE_PERMISSION_MATRIX.md` disagrees with this table in 18 cells
+> Superseded on 2026-11-16: `docs/security/ROLE_PERMISSION_MATRIX.md` is now the code. It differed from this table in 18 cells
 > (e.g. it grants COACH `attendance.mark`, MANAGER `players.delete`, VIEWER `evaluations.read`).
 > See DEVELOPMENT_STATUS.md → Open questions.
 
@@ -64,6 +69,13 @@ Permissions are a static map (`ROLE_PERMISSIONS`). Current code:
   Services repeat the check ("Access restricted to your assigned branch").
 - OWNER / MANAGER / ACCOUNTANT / VIEWER are academy-wide; they may narrow with `x-branch-id`.
 - Membership must be `ACTIVE`; `INVITED`, `SUSPENDED`, `REVOKED` are rejected with specific codes.
+- **Suspended academy** (K3): every request of its members is refused (`ACADEMY_SUSPENDED`), its memberships are left out
+  at login, and its players' and children's records are hidden from the portals, until the platform reactivates it.
+- **Currency** (K4): every amount of an academy is recorded and shown in the academy's own currency (`tenants.currency`).
+- **Forced password change**: while a platform administrator requires it (`must_reset_password`), the user can only open
+  the account page and change the password; the flag clears itself when the password changes.
+- **Account links**: only the account holder (claim code) or a join-request reviewer of the academy (approved request)
+  can link an account to a player or guardian record; other staff cannot.
 - The OWNER membership cannot be revoked.
 
 ### 1.4 Player & guardian (portal users)
