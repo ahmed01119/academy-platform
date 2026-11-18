@@ -1,7 +1,6 @@
 {
   "extends": "@academy/typescript-config/nextjs.json",
   "compilerOptions": {
-    "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
       "@/api": ["./src/api/index"],
