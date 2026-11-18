@@ -82,6 +82,13 @@ describe('Data Translator Module', () => {
     expect(translateDataString('كرة القدم', 'en')).toBe('Football');
   });
 
+  it('never translates part of a name (whole values only)', () => {
+    expect(translateDataString('أكاديمية النجوم لكرة القدم', 'en')).toBe(
+      'أكاديمية النجوم لكرة القدم',
+    );
+    expect(translateDataString('فرع المعادي الجديد', 'en')).toBe('فرع المعادي الجديد');
+  });
+
   it('leaves English strings intact in English mode', () => {
     expect(translateDataString('Main Branch', 'en')).toBe('Main Branch');
     expect(translateDataString('John Doe', 'en')).toBe('John Doe');

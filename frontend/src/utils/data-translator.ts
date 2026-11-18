@@ -471,12 +471,7 @@ export function translateDataString(
   if (EVALUATION_CATEGORY_TRANSLATIONS.en[upper]) return EVALUATION_CATEGORY_TRANSLATIONS.en[upper];
   if (PLAN_CODE_TRANSLATIONS.en[upper]) return PLAN_CODE_TRANSLATIONS.en[upper];
 
-  // If the string starts with Arabic characters but has known partial replacements:
-  for (const [arKey, enVal] of Object.entries(ARABIC_DATA_FALLBACKS)) {
-    if (value.includes(arKey)) {
-      return value.replaceAll(arKey, enVal);
-    }
-  }
-
+  // Anything else is user data (names of academies, people, branches...): shown exactly as entered. Replacing known
+  // fragments inside it produced mixed text such as "أكاديمية النجوم لFootball".
   return value;
 }

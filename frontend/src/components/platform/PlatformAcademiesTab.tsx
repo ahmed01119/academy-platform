@@ -82,9 +82,14 @@ export function PlatformAcademiesTab({
       id: 'usage',
       cell: (item) => (
         <div className="text-xs font-mono text-(--text-muted)">
-          <span>{item.branchesCount} فروع</span>
+          <span>
+            {item.branchesCount} {isAr ? 'فروع' : item.branchesCount === 1 ? 'branch' : 'branches'}
+          </span>
           <span className="mx-1">•</span>
-          <span>{item.playersCount + item.coachesCount} مستخدم</span>
+          <span>
+            {item.playersCount + item.coachesCount}{' '}
+            {isAr ? 'مستخدم' : item.playersCount + item.coachesCount === 1 ? 'member' : 'members'}
+          </span>
         </div>
       ),
     },
