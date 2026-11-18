@@ -8,6 +8,7 @@ import { AppShell } from '../../components/layout/AppShell';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { PageSkeleton } from '@/components/ui/skeleton';
 import { api } from '@/api/client';
+import { PasswordVisibilityToggle } from '@/features/auth/components/PasswordVisibilityToggle';
 import {
   User,
   Mail,
@@ -15,8 +16,6 @@ import {
   KeyRound,
   Save,
   Shield,
-  Eye,
-  EyeOff,
   CheckCircle2,
   AlertCircle,
   Loader2,
@@ -366,17 +365,18 @@ export default function AccountPage() {
                   required
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
+                  autoComplete="current-password"
                   placeholder="••••••••"
                   dir="ltr"
-                  className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) py-2.5 px-3 pe-10 text-sm text-(--text-main) placeholder-(--text-muted) focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all"
+                  className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) py-2.5 pl-3 pr-10 text-sm text-(--text-main) placeholder-(--text-muted) focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all"
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPasswords(!showPasswords)}
-                  className="absolute end-3 top-3 text-(--text-muted) hover:text-(--text-main)"
-                >
-                  {showPasswords ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
+                {/* The input is always LTR, so the button sits on its physical right (not `end-*`, which flips in Arabic and covered the text). */}
+                <PasswordVisibilityToggle
+                  visible={showPasswords}
+                  onToggle={() => setShowPasswords(!showPasswords)}
+                  controls="current-password"
+                  className="absolute right-3 top-3 p-0.5 text-(--text-muted) hover:text-(--text-main) transition-colors"
+                />
               </div>
             </div>
 
@@ -393,6 +393,7 @@ export default function AccountPage() {
                 required
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
+                autoComplete="new-password"
                 placeholder="••••••••"
                 dir="ltr"
                 className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) py-2.5 px-3 text-sm text-(--text-main) placeholder-(--text-muted) focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all"
@@ -417,6 +418,7 @@ export default function AccountPage() {
                 required
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
+                autoComplete="new-password"
                 placeholder="••••••••"
                 dir="ltr"
                 className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) py-2.5 px-3 text-sm text-(--text-main) placeholder-(--text-muted) focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all"
