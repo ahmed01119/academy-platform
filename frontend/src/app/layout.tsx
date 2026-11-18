@@ -1,9 +1,11 @@
 import type { Metadata, Viewport } from 'next';
 import { IBM_Plex_Sans, IBM_Plex_Sans_Arabic } from 'next/font/google';
-import { DEFAULT_LOCALE, LOCALE_DIRECTION } from '@academy/shared';
+import { cookies } from 'next/headers';
+import { DEFAULT_LOCALE, LOCALE_DIRECTION, type SupportedLocale } from '@academy/shared';
 import { AuthProvider } from '@/contexts/auth-context';
-import { ThemeProvider, themeInitScript } from '@/contexts/theme-context';
-import { LocaleProvider, localeInitScript } from '@/contexts/locale-context';
+import { ThemeProvider } from '@/contexts/theme-context';
+import { LocaleProvider } from '@/contexts/locale-context';
+import { LOCALE_COOKIE, localeInitScript, themeInitScript } from '@/lib/preferences/init-scripts';
 import { ToastProvider } from '../components/ui/Toast';
 import { ConfirmProvider } from '../components/ui/ConfirmDialog';
 import { ServiceWorkerRegistrar } from '../components/pwa/ServiceWorkerRegistrar';
@@ -57,8 +59,14 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  const locale = DEFAULT_LOCALE;
+/** The language the user chose (cookie written by LocaleProvider), so the server renders it from the first paint. */
+async function readRequestLocale(): Promise<SupportedLocale> {
+  const value = (await cookies()).get(LOCALE_COOKIE)?.value;
+  return value === 'en' || value === 'ar' ? value : DEFAULT_LOCALE;
+}
+
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const locale = await readRequestLocale();
   const dir = LOCALE_DIRECTION[locale];
 
   return (
@@ -74,7 +82,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       </head>
       <body>
         <ThemeProvider>
-          <LocaleProvider>
+          <LocaleProvider initialLocale={locale}>
             <AuthProvider>
               <ToastProvider>
                 <ConfirmProvider>{children}</ConfirmProvider>

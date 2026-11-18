@@ -12,6 +12,7 @@ import { Navbar } from '../../components/Navbar';
 import { SportexusLogo } from '../../components/brand/SportexusLogo';
 import { resolveLoginError, validateLoginForm, type LoginValues } from '@/features/auth/login-form';
 import { PasswordVisibilityToggle } from '@/features/auth/components/PasswordVisibilityToggle';
+import { PostLoginSkeleton } from '@/features/auth/components/PostLoginSkeleton';
 import { Mail, Lock, AlertCircle, ArrowRight, ShieldCheck, Loader2, Sparkles } from 'lucide-react';
 
 export default function LoginPage() {
@@ -27,6 +28,8 @@ export default function LoginPage() {
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
   const [touched, setTouched] = useState<{ email?: boolean; password?: boolean }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Set once the login succeeded: the form is replaced by the destination's skeleton until that page renders.
+  const [redirectingTo, setRedirectingTo] = useState<string | null>(null);
   // Validated `?redirect=` (e.g. back to an invitation); null when absent or unsafe.
   const returnPath = useSafeReturnPath();
 
@@ -88,9 +91,10 @@ export default function LoginPage() {
       });
       // Safe return path first (re-read at submit time); otherwise the role home, computed
       // from the fresh response rather than stale React state.
-      router.push(
-        readReturnPath(window.location.search) ?? getRoleHomeRoute(freshUser, freshTenant),
-      );
+      const destination =
+        readReturnPath(window.location.search) ?? getRoleHomeRoute(freshUser, freshTenant);
+      setRedirectingTo(destination);
+      router.push(destination);
     } catch (err: unknown) {
       const { formError, fieldErrors: mapped } = resolveLoginError(err, locale);
       if (mapped) setFieldErrors(mapped);
@@ -99,6 +103,10 @@ export default function LoginPage() {
       setIsSubmitting(false);
     }
   };
+
+  if (redirectingTo) {
+    return <PostLoginSkeleton destination={redirectingTo} />;
+  }
 
   return (
     <div className="min-h-screen bg-(--bg-base) text-(--text-main) flex flex-col transition-colors overflow-x-hidden">

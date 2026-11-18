@@ -9,10 +9,13 @@ import { offlineStore } from '@/utils/offline-attendance-store';
 export function SyncStatus() {
   const { activeTenant } = useAuth();
   const { locale } = useLocale();
-  const [online, setOnline] = useState(typeof navigator === 'undefined' ? true : navigator.onLine);
+  // Start "online" and read the real state in the browser only. Node 21+ has a global `navigator` without `onLine`, so
+  // reading it during the server render meant "offline": the chip was rendered on every page and never went away.
+  const [online, setOnline] = useState(true);
   const [pending, setPending] = useState(0);
 
   useEffect(() => {
+    setOnline(navigator.onLine);
     const onOnline = () => setOnline(true);
     const onOffline = () => setOnline(false);
     window.addEventListener('online', onOnline);

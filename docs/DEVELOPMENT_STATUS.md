@@ -532,6 +532,16 @@ session with the shared cookies instead of rotating again (`frontend/src/lib/htt
 tabs, plus a real two-tab Chrome run through two expiries). Reuse detection on the API is unchanged. The 401 lines in
 the browser console before a refresh are expected (the expired token is rejected, then the request is retried).
 
+First paint and login hand-over (2026-11-18):
+
+- The root layout reads the `NEXT_LOCALE` cookie, so the server renders the chosen language (`<html lang>`, text):
+  no Arabic flash in English mode and no browser offer to translate an English page. The layout is therefore dynamic.
+- `themeInitScript` / `localeInitScript` had always rendered empty: they were exported from `'use client'` modules and
+  the server layout received client references. Moved to `src/lib/preferences/init-scripts.ts` (server-safe).
+- `SyncStatus` showed "offline" on every page: Node 21+ has a global `navigator` without `onLine`, read during the
+  server render. It now starts online and reads the real state in the browser.
+- After a successful login the form is replaced at once by the destination's skeleton (`PostLoginSkeleton`).
+
 Remaining: each request still opens several short transactions (Prisma interactive transaction + `set_config`, nested
 `include` = one query per relation). On Render, next to the database, that costs milliseconds; locally about 1 s per
 request. Reducing round trips (e.g. Prisma `relationJoins`) is a later optimisation, not started.
