@@ -525,6 +525,13 @@ fields, BR-3, the root Windows helper scripts (`*.ps1`, run from the repository 
 | The API ran as the owner role (BYPASSRLS warning) in development       | `envFilePath` started one directory too high, so `backend/.env` was never read and the root `.env` (owner URL) won                                        | `backend/.env` first, root `.env` as fallback (`a599ac6`)                                                                                                                                                                                                                                                         |
 | Login spun for several seconds after the header changed                | The database was in us-east-2 (Ohio): about 190 ms per round trip from Egypt and from the Frankfurt Render services, and a request makes 5-15 round trips | Development database moved to a new Neon project in Frankfurt (aws-eu-central-1): migrations (32), runtime role, demo seed; `security-catalog.sql` 9/9, demo smoke 44/44; requests about 3x faster locally. The old Ohio project is untouched (fallback; its URLs are kept as comments in the local `.env` files) |
 
+Signed out after waiting with two tabs open: when the 15-minute access token expired, every tab refreshed at once with the
+same refresh token; the API treats a second use of a rotated token as theft and revokes the whole session family.
+Fix: tabs take turns through a Web Locks lock, and a tab that finds a rotation by another tab within 10 s reloads the
+session with the shared cookies instead of rotating again (`frontend/src/lib/http/token-refresh.ts`; unit test with two
+tabs, plus a real two-tab Chrome run through two expiries). Reuse detection on the API is unchanged. The 401 lines in
+the browser console before a refresh are expected (the expired token is rejected, then the request is retried).
+
 Remaining: each request still opens several short transactions (Prisma interactive transaction + `set_config`, nested
 `include` = one query per relation). On Render, next to the database, that costs milliseconds; locally about 1 s per
 request. Reducing round trips (e.g. Prisma `relationJoins`) is a later optimisation, not started.
