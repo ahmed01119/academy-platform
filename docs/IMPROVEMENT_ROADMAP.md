@@ -63,7 +63,7 @@ build and start locally after every phase.
 - **Tenant request:** typically 4–6 round trips, because each runs as a transaction: `BEGIN`, `set_config`, the queries,
   then `COMMIT`.
 - **Cold start:** the first request after Neon scales to zero took **5.3–6.4 s**.
-- **Staging:** the Render API in Frankfurt talks to Neon in Ohio, so every query crosses the Atlantic.
+- ~~**Staging:** the Render API in Frankfurt talks to Neon in Ohio~~ Fixed 2026-11-18: the development database moved to a Neon project in Frankfurt.
 
 **Frontend build baseline**
 
@@ -276,7 +276,7 @@ Confirm on each provider's pricing page before any decision.
 **Recommendation**
 
 - **Keep Neon Free for development and testing.** No migration of providers and no spending.
-- **Optional:** recreate the Neon project in an EU region (Frankfurt, next to the Render API and closer to the users).
+- ✅ Done 2026-11-18: the Neon project was recreated in Frankfurt (aws-eu-central-1), next to the Render API and closer to the users.
   The region cannot be changed in place, but at 12 MB a dump and restore is trivial. Region availability to be
   confirmed in the Neon console.
 - **Decide production hosting separately, when it becomes relevant.** The rule: run the database in the same region as

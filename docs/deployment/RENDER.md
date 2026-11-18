@@ -27,7 +27,9 @@ wildcard is accepted in production.
 
 ## First deployment
 
-1. **Database (Neon).** The production database must be a separate Neon project or branch with its own data. Create
+1. **Database (Neon).** The production database must be a separate Neon project or branch with its own data, in
+   **AWS Europe Central 1 (Frankfurt)**, the region of the Render services (`render.yaml`): every API request runs
+   several queries in sequence, so the API and the database must sit in the same region. Create
    the runtime role **before the first deploy**, because the migrations grant it its privileges: run
    `packages/database/scripts/provision-runtime-role.sql` as the owner (it only creates `sportexus_app`; replace the
    password placeholder in a local copy, never commit it), or create the role in the Neon console. A role created
