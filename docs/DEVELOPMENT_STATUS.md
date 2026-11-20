@@ -1,6 +1,6 @@
 # Development Status
 
-> Last updated: **2026-11-20**: full-platform walkthrough and fixes, see §9h. Earlier: **2026-11-16**: owner decisions applied (K2-K4, K8, K9, items 5-7, S2, Render, demo data); see §9f.
+> Last updated: **2026-11-20**: full-platform walkthrough (§9h) and detailed functional pass (§9i). Earlier: **2026-11-16**: owner decisions applied (K2-K4, K8, K9, items 5-7, S2, Render, demo data); see §9f.
 > Phase 2A: §9b and `docs/IMPROVEMENT_ROADMAP.md`.
 > Update this file after every task (see CLAUDE.md §15).
 
@@ -572,6 +572,47 @@ Still open (not changed):
   `attendance.read` (matrix: "no attendance" for the accountant). Confirm if the accountant should see it.
 - Demo sessions are dated from the seed day (2026-11-18): "today" lists in quick attendance are empty until reseeded.
 
+## 9i. Detailed functional pass: scanner, notifications, reports, offline, security (2026-11-20)
+
+Driven in a real browser against the production build and the Neon dev data. The scanner was tested with real QR
+images through Chromium's fake camera; offline behaviour with the browser set offline. Results: scanner 15/17
+(the 2 misses were test timing), quick attendance 7/7, notifications and finance 25/28 (3 were test assumptions),
+reports 14/14, security 15/17 (2 explained below), plus an all-page sweep (both languages, 390 px width, accessibility).
+
+| #   | Finding                                                                                                                                                                                                                                                       | Fix (commit)                                                                                                                                 |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| D1  | **Account takeover on a development-mode API**: forgot-password returned the reset code (`debugOtp`) whenever `NODE_ENV=development`; code + e-mail resets the password. `start-sportexus.ps1` runs such an API behind a public tunnel.                       | Code returned only with `AUTH_EXPOSE_DEBUG_OTP=true` and development (default off) (`14e6b4d`).                                              |
+| D2  | Quick attendance offline: marks were queued as scans with a non-UUID id and the player id as card code. The sync batch was rejected (400), the marks were lost, and valid scanner items of the same session were blocked. The page never synced on reconnect. | Separate queue for manual marks (latest status wins, idempotency key), replayed through `POST /attendance/records` on reconnect (`655e055`). |
+| D3  | Scanner offline: a card held in front of the camera was queued every 2 s (counter 5 for one player).                                                                                                                                                          | Same card and session queued once, first arrival time kept (`655e055`).                                                                      |
+| D4  | Finance CSV: `data:` URI cut at the first `#`, quotes not escaped, formula injection (`=`, `+`, `-`, `@`), raw codes in the Arabic file.                                                                                                                      | `utils/csv.ts` (Blob, RFC 4180, formula-safe), translated labels (`06d32f1`).                                                                |
+| D5  | Printing: sidebar and top bar printed; the inner scroll box cut the page at one screen height. No print styles existed.                                                                                                                                       | `print:` variants in `AppShell` (`d9fdea6`).                                                                                                 |
+| D6  | Attendance report: group filter listed groups of other branches.                                                                                                                                                                                              | Groups follow the branch; group resets on branch change (`d9fdea6`).                                                                         |
+| D7  | Notifications: items were clickable `div`s (no keyboard, no screen reader); the panel did not close on Escape or outside click.                                                                                                                               | Buttons, `aria-expanded`, Escape/outside close (`f69d8f8`).                                                                                  |
+| D8  | 50 Tailwind classes glued to a CSS-variable shorthand (`bg-(--bg-base)px-3`) silently ignored in 11 files.                                                                                                                                                    | Separated; `lib/tailwind-class-hygiene.test.ts` guards it (`0215704`).                                                                       |
+| D9  | Unlabelled controls (labels not linked; filters, dates and fields without a name); group detail page had 22 hard-coded Arabic strings.                                                                                                                        | `htmlFor` / `aria-label`; strings follow the language (`0215704`).                                                                           |
+
+Verified as working (no change): QR check-in on time, late with minutes, duplicate, unknown card, other branch,
+closed session; tenant isolation (other academy, forged `x-tenant-id`); RBAC on writes (viewer, coach, receptionist,
+cashier close K8); CSRF (no or foreign `Origin` refused); HttpOnly SameSite cookies; no account enumeration (login and
+forgot-password); XSS (HTML in names rendered as text); expense approval and rejection notifications, double approval
+refused; payment, reversal, short-reason and double-reversal refusals; receipt numbers `REC-YYYYMMDD-XXXXXXXX`; no
+horizontal scroll at 390 px; join request staff notification and pending applicant login.
+
+Open (need a decision or a larger change):
+
+- Notification titles and bodies are stored as fixed text in mixed languages (English for join requests, approvals,
+  invitations; Arabic for expenses). Proper fix: store a message key + parameters and render per language; it touches
+  the S4 definer function that creates the join-request notification, so it needs the owner's SQL review.
+- Rate limits answer 401 (login), 400 (OTP, reset, portal) or 429 (one portal path). 429 everywhere is correct but is
+  an API contract change for the login page. Login throttling itself works (after 5 attempts in 15 minutes).
+- The finance "statement" export contains only the 15 most recent transactions (`recentTransactions`); a full
+  statement needs a transactions endpoint.
+- A player of the branch who is not in the session's group can be checked in (only the branch is checked). Confirm
+  whether this is intended (make-up sessions).
+- Closing a session leaves unrecorded members UNMARKED (not ABSENT). Confirm the intended rule.
+- `start-sportexus.ps1` still starts the API with `backend/.env` (`NODE_ENV=development`) behind a public tunnel; D1
+  removes the worst consequence, but a public server should run in production mode.
+
 ## 10. Backend requirements (recorded by owner decisions)
 
 **Workflow (owner direction 2026-11-15):** frontend issues whose root cause is in the backend are now fixed across both
@@ -621,6 +662,7 @@ with e-mail verification, so invitees can accept invitations.
 
 | Date       | Change                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | Files                                                                                                                                                                                                                                                                                                                                                                                 |
 | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-11-20 | Detailed functional pass (§9i): debug reset code opt-in (D1), offline quick marks and scan dedupe (D2, D3), safe CSV (D4), printing (D5), report group filter (D6), accessible notifications (D7), 50 lost classes (D8), labels and group page language (D9).                                                                                                                                                                                                                                              |
 | 2026-11-20 | Full-platform walkthrough (§9h): guardian coach feedback via the portal (W1), UI follows the API permissions (W2), dashboard without refused counts or fake trend (W3), coach title (W4), laptop start script proxy settings (W5).                                                                                                                                                                                                                                                                         |
 | 2026-11-18 | Login error and slowness (§9g): unreachable database = 503 with a retry message; `backend/.env` loaded first; development database moved to Neon Frankfurt.                                                                                                                                                                                                                                                                                                                                                | `backend/src/common/filters`, `backend/src/config`, `frontend/src/features/auth`, `docs`                                                                                                                                                                                                                                                                                              |
 | 2026-11-16 | **Owner decisions applied** (§9f): documented RBAC matrix, K8, K3, K4, K9, account links via definer functions, must-reset-password, K16/K11/K12, web lint warnings, Render blueprint + S2, demo seed; Neon dev data replaced after a verified backup.                                                                                                                                                                                                                                                     | `packages/{shared,database}`, `backend/src`, `frontend/src`, `render.yaml`, `docs/{deployment,security}`                                                                                                                                                                                                                                                                              |
