@@ -5,6 +5,9 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { apiClient } from '@/api/client';
 import { useLocale } from '@/contexts/locale-context';
+import { useAccessGuard } from '@/hooks/useAccessGuard';
+import { Permission } from '@academy/shared';
+import type { AccessRule } from '@/lib/auth/access-rules';
 import { translateDataString } from '@/utils/data-translator';
 import { AppShell } from '../../../../components/layout/AppShell';
 import { PageHeader } from '../../../../components/ui/PageHeader';
@@ -21,10 +24,13 @@ import {
 } from 'lucide-react';
 import type { PlayerDevelopmentProfile } from '@academy/shared';
 
+const PAGE_ACCESS: AccessRule = { anyOf: [Permission.EVALUATIONS_READ] };
+
 export default function PlayerDevelopmentProfilePage() {
   const params = useParams();
   const playerId = params.id as string;
   const { locale } = useLocale();
+  useAccessGuard(PAGE_ACCESS);
 
   const [profile, setProfile] = useState<PlayerDevelopmentProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -121,8 +127,10 @@ export default function PlayerDevelopmentProfilePage() {
                   {locale === 'en' ? 'Cumulative GPA' : 'المعدل العام التراكمي'}
                 </span>
                 <div className="text-xl font-extrabold text-[var(--accent-primary)]">
-                  {profile.averageScores.overall.toFixed(1)}
-                  <span className="text-xs font-normal text-(--text-muted)"> / 10</span>
+                  <span dir="ltr">
+                    {profile.averageScores.overall.toFixed(1)}
+                    <span className="text-xs font-normal text-(--text-muted)"> / 10</span>
+                  </span>
                 </div>
               </div>
             </div>
@@ -136,8 +144,10 @@ export default function PlayerDevelopmentProfilePage() {
               {locale === 'en' ? 'Technical Skills' : 'المهارات الفنية'}
             </span>
             <div className="text-2xl font-extrabold text-(--text-main) mt-1">
-              {profile.averageScores.technical.toFixed(1)}
-              <span className="text-xs font-normal text-(--text-muted)"> / 10</span>
+              <span dir="ltr">
+                {profile.averageScores.technical.toFixed(1)}
+                <span className="text-xs font-normal text-(--text-muted)"> / 10</span>
+              </span>
             </div>
             <div className="w-full bg-(--bg-surface-subtle) h-2 rounded-full overflow-hidden mt-3">
               <div
@@ -152,8 +162,10 @@ export default function PlayerDevelopmentProfilePage() {
               {locale === 'en' ? 'Tactical Awareness' : 'الوعي التكتيكي'}
             </span>
             <div className="text-2xl font-extrabold text-(--text-main) mt-1">
-              {profile.averageScores.tactical.toFixed(1)}
-              <span className="text-xs font-normal text-(--text-muted)"> / 10</span>
+              <span dir="ltr">
+                {profile.averageScores.tactical.toFixed(1)}
+                <span className="text-xs font-normal text-(--text-muted)"> / 10</span>
+              </span>
             </div>
             <div className="w-full bg-(--bg-surface-subtle) h-2 rounded-full overflow-hidden mt-3">
               <div
@@ -168,8 +180,10 @@ export default function PlayerDevelopmentProfilePage() {
               {locale === 'en' ? 'Physical Readiness' : 'الجاهزية البدنية'}
             </span>
             <div className="text-2xl font-extrabold text-(--text-main) mt-1">
-              {profile.averageScores.physical.toFixed(1)}
-              <span className="text-xs font-normal text-(--text-muted)"> / 10</span>
+              <span dir="ltr">
+                {profile.averageScores.physical.toFixed(1)}
+                <span className="text-xs font-normal text-(--text-muted)"> / 10</span>
+              </span>
             </div>
             <div className="w-full bg-(--bg-surface-subtle) h-2 rounded-full overflow-hidden mt-3">
               <div
@@ -184,8 +198,10 @@ export default function PlayerDevelopmentProfilePage() {
               {locale === 'en' ? 'Discipline & Behavior' : 'الانضباط والسلوك'}
             </span>
             <div className="text-2xl font-extrabold text-(--text-main) mt-1">
-              {profile.averageScores.behavioral.toFixed(1)}
-              <span className="text-xs font-normal text-(--text-muted)"> / 10</span>
+              <span dir="ltr">
+                {profile.averageScores.behavioral.toFixed(1)}
+                <span className="text-xs font-normal text-(--text-muted)"> / 10</span>
+              </span>
             </div>
             <div className="w-full bg-(--bg-surface-subtle) h-2 rounded-full overflow-hidden mt-3">
               <div
@@ -308,7 +324,7 @@ export default function PlayerDevelopmentProfilePage() {
                       {locale === 'en' ? 'Calculated Score:' : 'المعدل المحسوب:'}
                     </span>
                     <span className="text-base font-extrabold text-[var(--accent-primary)]">
-                      {e.overallScore.toFixed(2)} / 10
+                      <span dir="ltr">{e.overallScore.toFixed(2)} / 10</span>
                     </span>
                   </div>
                 </div>

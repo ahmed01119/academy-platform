@@ -5,6 +5,9 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { apiClient } from '@/api/client';
 import { useAuth } from '@/contexts/auth-context';
+import { useAccessGuard } from '@/hooks/useAccessGuard';
+import { Permission } from '@academy/shared';
+import type { AccessRule } from '@/lib/auth/access-rules';
 import { useLocale } from '@/contexts/locale-context';
 import { translateDataString } from '@/utils/data-translator';
 import { offlineEngine } from '@/utils/offline-engine';
@@ -34,10 +37,13 @@ import type {
   TrainingGroupSummary,
 } from '@academy/shared';
 
+const PAGE_ACCESS: AccessRule = { anyOf: [Permission.EVALUATIONS_READ] };
+
 function EvaluationsCenterContent() {
   const searchParams = useSearchParams();
   const preselectedSessionId = searchParams.get('sessionId');
   const { user, activeTenant } = useAuth();
+  useAccessGuard(PAGE_ACCESS);
   const { locale, isRtl, t } = useLocale();
   const ar = locale === 'ar';
 
@@ -422,10 +428,12 @@ function EvaluationsCenterContent() {
                             {item.evaluationsCount} {ar ? 'تقييم' : 'evals'}
                           </td>
                           <td className="p-3.5 text-center">
-                            <span className="text-base font-extrabold text-[var(--accent-primary)]">
-                              {item.averageScore.toFixed(2)}
+                            <span dir="ltr">
+                              <span className="text-base font-extrabold text-[var(--accent-primary)]">
+                                {item.averageScore.toFixed(2)}
+                              </span>
+                              <span className="text-[10px] text-(--text-muted)"> / 10</span>
                             </span>
-                            <span className="text-[10px] text-(--text-muted)"> / 10</span>
                           </td>
                           <td className="p-3.5 text-center">
                             {item.trend === 'UP' ? (
@@ -552,7 +560,7 @@ function EvaluationsCenterContent() {
                       : 'Calculated Cumulative Average'}
                   </span>
                   <div className="text-2xl font-extrabold text-[var(--accent-primary)] mt-0.5">
-                    {calculatedOverall.toFixed(2)} / 10
+                    <span dir="ltr">{calculatedOverall.toFixed(2)} / 10</span>
                   </div>
                 </div>
                 <div className="text-end text-xs text-(--text-muted)">
@@ -575,7 +583,7 @@ function EvaluationsCenterContent() {
                       1. {ar ? 'المهارات الفنية' : 'Technical Skills'} (Technical)
                     </span>
                     <span className="font-bold text-[var(--accent-primary)]">
-                      {formTechnical.toFixed(1)} / 10
+                      <span dir="ltr">{formTechnical.toFixed(1)} / 10</span>
                     </span>
                   </div>
                   <input
@@ -601,7 +609,7 @@ function EvaluationsCenterContent() {
                       2. {ar ? 'الوعي التكتيكي' : 'Tactical Awareness'} (Tactical)
                     </span>
                     <span className="font-bold text-[var(--accent-primary)]">
-                      {formTactical.toFixed(1)} / 10
+                      <span dir="ltr">{formTactical.toFixed(1)} / 10</span>
                     </span>
                   </div>
                   <input
@@ -627,7 +635,7 @@ function EvaluationsCenterContent() {
                       3. {ar ? 'الجاهزية البدنية' : 'Physical Fitness'} (Physical)
                     </span>
                     <span className="font-bold text-[var(--accent-primary)]">
-                      {formPhysical.toFixed(1)} / 10
+                      <span dir="ltr">{formPhysical.toFixed(1)} / 10</span>
                     </span>
                   </div>
                   <input
@@ -653,7 +661,7 @@ function EvaluationsCenterContent() {
                       4. {ar ? 'الانضباط والسلوك' : 'Discipline & Behavior'} (Behavioral)
                     </span>
                     <span className="font-bold text-[var(--accent-primary)]">
-                      {formBehavioral.toFixed(1)} / 10
+                      <span dir="ltr">{formBehavioral.toFixed(1)} / 10</span>
                     </span>
                   </div>
                   <input

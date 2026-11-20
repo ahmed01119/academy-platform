@@ -1,6 +1,6 @@
 import type { Permission, TenantMembershipSummary, UserSummary } from '@academy/shared';
 import { canAccessAdminRoutes, canAccessCoachRoutes, getRoleHomeRoute } from '@/utils/role-routing';
-import { canAny } from './permissions';
+import { canAll, canAny } from './permissions';
 
 /**
  * Client-side page access rules. These are UX redirects only — every endpoint is
@@ -22,7 +22,9 @@ export type AccessRule =
    * Users holding at least one of the permissions in the active academy (see lib/auth/permissions.ts).
    * Otherwise → role home. Declare it once at module level so its identity is stable across renders.
    */
-  | { anyOf: readonly Permission[] };
+  | { anyOf: readonly Permission[] }
+  /** Users holding every one of the permissions (the page's data needs all of them). Otherwise → role home. */
+  | { allOf: readonly Permission[] };
 
 export interface AccessState {
   isLoading: boolean;
@@ -59,7 +61,11 @@ export function resolveAccess(rule: AccessRule, state: AccessState): AccessDecis
   if (!user) return { status: 'redirect', to: LOGIN_ROUTE, reason: 'unauthenticated' };
 
   if (typeof rule === 'object') {
-    return canAny(user, activeTenant, rule.anyOf)
+    const allowed =
+      'allOf' in rule
+        ? canAll(user, activeTenant, rule.allOf)
+        : canAny(user, activeTenant, rule.anyOf);
+    return allowed
       ? { status: 'allowed' }
       : { status: 'redirect', to: getRoleHomeRoute(user, activeTenant), reason: 'forbidden' };
   }

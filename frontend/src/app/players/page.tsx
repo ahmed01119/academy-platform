@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { useAccessGuard } from '@/hooks/useAccessGuard';
 import { Permission } from '@academy/shared';
 import type { AccessRule } from '@/lib/auth/access-rules';
+import { can } from '@/lib/auth/permissions';
 import { usePlayersList } from '@/features/players/hooks/usePlayersList';
 import { canViewSensitivePlayerData } from '@/features/players/player-permissions';
 import { useLocale } from '@/contexts/locale-context';
@@ -36,6 +37,7 @@ function PlayersPageContent() {
   const searchParams = useSearchParams();
   const requestedTab = searchParams.get('tab') === 'applications' ? 'applications' : 'roster';
   const { user, activeTenant, isLoading } = useAuth();
+  const canCreatePlayers = can(user, activeTenant, Permission.PLAYERS_CREATE);
   // F22: UI mirrors the server rule (API already omits the value for these roles).
   const canViewSensitive = canViewSensitivePlayerData(activeTenant?.role);
   const { t, locale, isRtl } = useLocale();
@@ -78,14 +80,16 @@ function PlayersPageContent() {
               : `Manage athlete rosters, branch enrollments, and membership cards (${total} athletes)`
           }
           actions={
-            <Link
-              href="/players/new"
-              id="btn-register-new-player"
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[var(--accent-primary)] to-emerald-500 px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-emerald-500/20 hover:brightness-110 transition-all"
-            >
-              <UserPlus className="h-4 w-4" />
-              <span>{locale === 'ar' ? 'تسجيل لاعب جديد' : 'Enroll New Player'}</span>
-            </Link>
+            canCreatePlayers && (
+              <Link
+                href="/players/new"
+                id="btn-register-new-player"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[var(--accent-primary)] to-emerald-500 px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-emerald-500/20 hover:brightness-110 transition-all"
+              >
+                <UserPlus className="h-4 w-4" />
+                <span>{locale === 'ar' ? 'تسجيل لاعب جديد' : 'Enroll New Player'}</span>
+              </Link>
+            )
           }
         />
 
@@ -258,13 +262,15 @@ function PlayersPageContent() {
                       ? 'تأكد من صحة كلمات البحث أو قم بإلغاء الفلاتر المحددة لعرض كافة اللاعبين.'
                       : 'Check your search query or clear filters to view all players.'}
                   </p>
-                  <Link
-                    href="/players/new"
-                    className="inline-flex items-center gap-2 rounded-xl bg-(--accent-primary) px-4 py-2 text-xs font-bold text-white shadow hover:brightness-110 transition-all"
-                  >
-                    <UserPlus className="h-4 w-4" />
-                    <span>{locale === 'ar' ? 'تسجيل لاعب جديد' : 'Enroll Player'}</span>
-                  </Link>
+                  {canCreatePlayers && (
+                    <Link
+                      href="/players/new"
+                      className="inline-flex items-center gap-2 rounded-xl bg-(--accent-primary) px-4 py-2 text-xs font-bold text-white shadow hover:brightness-110 transition-all"
+                    >
+                      <UserPlus className="h-4 w-4" />
+                      <span>{locale === 'ar' ? 'تسجيل لاعب جديد' : 'Enroll Player'}</span>
+                    </Link>
+                  )}
                 </div>
               ) : (
                 <div className="overflow-x-auto">

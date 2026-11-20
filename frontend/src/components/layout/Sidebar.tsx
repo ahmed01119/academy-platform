@@ -6,7 +6,7 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { useLocale } from '@/contexts/locale-context';
 import { Permission } from '@academy/shared';
-import { canAny } from '@/lib/auth/permissions';
+import { canAll, canAny } from '@/lib/auth/permissions';
 import { SportexusLogo } from '../brand/SportexusLogo';
 import {
   LayoutDashboard,
@@ -48,6 +48,8 @@ interface NavItem {
   id: string;
   /** Shown only to users holding at least one of these permissions (lib/auth/permissions.ts). */
   anyOf?: readonly Permission[];
+  /** Shown only to users holding all of these permissions (same rule as the page's PAGE_ACCESS). */
+  allOf?: readonly Permission[];
 }
 
 interface NavSection {
@@ -100,7 +102,9 @@ export function Sidebar({ isMobileOpen = false, onCloseMobile }: SidebarProps) {
   const isAcademyMember = Boolean(activeTenant && activeTenant.status === 'ACTIVE');
   const hasPlayerProfile = Boolean(user?.hasPlayerProfile);
   const hasGuardianProfile = Boolean(user?.hasGuardianProfile);
-  const visible = (item: NavItem) => !item.anyOf || canAny(user, activeTenant, item.anyOf);
+  const visible = (item: NavItem) =>
+    (!item.anyOf || canAny(user, activeTenant, item.anyOf)) &&
+    (!item.allOf || canAll(user, activeTenant, item.allOf));
 
   // Role labels
   const roleLabels: Record<string, string> = {
@@ -247,7 +251,8 @@ export function Sidebar({ isMobileOpen = false, onCloseMobile }: SidebarProps) {
         label: t('nav.reports', 'تقارير الحضور'),
         icon: BarChart3,
         id: 'sidebar-nav-reports',
-        anyOf: [Permission.ATTENDANCE_READ],
+        // The report endpoint needs reports.read; the page itself is attendance data (and loads groups).
+        allOf: [Permission.ATTENDANCE_READ, Permission.REPORTS_READ],
       },
       {
         href: '/branches',
@@ -261,11 +266,8 @@ export function Sidebar({ isMobileOpen = false, onCloseMobile }: SidebarProps) {
         label: t('finance.title', 'العمليات المالية والاشتراكات'),
         icon: Wallet,
         id: 'sidebar-nav-finance',
-        anyOf: [
-          Permission.PAYMENTS_READ,
-          Permission.SESSION_EXPENSES_READ,
-          Permission.REPORTS_READ,
-        ],
+        // Every panel on /finance is loaded from payments.read endpoints.
+        anyOf: [Permission.PAYMENTS_READ],
       },
     ]);
 

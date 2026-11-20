@@ -47,9 +47,8 @@ import {
 } from '@/components/finance';
 
 /** Who may open this page (permission matrix; the API enforces the same permissions). */
-const PAGE_ACCESS: AccessRule = {
-  anyOf: [Permission.PAYMENTS_READ, Permission.SESSION_EXPENSES_READ, Permission.REPORTS_READ],
-};
+// Every panel on this page is loaded from payments.read endpoints (a coach's session expenses live on the session page).
+const PAGE_ACCESS: AccessRule = { anyOf: [Permission.PAYMENTS_READ] };
 
 export default function FinanceDashboardPage() {
   const { user, activeTenant, isLoading: authLoading } = useAuth();

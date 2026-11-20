@@ -12,7 +12,8 @@ import { PageSkeleton } from '@/components/ui/skeleton';
 import { api, apiClient } from '@/api/client';
 import { translateDataString } from '@/utils/data-translator';
 import { PlayerJoinRequestsTab } from '../../components/dashboard/PlayerJoinRequestsTab';
-import type { BranchSummary, PlayerSummary } from '@academy/shared';
+import { Permission, type BranchSummary, type PlayerSummary } from '@academy/shared';
+import { can, canAll } from '@/lib/auth/permissions';
 import {
   Users,
   GitBranch,
@@ -79,6 +80,17 @@ export default function DashboardPage() {
 
   useAccessGuard('admin');
 
+  // What this role may open: cards, buttons and requests follow the same permissions as the target pages, so the
+  // dashboard neither offers dead links nor shows a "0" that is really a refused request.
+  const canReadGroups = can(user, activeTenant, Permission.GROUPS_READ);
+  const canReadSessions = can(user, activeTenant, Permission.SESSIONS_READ);
+  const canMarkAttendance = can(user, activeTenant, Permission.ATTENDANCE_MARK);
+  const canCreatePlayers = can(user, activeTenant, Permission.PLAYERS_CREATE);
+  const canReadAttendanceReports = canAll(user, activeTenant, [
+    Permission.ATTENDANCE_READ,
+    Permission.REPORTS_READ,
+  ]);
+
   useEffect(() => {
     const cached = getStoredDashboardCache(cacheKey);
     if (cached) {
@@ -138,10 +150,14 @@ export default function DashboardPage() {
               api.players.list({ limit: 5 }).catch(() => ({ items: [], total: 0 })),
               api.branches.list().catch(() => []),
               api.tenancy.listStaff().catch(() => []),
-              api.groups.list({ page: 1, limit: 1 }).catch(() => ({ items: [], total: 0 })),
-              api.attendance
-                .listSessions({ page: 1, limit: 1 })
-                .catch(() => ({ items: [], total: 0 })),
+              canReadGroups
+                ? api.groups.list({ page: 1, limit: 1 }).catch(() => ({ items: [], total: 0 }))
+                : { items: [], total: 0 },
+              canReadSessions
+                ? api.attendance
+                    .listSessions({ page: 1, limit: 1 })
+                    .catch(() => ({ items: [], total: 0 }))
+                : { items: [], total: 0 },
             ]);
             setPlayers(playersRes.items);
             setTotalPlayers(playersRes.total);
@@ -176,7 +192,7 @@ export default function DashboardPage() {
       };
       void loadDashboardData();
     }
-  }, [user, activeTenant, cacheKey]);
+  }, [user, activeTenant, cacheKey, canReadGroups, canReadSessions]);
 
   if (isLoading) {
     return (
@@ -291,7 +307,7 @@ export default function DashboardPage() {
               </button>
 
               {/* Prominent Quick Attendance Button (Owner / Manager / Branch Manager / Receptionist; Coaches strictly excluded) */}
-              {activeTenant?.role !== 'COACH' && (
+              {activeTenant?.role !== 'COACH' && canMarkAttendance && (
                 <Link
                   href="/attendance/quick"
                   id="btn-quick-attendance"
@@ -303,7 +319,7 @@ export default function DashboardPage() {
               )}
 
               {/* QR Scanner button */}
-              {activeTenant?.role !== 'COACH' && (
+              {activeTenant?.role !== 'COACH' && canMarkAttendance && (
                 <Link
                   href="/attendance/scanner"
                   id="btn-quick-scanner"
@@ -314,14 +330,16 @@ export default function DashboardPage() {
                 </Link>
               )}
 
-              <Link
-                href="/players/new"
-                id="btn-new-player"
-                className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-[var(--accent-primary)] to-emerald-500 px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-emerald-500/20 hover:brightness-110 transition-all"
-              >
-                <UserPlus className="h-4 w-4" />
-                <span>{locale === 'ar' ? 'تسجيل لاعب جديد' : 'New Player'}</span>
-              </Link>
+              {canCreatePlayers && (
+                <Link
+                  href="/players/new"
+                  id="btn-new-player"
+                  className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-[var(--accent-primary)] to-emerald-500 px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-emerald-500/20 hover:brightness-110 transition-all"
+                >
+                  <UserPlus className="h-4 w-4" />
+                  <span>{locale === 'ar' ? 'تسجيل لاعب جديد' : 'New Player'}</span>
+                </Link>
+              )}
             </div>
           </div>
         </div>
@@ -431,53 +449,59 @@ export default function DashboardPage() {
                 value={totalPlayers}
                 subtitle={locale === 'ar' ? 'عرض السجلات والملفات' : 'View roster records'}
                 icon={Users}
-                trend="up"
-                change="+12%"
                 loading={!hasLoadedOnce && isFetchingData}
               />
             </Link>
 
-            <Link
-              href="/groups"
-              id="kpi-groups"
-              className="block card-hover-interactive rounded-2xl"
-            >
-              <StatCard
-                title={locale === 'ar' ? 'المجموعات التدريبية' : 'Training Groups'}
-                value={groupCount}
-                subtitle={locale === 'ar' ? 'إدارة الفرق والجدول' : 'Manage squads and rosters'}
-                icon={Layers}
-                loading={!hasLoadedOnce && isFetchingData}
-              />
-            </Link>
+            {canReadGroups && (
+              <Link
+                href="/groups"
+                id="kpi-groups"
+                className="block card-hover-interactive rounded-2xl"
+              >
+                <StatCard
+                  title={locale === 'ar' ? 'المجموعات التدريبية' : 'Training Groups'}
+                  value={groupCount}
+                  subtitle={locale === 'ar' ? 'إدارة الفرق والجدول' : 'Manage squads and rosters'}
+                  icon={Layers}
+                  loading={!hasLoadedOnce && isFetchingData}
+                />
+              </Link>
+            )}
 
-            <Link
-              href="/sessions"
-              id="kpi-sessions"
-              className="block card-hover-interactive rounded-2xl"
-            >
-              <StatCard
-                title={locale === 'ar' ? 'الحصص التدريبية' : 'Training Sessions'}
-                value={sessionCount}
-                subtitle={locale === 'ar' ? 'كشوف الحضور والتحضير' : 'Live attendance logs'}
-                icon={CalendarCheck}
-                loading={!hasLoadedOnce && isFetchingData}
-              />
-            </Link>
+            {canReadSessions && (
+              <Link
+                href="/sessions"
+                id="kpi-sessions"
+                className="block card-hover-interactive rounded-2xl"
+              >
+                <StatCard
+                  title={locale === 'ar' ? 'الحصص التدريبية' : 'Training Sessions'}
+                  value={sessionCount}
+                  subtitle={locale === 'ar' ? 'كشوف الحضور والتحضير' : 'Live attendance logs'}
+                  icon={CalendarCheck}
+                  loading={!hasLoadedOnce && isFetchingData}
+                />
+              </Link>
+            )}
 
-            <Link
-              href="/attendance/reports"
-              id="kpi-reports"
-              className="block card-hover-interactive rounded-2xl"
-            >
-              <StatCard
-                title={locale === 'ar' ? 'تقارير الحضور' : 'Attendance Reports'}
-                value={locale === 'ar' ? 'التحليلات' : 'Analytics'}
-                subtitle={locale === 'ar' ? 'معدلات الانضباط والغياب' : 'Attendance rate analytics'}
-                icon={BarChart3}
-                loading={!hasLoadedOnce && isFetchingData}
-              />
-            </Link>
+            {canReadAttendanceReports && (
+              <Link
+                href="/attendance/reports"
+                id="kpi-reports"
+                className="block card-hover-interactive rounded-2xl"
+              >
+                <StatCard
+                  title={locale === 'ar' ? 'تقارير الحضور' : 'Attendance Reports'}
+                  value={locale === 'ar' ? 'التحليلات' : 'Analytics'}
+                  subtitle={
+                    locale === 'ar' ? 'معدلات الانضباط والغياب' : 'Attendance rate analytics'
+                  }
+                  icon={BarChart3}
+                  loading={!hasLoadedOnce && isFetchingData}
+                />
+              </Link>
+            )}
 
             <Link
               href="/branches"
@@ -536,13 +560,15 @@ export default function DashboardPage() {
               <div className="py-10 text-center space-y-2">
                 <Users className="h-10 w-10 mx-auto text-(--text-muted) opacity-50" />
                 <p className="text-sm font-semibold text-(--text-main)">{t('common.noResults')}</p>
-                <Link
-                  href="/players/new"
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-(--accent-primary) px-3.5 py-1.5 text-xs font-bold text-white hover:brightness-110 transition-all mt-2"
-                >
-                  <UserPlus className="h-3.5 w-3.5" />
-                  <span>{locale === 'ar' ? 'تسجيل لاعب جديد' : 'Enroll First Player'}</span>
-                </Link>
+                {canCreatePlayers && (
+                  <Link
+                    href="/players/new"
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-(--accent-primary) px-3.5 py-1.5 text-xs font-bold text-white hover:brightness-110 transition-all mt-2"
+                  >
+                    <UserPlus className="h-3.5 w-3.5" />
+                    <span>{locale === 'ar' ? 'تسجيل لاعب جديد' : 'Enroll First Player'}</span>
+                  </Link>
+                )}
               </div>
             ) : (
               <div className="overflow-x-auto">

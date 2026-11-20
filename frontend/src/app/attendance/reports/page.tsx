@@ -27,7 +27,8 @@ import {
 } from 'lucide-react';
 
 /** Who may open this page (permission matrix; the API enforces the same permissions). */
-const PAGE_ACCESS: AccessRule = { anyOf: [Permission.ATTENDANCE_READ] };
+// The report endpoint requires reports.read, and the page is attendance data: both are needed (same rule as the sidebar).
+const PAGE_ACCESS: AccessRule = { allOf: [Permission.ATTENDANCE_READ, Permission.REPORTS_READ] };
 
 export default function AttendanceReportsPage() {
   const { user, activeTenant, isLoading } = useAuth();

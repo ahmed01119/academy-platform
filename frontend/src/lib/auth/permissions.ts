@@ -45,3 +45,12 @@ export function canAny(
 ): boolean {
   return permissions.some((permission) => can(user, activeTenant, permission));
 }
+
+/** True when the user holds every one of the permissions (a page whose data needs two permissions). */
+export function canAll(
+  user: UserSummary | null | undefined,
+  activeTenant: TenantMembershipSummary | null | undefined,
+  permissions: readonly Permission[],
+): boolean {
+  return permissions.every((permission) => can(user, activeTenant, permission));
+}

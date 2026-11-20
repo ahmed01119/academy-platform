@@ -4,6 +4,9 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/auth-context';
 import { useAccessGuard } from '@/hooks/useAccessGuard';
+import { can, canAll } from '@/lib/auth/permissions';
+import { Permission } from '@academy/shared';
+import type { AccessRule } from '@/lib/auth/access-rules';
 import { AppShell } from '../../components/layout/AppShell';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { CardGridSkeleton } from '@/components/ui/skeleton';
@@ -22,6 +25,8 @@ import {
 } from 'lucide-react';
 import { useLocale } from '@/contexts/locale-context';
 
+const PAGE_ACCESS: AccessRule = { anyOf: [Permission.ATTENDANCE_READ] };
+
 export default function AttendanceHubPage() {
   const { user, activeTenant } = useAuth();
   const { locale, isRtl } = useLocale();
@@ -29,7 +34,7 @@ export default function AttendanceHubPage() {
   const [todaySessions, setTodaySessions] = useState<SessionSummary[]>([]);
   const [isFetching, setIsFetching] = useState(true);
 
-  useAccessGuard('authenticated');
+  useAccessGuard(PAGE_ACCESS);
 
   useEffect(() => {
     async function loadSessions() {
@@ -49,6 +54,12 @@ export default function AttendanceHubPage() {
   }, [user, activeTenant]);
 
   const ArrowIcon = isRtl ? ArrowLeft : ArrowRight;
+  // Same rules as the target pages, so nobody is offered a card that bounces them back.
+  const canMark = can(user, activeTenant, Permission.ATTENDANCE_MARK);
+  const canReadReports = canAll(user, activeTenant, [
+    Permission.ATTENDANCE_READ,
+    Permission.REPORTS_READ,
+  ]);
 
   return (
     <AppShell>
@@ -69,88 +80,94 @@ export default function AttendanceHubPage() {
         {/* Feature Grid Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {/* Quick Attendance */}
-          <Link
-            href="/attendance/quick"
-            id="card-quick-attendance"
-            className="group relative overflow-hidden rounded-2xl border border-emerald-500/20 bg-linear-to-br from-emerald-500/10 via-[var(--bg-surface)] to-[var(--bg-surface)] p-6 shadow-sm hover:shadow-md hover:border-emerald-500/40 transition-all cursor-pointer"
-          >
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">
-                <Zap className="h-6 w-6" />
+          {canMark && (
+            <Link
+              href="/attendance/quick"
+              id="card-quick-attendance"
+              className="group relative overflow-hidden rounded-2xl border border-emerald-500/20 bg-linear-to-br from-emerald-500/10 via-[var(--bg-surface)] to-[var(--bg-surface)] p-6 shadow-sm hover:shadow-md hover:border-emerald-500/40 transition-all cursor-pointer"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">
+                  <Zap className="h-6 w-6" />
+                </div>
+                <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                  {locale === 'ar' ? 'فوري وبنقرة واحدة' : 'One-tap instant'}
+                </span>
               </div>
-              <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                {locale === 'ar' ? 'فوري وبنقرة واحدة' : 'One-tap instant'}
-              </span>
-            </div>
-            <h3 className="text-lg font-bold text-(--text-main) mb-2 group-hover:text-emerald-600 transition-colors">
-              {locale === 'ar' ? 'التحضير السريع (Quick Attendance)' : 'Quick Attendance'}
-            </h3>
-            <p className="text-xs text-(--text-muted) leading-relaxed mb-4">
-              {locale === 'ar'
-                ? 'تسجيل كشف الحضور بنقرة واحدة لجميع اللاعبين، تبديل الحالة فورياً، وحفظ أوفلاين مع المزامنة التلقائية.'
-                : 'One-tap attendance marking for all players, instant status toggle, offline-first with auto-sync.'}
-            </p>
-            <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">
-              <span>{locale === 'ar' ? 'بدء التحضير الفوري' : 'Start Quick Attendance'}</span>
-              <ArrowIcon className="h-4 w-4 transform group-hover:translate-x-1 rtl:group-hover:-translate-x-1 transition-transform" />
-            </div>
-          </Link>
+              <h3 className="text-lg font-bold text-(--text-main) mb-2 group-hover:text-emerald-600 transition-colors">
+                {locale === 'ar' ? 'التحضير السريع (Quick Attendance)' : 'Quick Attendance'}
+              </h3>
+              <p className="text-xs text-(--text-muted) leading-relaxed mb-4">
+                {locale === 'ar'
+                  ? 'تسجيل كشف الحضور بنقرة واحدة لجميع اللاعبين، تبديل الحالة فورياً، وحفظ أوفلاين مع المزامنة التلقائية.'
+                  : 'One-tap attendance marking for all players, instant status toggle, offline-first with auto-sync.'}
+              </p>
+              <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                <span>{locale === 'ar' ? 'بدء التحضير الفوري' : 'Start Quick Attendance'}</span>
+                <ArrowIcon className="h-4 w-4 transform group-hover:translate-x-1 rtl:group-hover:-translate-x-1 transition-transform" />
+              </div>
+            </Link>
+          )}
 
           {/* QR Scanner */}
-          <Link
-            href="/attendance/scanner"
-            id="card-scanner"
-            className="group relative overflow-hidden rounded-2xl border border-blue-500/20 bg-linear-to-br from-blue-500/10 via-[var(--bg-surface)] to-[var(--bg-surface)] p-6 shadow-sm hover:shadow-md hover:border-blue-500/40 transition-all cursor-pointer"
-          >
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-500/20 text-blue-600 dark:text-blue-400">
-                <QrCode className="h-6 w-6" />
+          {canMark && (
+            <Link
+              href="/attendance/scanner"
+              id="card-scanner"
+              className="group relative overflow-hidden rounded-2xl border border-blue-500/20 bg-linear-to-br from-blue-500/10 via-[var(--bg-surface)] to-[var(--bg-surface)] p-6 shadow-sm hover:shadow-md hover:border-blue-500/40 transition-all cursor-pointer"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-500/20 text-blue-600 dark:text-blue-400">
+                  <QrCode className="h-6 w-6" />
+                </div>
+                <span className="rounded-full bg-blue-500/15 px-3 py-1 text-xs font-bold text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                  {locale === 'ar' ? 'كاميرا الهاتف' : 'Phone Camera'}
+                </span>
               </div>
-              <span className="rounded-full bg-blue-500/15 px-3 py-1 text-xs font-bold text-blue-600 dark:text-blue-400 border border-blue-500/20">
-                {locale === 'ar' ? 'كاميرا الهاتف' : 'Phone Camera'}
-              </span>
-            </div>
-            <h3 className="text-lg font-bold text-(--text-main) mb-2 group-hover:text-blue-600 transition-colors">
-              {locale === 'ar' ? 'ماسح باركود QR الذكي' : 'Smart QR Scanner'}
-            </h3>
-            <p className="text-xs text-(--text-muted) leading-relaxed mb-4">
-              {locale === 'ar'
-                ? 'مسح فوري لبطاقات وهوية اللاعبين، التحقق من سريان الاشتراك والرسوم المتأخرة، مع مؤشرات صوتية وتنبيهات.'
-                : 'Instant scan of player ID cards, subscription & fee verification, with audio cues and alerts.'}
-            </p>
-            <div className="flex items-center gap-1.5 text-xs font-bold text-blue-600 dark:text-blue-400">
-              <span>{locale === 'ar' ? 'تشغيل ماسح الكاميرا' : 'Open Camera Scanner'}</span>
-              <ArrowIcon className="h-4 w-4 transform group-hover:translate-x-1 rtl:group-hover:-translate-x-1 transition-transform" />
-            </div>
-          </Link>
+              <h3 className="text-lg font-bold text-(--text-main) mb-2 group-hover:text-blue-600 transition-colors">
+                {locale === 'ar' ? 'ماسح باركود QR الذكي' : 'Smart QR Scanner'}
+              </h3>
+              <p className="text-xs text-(--text-muted) leading-relaxed mb-4">
+                {locale === 'ar'
+                  ? 'مسح فوري لبطاقات وهوية اللاعبين، التحقق من سريان الاشتراك والرسوم المتأخرة، مع مؤشرات صوتية وتنبيهات.'
+                  : 'Instant scan of player ID cards, subscription & fee verification, with audio cues and alerts.'}
+              </p>
+              <div className="flex items-center gap-1.5 text-xs font-bold text-blue-600 dark:text-blue-400">
+                <span>{locale === 'ar' ? 'تشغيل ماسح الكاميرا' : 'Open Camera Scanner'}</span>
+                <ArrowIcon className="h-4 w-4 transform group-hover:translate-x-1 rtl:group-hover:-translate-x-1 transition-transform" />
+              </div>
+            </Link>
+          )}
 
           {/* Reports & Analytics */}
-          <Link
-            href="/attendance/reports"
-            id="card-reports"
-            className="group relative overflow-hidden rounded-2xl border border-purple-500/20 bg-linear-to-br from-purple-500/10 via-[var(--bg-surface)] to-[var(--bg-surface)] p-6 shadow-sm hover:shadow-md hover:border-purple-500/40 transition-all cursor-pointer"
-          >
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-purple-500/20 text-purple-600 dark:text-purple-400">
-                <BarChart3 className="h-6 w-6" />
+          {canReadReports && (
+            <Link
+              href="/attendance/reports"
+              id="card-reports"
+              className="group relative overflow-hidden rounded-2xl border border-purple-500/20 bg-linear-to-br from-purple-500/10 via-[var(--bg-surface)] to-[var(--bg-surface)] p-6 shadow-sm hover:shadow-md hover:border-purple-500/40 transition-all cursor-pointer"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-purple-500/20 text-purple-600 dark:text-purple-400">
+                  <BarChart3 className="h-6 w-6" />
+                </div>
+                <span className="rounded-full bg-purple-500/15 px-3 py-1 text-xs font-bold text-purple-600 dark:text-purple-400 border border-purple-500/20">
+                  {locale === 'ar' ? 'تقارير وإحصائيات' : 'Reports & Analytics'}
+                </span>
               </div>
-              <span className="rounded-full bg-purple-500/15 px-3 py-1 text-xs font-bold text-purple-600 dark:text-purple-400 border border-purple-500/20">
-                {locale === 'ar' ? 'تقارير وإحصائيات' : 'Reports & Analytics'}
-              </span>
-            </div>
-            <h3 className="text-lg font-bold text-(--text-main) mb-2 group-hover:text-purple-600 transition-colors">
-              {locale === 'ar' ? 'تقارير الحضور والالتزام' : 'Attendance & Commitment Reports'}
-            </h3>
-            <p className="text-xs text-(--text-muted) leading-relaxed mb-4">
-              {locale === 'ar'
-                ? 'تحليلات نسب الحضور والغياب، مقارنة الفروع والمجموعات، وسجل تفصيلي قابل للطباعة والتصدير.'
-                : 'Attendance rate analytics by branch and group, with detailed printable and exportable records.'}
-            </p>
-            <div className="flex items-center gap-1.5 text-xs font-bold text-purple-600 dark:text-purple-400">
-              <span>{locale === 'ar' ? 'عرض تقارير الحضور' : 'View Attendance Reports'}</span>
-              <ArrowIcon className="h-4 w-4 transform group-hover:translate-x-1 rtl:group-hover:-translate-x-1 transition-transform" />
-            </div>
-          </Link>
+              <h3 className="text-lg font-bold text-(--text-main) mb-2 group-hover:text-purple-600 transition-colors">
+                {locale === 'ar' ? 'تقارير الحضور والالتزام' : 'Attendance & Commitment Reports'}
+              </h3>
+              <p className="text-xs text-(--text-muted) leading-relaxed mb-4">
+                {locale === 'ar'
+                  ? 'تحليلات نسب الحضور والغياب، مقارنة الفروع والمجموعات، وسجل تفصيلي قابل للطباعة والتصدير.'
+                  : 'Attendance rate analytics by branch and group, with detailed printable and exportable records.'}
+              </p>
+              <div className="flex items-center gap-1.5 text-xs font-bold text-purple-600 dark:text-purple-400">
+                <span>{locale === 'ar' ? 'عرض تقارير الحضور' : 'View Attendance Reports'}</span>
+                <ArrowIcon className="h-4 w-4 transform group-hover:translate-x-1 rtl:group-hover:-translate-x-1 transition-transform" />
+              </div>
+            </Link>
+          )}
         </div>
 
         {/* Today's Sessions Section */}

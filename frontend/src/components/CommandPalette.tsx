@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { useLocale } from '@/contexts/locale-context';
 import api from '@/api/client';
+import { Permission } from '@academy/shared';
+import { canAny } from '@/lib/auth/permissions';
+import { canAccessAdminRoutes } from '@/utils/role-routing';
 import {
   Search,
   Users,
@@ -29,7 +32,10 @@ interface CommandItem {
   href?: string;
   icon: React.ReactNode;
   onSelect?: () => void;
-  requiredRole?: string[];
+  /** Shown only to users holding at least one of these permissions (same rule as the target page). */
+  anyOf?: readonly Permission[];
+  /** Shown only to academy staff with admin pages (dashboard, settings), like the pages' 'admin' rule. */
+  adminOnly?: boolean;
   superAdminOnly?: boolean;
 }
 
@@ -108,9 +114,11 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
     }
   }, [isOpen]);
 
+  const canSearchPlayers = canAny(user, activeTenant, [Permission.PLAYERS_READ]);
+
   // Debounced search for players if tenant active and has permissions
   useEffect(() => {
-    if (!query.trim() || !activeTenant || query.length < 2) {
+    if (!query.trim() || !activeTenant || !canSearchPlayers || query.length < 2) {
       setPlayerResults([]);
       return;
     }
@@ -134,7 +142,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
     }, 250);
 
     return () => clearTimeout(timer);
-  }, [query, activeTenant]);
+  }, [query, activeTenant, canSearchPlayers]);
 
   const isSuperAdmin = Boolean(user?.isPlatformSuperAdmin || user?.isPlatformOwner);
 
@@ -146,6 +154,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       title: locale === 'ar' ? 'لوحة التحكم الرئيسية' : 'Dashboard Overview',
       subtitle: locale === 'ar' ? 'مؤشرات الأداء والملخص اليومي' : 'Key metrics and daily overview',
       href: '/dashboard',
+      adminOnly: true,
       icon: <Layers className="w-4 h-4 text-emerald-400" />,
     },
     {
@@ -157,6 +166,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
           ? 'إدارة اللاعبين والعضويات وبطاقات QR'
           : 'Manage players, memberships & QR',
       href: '/players',
+      anyOf: [Permission.PLAYERS_READ],
       icon: <Users className="w-4 h-4 text-blue-400" />,
     },
     {
@@ -166,6 +176,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       subtitle:
         locale === 'ar' ? 'الجداول والتحضير الفوري' : 'Schedules and live attendance check-in',
       href: '/sessions',
+      anyOf: [Permission.SESSIONS_READ],
       icon: <Calendar className="w-4 h-4 text-amber-400" />,
     },
     {
@@ -177,6 +188,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
           ? 'مسح فوري بالكاميرا حتى دون اتصال'
           : 'Instant camera check-in, works offline',
       href: '/attendance/scanner',
+      anyOf: [Permission.ATTENDANCE_MARK],
       icon: <QrCode className="w-4 h-4 text-teal-400" />,
     },
     {
@@ -186,6 +198,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       subtitle:
         locale === 'ar' ? 'توزيع الفئات السنية والمدربين' : 'Age categories and coaching staff',
       href: '/groups',
+      anyOf: [Permission.GROUPS_READ],
       icon: <Building className="w-4 h-4 text-purple-400" />,
     },
     {
@@ -197,6 +210,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
           ? 'التقييمات الفنية والبدنية والتطوير'
           : 'Technical & physical progress metrics',
       href: '/evaluations',
+      anyOf: [Permission.EVALUATIONS_READ],
       icon: <Award className="w-4 h-4 text-rose-400" />,
     },
     {
@@ -208,6 +222,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
           ? 'الاشتراكات والمدفوعات وإغلاق الخزينة'
           : 'Player billing, expenses & cashier closing',
       href: '/finance',
+      anyOf: [Permission.PAYMENTS_READ],
       icon: <DollarSign className="w-4 h-4 text-emerald-400" />,
     },
     {
@@ -217,6 +232,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       subtitle:
         locale === 'ar' ? 'إدارة فروع ومقرات الأكاديمية' : 'Manage academy branches & facilities',
       href: '/branches',
+      anyOf: [Permission.BRANCHES_READ],
       icon: <Building className="w-4 h-4 text-indigo-400" />,
     },
     {
@@ -226,6 +242,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       subtitle:
         locale === 'ar' ? 'الهوية وسياسات الحضور والاشتراك' : 'Identity, grace period & policies',
       href: '/settings',
+      adminOnly: true,
       icon: <Settings className="w-4 h-4 text-slate-400" />,
     },
   ];
@@ -257,6 +274,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
           ? 'إضافة لاعب مع إصدار بطاقة QR فورية'
           : 'Enroll player with instant QR code',
       href: '/players/new',
+      anyOf: [Permission.PLAYERS_CREATE],
       icon: <Users className="w-4 h-4 text-emerald-400" />,
     },
     {
@@ -266,24 +284,30 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       subtitle:
         locale === 'ar' ? 'بدء تسجيل حضور الحصة التدريبية' : 'Start scanning session attendance',
       href: '/attendance/scanner',
+      anyOf: [Permission.ATTENDANCE_MARK],
       icon: <QrCode className="w-4 h-4 text-teal-400" />,
     },
   ];
 
-  // Filter items based on query
+  // Only what this user may open, then what matches the query
+  const permitted = (item: CommandItem) =>
+    (!item.anyOf || canAny(user, activeTenant, item.anyOf)) &&
+    (!item.adminOnly || canAccessAdminRoutes(user, activeTenant));
   const q = query.toLowerCase().trim();
   const filteredNav = baseNavigation.filter(
     (item) =>
-      !q ||
-      item.title.toLowerCase().includes(q) ||
-      (item.subtitle && item.subtitle.toLowerCase().includes(q)),
+      permitted(item) &&
+      (!q ||
+        item.title.toLowerCase().includes(q) ||
+        (item.subtitle && item.subtitle.toLowerCase().includes(q))),
   );
 
   const filteredActions = quickActions.filter(
     (item) =>
-      !q ||
-      item.title.toLowerCase().includes(q) ||
-      (item.subtitle && item.subtitle.toLowerCase().includes(q)),
+      permitted(item) &&
+      (!q ||
+        item.title.toLowerCase().includes(q) ||
+        (item.subtitle && item.subtitle.toLowerCase().includes(q))),
   );
 
   const playerItems: CommandItem[] = playerResults.map((p) => ({

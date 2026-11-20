@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { useAccessGuard } from '@/hooks/useAccessGuard';
+import { Permission } from '@academy/shared';
+import type { AccessRule } from '@/lib/auth/access-rules';
 import { useLocale } from '@/contexts/locale-context';
 import { AppShell } from '../../../components/layout/AppShell';
 import { PageHeader } from '../../../components/ui/PageHeader';
@@ -17,6 +19,8 @@ import {
 } from '@/features/players/new-player-form';
 import type { BranchSummary, GuardianRelationship, PlayerGender } from '@academy/shared';
 import { UserPlus, AlertCircle, Save, User, Heart, Users, GitBranch } from 'lucide-react';
+
+const PAGE_ACCESS: AccessRule = { anyOf: [Permission.PLAYERS_CREATE] };
 
 export default function NewPlayerPage() {
   const router = useRouter();
@@ -52,7 +56,7 @@ export default function NewPlayerPage() {
   const [branchId, setBranchId] = useState('');
   const [startDate, setStartDate] = useState(new Date().toISOString().slice(0, 10));
 
-  useAccessGuard('authenticated');
+  useAccessGuard(PAGE_ACCESS);
 
   useEffect(() => {
     if (user && activeTenant) {
