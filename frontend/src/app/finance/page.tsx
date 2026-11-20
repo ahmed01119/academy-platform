@@ -12,7 +12,13 @@ import { PageHeader } from '../../components/ui/PageHeader';
 import { PageSkeleton } from '@/components/ui/skeleton';
 import { Button } from '../../components/ui/Button';
 import { Tabs, TabList, TabTrigger, TabContent } from '../../components/ui/Tabs';
-import { translateDataString } from '@/utils/data-translator';
+import {
+  translateDataString,
+  translatePaymentMethod,
+  translateStatus,
+  translateTransactionType,
+} from '@/utils/data-translator';
+import { downloadCsv } from '@/utils/csv';
 import { apiClient } from '@/api/client';
 import type {
   AcademyFinancialDashboardMetrics,
@@ -139,31 +145,24 @@ export default function FinanceDashboardPage() {
           'Status',
           'Notes',
         ];
+    const lang = isAr ? 'ar' : 'en';
     const rows = metrics.recentTransactions.map((tx) => [
       tx.receiptNumber || tx.id.slice(0, 8),
       new Date(tx.createdAt).toLocaleDateString(isAr ? 'ar-EG' : 'en-US'),
       tx.playerName || (isAr ? 'مصروف تشغيلي' : 'Operating Expense'),
       tx.branchName || (isAr ? 'الفرع الرئيسي' : 'Main Branch'),
-      tx.type,
+      translateTransactionType(tx.type, lang),
       tx.amount,
-      tx.paymentMethod,
-      tx.status,
+      translatePaymentMethod(tx.paymentMethod, lang),
+      translateStatus(tx.status, lang),
       tx.notes || '',
     ]);
 
-    const csvContent =
-      'data:text/csv;charset=utf-8,\uFEFF' +
-      [headers.join(','), ...rows.map((r) => r.map((c) => `"${c}"`).join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute(
-      'download',
-      `financial-statement-${new Date().toISOString().slice(0, 10)}.csv`,
-    );
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // Quoted, formula-safe CSV as a Blob (a data: URI cut the file at the first "#").
+    downloadCsv(`financial-statement-${new Date().toISOString().slice(0, 10)}.csv`, [
+      headers,
+      ...rows,
+    ]);
   };
 
   const handlePrint = () => {
@@ -330,7 +329,7 @@ export default function FinanceDashboardPage() {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-(--border-subtle) bg-(--bg-surface)shadow-xs">
+            <div className="rounded-2xl border border-(--border-subtle) bg-(--bg-surface) shadow-xs">
               <div className="flex items-center justify-between text-(--text-muted)">
                 <span className="text-[11px] font-semibold">
                   {isAr ? 'الأرصدة المستحقة' : 'Outstanding Receivables'}

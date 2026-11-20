@@ -1,6 +1,7 @@
 'use client';
 
 import { useAcademyCurrency } from '@/hooks/useAcademyCurrency';
+import { translateTransactionType } from '@/utils/data-translator';
 import React, { useMemo, useState } from 'react';
 import { useLocale } from '@/contexts/locale-context';
 import type { AcademyFinancialDashboardMetrics, FinancialTransactionItem } from '@academy/shared';
@@ -156,6 +157,7 @@ export function OverviewTab({ metrics, onReverseTransaction }: OverviewTabProps)
 
             <select
               value={txTypeFilter}
+              aria-label={locale === 'ar' ? 'نوع الحركة' : 'Transaction type'}
               onChange={(e) => setTxTypeFilter(e.target.value)}
               className="rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3 py-1.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none cursor-pointer"
             >
@@ -222,17 +224,7 @@ export function OverviewTab({ metrics, onReverseTransaction }: OverviewTabProps)
                               : 'bg-blue-500/15 text-blue-600 dark:text-blue-400'
                         }`}
                       >
-                        {isAr
-                          ? tx.type === 'MEMBERSHIP_FEE'
-                            ? 'سداد اشتراك'
-                            : tx.type === 'SESSION_EXPENSE'
-                              ? 'مصروف حصة'
-                              : tx.type
-                          : tx.type === 'MEMBERSHIP_FEE'
-                            ? 'Subscription'
-                            : tx.type === 'SESSION_EXPENSE'
-                              ? 'Expense'
-                              : tx.type}
+                        {translateTransactionType(tx.type, isAr ? 'ar' : 'en')}
                       </span>
                     </td>
                     <td className="py-3 px-3 font-mono font-extrabold">

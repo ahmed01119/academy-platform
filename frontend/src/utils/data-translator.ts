@@ -416,6 +416,20 @@ export function translatePaymentMethod(
   return method;
 }
 
+/** Finance ledger transaction type (MEMBERSHIP_FEE, SESSION_EXPENSE, ...). Unknown types are shown as they are. */
+export function translateTransactionType(
+  type: string | undefined | null,
+  locale: SupportedLocale,
+): string {
+  if (!type) return '';
+  const labels: Record<string, [ar: string, en: string]> = {
+    MEMBERSHIP_FEE: ['سداد اشتراك', 'Subscription'],
+    SESSION_EXPENSE: ['مصروف حصة', 'Expense'],
+  };
+  const label = labels[type];
+  return label ? (locale === 'ar' ? label[0] : label[1]) : type;
+}
+
 export function translateBillingCycle(
   cycle: string | undefined | null,
   locale: SupportedLocale,
