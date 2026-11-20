@@ -26,35 +26,6 @@ export const PlayerPortalProfileSchema = z.object({
 
 export type PlayerPortalProfile = z.infer<typeof PlayerPortalProfileSchema>;
 
-export const GuardianChildSummarySchema = z.object({
-  playerId: z.string().uuid(),
-  tenantId: z.string().uuid(),
-  tenantName: z.string(),
-  tenantSlug: z.string(),
-  firstName: z.string(),
-  lastName: z.string(),
-  relationship: z.string(),
-  branchName: z.string().optional(),
-  groupName: z.string().optional(),
-  photoUrl: z.string().nullable().optional(),
-  dateOfBirth: z.string(),
-  attendanceRate: z.number(),
-  latestScore: z.number().optional(),
-  upcomingSessionsCount: z.number(),
-});
-
-export type GuardianChildSummary = z.infer<typeof GuardianChildSummarySchema>;
-
-export const GuardianPortalDataSchema = z.object({
-  guardianId: z.string().uuid(),
-  name: z.string(),
-  phone: z.string(),
-  email: z.string().nullable().optional(),
-  children: z.array(GuardianChildSummarySchema),
-});
-
-export type GuardianPortalData = z.infer<typeof GuardianPortalDataSchema>;
-
 export const PlayerPortalEvaluationSchema = z.object({
   id: z.string().uuid(),
   evaluationDate: z.string(),
@@ -71,3 +42,34 @@ export const PlayerPortalEvaluationSchema = z.object({
 });
 
 export type PlayerPortalEvaluation = z.infer<typeof PlayerPortalEvaluationSchema>;
+
+export const GuardianChildSummarySchema = z.object({
+  playerId: z.string().uuid(),
+  tenantId: z.string().uuid(),
+  tenantName: z.string(),
+  tenantSlug: z.string(),
+  firstName: z.string(),
+  lastName: z.string(),
+  relationship: z.string(),
+  branchName: z.string().optional(),
+  groupName: z.string().optional(),
+  photoUrl: z.string().nullable().optional(),
+  dateOfBirth: z.string(),
+  attendanceRate: z.number(),
+  latestScore: z.number().optional(),
+  upcomingSessionsCount: z.number(),
+  /** Latest published evaluations (same fields as the player portal; private coach notes are never included). */
+  recentEvaluations: z.array(PlayerPortalEvaluationSchema).optional(),
+});
+
+export type GuardianChildSummary = z.infer<typeof GuardianChildSummarySchema>;
+
+export const GuardianPortalDataSchema = z.object({
+  guardianId: z.string().uuid(),
+  name: z.string(),
+  phone: z.string(),
+  email: z.string().nullable().optional(),
+  children: z.array(GuardianChildSummarySchema),
+});
+
+export type GuardianPortalData = z.infer<typeof GuardianPortalDataSchema>;

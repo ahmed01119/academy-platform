@@ -68,6 +68,53 @@ export function hashClaimCode(code: string): string {
   return crypto.createHash('sha256').update(code.trim().toUpperCase(), 'utf8').digest('hex');
 }
 
+/** How many published evaluations the player and guardian portals show. */
+const PORTAL_RECENT_EVALUATIONS = 5;
+
+/** Portal query for a player's latest evaluations: published only, newest first, with the evaluator's name. */
+const PORTAL_EVALUATIONS_QUERY = {
+  where: { isPublished: true },
+  orderBy: { evaluationDate: 'desc' },
+  take: PORTAL_RECENT_EVALUATIONS,
+  include: { evaluatorUser: { select: { name: true } } },
+} as const;
+
+interface PortalEvaluationRow {
+  id: string;
+  evaluationDate: Date;
+  evaluatorUser: { name: string };
+  overallScore: number;
+  technicalScore: number;
+  tacticalScore: number;
+  physicalScore: number;
+  behavioralScore: number;
+  strengths: string | null;
+  areasForImprovement: string | null;
+  guardianFeedback: string | null;
+  suggestedGoals: string | null;
+}
+
+/**
+ * The evaluation fields players and guardians may see. Private coach notes are deliberately not copied: this is the
+ * only place that decides what a portal user sees of an evaluation.
+ */
+export function toPortalEvaluation(e: PortalEvaluationRow): PlayerPortalEvaluation {
+  return {
+    id: e.id,
+    evaluationDate: e.evaluationDate.toISOString().split('T')[0]!,
+    evaluatorName: e.evaluatorUser.name,
+    overallScore: e.overallScore,
+    technicalScore: e.technicalScore,
+    tacticalScore: e.tacticalScore,
+    physicalScore: e.physicalScore,
+    behavioralScore: e.behavioralScore,
+    strengths: e.strengths,
+    areasForImprovement: e.areasForImprovement,
+    guardianFeedback: e.guardianFeedback,
+    suggestedGoals: e.suggestedGoals,
+  };
+}
+
 @Injectable()
 export class PortalService {
   constructor(
@@ -201,29 +248,10 @@ export class PortalService {
 
       // Recent evaluations (published only, hide private coach notes)
       const evals = await tx.playerEvaluation.findMany({
-        where: { playerId: player.id, isPublished: true },
-        orderBy: { evaluationDate: 'desc' },
-        take: 5,
-        include: {
-          evaluatorUser: { select: { name: true } },
-          session: { select: { sessionDate: true } },
-        },
+        ...PORTAL_EVALUATIONS_QUERY,
+        where: { ...PORTAL_EVALUATIONS_QUERY.where, playerId: player.id },
       });
-
-      const recentEvaluations = evals.map((e) => ({
-        id: e.id,
-        evaluationDate: e.evaluationDate.toISOString().split('T')[0]!,
-        evaluatorName: e.evaluatorUser.name,
-        overallScore: e.overallScore,
-        technicalScore: e.technicalScore,
-        tacticalScore: e.tacticalScore,
-        physicalScore: e.physicalScore,
-        behavioralScore: e.behavioralScore,
-        strengths: e.strengths,
-        areasForImprovement: e.areasForImprovement,
-        guardianFeedback: e.guardianFeedback,
-        suggestedGoals: e.suggestedGoals,
-      }));
+      const recentEvaluations = evals.map(toPortalEvaluation);
 
       return {
         profile,
@@ -260,11 +288,7 @@ export class PortalService {
                   },
                 },
               },
-              evaluations: {
-                where: { isPublished: true },
-                orderBy: { evaluationDate: 'desc' },
-                take: 1,
-              },
+              evaluations: PORTAL_EVALUATIONS_QUERY,
             },
           },
         },
@@ -319,6 +343,7 @@ export class PortalService {
           attendanceRate,
           latestScore: p.evaluations[0]?.overallScore,
           upcomingSessionsCount: 0,
+          recentEvaluations: p.evaluations.map(toPortalEvaluation),
         });
       }
 
