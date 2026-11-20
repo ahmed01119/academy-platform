@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
@@ -41,6 +41,24 @@ export function Topbar({ onOpenMobile, breadcrumbs: customBreadcrumbs }: TopbarP
   const { t, locale, isRtl } = useLocale();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const notificationsRef = useRef<HTMLDivElement>(null);
+
+  // The notifications panel closes on Escape and on a click outside it, like any popover.
+  useEffect(() => {
+    if (!isNotificationsOpen) return;
+    const onPointerDown = (e: MouseEvent) => {
+      if (!notificationsRef.current?.contains(e.target as Node)) setIsNotificationsOpen(false);
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsNotificationsOpen(false);
+    };
+    document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [isNotificationsOpen]);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [notifications, setNotifications] = useState<AppNotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState<number>(0);
@@ -277,10 +295,12 @@ export function Topbar({ onOpenMobile, breadcrumbs: customBreadcrumbs }: TopbarP
           </button>
 
           {/* Notifications Icon with Real Badge */}
-          <div className="relative">
+          <div className="relative" ref={notificationsRef}>
             <button
               type="button"
               onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+              aria-expanded={isNotificationsOpen}
+              aria-haspopup="true"
               className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] text-(--text-muted) hover:border-emerald-500/50 hover:text-(--text-main) transition-colors shadow-sm"
               aria-label={t('common.notifications', 'الإشعارات')}
             >
@@ -330,27 +350,28 @@ export function Topbar({ onOpenMobile, breadcrumbs: customBreadcrumbs }: TopbarP
                     notifications.map((item) => {
                       const isRead = Boolean(item.readAt);
                       return (
-                        <div
+                        <button
+                          type="button"
                           key={item.id}
-                          onClick={() => handleNotificationClick(item)}
-                          className={`rounded-xl p-2.5 text-xs space-y-1 cursor-pointer transition-colors ${
+                          onClick={() => void handleNotificationClick(item)}
+                          className={`block w-full text-start rounded-xl p-2.5 text-xs space-y-1 cursor-pointer transition-colors ${
                             !isRead
                               ? 'bg-(--accent-primary)/10 border border-[var(--accent-primary)]/20'
                               : 'bg-(--bg-surface-subtle) hover:bg-(--bg-surface-subtle)/80'
                           }`}
                         >
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="font-bold text-[11px] text-(--text-main) leading-tight">
+                          <span className="flex items-start justify-between gap-2">
+                            <span className="font-bold text-[11px] text-(--text-main) leading-tight">
                               {item.title}
-                            </div>
+                            </span>
                             {!isRead && (
                               <span className="h-1.5 w-1.5 rounded-full bg-(--accent-primary) shrink-0 mt-1" />
                             )}
-                          </div>
-                          <div className="text-[10px] text-(--text-muted) leading-relaxed">
+                          </span>
+                          <span className="block text-[10px] text-(--text-muted) leading-relaxed">
                             {item.body}
-                          </div>
-                          <div className="text-[9px] text-(--text-muted)/70 pt-0.5">
+                          </span>
+                          <span className="block text-[9px] text-(--text-muted)/70 pt-0.5">
                             {new Date(item.createdAt).toLocaleDateString(
                               locale === 'ar' ? 'ar-EG' : 'en-US',
                               {
@@ -360,8 +381,8 @@ export function Topbar({ onOpenMobile, breadcrumbs: customBreadcrumbs }: TopbarP
                                 minute: '2-digit',
                               },
                             )}
-                          </div>
-                        </div>
+                          </span>
+                        </button>
                       );
                     })
                   )}
