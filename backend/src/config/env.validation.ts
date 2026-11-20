@@ -22,6 +22,15 @@ const EnvSchema = z.object({
     .transform((value) => value === true || value === 'true')
     .default(false),
   /**
+   * Development convenience: return the password-reset code in the forgot-password response. Off unless set to true,
+   * and ignored outside NODE_ENV=development. With it on, anyone who can reach the API can reset any account, so
+   * never enable it on a server reachable from the internet (e.g. behind the laptop tunnel).
+   */
+  AUTH_EXPOSE_DEBUG_OTP: z
+    .union([z.boolean(), z.enum(['true', 'false'])])
+    .transform((value) => value === true || value === 'true')
+    .default(false),
+  /**
    * Shared secret that authenticates the Next.js /v1 proxy to the API (S1). Server-side only; never exposed to
    * browsers or logs. Required (>= 32 chars) in production, which includes staging.
    */

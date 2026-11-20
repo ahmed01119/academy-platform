@@ -77,7 +77,7 @@ describe('AuthService', () => {
   let mockToken: MockToken;
   let mockRedis: MockRedis;
   let mockAudit: MockAudit;
-  let mockConfig: { nodeEnv: string };
+  let mockConfig: { nodeEnv: string; exposeDebugOtp: boolean };
 
   beforeEach(() => {
     mockPrisma = {
@@ -155,6 +155,7 @@ describe('AuthService', () => {
 
     mockConfig = {
       nodeEnv: 'test',
+      exposeDebugOtp: false,
     };
 
     const mockEmail = {
@@ -568,6 +569,27 @@ describe('AuthService', () => {
         expect(resetUrl).toContain(`/reset-password#token=${LINK}&email=user%40example.com`);
         expect(resetUrl).not.toContain('?token=');
         expect(codeHash).toBe(`sha256(${code})`);
+      });
+
+      it('never returns the reset code unless the explicit debug opt-in is on (even in development)', async () => {
+        mockPrisma.user.findUnique.mockResolvedValue(user);
+        mockConfig.nodeEnv = 'development';
+        const result = await authService.forgotPassword(
+          { email: 'user@example.com' },
+          '203.0.113.7',
+        );
+        expect(result).not.toHaveProperty('debugOtp');
+      });
+
+      it('returns the reset code only with the debug opt-in (local development helper)', async () => {
+        mockPrisma.user.findUnique.mockResolvedValue(user);
+        mockConfig.nodeEnv = 'development';
+        mockConfig.exposeDebugOtp = true;
+        const result = await authService.forgotPassword(
+          { email: 'user@example.com' },
+          '203.0.113.7',
+        );
+        expect(result.debugOtp).toMatch(/^\d{6}$/);
       });
 
       it('responds identically for an unknown e-mail and never touches the database or sends mail', async () => {

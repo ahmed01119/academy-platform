@@ -110,4 +110,15 @@ describe('trusted web proxy configuration (S1)', () => {
   it('does not require the secret in development', () => {
     expect(validateEnv({ NODE_ENV: 'development' }).INTERNAL_PROXY_SECRET).toBeUndefined();
   });
+
+  it('keeps the forgot-password debug code off unless explicitly enabled', () => {
+    expect(validateEnv({ NODE_ENV: 'development' }).AUTH_EXPOSE_DEBUG_OTP).toBe(false);
+    expect(
+      validateEnv({ NODE_ENV: 'development', AUTH_EXPOSE_DEBUG_OTP: 'false' })
+        .AUTH_EXPOSE_DEBUG_OTP,
+    ).toBe(false);
+    expect(
+      validateEnv({ NODE_ENV: 'development', AUTH_EXPOSE_DEBUG_OTP: 'true' }).AUTH_EXPOSE_DEBUG_OTP,
+    ).toBe(true);
+  });
 });

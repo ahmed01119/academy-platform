@@ -21,7 +21,7 @@ import { KeyRound, Mail, Loader2, ArrowRight, Copy } from 'lucide-react';
 const RESEND_COOLDOWN_SECONDS = 60;
 
 // Security guard: debug OTP is ONLY shown when accessed via localhost/127.0.0.1.
-// (The API only returns `debugOtp` when NODE_ENV=development.)
+// (The API only returns `debugOtp` in development with AUTH_EXPOSE_DEBUG_OTP=true.)
 const isLocalDevAccess =
   typeof window !== 'undefined' &&
   (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');

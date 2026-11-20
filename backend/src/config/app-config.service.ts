@@ -56,6 +56,14 @@ export class AppConfigService {
     return this.config.get('TRUST_PROXY_HOPS', { infer: true });
   }
 
+  /** Only with an explicit opt-in, and only in development (see AUTH_EXPOSE_DEBUG_OTP in env.validation.ts). */
+  get exposeDebugOtp(): boolean {
+    return (
+      this.nodeEnv === 'development' &&
+      this.config.get('AUTH_EXPOSE_DEBUG_OTP', { infer: true }) === true
+    );
+  }
+
   get cookieSecure(): boolean {
     return this.config.get('COOKIE_SECURE', { infer: true }) || this.nodeEnv === 'production';
   }

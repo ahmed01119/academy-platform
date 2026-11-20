@@ -658,7 +658,7 @@ export class AuthService {
         this.logger.warn(`Failed to dispatch password reset email: ${(e as Error)?.message}`);
       }
 
-      if (this.config.nodeEnv === 'development') {
+      if (this.config.exposeDebugOtp) {
         debugOtp = code;
       }
     }
