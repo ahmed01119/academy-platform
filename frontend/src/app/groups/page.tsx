@@ -204,6 +204,7 @@ export default function GroupsPage() {
               <input
                 type="text"
                 id="input-search-groups"
+                aria-label={locale === 'ar' ? 'بحث عن مجموعة' : 'Search groups'}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder={
@@ -228,6 +229,7 @@ export default function GroupsPage() {
             <div className="w-full md:w-56">
               <select
                 id="select-filter-branch"
+                aria-label={locale === 'ar' ? 'تصفية حسب الفرع' : 'Filter by branch'}
                 value={selectedBranchId}
                 onChange={(e) => setSelectedBranchId(e.target.value)}
                 className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:bg-[var(--bg-surface)] transition-all outline-none"
@@ -245,6 +247,7 @@ export default function GroupsPage() {
             <div className="w-full md:w-44">
               <select
                 id="select-filter-status"
+                aria-label={locale === 'ar' ? 'تصفية حسب الحالة' : 'Filter by status'}
                 value={selectedStatus}
                 onChange={(e) => setSelectedStatus(e.target.value as GroupStatus | '')}
                 className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:bg-[var(--bg-surface)] transition-all outline-none"

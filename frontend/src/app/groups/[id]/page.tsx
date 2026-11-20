@@ -344,7 +344,7 @@ export default function GroupDetailsPage() {
             href="/groups"
             className="inline-flex items-center gap-2 rounded-xl bg-(--accent-primary) text-white px-4 py-2 text-xs font-semibold hover:brightness-110"
           >
-            العودة لقائمة المجموعات
+            {locale === 'ar' ? 'العودة لقائمة المجموعات' : 'Back to groups'}
           </Link>
         </div>
       </AppShell>
@@ -494,11 +494,12 @@ export default function GroupDetailsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-base font-bold text-(--text-main)">
-                  اللاعبين المقيدين بالمجموعة
+                  {locale === 'ar' ? 'اللاعبين المقيدين بالمجموعة' : 'Players in this group'}
                 </h3>
                 <p className="text-xs text-(--text-muted)">
-                  هؤلاء اللاعبين سيتم إدراجهم تلقائياً في كشف الحضور عند بدء أي حصة تدريبية
-                  للمجموعة.
+                  {locale === 'ar'
+                    ? 'هؤلاء اللاعبين سيتم إدراجهم تلقائياً في كشف الحضور عند بدء أي حصة تدريبية للمجموعة.'
+                    : 'These players are added to the attendance roster automatically whenever a session of this group starts.'}
                 </p>
               </div>
               <button
@@ -516,17 +517,21 @@ export default function GroupDetailsPage() {
               <div className="rounded-2xl border border-(--border-subtle) bg-[var(--bg-surface)] p-10 text-center text-(--text-muted) space-y-3">
                 <Users className="h-8 w-8 mx-auto text-[var(--accent-primary)]" />
                 <p className="text-sm font-semibold text-(--text-main)">
-                  لا يوجد لاعبين مقيدين بالمجموعة حتى الآن
+                  {locale === 'ar'
+                    ? 'لا يوجد لاعبين مقيدين بالمجموعة حتى الآن'
+                    : 'No players in this group yet'}
                 </p>
                 <p className="text-xs text-(--text-muted)">
-                  أضف اللاعبين المسجلين في فرع {group.branchName} إلى هذه المجموعة.
+                  {locale === 'ar'
+                    ? `أضف اللاعبين المسجلين في فرع ${group.branchName} إلى هذه المجموعة.`
+                    : `Add players registered at ${group.branchName} to this group.`}
                 </p>
                 <button
                   type="button"
                   onClick={handleOpenAddMemberModal}
                   className="rounded-xl border border-[var(--accent-primary)] bg-(--accent-primary)/10 px-4 py-2 text-xs font-semibold text-[var(--accent-primary)] hover:bg-(--accent-primary)/20 transition-all cursor-pointer"
                 >
-                  إضافة أول لاعب
+                  {locale === 'ar' ? 'إضافة أول لاعب' : 'Add the first player'}
                 </button>
               </div>
             ) : (
@@ -585,10 +590,14 @@ export default function GroupDetailsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-base font-bold text-(--text-main)">
-                  المدربين المسؤولين عن المجموعة
+                  {locale === 'ar'
+                    ? 'المدربين المسؤولين عن المجموعة'
+                    : 'Coaches responsible for this group'}
                 </h3>
                 <p className="text-xs text-(--text-muted)">
-                  المدرب المعين يتمتع بصلاحية أخذ الحضور وإدارة جلسات وتدريبات هذه المجموعة.
+                  {locale === 'ar'
+                    ? 'المدرب المعين يتمتع بصلاحية أخذ الحضور وإدارة جلسات وتدريبات هذه المجموعة.'
+                    : 'An assigned coach can take attendance and run the sessions and training of this group.'}
                 </p>
               </div>
               <button
@@ -606,17 +615,21 @@ export default function GroupDetailsPage() {
               <div className="rounded-2xl border border-(--border-subtle) bg-[var(--bg-surface)] p-10 text-center text-(--text-muted) space-y-3">
                 <ShieldCheck className="h-8 w-8 mx-auto text-[var(--accent-primary)]" />
                 <p className="text-sm font-semibold text-(--text-main)">
-                  لم يتم تعيين أي مدرب لهذه المجموعة بعد
+                  {locale === 'ar'
+                    ? 'لم يتم تعيين أي مدرب لهذه المجموعة بعد'
+                    : 'No coach assigned to this group yet'}
                 </p>
                 <p className="text-xs text-(--text-muted)">
-                  قم بتعيين مدرب رئيسي للإشراف الفني وأخذ حضور الحصص.
+                  {locale === 'ar'
+                    ? 'قم بتعيين مدرب رئيسي للإشراف الفني وأخذ حضور الحصص.'
+                    : 'Assign a head coach to supervise training and take attendance.'}
                 </p>
                 <button
                   type="button"
                   onClick={handleOpenAddCoachModal}
                   className="rounded-xl border border-[var(--accent-primary)] bg-(--accent-primary)/10 px-4 py-2 text-xs font-semibold text-[var(--accent-primary)] hover:bg-(--accent-primary)/20 transition-all cursor-pointer"
                 >
-                  تعيين مدرب الآن
+                  {locale === 'ar' ? 'تعيين مدرب الآن' : 'Assign a coach now'}
                 </button>
               </div>
             ) : (
@@ -637,7 +650,7 @@ export default function GroupDetailsPage() {
                             <h4 className="text-sm font-bold text-(--text-main)">{c.coachName}</h4>
                             {c.isHeadCoach && (
                               <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400 border border-amber-500/30">
-                                مدرب رئيسي
+                                {locale === 'ar' ? 'مدرب رئيسي' : 'Head coach'}
                               </span>
                             )}
                           </div>
@@ -668,10 +681,12 @@ export default function GroupDetailsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-base font-bold text-(--text-main)">
-                  المواعيد التدريبية الأسبوعية
+                  {locale === 'ar' ? 'المواعيد التدريبية الأسبوعية' : 'Weekly training schedule'}
                 </h3>
                 <p className="text-xs text-(--text-muted)">
-                  أوقات التمارين الدورية التي تكرر أسبوعياً لهذه المجموعة على أرض الملعب.
+                  {locale === 'ar'
+                    ? 'أوقات التمارين الدورية التي تكرر أسبوعياً لهذه المجموعة على أرض الملعب.'
+                    : 'Recurring weekly training times for this group on the pitch.'}
                 </p>
               </div>
               <button
@@ -692,17 +707,19 @@ export default function GroupDetailsPage() {
               <div className="rounded-2xl border border-(--border-subtle) bg-[var(--bg-surface)] p-10 text-center text-(--text-muted) space-y-3">
                 <Clock className="h-8 w-8 mx-auto text-[var(--accent-primary)]" />
                 <p className="text-sm font-semibold text-(--text-main)">
-                  لا توجد مواعيد أسبوعية مسجلة
+                  {locale === 'ar' ? 'لا توجد مواعيد أسبوعية مسجلة' : 'No weekly schedule yet'}
                 </p>
                 <p className="text-xs text-(--text-muted)">
-                  أضف أيام وساعات التمرين المنتظمة لتسهيل إنشاء الحصص التدريبية.
+                  {locale === 'ar'
+                    ? 'أضف أيام وساعات التمرين المنتظمة لتسهيل إنشاء الحصص التدريبية.'
+                    : 'Add the regular training days and times to make creating sessions easier.'}
                 </p>
                 <button
                   type="button"
                   onClick={() => setIsAddScheduleModalOpen(true)}
                   className="rounded-xl border border-[var(--accent-primary)] bg-(--accent-primary)/10 px-4 py-2 text-xs font-semibold text-[var(--accent-primary)] hover:bg-(--accent-primary)/20 transition-all cursor-pointer"
                 >
-                  إضافة أول موعد
+                  {locale === 'ar' ? 'إضافة أول موعد' : 'Add the first time slot'}
                 </button>
               </div>
             ) : (
@@ -970,7 +987,7 @@ export default function GroupDetailsPage() {
                   htmlFor="select-schedule-day"
                   className="block text-xs font-semibold text-(--text-muted) mb-1.5"
                 >
-                  يوم الأسبوع
+                  {locale === 'ar' ? 'يوم الأسبوع' : 'Day of week'}
                 </label>
                 <select
                   id="select-schedule-day"
@@ -995,7 +1012,7 @@ export default function GroupDetailsPage() {
                     htmlFor="input-start-time"
                     className="block text-xs font-semibold text-(--text-muted) mb-1.5"
                   >
-                    وقت البدء (HH:MM)
+                    {locale === 'ar' ? 'وقت البدء (HH:MM)' : 'Start time (HH:MM)'}
                   </label>
                   <input
                     type="time"
@@ -1013,7 +1030,7 @@ export default function GroupDetailsPage() {
                     htmlFor="input-end-time"
                     className="block text-xs font-semibold text-(--text-muted) mb-1.5"
                   >
-                    وقت الانتهاء (HH:MM)
+                    {locale === 'ar' ? 'وقت الانتهاء (HH:MM)' : 'End time (HH:MM)'}
                   </label>
                   <input
                     type="time"
@@ -1031,7 +1048,7 @@ export default function GroupDetailsPage() {
                   htmlFor="input-schedule-location"
                   className="block text-xs font-semibold text-(--text-muted) mb-1.5"
                 >
-                  المكان / الملعب
+                  {locale === 'ar' ? 'المكان / الملعب' : 'Venue / pitch'}
                 </label>
                 <input
                   type="text"

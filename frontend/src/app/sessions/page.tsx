@@ -40,7 +40,7 @@ export default function SessionsPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-(--bg-base)flex items-center justify-center text-(--text-muted)">
+        <div className="min-h-screen bg-(--bg-base) flex items-center justify-center text-(--text-muted)">
           <RefreshCw className="h-8 w-8 animate-spin text-[var(--accent-primary)]" />
         </div>
       }
@@ -281,6 +281,7 @@ function SessionsContent() {
             {/* Branch Filter */}
             <select
               id="select-filter-branch"
+              aria-label={locale === 'ar' ? 'تصفية حسب الفرع' : 'Filter by branch'}
               value={selectedBranchId}
               onChange={(e) => setSelectedBranchId(e.target.value)}
               className="rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:bg-[var(--bg-surface)] transition-all outline-none"
@@ -296,6 +297,7 @@ function SessionsContent() {
             {/* Group Filter */}
             <select
               id="select-filter-group"
+              aria-label={locale === 'ar' ? 'تصفية حسب المجموعة' : 'Filter by group'}
               value={selectedGroupId}
               onChange={(e) => setSelectedGroupId(e.target.value)}
               className="rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:bg-[var(--bg-surface)] transition-all outline-none"
@@ -311,6 +313,7 @@ function SessionsContent() {
             {/* Status Filter */}
             <select
               id="select-filter-status"
+              aria-label={locale === 'ar' ? 'تصفية حسب الحالة' : 'Filter by status'}
               value={selectedStatus}
               onChange={(e) => setSelectedStatus(e.target.value as SessionStatus | '')}
               className="rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:bg-[var(--bg-surface)] transition-all outline-none"
@@ -325,6 +328,7 @@ function SessionsContent() {
             <input
               type="date"
               value={dateFrom}
+              aria-label={locale === 'ar' ? 'من تاريخ' : 'From date'}
               onChange={(e) => setDateFrom(e.target.value)}
               className="rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:bg-[var(--bg-surface)] transition-all outline-none"
             />
@@ -334,6 +338,7 @@ function SessionsContent() {
               <input
                 type="date"
                 value={dateTo}
+                aria-label={locale === 'ar' ? 'إلى تاريخ' : 'To date'}
                 onChange={(e) => setDateTo(e.target.value)}
                 className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:bg-[var(--bg-surface)] transition-all outline-none"
               />

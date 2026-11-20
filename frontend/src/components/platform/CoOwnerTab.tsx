@@ -209,7 +209,7 @@ export function CoOwnerTab() {
                   value={inviteName}
                   onChange={(e) => setInviteName(e.target.value)}
                   placeholder={ar ? 'أدخل الاسم الكامل' : 'Enter full name'}
-                  className="w-full rounded-xl border border-(--border-app) bg-(--bg-base)px-3 py-2.5 text-sm text-(--text-main) placeholder:text-(--text-muted) focus:outline-none focus:border-amber-500/60"
+                  className="w-full rounded-xl border border-(--border-app) bg-(--bg-base) px-3 py-2.5 text-sm text-(--text-main) placeholder:text-(--text-muted) focus:outline-none focus:border-amber-500/60"
                 />
               </div>
               <div>
@@ -222,7 +222,7 @@ export function CoOwnerTab() {
                   value={inviteEmail}
                   onChange={(e) => setInviteEmail(e.target.value)}
                   placeholder={ar ? 'example@domain.com' : 'example@domain.com'}
-                  className="w-full rounded-xl border border-(--border-app) bg-(--bg-base)px-3 py-2.5 text-sm text-(--text-main) placeholder:text-(--text-muted) focus:outline-none focus:border-amber-500/60"
+                  className="w-full rounded-xl border border-(--border-app) bg-(--bg-base) px-3 py-2.5 text-sm text-(--text-main) placeholder:text-(--text-muted) focus:outline-none focus:border-amber-500/60"
                 />
               </div>
 
@@ -302,6 +302,7 @@ export function CoOwnerTab() {
         <input
           type="search"
           value={searchQuery}
+          aria-label={locale === 'ar' ? 'بحث في مديري المنصة' : 'Search platform admins'}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder={ar ? 'بحث في مديري المنصة...' : 'Search platform admins...'}
           className="w-full rounded-xl border border-(--border-app) bg-[var(--bg-surface)] ps-9 pe-4 py-2.5 text-sm text-(--text-main) placeholder:text-(--text-muted) focus:outline-none focus:border-(--accent-primary)/60"

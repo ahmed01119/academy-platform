@@ -498,7 +498,7 @@ export default function GuardianPortalPage() {
                   placeholder="ACAD-XXXXXXXXXX"
                   value={claimTokenInput}
                   onChange={(e) => setClaimTokenInput(e.target.value)}
-                  className="w-full font-mono text-center tracking-widest text-base font-bold rounded-xl border border-(--border-subtle) bg-(--bg-base)px-4 py-2.5 text-(--text-main) placeholder:text-(--text-muted) focus:border-purple-500 focus:outline-none"
+                  className="w-full font-mono text-center tracking-widest text-base font-bold rounded-xl border border-(--border-subtle) bg-(--bg-base) px-4 py-2.5 text-(--text-main) placeholder:text-(--text-muted) focus:border-purple-500 focus:outline-none"
                 />
               </div>
 

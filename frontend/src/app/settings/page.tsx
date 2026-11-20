@@ -522,6 +522,7 @@ function SettingsContent() {
                     </label>
                     <select
                       value={currency}
+                      aria-label={locale === 'ar' ? 'العملة الأساسية' : 'Primary currency'}
                       onChange={(e) => setCurrency(e.target.value)}
                       className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-main)] focus:outline-none focus:border-[var(--accent-primary)] cursor-pointer"
                     >
@@ -539,6 +540,7 @@ function SettingsContent() {
                     </label>
                     <select
                       value={timezone}
+                      aria-label={locale === 'ar' ? 'المنطقة الزمنية' : 'Timezone'}
                       onChange={(e) => setTimezone(e.target.value)}
                       className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-main)] focus:outline-none focus:border-[var(--accent-primary)] cursor-pointer"
                     >
@@ -1079,6 +1081,7 @@ function SettingsContent() {
                 </label>
                 <select
                   value={inviteRole}
+                  aria-label={locale === 'ar' ? 'الدور الوظيفي' : 'Role'}
                   onChange={(e) =>
                     setInviteRole(
                       e.target.value as

@@ -403,7 +403,10 @@ export default function BranchesPage() {
               <form onSubmit={handleCreateSubmit} className="space-y-4">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-(--text-muted) mb-1">
+                    <label
+                      htmlFor="input-create-branch-name"
+                      className="block text-xs font-semibold text-(--text-muted) mb-1"
+                    >
                       {ar ? 'اسم الفرع *' : 'Branch Name *'}
                     </label>
                     <input
@@ -413,12 +416,15 @@ export default function BranchesPage() {
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       placeholder={ar ? 'مثال: فرع التجمع الخامس' : 'e.g. Main Training Center'}
-                      className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-base)px-3.5 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none"
+                      className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-base) px-3.5 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-(--text-muted) mb-1">
+                    <label
+                      htmlFor="input-create-branch-code"
+                      className="block text-xs font-semibold text-(--text-muted) mb-1"
+                    >
                       {ar ? 'كود الفرع (Code)' : 'Branch Code'}
                     </label>
                     <input
@@ -427,14 +433,17 @@ export default function BranchesPage() {
                       value={code}
                       onChange={(e) => setCode(e.target.value.toUpperCase())}
                       placeholder="MAIN_01"
-                      className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-base)px-3.5 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none font-mono uppercase"
+                      className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-base) px-3.5 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none font-mono uppercase"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-(--text-muted) mb-1">
+                    <label
+                      htmlFor="input-create-branch-city"
+                      className="block text-xs font-semibold text-(--text-muted) mb-1"
+                    >
                       {ar ? 'المدينة' : 'City'}
                     </label>
                     <input
@@ -443,12 +452,15 @@ export default function BranchesPage() {
                       value={city}
                       onChange={(e) => setCity(e.target.value)}
                       placeholder={ar ? 'القاهرة' : 'Cairo'}
-                      className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-base)px-3.5 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none"
+                      className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-base) px-3.5 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-(--text-muted) mb-1">
+                    <label
+                      htmlFor="input-create-branch-capacity"
+                      className="block text-xs font-semibold text-(--text-muted) mb-1"
+                    >
                       {ar ? 'السعة الاستيعابية (لاعب)' : 'Capacity (Players)'}
                     </label>
                     <input
@@ -459,13 +471,16 @@ export default function BranchesPage() {
                         setCapacity(e.target.value === '' ? '' : parseInt(e.target.value, 10))
                       }
                       placeholder={ar ? 'مثال: 150' : 'e.g. 150'}
-                      className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-base)px-3.5 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none font-mono"
+                      className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-base) px-3.5 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none font-mono"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-(--text-muted) mb-1">
+                  <label
+                    htmlFor="input-create-branch-address"
+                    className="block text-xs font-semibold text-(--text-muted) mb-1"
+                  >
                     {ar ? 'العنوان التفصيلي' : 'Address Details'}
                   </label>
                   <input
@@ -478,12 +493,15 @@ export default function BranchesPage() {
                         ? 'شارع التسعين، مجمع الملاعب الأولمبية'
                         : 'Olympic Sports Complex, 90th St.'
                     }
-                    className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-base)px-3.5 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none"
+                    className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-base) px-3.5 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-(--text-muted) mb-1">
+                  <label
+                    htmlFor="input-create-branch-phone"
+                    className="block text-xs font-semibold text-(--text-muted) mb-1"
+                  >
                     {ar ? 'هاتف الفرع' : 'Branch Phone'}
                   </label>
                   <input
@@ -492,7 +510,7 @@ export default function BranchesPage() {
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="+201012345678"
-                    className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-base)px-3.5 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none font-mono"
+                    className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-base) px-3.5 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none font-mono"
                   />
                 </div>
 
@@ -556,7 +574,7 @@ export default function BranchesPage() {
                       required
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-base)px-3.5 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none"
+                      className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-base) px-3.5 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none"
                     />
                   </div>
 
@@ -568,7 +586,7 @@ export default function BranchesPage() {
                       type="text"
                       value={code}
                       onChange={(e) => setCode(e.target.value.toUpperCase())}
-                      className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-base)px-3.5 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none font-mono uppercase"
+                      className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-base) px-3.5 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none font-mono uppercase"
                     />
                   </div>
                 </div>
@@ -582,7 +600,7 @@ export default function BranchesPage() {
                       type="text"
                       value={city}
                       onChange={(e) => setCity(e.target.value)}
-                      className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-base)px-3.5 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none"
+                      className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-base) px-3.5 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none"
                     />
                   </div>
 
@@ -596,7 +614,7 @@ export default function BranchesPage() {
                       onChange={(e) =>
                         setCapacity(e.target.value === '' ? '' : parseInt(e.target.value, 10))
                       }
-                      className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-base)px-3.5 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none font-mono"
+                      className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-base) px-3.5 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none font-mono"
                     />
                   </div>
                 </div>
@@ -609,7 +627,7 @@ export default function BranchesPage() {
                     type="text"
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
-                    className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-base)px-3.5 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none"
+                    className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-base) px-3.5 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none"
                   />
                 </div>
 
@@ -622,7 +640,7 @@ export default function BranchesPage() {
                       type="tel"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
-                      className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-base)px-3.5 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none font-mono"
+                      className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-base) px-3.5 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none font-mono"
                     />
                   </div>
 
@@ -633,7 +651,7 @@ export default function BranchesPage() {
                     <select
                       value={status}
                       onChange={(e) => setStatus(e.target.value as BranchStatus)}
-                      className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-base)px-3.5 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none cursor-pointer"
+                      className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-base) px-3.5 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none cursor-pointer"
                     >
                       <option value="ACTIVE">{ar ? 'نشط' : 'Active'}</option>
                       <option value="INACTIVE">{ar ? 'غير نشط' : 'Inactive'}</option>

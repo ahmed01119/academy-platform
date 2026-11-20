@@ -1182,6 +1182,7 @@ export default function SessionAttendancePage() {
               <input
                 type="text"
                 id="input-search-roster"
+                aria-label={locale === 'ar' ? 'بحث في كشف الحضور' : 'Search roster'}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder={locale === 'en' ? 'Search by player name...' : 'البحث باسم اللاعب...'}

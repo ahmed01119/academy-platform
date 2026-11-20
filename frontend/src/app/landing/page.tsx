@@ -265,7 +265,7 @@ export default function HomePage() {
                   </div>
 
                   {/* Mock Visual UI */}
-                  <div className="rounded-2xl border border-(--border-subtle) bg-(--bg-base)p-5 space-y-4 shadow-inner">
+                  <div className="rounded-2xl border border-(--border-subtle) bg-(--bg-base) p-5 space-y-4 shadow-inner">
                     <div className="flex items-center justify-between border-b border-(--border-subtle) pb-3">
                       <div className="flex items-center gap-2">
                         <div className="h-3 w-3 rounded-full bg-emerald-500 animate-ping" />
@@ -315,7 +315,7 @@ export default function HomePage() {
                       {t('landing.radarSectionDesc')}
                     </p>
                     <div className="grid grid-cols-2 gap-3 pt-2">
-                      <div className="rounded-xl border border-(--border-subtle) bg-(--bg-base)p-3">
+                      <div className="rounded-xl border border-(--border-subtle) bg-(--bg-base) p-3">
                         <div className="text-xs font-bold text-emerald-500">
                           {t('landing.pillarTechnical')}
                         </div>
@@ -325,7 +325,7 @@ export default function HomePage() {
                             : 'Passing, dribbling, shooting & control'}
                         </div>
                       </div>
-                      <div className="rounded-xl border border-(--border-subtle) bg-(--bg-base)p-3">
+                      <div className="rounded-xl border border-(--border-subtle) bg-(--bg-base) p-3">
                         <div className="text-xs font-bold text-blue-500">
                           {t('landing.pillarTactical')}
                         </div>
@@ -335,7 +335,7 @@ export default function HomePage() {
                             : 'Vision, game awareness & decisions'}
                         </div>
                       </div>
-                      <div className="rounded-xl border border-(--border-subtle) bg-(--bg-base)p-3">
+                      <div className="rounded-xl border border-(--border-subtle) bg-(--bg-base) p-3">
                         <div className="text-xs font-bold text-amber-500">
                           {t('landing.pillarPhysical')}
                         </div>
@@ -345,7 +345,7 @@ export default function HomePage() {
                             : 'Speed, agility, strength & stamina'}
                         </div>
                       </div>
-                      <div className="rounded-xl border border-(--border-subtle) bg-(--bg-base)p-3">
+                      <div className="rounded-xl border border-(--border-subtle) bg-(--bg-base) p-3">
                         <div className="text-xs font-bold text-purple-500">
                           {t('landing.pillarBehavioral')}
                         </div>
@@ -359,7 +359,7 @@ export default function HomePage() {
                   </div>
 
                   {/* Radar Mock */}
-                  <div className="rounded-2xl border border-(--border-subtle) bg-(--bg-base)p-6 space-y-4 shadow-inner">
+                  <div className="rounded-2xl border border-(--border-subtle) bg-(--bg-base) p-6 space-y-4 shadow-inner">
                     <div className="flex items-center justify-between border-b border-(--border-subtle) pb-3">
                       <div>
                         <div className="text-sm font-bold text-(--text-main)">
@@ -469,7 +469,7 @@ export default function HomePage() {
                   </div>
 
                   {/* Cashier Mock */}
-                  <div className="rounded-2xl border border-(--border-subtle) bg-(--bg-base)p-5 space-y-4 shadow-inner">
+                  <div className="rounded-2xl border border-(--border-subtle) bg-(--bg-base) p-5 space-y-4 shadow-inner">
                     <div className="flex items-center justify-between border-b border-(--border-subtle) pb-3">
                       <div>
                         <div className="text-xs font-bold text-(--text-main)">
@@ -531,7 +531,7 @@ export default function HomePage() {
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <div className="rounded-2xl border border-(--border-subtle) bg-(--bg-base)p-4 space-y-2">
+                    <div className="rounded-2xl border border-(--border-subtle) bg-(--bg-base) p-4 space-y-2">
                       <div className="flex items-center gap-2 text-purple-500 font-bold text-sm">
                         <ShieldCheck className="h-4 w-4" />
                         <span>{t('landing.roleSuperAdminTitle')}</span>
@@ -541,7 +541,7 @@ export default function HomePage() {
                       </p>
                     </div>
 
-                    <div className="rounded-2xl border border-(--border-subtle) bg-(--bg-base)p-4 space-y-2">
+                    <div className="rounded-2xl border border-(--border-subtle) bg-(--bg-base) p-4 space-y-2">
                       <div className="flex items-center gap-2 text-[var(--accent-primary)] font-bold text-sm">
                         <Building2 className="h-4 w-4" />
                         <span>{t('landing.roleAcademyTitle')}</span>
@@ -551,7 +551,7 @@ export default function HomePage() {
                       </p>
                     </div>
 
-                    <div className="rounded-2xl border border-(--border-subtle) bg-(--bg-base)p-4 space-y-2">
+                    <div className="rounded-2xl border border-(--border-subtle) bg-(--bg-base) p-4 space-y-2">
                       <div className="flex items-center gap-2 text-emerald-500 font-bold text-sm">
                         <CalendarCheck className="h-4 w-4" />
                         <span>{t('landing.roleCoachTitle')}</span>
@@ -561,7 +561,7 @@ export default function HomePage() {
                       </p>
                     </div>
 
-                    <div className="rounded-2xl border border-(--border-subtle) bg-(--bg-base)p-4 space-y-2">
+                    <div className="rounded-2xl border border-(--border-subtle) bg-(--bg-base) p-4 space-y-2">
                       <div className="flex items-center gap-2 text-blue-500 font-bold text-sm">
                         <Trophy className="h-4 w-4" />
                         <span>{t('landing.rolePlayerTitle')}</span>
@@ -571,7 +571,7 @@ export default function HomePage() {
                       </p>
                     </div>
 
-                    <div className="rounded-2xl border border-(--border-subtle) bg-(--bg-base)p-4 space-y-2">
+                    <div className="rounded-2xl border border-(--border-subtle) bg-(--bg-base) p-4 space-y-2">
                       <div className="flex items-center gap-2 text-rose-500 font-bold text-sm">
                         <HeartHandshake className="h-4 w-4" />
                         <span>{t('landing.roleGuardianTitle')}</span>
@@ -581,7 +581,7 @@ export default function HomePage() {
                       </p>
                     </div>
 
-                    <div className="rounded-2xl border border-(--border-subtle) bg-(--bg-base)p-4 space-y-2">
+                    <div className="rounded-2xl border border-(--border-subtle) bg-(--bg-base) p-4 space-y-2">
                       <div className="flex items-center gap-2 text-amber-500 font-bold text-sm">
                         <Lock className="h-4 w-4" />
                         <span>{t('landing.featureSecurity')}</span>

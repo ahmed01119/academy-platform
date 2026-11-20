@@ -220,6 +220,7 @@ export default function AccountPage() {
                 <input
                   type="email"
                   value={user.email}
+                  aria-label={locale === 'ar' ? 'البريد الإلكتروني' : 'Email'}
                   disabled
                   className="flex-1 rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) py-2.5 px-3 text-sm text-(--text-muted) cursor-not-allowed"
                   dir="ltr"

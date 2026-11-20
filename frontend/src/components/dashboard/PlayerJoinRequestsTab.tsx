@@ -217,6 +217,7 @@ export function PlayerJoinRequestsTab() {
           <input
             type="search"
             value={searchQuery}
+            aria-label={locale === 'ar' ? 'بحث في طلبات الانضمام' : 'Search join requests'}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={
               ar
@@ -230,6 +231,7 @@ export function PlayerJoinRequestsTab() {
           <Filter className="absolute inset-s-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-(--text-muted)" />
           <select
             value={statusFilter}
+            aria-label={locale === 'ar' ? 'تصفية حسب الحالة' : 'Filter by status'}
             onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
             className="rounded-xl border border-(--border-app) bg-[var(--bg-surface)] ps-8 pe-8 py-2.5 text-sm text-(--text-main) focus:outline-none focus:border-(--accent-primary)/60 appearance-none"
           >
@@ -267,7 +269,7 @@ export function PlayerJoinRequestsTab() {
             </div>
 
             {/* Application Data Card */}
-            <div className="rounded-xl border border-(--border-subtle) bg-(--bg-base)p-4 space-y-2.5 text-xs text-(--text-muted)">
+            <div className="rounded-xl border border-(--border-subtle) bg-(--bg-base) p-4 space-y-2.5 text-xs text-(--text-muted)">
               <div className="flex items-center justify-between pb-2 border-b border-(--border-subtle)">
                 <span className="font-semibold text-sm text-(--text-main) flex items-center gap-2">
                   {selectedRequest.playerName}
@@ -380,7 +382,7 @@ export function PlayerJoinRequestsTab() {
 
                 {/* Branch and Team Selection on Approval */}
                 {reviewAction === 'APPROVED' && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 rounded-xl bg-(--bg-base)border border-(--border-subtle)">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 rounded-xl bg-(--bg-base) border border-(--border-subtle)">
                     <div>
                       <label className="block text-xs font-semibold text-(--text-main) mb-1 flex items-center gap-1.5">
                         <GitBranch className="h-3.5 w-3.5 text-[var(--accent-primary)]" />
@@ -446,7 +448,7 @@ export function PlayerJoinRequestsTab() {
                           ? 'أدخل أي ملاحظات فنية أو إدارية...'
                           : 'Any technical notes...'
                     }
-                    className="w-full rounded-xl border border-(--border-app) bg-(--bg-base)px-3 py-2 text-xs text-(--text-main) placeholder:text-(--text-muted) focus:outline-none focus:border-(--accent-primary)/60 resize-none"
+                    className="w-full rounded-xl border border-(--border-app) bg-(--bg-base) px-3 py-2 text-xs text-(--text-main) placeholder:text-(--text-muted) focus:outline-none focus:border-(--accent-primary)/60 resize-none"
                   />
                 </div>
 

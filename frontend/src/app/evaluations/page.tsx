@@ -319,8 +319,9 @@ function EvaluationsCenterContent() {
                 </span>
                 <select
                   value={selectedAgeCategory}
+                  aria-label={locale === 'ar' ? 'الفئة العمرية' : 'Age category'}
                   onChange={(e) => setSelectedAgeCategory(e.target.value)}
-                  className="rounded-lg border border-(--border-subtle) bg-(--bg-base)px-3 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none cursor-pointer"
+                  className="rounded-lg border border-(--border-subtle) bg-(--bg-base) px-3 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none cursor-pointer"
                 >
                   <option value="">{ar ? 'جميع الفئات العمرية' : 'All Age Groups'}</option>
                   <option value="U-11">{ar ? 'فئة البراعم (U-11)' : 'Juniors (U-11)'}</option>
@@ -335,8 +336,9 @@ function EvaluationsCenterContent() {
                 </span>
                 <select
                   value={selectedGroupId}
+                  aria-label={locale === 'ar' ? 'المجموعة التدريبية' : 'Training squad'}
                   onChange={(e) => setSelectedGroupId(e.target.value)}
-                  className="rounded-lg border border-(--border-subtle) bg-(--bg-base)px-3 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none cursor-pointer"
+                  className="rounded-lg border border-(--border-subtle) bg-(--bg-base) px-3 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none cursor-pointer"
                 >
                   <option value="">{ar ? 'جميع المجموعات' : 'All Training Squads'}</option>
                   {groups.map((g) => (
@@ -520,7 +522,7 @@ function EvaluationsCenterContent() {
                     required
                     value={formPlayerId}
                     onChange={(e) => setFormPlayerId(e.target.value)}
-                    className="w-full rounded-lg border border-(--border-subtle) bg-(--bg-base)px-3 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none cursor-pointer"
+                    className="w-full rounded-lg border border-(--border-subtle) bg-(--bg-base) px-3 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none cursor-pointer"
                   >
                     <option value="">
                       {ar ? 'اختر لاعباً من الأكاديمية...' : 'Select academy player...'}
@@ -540,7 +542,7 @@ function EvaluationsCenterContent() {
                   <select
                     value={formTemplateId}
                     onChange={(e) => setFormTemplateId(e.target.value)}
-                    className="w-full rounded-lg border border-(--border-subtle) bg-(--bg-base)px-3 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none cursor-pointer"
+                    className="w-full rounded-lg border border-(--border-subtle) bg-(--bg-base) px-3 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none cursor-pointer"
                   >
                     {templates.map((t) => (
                       <option key={t.id} value={t.id}>
@@ -696,7 +698,7 @@ function EvaluationsCenterContent() {
                     }
                     value={formStrengths}
                     onChange={(e) => setFormStrengths(e.target.value)}
-                    className="w-full rounded-lg border border-(--border-subtle) bg-(--bg-base)p-2.5 text-xs text-(--text-main) placeholder-(--text-muted) focus:border-(--accent-primary) focus:outline-none"
+                    className="w-full rounded-lg border border-(--border-subtle) bg-(--bg-base) p-2.5 text-xs text-(--text-main) placeholder-(--text-muted) focus:border-(--accent-primary) focus:outline-none"
                   />
                 </div>
 
@@ -713,7 +715,7 @@ function EvaluationsCenterContent() {
                     }
                     value={formImprovements}
                     onChange={(e) => setFormImprovements(e.target.value)}
-                    className="w-full rounded-lg border border-(--border-subtle) bg-(--bg-base)p-2.5 text-xs text-(--text-main) placeholder-(--text-muted) focus:border-(--accent-primary) focus:outline-none"
+                    className="w-full rounded-lg border border-(--border-subtle) bg-(--bg-base) p-2.5 text-xs text-(--text-main) placeholder-(--text-muted) focus:border-(--accent-primary) focus:outline-none"
                   />
                 </div>
               </div>
@@ -738,7 +740,7 @@ function EvaluationsCenterContent() {
                     }
                     value={formPrivateNotes}
                     onChange={(e) => setFormPrivateNotes(e.target.value)}
-                    className="w-full rounded-lg border border-amber-500/30 bg-(--bg-base)p-2.5 text-xs text-(--text-main) placeholder-amber-500/50 focus:border-amber-500 focus:outline-none"
+                    className="w-full rounded-lg border border-amber-500/30 bg-(--bg-base) p-2.5 text-xs text-(--text-main) placeholder-amber-500/50 focus:border-amber-500 focus:outline-none"
                   />
                 </div>
 
@@ -760,7 +762,7 @@ function EvaluationsCenterContent() {
                     }
                     value={formGuardianFeedback}
                     onChange={(e) => setFormGuardianFeedback(e.target.value)}
-                    className="w-full rounded-lg border border-(--border-subtle) bg-(--bg-base)p-2.5 text-xs text-(--text-main) placeholder-(--text-muted) focus:border-(--accent-primary) focus:outline-none"
+                    className="w-full rounded-lg border border-(--border-subtle) bg-(--bg-base) p-2.5 text-xs text-(--text-main) placeholder-(--text-muted) focus:border-(--accent-primary) focus:outline-none"
                   />
                 </div>
 
@@ -777,7 +779,7 @@ function EvaluationsCenterContent() {
                     }
                     value={formGoals}
                     onChange={(e) => setFormGoals(e.target.value)}
-                    className="w-full rounded-lg border border-(--border-subtle) bg-(--bg-base)p-2.5 text-xs text-(--text-main) placeholder-(--text-muted) focus:border-(--accent-primary) focus:outline-none"
+                    className="w-full rounded-lg border border-(--border-subtle) bg-(--bg-base) p-2.5 text-xs text-(--text-main) placeholder-(--text-muted) focus:border-(--accent-primary) focus:outline-none"
                   />
                 </div>
               </div>
@@ -789,7 +791,7 @@ function EvaluationsCenterContent() {
                     type="checkbox"
                     checked={formIsPublished}
                     onChange={(e) => setFormIsPublished(e.target.checked)}
-                    className="h-4 w-4 rounded border-(--border-subtle) bg-(--bg-base)text-[var(--accent-primary)] focus:ring-0"
+                    className="h-4 w-4 rounded border-(--border-subtle) bg-(--bg-base) text-[var(--accent-primary)] focus:ring-0"
                   />
                   <span className="text-xs text-(--text-main) font-medium">
                     {ar

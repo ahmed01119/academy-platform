@@ -145,6 +145,7 @@ function PlayersPageContent() {
                   <input
                     type="text"
                     id="input-search-players"
+                    aria-label={locale === 'ar' ? 'بحث عن لاعب' : 'Search players'}
                     value={filters.searchTerm}
                     onChange={(e) => setFilter('searchTerm', e.target.value)}
                     placeholder={
@@ -174,6 +175,7 @@ function PlayersPageContent() {
                 <div>
                   <select
                     id="select-filter-branch"
+                    aria-label={locale === 'ar' ? 'تصفية حسب الفرع' : 'Filter by branch'}
                     value={filters.branchId}
                     onChange={(e) => setFilter('branchId', e.target.value)}
                     className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:bg-[var(--bg-surface)] transition-all outline-none"
@@ -191,6 +193,7 @@ function PlayersPageContent() {
                 <div>
                   <select
                     id="select-filter-status"
+                    aria-label={locale === 'ar' ? 'تصفية حسب الحالة' : 'Filter by status'}
                     value={filters.status}
                     onChange={(e) => setFilter('status', e.target.value as PlayerStatus | '')}
                     className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:bg-[var(--bg-surface)] transition-all outline-none"
@@ -438,7 +441,7 @@ export default function PlayersPage() {
   return (
     <React.Suspense
       fallback={
-        <div className="min-h-screen bg-(--bg-base)flex items-center justify-center text-(--text-muted)">
+        <div className="min-h-screen bg-(--bg-base) flex items-center justify-center text-(--text-muted)">
           <RefreshCw className="h-8 w-8 animate-spin text-[var(--accent-primary)]" />
         </div>
       }

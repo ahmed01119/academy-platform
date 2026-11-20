@@ -162,7 +162,10 @@ export default function NewPlayerPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-(--text-muted) mb-1.5">
+                <label
+                  htmlFor="input-first-name"
+                  className="block text-xs font-semibold text-(--text-muted) mb-1.5"
+                >
                   {locale === 'ar' ? 'الاسم الأول *' : 'First Name *'}
                 </label>
                 <input
@@ -177,7 +180,10 @@ export default function NewPlayerPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-(--text-muted) mb-1.5">
+                <label
+                  htmlFor="input-last-name"
+                  className="block text-xs font-semibold text-(--text-muted) mb-1.5"
+                >
                   {locale === 'ar' ? 'اسم العائلة *' : 'Last Name *'}
                 </label>
                 <input
@@ -192,7 +198,10 @@ export default function NewPlayerPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-(--text-muted) mb-1.5">
+                <label
+                  htmlFor="select-gender"
+                  className="block text-xs font-semibold text-(--text-muted) mb-1.5"
+                >
                   {locale === 'ar' ? 'الجنس *' : 'Gender *'}
                 </label>
                 <select
@@ -272,7 +281,10 @@ export default function NewPlayerPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-(--text-muted) mb-1.5">
+                <label
+                  htmlFor="input-national-id"
+                  className="block text-xs font-semibold text-(--text-muted) mb-1.5"
+                >
                   {locale === 'ar'
                     ? 'الرقم القومي / جواز السفر (اختياري)'
                     : 'National ID / Passport (Optional)'}
@@ -304,7 +316,10 @@ export default function NewPlayerPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-(--text-muted) mb-1.5">
+                <label
+                  htmlFor="input-emergency-name"
+                  className="block text-xs font-semibold text-(--text-muted) mb-1.5"
+                >
                   {locale === 'ar' ? 'اسم جهة الاتصال للطوارئ *' : 'Emergency Contact Name *'}
                 </label>
                 <input
@@ -321,7 +336,10 @@ export default function NewPlayerPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-(--text-muted) mb-1.5">
+                <label
+                  htmlFor="input-emergency-phone"
+                  className="block text-xs font-semibold text-(--text-muted) mb-1.5"
+                >
                   {locale === 'ar' ? 'هاتف الطوارئ *' : 'Emergency Phone *'}
                 </label>
                 <input
@@ -336,7 +354,10 @@ export default function NewPlayerPage() {
               </div>
 
               <div className="sm:col-span-2">
-                <label className="block text-xs font-semibold text-(--text-muted) mb-1.5">
+                <label
+                  htmlFor="textarea-medical-notes"
+                  className="block text-xs font-semibold text-(--text-muted) mb-1.5"
+                >
                   {locale === 'ar'
                     ? 'ملاحظات طبية أو حساسية (اختياري)'
                     : 'Medical Notes or Allergies (Optional)'}
@@ -370,7 +391,10 @@ export default function NewPlayerPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-(--text-muted) mb-1.5">
+                <label
+                  htmlFor="input-guardian-name"
+                  className="block text-xs font-semibold text-(--text-muted) mb-1.5"
+                >
                   {locale === 'ar' ? 'الاسم الكامل لولي الأمر *' : 'Guardian Full Name *'}
                 </label>
                 <input
@@ -385,7 +409,10 @@ export default function NewPlayerPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-(--text-muted) mb-1.5">
+                <label
+                  htmlFor="select-guardian-relationship"
+                  className="block text-xs font-semibold text-(--text-muted) mb-1.5"
+                >
                   {locale === 'ar' ? 'صلة القرابة *' : 'Relationship *'}
                 </label>
                 <select
@@ -405,7 +432,10 @@ export default function NewPlayerPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-(--text-muted) mb-1.5">
+                <label
+                  htmlFor="input-guardian-phone"
+                  className="block text-xs font-semibold text-(--text-muted) mb-1.5"
+                >
                   {locale === 'ar' ? 'رقم الهاتف *' : 'Phone Number *'}
                 </label>
                 <input
@@ -422,7 +452,10 @@ export default function NewPlayerPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-(--text-muted) mb-1.5">
+                <label
+                  htmlFor="input-guardian-email"
+                  className="block text-xs font-semibold text-(--text-muted) mb-1.5"
+                >
                   {locale === 'ar' ? 'البريد الإلكتروني (اختياري)' : 'Email Address (Optional)'}
                 </label>
                 <input
@@ -446,7 +479,10 @@ export default function NewPlayerPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-(--text-muted) mb-1.5">
+                <label
+                  htmlFor="select-initial-branch"
+                  className="block text-xs font-semibold text-(--text-muted) mb-1.5"
+                >
                   {locale === 'ar' ? 'الفرع المخصص *' : 'Assigned Branch *'}
                 </label>
                 <select
@@ -466,7 +502,10 @@ export default function NewPlayerPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-(--text-muted) mb-1.5">
+                <label
+                  htmlFor="input-enrollment-start"
+                  className="block text-xs font-semibold text-(--text-muted) mb-1.5"
+                >
                   {locale === 'ar' ? 'تاريخ بدء القيد' : 'Enrollment Start Date'}
                 </label>
                 <input
