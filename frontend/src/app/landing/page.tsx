@@ -375,7 +375,7 @@ export default function HomePage() {
                       </div>
                       <div className="text-right">
                         <div className="text-lg font-extrabold text-[var(--accent-primary)]">
-                          8.75 / 10
+                          <span dir="ltr">8.75 / 10</span>
                         </div>
                         <div className="text-[10px] text-emerald-500 font-bold">
                           {locale === 'ar' ? 'المركز 1 في الفئة' : 'Rank #1 in Age Tier'}

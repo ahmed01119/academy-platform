@@ -31,6 +31,9 @@ interface TopbarProps {
   breadcrumbs?: BreadcrumbItem[];
 }
 
+/** URL prefixes with no page of their own (e.g. /attendance/sessions/[id] lives under a non-page segment). */
+const NON_PAGE_PREFIXES = new Set(['/attendance/sessions', '/evaluations/player']);
+
 export function Topbar({ onOpenMobile, breadcrumbs: customBreadcrumbs }: TopbarProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -118,8 +121,10 @@ export function Topbar({ onOpenMobile, breadcrumbs: customBreadcrumbs }: TopbarP
 
   // Generate breadcrumb items from pathname if no custom breadcrumbs provided
   const pathSegments = pathname.split('/').filter(Boolean);
-  const autoBreadcrumbs = pathSegments.map((segment, index) => {
+  const autoBreadcrumbs = pathSegments.flatMap((segment, index) => {
     const url = `/${pathSegments.slice(0, index + 1).join('/')}`;
+    // Path prefixes that are not pages themselves (only their [id] children are): no crumb, so no 404 link.
+    if (NON_PAGE_PREFIXES.has(url)) return [];
     let label = segment;
 
     // Friendly labels
@@ -150,7 +155,7 @@ export function Topbar({ onOpenMobile, breadcrumbs: customBreadcrumbs }: TopbarP
       label = locale === 'ar' ? 'تفاصيل السجل' : 'Details';
     }
 
-    return { url, label };
+    return [{ url, label }];
   });
 
   const roleLabels: Record<string, string> = {

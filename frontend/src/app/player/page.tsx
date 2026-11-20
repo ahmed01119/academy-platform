@@ -468,7 +468,7 @@ export default function PlayerPortalPage() {
                           {ar ? 'الدرجة العامة:' : 'Overall Rating:'}
                         </span>
                         <div className="text-xl font-black text-[var(--accent-primary)]">
-                          {evalItem.overallScore.toFixed(1)} / 10
+                          <span dir="ltr">{evalItem.overallScore.toFixed(1)} / 10</span>
                         </div>
                       </div>
                     </div>

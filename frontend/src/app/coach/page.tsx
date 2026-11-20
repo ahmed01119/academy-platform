@@ -39,6 +39,12 @@ function getStoredCoachCache(cacheKey: string): CoachCacheData | null {
   }
 }
 
+/** "كابتن <name>", unless the stored name already carries a title (e.g. "كابتن محمد" or "Coach David"). */
+function withCoachTitle(name: string | undefined): string {
+  const trimmed = (name ?? '').trim();
+  return /^(كابتن|الكابتن|coach|captain)\s/i.test(trimmed) ? trimmed : `كابتن ${trimmed}`;
+}
+
 export default function CoachWorkspacePage() {
   const { user, activeTenant, isLoading: authLoading } = useAuth();
   const { locale, isRtl } = useLocale();
@@ -123,7 +129,7 @@ export default function CoachWorkspacePage() {
         <PageHeader
           title={
             locale === 'ar'
-              ? `مساحة المدرب: كابتن ${user?.name || ''} ⚽`
+              ? `مساحة المدرب: ${withCoachTitle(user?.name)} ⚽`
               : `Coach Workspace: ${user?.name || ''} ⚽`
           }
           description={
