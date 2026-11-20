@@ -133,9 +133,13 @@ export default function AttendanceReportsPage() {
             <select
               id="report-select-branch"
               value={selectedBranchId}
-              onChange={(e) => setSelectedBranchId(e.target.value)}
+              onChange={(e) => {
+                setSelectedBranchId(e.target.value);
+                // A group from the previous branch would make the report empty: start again from all groups.
+                setSelectedGroupId('');
+              }}
               aria-label={ar ? 'تصفية حسب الفرع' : 'Filter by branch'}
-              className="rounded-xl border border-(--border-subtle) bg-(--bg-base)px-3 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none cursor-pointer"
+              className="rounded-xl border border-(--border-subtle) bg-(--bg-base) px-3 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none cursor-pointer"
             >
               <option value="">{ar ? 'جميع الفروع' : 'All Branches'}</option>
               {branches.map((b) => (
@@ -151,14 +155,16 @@ export default function AttendanceReportsPage() {
               value={selectedGroupId}
               onChange={(e) => setSelectedGroupId(e.target.value)}
               aria-label={ar ? 'تصفية حسب المجموعة' : 'Filter by group'}
-              className="rounded-xl border border-(--border-subtle) bg-(--bg-base)px-3 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none cursor-pointer"
+              className="rounded-xl border border-(--border-subtle) bg-(--bg-base) px-3 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none cursor-pointer"
             >
               <option value="">{ar ? 'جميع المجموعات' : 'All Squads & Groups'}</option>
-              {groups.map((g) => (
-                <option key={g.id} value={g.id}>
-                  {locale === 'en' ? translateDataString(g.name, 'en') : g.name}
-                </option>
-              ))}
+              {groups
+                .filter((g) => !selectedBranchId || g.branchId === selectedBranchId)
+                .map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {locale === 'en' ? translateDataString(g.name, 'en') : g.name}
+                  </option>
+                ))}
             </select>
 
             {/* Date From */}
@@ -168,7 +174,7 @@ export default function AttendanceReportsPage() {
               onChange={(e) => setDateFrom(e.target.value)}
               placeholder={ar ? 'من تاريخ' : 'From date'}
               aria-label={ar ? 'من تاريخ' : 'From date'}
-              className="rounded-xl border border-(--border-subtle) bg-(--bg-base)px-3 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none"
+              className="rounded-xl border border-(--border-subtle) bg-(--bg-base) px-3 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none"
             />
 
             {/* Date To & Refresh */}
@@ -179,7 +185,7 @@ export default function AttendanceReportsPage() {
                 onChange={(e) => setDateTo(e.target.value)}
                 placeholder={ar ? 'إلى تاريخ' : 'To date'}
                 aria-label={ar ? 'إلى تاريخ' : 'To date'}
-                className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-base)px-3 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none"
+                className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-base) px-3 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none"
               />
 
               <button
