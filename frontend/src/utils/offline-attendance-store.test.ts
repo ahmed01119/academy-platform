@@ -8,6 +8,7 @@ vi.mock('@/api/client', () => ({
   apiClient: {
     attendance: {
       syncOfflineBatch: vi.fn(),
+      recordAttendance: vi.fn(),
     },
   },
 }));
@@ -18,6 +19,12 @@ describe('OfflineAttendanceStore', () => {
     // Clear all pending items before each test
     const all = await offlineStore.getPendingScans();
     await offlineStore.removePendingScans(all.map((item) => item.operationId));
+    // Drain manual marks left by a previous test (the mock accepts everything here)
+    vi.mocked(apiClient.attendance.recordAttendance).mockResolvedValue(
+      {} as Awaited<ReturnType<typeof apiClient.attendance.recordAttendance>>,
+    );
+    await offlineStore.syncPendingMarks();
+    vi.clearAllMocks();
   });
 
   it('enqueues an offline scan and retrieves it with correct properties', async () => {
@@ -174,5 +181,55 @@ describe('OfflineAttendanceStore', () => {
     const res = await offlineStore.syncPendingScans('session-empty');
     expect(res).toBeNull();
     expect(apiClient.attendance.syncOfflineBatch).not.toHaveBeenCalled();
+  });
+
+  it('does not queue the same card twice for a session and keeps the first arrival time', async () => {
+    const first = await offlineStore.enqueueScan({
+      sessionId: 'session-dup',
+      qrCardCode: 'QR-SAME-0001',
+      deviceObservedTime: '2026-11-20T17:00:05.000Z',
+    });
+    const second = await offlineStore.enqueueScan({
+      sessionId: 'session-dup',
+      qrCardCode: ' QR-SAME-0001 ',
+      deviceObservedTime: '2026-11-20T17:00:07.000Z',
+    });
+
+    expect(second.operationId).toBe(first.operationId);
+    const pending = await offlineStore.getPendingScans('session-dup');
+    expect(pending).toHaveLength(1);
+    expect(pending[0]?.deviceObservedTime).toBe('2026-11-20T17:00:05.000Z');
+  });
+
+  it('keeps one manual mark per player (latest status) and replays it through recordAttendance', async () => {
+    await offlineStore.enqueueMark({ sessionId: 's-1', playerId: 'p-1', status: 'PRESENT' });
+    await offlineStore.enqueueMark({ sessionId: 's-1', playerId: 'p-1', status: 'ABSENT' });
+    await offlineStore.enqueueMark({ sessionId: 's-1', playerId: 'p-2', status: 'LATE' });
+
+    expect(await offlineStore.getPendingMarks('s-1')).toHaveLength(2);
+    expect(await offlineStore.getPendingCount()).toBe(2);
+
+    vi.mocked(apiClient.attendance.recordAttendance).mockResolvedValue(
+      {} as Awaited<ReturnType<typeof apiClient.attendance.recordAttendance>>,
+    );
+    const result = await offlineStore.syncPendingMarks('s-1');
+
+    expect(result).toEqual({ synced: 2, failed: 0 });
+    expect(apiClient.attendance.recordAttendance).toHaveBeenCalledWith(
+      expect.objectContaining({ sessionId: 's-1', playerId: 'p-1', status: 'ABSENT' }),
+    );
+    const call = vi.mocked(apiClient.attendance.recordAttendance).mock.calls[0]?.[0];
+    expect(call?.idempotencyKey).toMatch(/^[0-9a-f-]{36}$/);
+    expect(await offlineStore.getPendingMarks('s-1')).toHaveLength(0);
+  });
+
+  it('keeps a manual mark the API refuses, for a later retry', async () => {
+    await offlineStore.enqueueMark({ sessionId: 's-2', playerId: 'p-9', status: 'PRESENT' });
+    vi.mocked(apiClient.attendance.recordAttendance).mockRejectedValueOnce(new Error('offline'));
+
+    const result = await offlineStore.syncPendingMarks('s-2');
+
+    expect(result).toEqual({ synced: 0, failed: 1 });
+    expect(await offlineStore.getPendingMarks('s-2')).toHaveLength(1);
   });
 });

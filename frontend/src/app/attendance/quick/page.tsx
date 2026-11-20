@@ -131,6 +131,31 @@ function QuickAttendanceContent() {
     [toast, locale],
   );
 
+  // Marks saved while offline are sent as soon as the connection returns (and when the page opens online).
+  const syncOfflineMarks = useCallback(async () => {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+    const { synced, failed } = await offlineStore.syncPendingMarks();
+    if (synced > 0) {
+      toast.success(
+        locale === 'ar'
+          ? `تمت مزامنة ${synced} من تسجيلات الحضور المحفوظة محلياً`
+          : `${synced} attendance marks saved offline were synced`,
+      );
+      if (selectedSessionId) void loadRoster(selectedSessionId);
+    }
+    if (failed > 0) {
+      toast.error(
+        locale === 'ar'
+          ? `تعذرت مزامنة ${failed} من التسجيلات المحفوظة محلياً، وستتم إعادة المحاولة`
+          : `${failed} offline attendance marks could not be synced; they will be retried`,
+      );
+    }
+  }, [loadRoster, locale, selectedSessionId, toast]);
+
+  useEffect(() => {
+    if (isOnline) void syncOfflineMarks();
+  }, [isOnline, syncOfflineMarks]);
+
   useEffect(() => {
     if (selectedSessionId) {
       loadRoster(selectedSessionId);
@@ -178,14 +203,8 @@ function QuickAttendanceContent() {
 
     try {
       if (typeof navigator !== 'undefined' && !navigator.onLine) {
-        // Enqueue offline scan
-        await offlineStore.enqueueScan({
-          operationId: `quick_${Date.now()}_${playerId}`,
-          sessionId: selectedSessionId,
-          qrCardCode: playerId,
-          deviceObservedTime: new Date().toISOString(),
-          reason: `Quick marking: ${status}`,
-        });
+        // Saved on the device and sent through the same endpoint when the connection returns (see syncOfflineMarks)
+        await offlineStore.enqueueMark({ sessionId: selectedSessionId, playerId, status });
         toast.info(
           locale === 'ar' ? 'تم الحفظ محلياً (وضع غير متصل)' : 'Saved locally (offline mode)',
         );
