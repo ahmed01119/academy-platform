@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { useAuth } from '@/contexts/auth-context';
 import { MyJoinRequests } from '@/features/portal/components/MyJoinRequests';
 import { useAccessGuard } from '@/hooks/useAccessGuard';
@@ -18,11 +17,9 @@ import {
   CheckCircle2,
   RefreshCw,
   PlusCircle,
-  ChevronLeft,
-  ChevronRight,
   X,
 } from 'lucide-react';
-import type { GuardianPortalData, PlayerEvaluation } from '@academy/shared';
+import type { GuardianPortalData } from '@academy/shared';
 
 function getStoredGuardianCache(cacheKey: string): GuardianPortalData | null {
   if (typeof window === 'undefined') return null;
@@ -36,7 +33,7 @@ function getStoredGuardianCache(cacheKey: string): GuardianPortalData | null {
 
 export default function GuardianPortalPage() {
   const { user, isLoading: authLoading } = useAuth();
-  const { locale, isRtl } = useLocale();
+  const { locale } = useLocale();
   const ar = locale === 'ar';
 
   const cacheKey = user ? `sportexus_guardian_${user.id}` : 'sportexus_guardian';
@@ -44,7 +41,6 @@ export default function GuardianPortalPage() {
   const [cachedData, setCachedData] = useState<GuardianPortalData | null>(null);
   const [guardianData, setGuardianData] = useState<GuardianPortalData | null>(null);
   const [selectedChildId, setSelectedChildId] = useState<string>('');
-  const [childEvaluations, setChildEvaluations] = useState<PlayerEvaluation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Hydrate cache on client mount
@@ -102,22 +98,6 @@ export default function GuardianPortalPage() {
       void loadGuardianData();
     }
   }, [user, authLoading, loadGuardianData]);
-
-  // Load evaluations for currently selected child
-  useEffect(() => {
-    if (!selectedChildId) return;
-
-    const loadEvals = async () => {
-      try {
-        const evals = await apiClient.evaluations.listPlayerEvaluations(selectedChildId);
-        setChildEvaluations(evals || []);
-      } catch {
-        setChildEvaluations([]);
-      }
-    };
-
-    void loadEvals();
-  }, [selectedChildId]);
 
   const handleClaimChild = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -232,6 +212,8 @@ export default function GuardianPortalPage() {
 
   const selectedChild =
     guardianData.children.find((c) => c.playerId === selectedChildId) || guardianData.children[0]!;
+  // Published evaluations come with the portal data (no staff endpoint; private coach notes are never sent).
+  const childEvaluations = selectedChild.recentEvaluations ?? [];
 
   return (
     <AppShell>
@@ -367,17 +349,10 @@ export default function GuardianPortalPage() {
                 {ar ? 'آخر تقييم أداء مسجل' : 'Latest Overall Rating'}
               </span>
               <div className="text-3xl font-black text-amber-500 mt-2">
-                {selectedChild.latestScore ? `${selectedChild.latestScore.toFixed(1)} / 10` : '—'}
+                <span dir="ltr">
+                  {selectedChild.latestScore ? `${selectedChild.latestScore.toFixed(1)} / 10` : '—'}
+                </span>
               </div>
-            </div>
-            <div className="mt-4">
-              <Link
-                href={`/evaluations/player/${selectedChild.playerId}`}
-                className="text-xs font-semibold text-[var(--accent-primary)] hover:underline flex items-center gap-1"
-              >
-                <span>{ar ? 'استعراض الرادار التنموي الكامل' : 'View Full Development Radar'}</span>
-                {isRtl ? <ChevronLeft className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-              </Link>
             </div>
           </div>
         </div>
@@ -424,7 +399,7 @@ export default function GuardianPortalPage() {
                         {ar ? 'التقييم العام:' : 'Overall Score:'}
                       </span>
                       <div className="text-lg font-black text-[var(--accent-primary)]">
-                        {item.overallScore.toFixed(1)} / 10
+                        <span dir="ltr">{item.overallScore.toFixed(1)} / 10</span>
                       </div>
                     </div>
                   </div>
@@ -444,7 +419,7 @@ export default function GuardianPortalPage() {
                         {ar ? 'المهارات الفنية' : 'Technical'}
                       </span>
                       <span className="font-bold text-(--text-main)">
-                        {item.technicalScore.toFixed(1)} / 10
+                        <span dir="ltr">{item.technicalScore.toFixed(1)} / 10</span>
                       </span>
                     </div>
                     <div className="rounded-lg bg-(--bg-surface-subtle) p-2.5 text-center">
@@ -452,7 +427,7 @@ export default function GuardianPortalPage() {
                         {ar ? 'الوعي التكتيكي' : 'Tactical'}
                       </span>
                       <span className="font-bold text-(--text-main)">
-                        {item.tacticalScore.toFixed(1)} / 10
+                        <span dir="ltr">{item.tacticalScore.toFixed(1)} / 10</span>
                       </span>
                     </div>
                     <div className="rounded-lg bg-(--bg-surface-subtle) p-2.5 text-center">
@@ -460,7 +435,7 @@ export default function GuardianPortalPage() {
                         {ar ? 'الجاهزية البدنية' : 'Physical'}
                       </span>
                       <span className="font-bold text-(--text-main)">
-                        {item.physicalScore.toFixed(1)} / 10
+                        <span dir="ltr">{item.physicalScore.toFixed(1)} / 10</span>
                       </span>
                     </div>
                     <div className="rounded-lg bg-(--bg-surface-subtle) p-2.5 text-center">
@@ -468,7 +443,7 @@ export default function GuardianPortalPage() {
                         {ar ? 'السلوك والانضباط' : 'Behavior'}
                       </span>
                       <span className="font-bold text-(--text-main)">
-                        {item.behavioralScore.toFixed(1)} / 10
+                        <span dir="ltr">{item.behavioralScore.toFixed(1)} / 10</span>
                       </span>
                     </div>
                   </div>
