@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { SportCodeSchema } from '../constants/sports';
 
 export const AttendanceStatus = {
   UNMARKED: 'UNMARKED',
@@ -118,7 +119,7 @@ export type AttendanceCorrection = z.infer<typeof AttendanceCorrectionSchema>;
 export const CreateAttendanceSessionSchema = z.object({
   branchId: z.string().uuid(),
   groupId: z.string().uuid().optional().nullable(),
-  sport: z.enum(['FOOTBALL']).default('FOOTBALL'),
+  sport: SportCodeSchema.default('FOOTBALL'),
   groupName: z.string().min(2).max(100),
   sessionDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Must be YYYY-MM-DD format'),
   startTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Must be HH:MM format'),
@@ -157,7 +158,7 @@ export const SessionSummarySchema = z.object({
   groupName: z.string(),
   coachUserId: z.string().uuid().nullable().optional(),
   coachName: z.string().nullable().optional(),
-  sport: z.enum(['FOOTBALL']),
+  sport: SportCodeSchema,
   sessionDate: z.string(),
   startTime: z.string(),
   endTime: z.string(),

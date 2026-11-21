@@ -129,6 +129,17 @@ enum BranchStatus {
 
 enum SportCode {
   FOOTBALL
+  SWIMMING
+  TENNIS
+  PADEL
+  BASKETBALL
+  VOLLEYBALL
+  HANDBALL
+  MARTIAL_ARTS
+  GYMNASTICS
+  ATHLETICS
+  SQUASH
+  OTHER
 }
 
 enum TenantRole {

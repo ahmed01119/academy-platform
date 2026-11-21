@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { SportCodeSchema } from '../constants/sports';
 
 // ==========================================
 // 1. SaaS Subscriptions (Academy -> Platform)
@@ -69,7 +70,7 @@ export const PlayerSubscriptionPlanItemSchema = z.object({
   tenantId: z.string().uuid(),
   branchId: z.string().uuid().nullable().optional(),
   branchName: z.string().nullable().optional(),
-  sport: z.enum(['FOOTBALL']),
+  sport: SportCodeSchema,
   name: z.string(),
   description: z.string().nullable().optional(),
   billingPeriod: z.enum(['MONTHLY', 'QUARTERLY', 'ANNUAL', 'PER_SESSION']),
@@ -83,7 +84,7 @@ export type PlayerSubscriptionPlanItem = z.infer<typeof PlayerSubscriptionPlanIt
 
 export const CreatePlayerSubscriptionPlanRequestSchema = z.object({
   branchId: z.string().uuid().optional(),
-  sport: z.enum(['FOOTBALL']).default('FOOTBALL'),
+  sport: SportCodeSchema.default('FOOTBALL'),
   name: z.string().min(2).max(100),
   description: z.string().max(500).optional(),
   billingPeriod: z.enum(['MONTHLY', 'QUARTERLY', 'ANNUAL', 'PER_SESSION']).default('MONTHLY'),

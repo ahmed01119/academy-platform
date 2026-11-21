@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { SportCodeSchema } from '../constants/sports';
 
 export const EvaluationCriterionSchema = z.object({
   id: z.string(),
@@ -14,7 +15,7 @@ export type EvaluationCriterion = z.infer<typeof EvaluationCriterionSchema>;
 export const EvaluationTemplateSchema = z.object({
   id: z.string().uuid(),
   tenantId: z.string().uuid(),
-  sport: z.enum(['FOOTBALL']).default('FOOTBALL'),
+  sport: SportCodeSchema.default('FOOTBALL'),
   ageCategory: z.string().nullable().optional(),
   name: z.string().min(2).max(150),
   description: z.string().nullable().optional(),
@@ -27,7 +28,7 @@ export const EvaluationTemplateSchema = z.object({
 export type EvaluationTemplate = z.infer<typeof EvaluationTemplateSchema>;
 
 export const CreateEvaluationTemplateSchema = z.object({
-  sport: z.enum(['FOOTBALL']).default('FOOTBALL'),
+  sport: SportCodeSchema.default('FOOTBALL'),
   ageCategory: z.string().trim().max(50).optional(),
   name: z.string().trim().min(2).max(150),
   description: z.string().trim().max(500).optional(),

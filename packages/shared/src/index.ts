@@ -1,5 +1,6 @@
 export * from './constants/locales';
 export * from './constants/roles-permissions';
+export * from './constants/sports';
 export * from './errors/app-error';
 export * from './errors/error-codes';
 export * from './schemas/academy';

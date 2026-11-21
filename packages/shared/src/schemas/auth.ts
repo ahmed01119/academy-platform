@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { SportCodeSchema } from '../constants/sports';
 import { TenantRoleSchema } from '../constants/roles-permissions';
 
 export const PasswordSchema = z
@@ -32,9 +33,7 @@ export const RegisterRequestSchema = z.object({
     .max(50)
     .regex(/^[a-z0-9-]+$/, 'Slug must be lowercase alphanumeric with hyphens')
     .optional(),
-  sport: z
-    .enum(['FOOTBALL', 'PADEL', 'SWIMMING', 'BASKETBALL', 'TENNIS', 'MARTIAL_ARTS', 'OTHER'])
-    .default('FOOTBALL'),
+  sport: SportCodeSchema.default('FOOTBALL'),
 });
 
 export type RegisterRequest = z.infer<typeof RegisterRequestSchema>;

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { SportCodeSchema } from '../constants/sports';
 import { PasswordSchema } from './auth';
 
 export const PlatformOverviewMetricsSchema = z.object({
@@ -215,7 +216,7 @@ export const CreateAcademyApplicationRequestSchema = z.object({
     .min(2)
     .max(50)
     .regex(/^[a-z0-9-]+$/, 'Slug must only contain lowercase letters, numbers, and dashes'),
-  sport: z.enum(['FOOTBALL']).default('FOOTBALL'),
+  sport: SportCodeSchema.default('FOOTBALL'),
   city: z.string().max(100).optional(),
   contactPhone: z.string().max(30).optional(),
   contactEmail: z.string().email(),

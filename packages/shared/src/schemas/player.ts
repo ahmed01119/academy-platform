@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { SportCodeSchema } from '../constants/sports';
 
 /** True for a YYYY-MM-DD string that is a real date (rejects e.g. 2026-02-31, which JS would roll over). */
 export function isCalendarDate(value: string): boolean {
@@ -72,7 +73,7 @@ export const CreatePlayerSchema = z.object({
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'Enrollment start date must be YYYY-MM-DD')
     .refine(isCalendarDate, 'Enrollment start date must be a valid calendar date')
     .optional(),
-  sport: z.enum(['FOOTBALL']).default('FOOTBALL'),
+  sport: SportCodeSchema.default('FOOTBALL'),
 });
 export type CreatePlayerRequest = z.infer<typeof CreatePlayerSchema>;
 

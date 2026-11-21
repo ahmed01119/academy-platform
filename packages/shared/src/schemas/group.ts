@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { SportCodeSchema } from '../constants/sports';
 
 export const GroupStatus = {
   ACTIVE: 'ACTIVE',
@@ -28,7 +29,7 @@ export const ScheduleStatusSchema = z.enum(['ACTIVE', 'INACTIVE']);
 
 export const CreateTrainingGroupRequestSchema = z.object({
   branchId: z.string().uuid('Invalid branch ID'),
-  sport: z.enum(['FOOTBALL']).default('FOOTBALL'),
+  sport: SportCodeSchema.default('FOOTBALL'),
   name: z.string().trim().min(2, 'Group name must be at least 2 characters').max(100),
   description: z.string().trim().max(500).optional().nullable(),
   ageCategory: z.string().trim().min(2).max(50).optional().nullable(),
@@ -128,7 +129,7 @@ export const TrainingGroupSummarySchema = z.object({
   branchId: z.string().uuid(),
   branchName: z.string(),
   branchCode: z.string().nullable().optional(),
-  sport: z.enum(['FOOTBALL']),
+  sport: SportCodeSchema,
   name: z.string(),
   description: z.string().nullable().optional(),
   ageCategory: z.string().nullable().optional(),
