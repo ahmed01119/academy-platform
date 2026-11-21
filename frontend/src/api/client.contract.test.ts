@@ -45,6 +45,7 @@ const EXPECTED_API_SURFACE: Record<string, string[]> = {
       ' ',
     ),
   notifications: 'list getUnreadCount markRead markAllRead'.split(' '),
+  payments: 'listDues startOnlinePayment getOnlinePayment'.split(' '),
 };
 
 describe('api client public contract', () => {

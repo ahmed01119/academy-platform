@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { PaymentDues } from '@/components/payments/PaymentDues';
 import { useAuth } from '@/contexts/auth-context';
 import { MyJoinRequests } from '@/features/portal/components/MyJoinRequests';
 import { useAccessGuard } from '@/hooks/useAccessGuard';
@@ -277,6 +278,9 @@ export default function PlayerPortalPage() {
             ) : undefined
           }
         />
+
+        {/* Online payment of the player's own subscription balance (hidden when nothing is due) */}
+        <PaymentDues />
 
         {/* K6: this account's own join requests and their status */}
         <MyJoinRequests ar={ar} requesterType="PLAYER" />

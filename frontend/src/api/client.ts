@@ -15,6 +15,7 @@ import { groupsApi } from '@/features/groups/api';
 import { notificationsApi } from '@/features/notifications/api';
 import { platformApi } from '@/features/platform/api';
 import { playersApi } from '@/features/players/api';
+import { paymentsApi } from '@/features/payments/api';
 import { portalApi } from '@/features/portal/api';
 import { tenancyApi } from '@/features/tenancy/api';
 
@@ -41,6 +42,7 @@ export const api = {
   finance: financeApi,
   evaluations: evaluationsApi,
   portal: portalApi,
+  payments: paymentsApi,
   notifications: notificationsApi,
 };
 

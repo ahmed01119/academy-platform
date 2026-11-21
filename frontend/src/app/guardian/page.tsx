@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { PaymentDues } from '@/components/payments/PaymentDues';
 import { useAuth } from '@/contexts/auth-context';
 import { MyJoinRequests } from '@/features/portal/components/MyJoinRequests';
 import { useAccessGuard } from '@/hooks/useAccessGuard';
@@ -240,6 +241,9 @@ export default function GuardianPortalPage() {
             </button>
           }
         />
+
+        {/* Online payment of the children's subscription balances (hidden when nothing is due) */}
+        <PaymentDues />
 
         {/* K6: requests for more children (another child or academy) and their status */}
         <MyJoinRequests ar={ar} requesterType="GUARDIAN" />

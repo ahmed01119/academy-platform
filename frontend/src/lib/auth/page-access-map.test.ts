@@ -16,6 +16,7 @@ const PAGE_RULES: Record<string, string> = {
   'groups/[id]/page.tsx': 'authenticated',
   'guardian/page.tsx': 'authenticated',
   'player/page.tsx': 'authenticated',
+  'payments/result/page.tsx': 'authenticated',
   'players/[id]/page.tsx': 'authenticated',
   'dashboard/page.tsx': 'admin',
   'settings/page.tsx': 'admin',
