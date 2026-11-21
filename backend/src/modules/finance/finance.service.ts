@@ -13,6 +13,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
+import type { TenantTransactionClient } from '@academy/database';
 import { AuditService } from '../audit/audit.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import {
@@ -36,6 +37,8 @@ import {
   type CloseSessionCashierRequest,
   type AcademyFinancialDashboardMetrics,
 } from '@academy/shared';
+
+type PaymentReceiptEmail = Parameters<EmailService['sendPaymentReceipt']>[0];
 
 @Injectable()
 export class FinanceService {
@@ -336,152 +339,162 @@ export class FinanceService {
     tenantContext: TenantContext,
     dto: RecordPlayerPaymentRequest,
   ): Promise<FinancialTransactionItem> {
-    // K12: the receipt e-mail is prepared inside the transaction and sent after the commit. Sending it (with retries)
-    // inside the transaction kept the database transaction open for the whole e-mail round trip.
-    let pendingReceipt: Parameters<EmailService['sendPaymentReceipt']>[0] | null = null;
-    const result = await this.prisma.withTenantTransaction(
+    const { item, receipt } = await this.prisma.withTenantTransaction(
       { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
-      async (tx) => {
-        const player = await tx.player.findUnique({
-          where: { tenantId_id: { tenantId: tenantContext.tenantId, id: dto.playerId } },
-        });
-
-        if (!player) {
-          throw new NotFoundException({
-            code: ErrorCode.NOT_FOUND,
-            message: 'Player not found in this academy',
-          });
-        }
-
-        const now = new Date();
-        const receiptNumber = dto.receiptNumber || generateReceiptNumber('REC', now);
-
-        // 1. Create financial transaction in ledger, in the academy's own currency (K4)
-        const currency = await academyCurrency(tx, tenantContext.tenantId);
-        const transaction = await tx.academyFinancialTransaction.create({
-          data: {
-            tenantId: tenantContext.tenantId,
-            branchId: dto.branchId,
-            sessionId: dto.sessionId,
-            playerId: dto.playerId,
-            subscriptionId: dto.subscriptionId,
-            recordedByUserId: tenantContext.actorUserId,
-            type: 'MEMBERSHIP_FEE',
-            amount: money(dto.amount),
-            currency,
-            paymentMethod: dto.paymentMethod as any,
-            status: 'COMPLETED',
-            receiptNumber,
-            referenceNumber: dto.referenceNumber,
-            notes: dto.notes,
-          },
-          include: {
-            branch: { select: { name: true } },
-            player: { select: { firstName: true, lastName: true } },
-            recordedByUser: { select: { name: true } },
-          },
-        });
-
-        // 2. Synchronize PlayerSubscription balance if subscription exists
-        const sub = dto.subscriptionId
-          ? await tx.playerSubscription.findUnique({ where: { id: dto.subscriptionId } })
-          : await tx.playerSubscription.findFirst({
-              where: { tenantId: tenantContext.tenantId, playerId: dto.playerId },
-              orderBy: { createdAt: 'desc' },
-            });
-
-        if (sub) {
-          const newPaidAmount = money(sub.paidAmount) + dto.amount;
-          const newOutstanding = Math.max(0, money(sub.outstandingBalance) - dto.amount);
-          const newStatus = newOutstanding <= 0 ? 'ACTIVE' : 'PARTIAL';
-
-          await tx.playerSubscription.update({
-            where: { id: sub.id },
-            data: {
-              paidAmount: newPaidAmount,
-              outstandingBalance: newOutstanding,
-              status: newStatus,
-              lastPaymentDate: now,
-            },
-          });
-        }
-
-        await this.auditService.logEvent({
-          tenantId: tenantContext.tenantId,
-          actorUserId: tenantContext.actorUserId,
-          action: 'FINANCIAL_PAYMENT_COLLECTED',
-          resourceType: 'AcademyFinancialTransaction',
-          resourceId: transaction.id,
-          metadata: {
-            playerId: dto.playerId,
-            amount: money(dto.amount),
-            paymentMethod: dto.paymentMethod,
-            receiptNumber,
-          },
-        });
-
-        // Official payment receipt for the guardian (sent after the commit, see pendingReceipt)
-        if (this.emailService) {
-          try {
-            const guardian = await tx.guardian.findFirst({
-              where: { playerId: dto.playerId, email: { not: null } },
-              orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
-            });
-
-            if (guardian?.email) {
-              const academy = await tx.tenant.findUnique({
-                where: { id: tenantContext.tenantId },
-                select: { name: true },
-              });
-
-              pendingReceipt = {
-                to: guardian.email,
-                recipientName: `${guardian.firstName} ${guardian.lastName}`.trim(),
-                academyName: academy?.name || 'Sportexus Academy',
-                receiptNumber,
-                amount: money(dto.amount),
-                currency: transaction.currency,
-                paymentMethod: dto.paymentMethod,
-                description: dto.notes || 'سداد رسوم اشتراك تدريبي',
-                date: now,
-                locale: 'ar',
-              };
-            }
-          } catch (mailErr: unknown) {
-            this.logger.warn(
-              `Failed to prepare payment receipt email: ${(mailErr as Error)?.message}`,
-            );
-          }
-        }
-
-        return {
-          id: transaction.id,
-          tenantId: transaction.tenantId,
-          branchId: transaction.branchId,
-          branchName: transaction.branch.name,
-          sessionId: transaction.sessionId,
-          playerId: transaction.playerId,
-          playerName: `${transaction.player?.firstName} ${transaction.player?.lastName}`,
-          subscriptionId: transaction.subscriptionId,
-          recordedByUserId: transaction.recordedByUserId,
-          recordedByName: transaction.recordedByUser.name,
-          type: transaction.type as any,
-          amount: money(transaction.amount),
-          currency: transaction.currency,
-          paymentMethod: transaction.paymentMethod as any,
-          status: transaction.status as any,
-          receiptNumber: transaction.receiptNumber,
-          referenceNumber: transaction.referenceNumber,
-          notes: transaction.notes,
-          reversalReason: null,
-          reversedAt: null,
-          createdAt: transaction.createdAt.toISOString(),
-        };
-      },
+      (tx) => this.recordPaymentInTx(tx, tenantContext, dto),
     );
+    this.dispatchReceipt(receipt);
+    return item;
+  }
 
-    // After the commit: a slow or failing mail provider never affects the recorded payment.
-    const receipt = pendingReceipt as Parameters<EmailService['sendPaymentReceipt']>[0] | null;
+  /**
+   * Records a player payment inside a transaction the caller owns (desk collection above, or an online payment that
+   * must be marked paid in the same transaction). Returns the receipt e-mail to send after the commit (K12).
+   */
+  async recordPaymentInTx(
+    tx: TenantTransactionClient,
+    tenantContext: TenantContext,
+    dto: RecordPlayerPaymentRequest,
+  ): Promise<{ item: FinancialTransactionItem; receipt: PaymentReceiptEmail | null }> {
+    let pendingReceipt: PaymentReceiptEmail | null = null;
+    const player = await tx.player.findUnique({
+      where: { tenantId_id: { tenantId: tenantContext.tenantId, id: dto.playerId } },
+    });
+
+    if (!player) {
+      throw new NotFoundException({
+        code: ErrorCode.NOT_FOUND,
+        message: 'Player not found in this academy',
+      });
+    }
+
+    const now = new Date();
+    const receiptNumber = dto.receiptNumber || generateReceiptNumber('REC', now);
+
+    // 1. Create financial transaction in ledger, in the academy's own currency (K4)
+    const currency = await academyCurrency(tx, tenantContext.tenantId);
+    const transaction = await tx.academyFinancialTransaction.create({
+      data: {
+        tenantId: tenantContext.tenantId,
+        branchId: dto.branchId,
+        sessionId: dto.sessionId,
+        playerId: dto.playerId,
+        subscriptionId: dto.subscriptionId,
+        recordedByUserId: tenantContext.actorUserId,
+        type: 'MEMBERSHIP_FEE',
+        amount: money(dto.amount),
+        currency,
+        paymentMethod: dto.paymentMethod as any,
+        status: 'COMPLETED',
+        receiptNumber,
+        referenceNumber: dto.referenceNumber,
+        notes: dto.notes,
+      },
+      include: {
+        branch: { select: { name: true } },
+        player: { select: { firstName: true, lastName: true } },
+        recordedByUser: { select: { name: true } },
+      },
+    });
+
+    // 2. Synchronize PlayerSubscription balance if subscription exists
+    const sub = dto.subscriptionId
+      ? await tx.playerSubscription.findUnique({ where: { id: dto.subscriptionId } })
+      : await tx.playerSubscription.findFirst({
+          where: { tenantId: tenantContext.tenantId, playerId: dto.playerId },
+          orderBy: { createdAt: 'desc' },
+        });
+
+    if (sub) {
+      const newPaidAmount = money(sub.paidAmount) + dto.amount;
+      const newOutstanding = Math.max(0, money(sub.outstandingBalance) - dto.amount);
+      const newStatus = newOutstanding <= 0 ? 'ACTIVE' : 'PARTIAL';
+
+      await tx.playerSubscription.update({
+        where: { id: sub.id },
+        data: {
+          paidAmount: newPaidAmount,
+          outstandingBalance: newOutstanding,
+          status: newStatus,
+          lastPaymentDate: now,
+        },
+      });
+    }
+
+    await this.auditService.logEvent({
+      tenantId: tenantContext.tenantId,
+      actorUserId: tenantContext.actorUserId,
+      action: 'FINANCIAL_PAYMENT_COLLECTED',
+      resourceType: 'AcademyFinancialTransaction',
+      resourceId: transaction.id,
+      metadata: {
+        playerId: dto.playerId,
+        amount: money(dto.amount),
+        paymentMethod: dto.paymentMethod,
+        receiptNumber,
+      },
+    });
+
+    // Official payment receipt for the guardian (sent after the commit, see pendingReceipt)
+    if (this.emailService) {
+      try {
+        const guardian = await tx.guardian.findFirst({
+          where: { playerId: dto.playerId, email: { not: null } },
+          orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
+        });
+
+        if (guardian?.email) {
+          const academy = await tx.tenant.findUnique({
+            where: { id: tenantContext.tenantId },
+            select: { name: true },
+          });
+
+          pendingReceipt = {
+            to: guardian.email,
+            recipientName: `${guardian.firstName} ${guardian.lastName}`.trim(),
+            academyName: academy?.name || 'Sportexus Academy',
+            receiptNumber,
+            amount: money(dto.amount),
+            currency: transaction.currency,
+            paymentMethod: dto.paymentMethod,
+            description: dto.notes || 'سداد رسوم اشتراك تدريبي',
+            date: now,
+            locale: 'ar',
+          };
+        }
+      } catch (mailErr: unknown) {
+        this.logger.warn(`Failed to prepare payment receipt email: ${(mailErr as Error)?.message}`);
+      }
+    }
+
+    const item: FinancialTransactionItem = {
+      id: transaction.id,
+      tenantId: transaction.tenantId,
+      branchId: transaction.branchId,
+      branchName: transaction.branch.name,
+      sessionId: transaction.sessionId,
+      playerId: transaction.playerId,
+      playerName: `${transaction.player?.firstName} ${transaction.player?.lastName}`,
+      subscriptionId: transaction.subscriptionId,
+      recordedByUserId: transaction.recordedByUserId,
+      recordedByName: transaction.recordedByUser.name,
+      type: transaction.type as any,
+      amount: money(transaction.amount),
+      currency: transaction.currency,
+      paymentMethod: transaction.paymentMethod as any,
+      status: transaction.status as any,
+      receiptNumber: transaction.receiptNumber,
+      referenceNumber: transaction.referenceNumber,
+      notes: transaction.notes,
+      reversalReason: null,
+      reversedAt: null,
+      createdAt: transaction.createdAt.toISOString(),
+    };
+    return { item, receipt: pendingReceipt };
+  }
+
+  /** Sends a payment receipt prepared by recordPaymentInTx; a slow or failing mail provider never affects the payment. */
+  dispatchReceipt(receipt: PaymentReceiptEmail | null): void {
     if (receipt && this.emailService) {
       void this.emailService.sendPaymentReceipt(receipt).catch((mailErr: unknown) => {
         this.logger.warn(
@@ -489,7 +502,6 @@ export class FinanceService {
         );
       });
     }
-    return result;
   }
 
   /**

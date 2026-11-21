@@ -15,6 +15,7 @@ import { PlatformModule } from './modules/platform/platform.module';
 import { EvaluationsModule } from './modules/evaluations/evaluations.module';
 import { PortalModule } from './modules/portal/portal.module';
 import { FinanceModule } from './modules/finance/finance.module';
+import { PaymentsModule } from './modules/payments/payments.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { EmailModule } from './modules/email/email.module';
 
@@ -42,6 +43,7 @@ import { EmailModule } from './modules/email/email.module';
     EvaluationsModule,
     PortalModule,
     FinanceModule,
+    PaymentsModule,
     NotificationsModule,
   ],
 })

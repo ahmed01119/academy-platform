@@ -5,6 +5,7 @@ import {
   withAuthLookupTransaction,
   withPlatformAdminTransaction,
   withPortalUserTransaction,
+  withPaymentWebhookTransaction,
   type TenantTransactionOptions,
   type TenantTransactionClient,
   type AuthLookupOptions,
@@ -54,6 +55,15 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     callback: (tx: TenantTransactionClient) => Promise<T>,
   ): Promise<T> {
     return withPlatformAdminTransaction(this, options, callback);
+  }
+
+  /**
+   * Runs the payment provider's webhook lookup (signature already verified). See withPaymentWebhookTransaction.
+   */
+  async withPaymentWebhookTransaction<T>(
+    callback: (tx: TenantTransactionClient) => Promise<T>,
+  ): Promise<T> {
+    return withPaymentWebhookTransaction(this, callback);
   }
 
   /**
