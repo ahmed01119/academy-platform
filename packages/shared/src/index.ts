@@ -17,3 +17,4 @@ export * from './schemas/platform';
 export * from './schemas/portal';
 export * from './schemas/billing';
 export * from './schemas/notifications';
+export * from './schemas/payments';
