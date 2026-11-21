@@ -5,6 +5,7 @@ export {
   withAuthLookupTransaction,
   withPlatformAdminTransaction,
   withPortalUserTransaction,
+  withPaymentWebhookTransaction,
   type TenantTransactionOptions,
   type TenantTransactionClient,
   type AuthLookupOptions,

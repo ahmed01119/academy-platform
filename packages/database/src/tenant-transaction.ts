@@ -119,6 +119,28 @@ export async function withAuthLookupTransaction<T>(
   );
 }
 
+/**
+ * The payment provider's webhook: no user and no academy are known until the payment is found. This context is
+ * admitted by exactly one policy (online_payments_access), so it can find a payment by the provider's order id and
+ * nothing else. Callers must have verified the webhook's signature (HMAC) first.
+ */
+export async function withPaymentWebhookTransaction<T>(
+  client: PrismaClient,
+  operation: (tx: Prisma.TransactionClient) => Promise<T>,
+  options: TransactionExecutionOptions = {},
+): Promise<T> {
+  return client.$transaction(
+    async (tx) => {
+      await tx.$executeRaw`SELECT set_config('app.auth_context', 'payment_webhook', true)`;
+      return operation(tx);
+    },
+    {
+      maxWait: options.maxWait ?? DEFAULT_TRANSACTION_OPTIONS.maxWait,
+      timeout: options.timeout ?? DEFAULT_TRANSACTION_OPTIONS.timeout,
+    },
+  );
+}
+
 export interface PlatformAdminTransactionOptions extends TransactionExecutionOptions {
   actorUserId: string;
 }
