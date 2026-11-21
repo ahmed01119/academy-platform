@@ -42,6 +42,7 @@ import {
   type UpdatePlatformAdminRoleRequest,
   type PlatformInviteUserRequest,
   type ApplicationStatus,
+  isSportCode,
 } from '@academy/shared';
 import { HealthService } from '../health/health.service';
 import { databaseFunctionErrorCode, singleRow } from '../../common/db-function-error';
@@ -1565,6 +1566,27 @@ export class PlatformService {
         provisionedTenantId,
       };
     });
+
+    // The academy's sport, chosen at registration, becomes its main sport. The provisioning function does not record it,
+    // so it is written here, in the new academy's own context (tenant_sports is tenant-scoped). If this ever fails the
+    // academy is shown as football and its owner can set the sport in the settings, so approval is not undone for it.
+    if (dto.status === 'APPROVED' && result.provisionedTenantId && isSportCode(result.item.sport)) {
+      const tenantId = result.provisionedTenantId;
+      const sport = result.item.sport;
+      try {
+        await this.prisma.withTenantTransaction({ tenantId, actorUserId }, (tx) =>
+          tx.tenantSport.upsert({
+            where: { tenantId_sport: { tenantId, sport } },
+            create: { tenantId, sport, isPrimary: true },
+            update: { isPrimary: true },
+          }),
+        );
+      } catch (err) {
+        this.logger.warn(
+          `Could not record the sport of academy ${tenantId}: ${(err as Error)?.message ?? err}`,
+        );
+      }
+    }
 
     // Dispatch notifications safely after tenant and application transactions commit
     try {

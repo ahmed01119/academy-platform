@@ -22,7 +22,22 @@ import {
   type TenantContext,
   type TenantMembershipSummary,
   type UpdateAcademySettings,
+  DEFAULT_SPORT,
+  isSportCode,
+  type SportCode,
 } from '@academy/shared';
+
+/** An academy's sports, main sport first, then in the order they were added. */
+const ACADEMY_SPORTS_QUERY = {
+  orderBy: [{ isPrimary: 'desc' as const }, { createdAt: 'asc' as const }],
+  select: { sport: true },
+};
+
+/** Every academy has at least one sport; an academy created before sports were recorded is a football academy. */
+export function academySports(rows: readonly { sport: string }[]): SportCode[] {
+  const sports = rows.map((r) => r.sport).filter(isSportCode);
+  return sports.length > 0 ? sports : [DEFAULT_SPORT];
+}
 
 @Injectable()
 export class TenancyService {
@@ -719,6 +734,7 @@ export class TenancyService {
         const tenant = await tx.tenant.findUnique({
           where: { id: tenantContext.tenantId },
           include: {
+            sports: ACADEMY_SPORTS_QUERY,
             _count: {
               select: {
                 branches: true,
@@ -747,6 +763,7 @@ export class TenancyService {
           email: tenant.email,
           address: tenant.address,
           logoUrl: tenant.logoUrl,
+          sports: academySports(tenant.sports),
           createdAt: tenant.createdAt.toISOString(),
           updatedAt: tenant.updatedAt.toISOString(),
           _count: tenant._count,
@@ -771,10 +788,25 @@ export class TenancyService {
         if (dto.currency !== undefined) updateData.currency = dto.currency;
         if (dto.timezone !== undefined) updateData.timezone = dto.timezone;
 
+        // Sports: the list replaces the academy's sports, its first entry becomes the main sport. Groups, sessions and
+        // plans keep their own sport column, so removing a sport here never changes existing records.
+        if (dto.sports) {
+          const tenantId = tenantContext.tenantId;
+          await tx.tenantSport.deleteMany({ where: { tenantId, sport: { notIn: dto.sports } } });
+          for (const [index, sport] of dto.sports.entries()) {
+            await tx.tenantSport.upsert({
+              where: { tenantId_sport: { tenantId, sport } },
+              create: { tenantId, sport, isPrimary: index === 0 },
+              update: { isPrimary: index === 0 },
+            });
+          }
+        }
+
         const tenant = await tx.tenant.update({
           where: { id: tenantContext.tenantId },
           data: updateData,
           include: {
+            sports: ACADEMY_SPORTS_QUERY,
             _count: {
               select: {
                 branches: true,
@@ -793,7 +825,8 @@ export class TenancyService {
             resourceType: 'Tenant',
             resourceId: tenant.id,
             metadata: {
-              changedFields: Object.keys(updateData),
+              changedFields: [...Object.keys(updateData), ...(dto.sports ? ['sports'] : [])],
+              ...(dto.sports ? { sports: dto.sports } : {}),
             },
           },
           tx,
@@ -810,6 +843,7 @@ export class TenancyService {
           email: tenant.email,
           address: tenant.address,
           logoUrl: tenant.logoUrl,
+          sports: academySports(tenant.sports),
           createdAt: tenant.createdAt.toISOString(),
           updatedAt: tenant.updatedAt.toISOString(),
           _count: tenant._count,

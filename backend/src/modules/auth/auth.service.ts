@@ -34,6 +34,8 @@ import {
   type TenantMembershipSummary,
   type UpdateUserProfileRequest,
   type UserSummary,
+  DEFAULT_SPORT,
+  type SportCode,
 } from '@academy/shared';
 
 /** Password reset codes and links expire after 5 minutes (K1). */
@@ -122,9 +124,9 @@ export class AuthService {
       finalSlug = `${slugBase}-${counter++}`;
     }
 
-    const rawSport = (dto.sport as string) || 'FOOTBALL';
-    const applicationSport = rawSport === 'FOOTBALL' ? 'FOOTBALL' : 'FOOTBALL';
-    const initialNotes = rawSport !== 'FOOTBALL' ? `Sport: ${rawSport}` : null;
+    // The academy's own sport (validated by RegisterRequestSchema); it becomes the academy's main sport on approval.
+    const applicationSport: SportCode = dto.sport ?? DEFAULT_SPORT;
+    const initialNotes: string | null = null;
     const academyName = dto.academyName.trim();
 
     // COACH / academy owner applicant: the account and the academy application are created together. The account

@@ -11,6 +11,8 @@ import {
   type PlayerEvaluation,
   type PlayerRankingItem,
   type TenantContext,
+  DEFAULT_SPORT,
+  type SportCode,
 } from '@academy/shared';
 
 @Injectable()
@@ -35,7 +37,7 @@ export class EvaluationsService {
         return templates.map((t) => ({
           id: t.id,
           tenantId: t.tenantId,
-          sport: t.sport as 'FOOTBALL',
+          sport: t.sport as SportCode,
           ageCategory: t.ageCategory,
           name: t.name,
           description: t.description,
@@ -68,7 +70,7 @@ export class EvaluationsService {
         const template = await tx.evaluationTemplate.create({
           data: {
             tenantId: tenantContext.tenantId,
-            sport: dto.sport ?? 'FOOTBALL',
+            sport: dto.sport ?? DEFAULT_SPORT,
             ageCategory: dto.ageCategory,
             name: dto.name,
             description: dto.description,
@@ -80,7 +82,7 @@ export class EvaluationsService {
         return {
           id: template.id,
           tenantId: template.tenantId,
-          sport: template.sport as 'FOOTBALL',
+          sport: template.sport as SportCode,
           ageCategory: template.ageCategory,
           name: template.name,
           description: template.description,
@@ -563,7 +565,7 @@ export class EvaluationsService {
         return {
           items: rankingItems,
           ageCategory: filter?.ageCategory,
-          sport: 'FOOTBALL',
+          sport: 'ALL', // rankings cover every sport of the academy
           timeframe: filter?.timeframe ?? 'ALL_TIME',
           criteriaFormula:
             'المعدل العام التراكمي = (المهارات الفنية + التكتيكية + البدنية + السلوكية) / 4 بناءً على تقييمات المدربين المعتمدة',
