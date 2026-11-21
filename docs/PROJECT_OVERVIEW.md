@@ -6,8 +6,8 @@
 
 ## 1. Purpose
 
-Sportexus is a **multi-tenant SaaS for managing sports academies** (currently football only —
-`SportCode` enum has a single value `FOOTBALL`). A single platform hosts many independent
+Sportexus is a **multi-tenant SaaS for managing sports academies** of any sport (`SportCode`: football, swimming,
+tennis, padel, basketball, volleyball, handball, martial arts, gymnastics, athletics, squash, other; since 2026-11-21). A single platform hosts many independent
 academies ("tenants"). Each academy runs its day-to-day operations on the platform: branches,
 players and guardians, training groups and schedules, attendance, coach evaluations, player
 fees and session cash handling.
@@ -83,7 +83,7 @@ One user account can hold memberships in several academies and switch between th
 
 - Online payment gateway (payment methods are recorded, not processed).
 - SaaS invoice generation workflow (`saas_invoices` table exists; no API writes it — see status doc).
-- Sports other than football; mobile native apps (a Flutter client is mentioned only in
+- Sport-specific features (e.g. swimming lap times); mobile native apps (a Flutter client is mentioned only in
   `docs/architecture/open-requirements.md`).
 - Background job queue (README mentions BullMQ "later"; not installed).
 

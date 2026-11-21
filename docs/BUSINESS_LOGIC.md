@@ -98,7 +98,10 @@ Pre-2026-11-16 code:
    Email must be unused (409 `EMAIL_ALREADY_EXISTS`). Slug = provided or slugified name; made unique by
    suffixing `-1`, `-2`… against existing tenants and PENDING_REVIEW / MORE_INFO_REQUESTED / APPROVED applications (B3).
 2. Creates `User` (unverified) + `AcademyApplication(PENDING_REVIEW)` in one transaction. **No session is issued.**
-   Non-football sport input is stored as FOOTBALL with a note `Sport: <value>`.
+   The chosen sport is kept on the application and becomes the academy's main sport on approval (`tenant_sports`,
+   written after `platform_approve_academy_application`). The owner edits the academy's sports in settings (first = main
+   sport); new groups, plans and players default to the main sport, a session takes its group's sport. An academy with no
+   recorded sport is a football academy.
 3. Notifies all non-suspended platform staff in-app; emails the applicant (Arabic); audit `ACADEMY_APPLICATION_SUBMITTED`.
 4. Login while pending → 401 `ACADEMY_PENDING_APPROVAL`; rejected → `ACADEMY_REJECTED`.
 5. Platform review (`PATCH|POST /platform/applications/:id/review`) with status `APPROVED | REJECTED | MORE_INFO_REQUESTED`:
