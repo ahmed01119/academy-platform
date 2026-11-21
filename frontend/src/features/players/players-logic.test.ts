@@ -197,6 +197,7 @@ describe('validateNewPlayerForm (order preserved)', () => {
 
 describe('buildCreatePlayerPayload (mapping unchanged)', () => {
   it('produces a payload the API schema accepts', () => {
+    expect(buildCreatePlayerPayload(newForm, 'en', 'SWIMMING').sport).toBe('SWIMMING');
     const payload = buildCreatePlayerPayload(newForm, 'en');
     expect(CreatePlayerSchema.safeParse(payload).success).toBe(true);
     expect(payload).toMatchObject({

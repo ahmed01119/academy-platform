@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { useAcademySports } from '@/hooks/useAcademySports';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
@@ -26,6 +27,7 @@ export default function NewPlayerPage() {
   const router = useRouter();
   const { user, activeTenant, isLoading } = useAuth();
   const { locale } = useLocale();
+  const { mainSport } = useAcademySports();
 
   const [branches, setBranches] = useState<BranchSummary[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -104,7 +106,7 @@ export default function NewPlayerPage() {
 
     setIsSubmitting(true);
     try {
-      const payload = buildCreatePlayerPayload(values, lang);
+      const payload = buildCreatePlayerPayload(values, lang, mainSport);
       const created = await api.players.create(payload);
       router.push(`/players/${created.id}`);
     } catch (err: unknown) {

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { SPORT_CODES } from '@academy/shared';
 import {
   translateStatus,
   translateRole,
@@ -7,6 +8,8 @@ import {
   translateBillingCycle,
   translateGender,
   translateDataString,
+  SPORT_ICONS,
+  SPORT_TRANSLATIONS,
 } from './data-translator';
 
 describe('Data Translator Module', () => {
@@ -39,11 +42,19 @@ describe('Data Translator Module', () => {
   });
 
   it('translates sports accurately', () => {
-    expect(translateSport('FOOTBALL', 'en')).toBe('Football (Soccer)');
+    expect(translateSport('FOOTBALL', 'en')).toBe('Football');
     expect(translateSport('FOOTBALL', 'ar')).toBe('كرة القدم');
 
     expect(translateSport('SWIMMING', 'en')).toBe('Swimming');
     expect(translateSport('SWIMMING', 'ar')).toBe('السباحة');
+  });
+
+  it('names every platform sport in both languages and gives it an icon', () => {
+    for (const code of SPORT_CODES) {
+      expect(SPORT_TRANSLATIONS.ar[code], code).toBeTruthy();
+      expect(SPORT_TRANSLATIONS.en[code], code).toBeTruthy();
+      expect(SPORT_ICONS[code], code).toBeTruthy();
+    }
   });
 
   it('translates payment methods accurately', () => {

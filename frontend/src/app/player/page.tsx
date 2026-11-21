@@ -259,8 +259,8 @@ export default function PlayerPortalPage() {
           ]}
           title={
             ar
-              ? `أهلاً بك، ${profile.firstName} ${profile.lastName} ⚽`
-              : `Welcome, ${profile.firstName} ${profile.lastName} ⚽`
+              ? `أهلاً بك، ${profile.firstName} ${profile.lastName} 🏅`
+              : `Welcome, ${profile.firstName} ${profile.lastName} 🏅`
           }
           description={`${profile.tenantName} • ${branchDisplay} • ${groupDisplay}${profile.headCoachName ? ` • ${ar ? 'المدرب:' : 'Coach:'} ${profile.headCoachName}` : ''}`}
           actions={

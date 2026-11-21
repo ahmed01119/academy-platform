@@ -155,7 +155,7 @@ export function PlayerQrCard({ card, isAdmin = false, onCardUpdated, onClose }: 
         <div className="flex items-center justify-between border-b border-[#1e3a5f] pb-4 print:border-gray-300">
           <div className="flex items-center gap-2.5">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-linear-to-tr from-[#0a3bff] to-[#00d6ff] text-white font-black text-lg shadow-md print:bg-gray-200">
-              ⚽
+              🏅
             </div>
             <div>
               <h3 className="text-sm font-extrabold tracking-tight text-white print:text-black">

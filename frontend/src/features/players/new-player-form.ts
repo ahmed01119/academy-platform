@@ -1,4 +1,5 @@
 import type { CreatePlayerRequest, GuardianRelationship, PlayerGender } from '@academy/shared';
+import { DEFAULT_SPORT, type SportCode } from '@academy/shared';
 
 type Locale = 'ar' | 'en';
 
@@ -97,6 +98,8 @@ export function validateNewPlayerForm(
 export function buildCreatePlayerPayload(
   values: NewPlayerFormValues,
   locale: Locale,
+  /** The academy's sport for the player's enrollment (its main sport). */
+  sport: SportCode = DEFAULT_SPORT,
 ): CreatePlayerRequest {
   const guardianParts = values.guardianName.trim().split(/\s+/);
   const guardianFirstName = guardianParts[0] || pick(locale, 'ولي', 'Guardian');
@@ -116,7 +119,7 @@ export function buildCreatePlayerPayload(
     initialBranchId: values.branchId,
     // F21: previously collected but never sent; the API now honours it (default: today).
     initialEnrollmentStartDate: values.enrollmentStartDate || undefined,
-    sport: 'FOOTBALL',
+    sport,
     primaryGuardian: {
       firstName: guardianFirstName,
       lastName: guardianLastName,

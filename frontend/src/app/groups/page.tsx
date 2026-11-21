@@ -1,6 +1,9 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
+import type { SportCode } from '@academy/shared';
+import { useAcademySports } from '@/hooks/useAcademySports';
+import { SPORT_ICONS, translateSport } from '@/utils/data-translator';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
@@ -57,7 +60,9 @@ export default function GroupsPage() {
     ageCategory: '',
     capacity: '',
     description: '',
+    sport: '' as SportCode | '',
   });
+  const { sports: academySports, mainSport, isMultiSport } = useAcademySports();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
@@ -129,7 +134,7 @@ export default function GroupsPage() {
       const created = await api.groups.create({
         name: createForm.name.trim(),
         branchId: createForm.branchId,
-        sport: 'FOOTBALL',
+        sport: createForm.sport || mainSport,
         ageCategory: createForm.ageCategory.trim() || undefined,
         capacity: createForm.capacity ? parseInt(createForm.capacity, 10) : undefined,
         description: createForm.description.trim() || undefined,
@@ -142,6 +147,7 @@ export default function GroupsPage() {
         ageCategory: '',
         capacity: '',
         description: '',
+        sport: '',
       });
       await loadGroups(1);
       router.push(`/groups/${created.id}`);
@@ -591,6 +597,31 @@ export default function GroupsPage() {
                   />
                 </div>
               </div>
+
+              {isMultiSport && (
+                <div>
+                  <label
+                    htmlFor="create-group-sport"
+                    className="block text-xs font-bold text-(--text-main) mb-1.5"
+                  >
+                    {locale === 'ar' ? 'الرياضة' : 'Sport'}
+                  </label>
+                  <select
+                    id="create-group-sport"
+                    value={createForm.sport || mainSport}
+                    onChange={(e) =>
+                      setCreateForm({ ...createForm, sport: e.target.value as SportCode })
+                    }
+                    className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:bg-[var(--bg-surface)] transition-all outline-none"
+                  >
+                    {academySports.map((code) => (
+                      <option key={code} value={code}>
+                        {SPORT_ICONS[code]} {translateSport(code, locale === 'ar' ? 'ar' : 'en')}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               <div>
                 <label

@@ -289,9 +289,7 @@ export default function HomePage() {
 
                     <div className="flex items-center justify-between text-xs text-(--text-muted) pt-1">
                       <span>
-                        {locale === 'ar'
-                          ? 'الحصة التدريبية: فريق U-14'
-                          : 'Session: U-14 Football Squad'}
+                        {locale === 'ar' ? 'الحصة التدريبية: فريق U-14' : 'Session: U-14 Squad'}
                       </span>
                       <span className="font-bold text-[var(--accent-primary)]">
                         {locale === 'ar' ? 'تم الحضور: 18 / 20' : 'Attended: 18 / 20'}

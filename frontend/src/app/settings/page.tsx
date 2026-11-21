@@ -1,12 +1,14 @@
 'use client';
 
 import React, { useCallback, useEffect, useState, Suspense } from 'react';
+import { DEFAULT_SPORT, SPORT_CODES, type SportCode } from '@academy/shared';
+import { setCachedAcademySports } from '@/hooks/useAcademySports';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { useAccessGuard } from '@/hooks/useAccessGuard';
 import { useLocale } from '@/contexts/locale-context';
 import { useTheme, type ThemeMode } from '@/contexts/theme-context';
-import { translateRole } from '@/utils/data-translator';
+import { SPORT_ICONS, translateRole, translateSport } from '@/utils/data-translator';
 import { AppShell } from '../../components/layout/AppShell';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { PageSkeleton } from '@/components/ui/skeleton';
@@ -35,6 +37,7 @@ import {
   Moon,
   Monitor,
   Languages,
+  Trophy,
 } from 'lucide-react';
 
 interface StaffMemberItem {
@@ -108,6 +111,18 @@ function SettingsContent() {
   const [address, setAddress] = useState('');
   const [currency, setCurrency] = useState('EGP');
   const [timezone, setTimezone] = useState('Africa/Cairo');
+  // The academy's sports; the first one is its main sport.
+  const [sports, setSports] = useState<SportCode[]>([DEFAULT_SPORT]);
+  const toggleSport = (code: SportCode) =>
+    setSports((prev) =>
+      prev.includes(code)
+        ? prev.length > 1
+          ? prev.filter((s) => s !== code)
+          : prev
+        : [...prev, code],
+    );
+  const setMainSport = (code: SportCode) =>
+    setSports((prev) => [code, ...prev.filter((s) => s !== code)]);
 
   useAccessGuard('admin');
 
@@ -135,6 +150,7 @@ function SettingsContent() {
       setAddress(profileData.address || '');
       setCurrency(profileData.currency || 'EGP');
       setTimezone(profileData.timezone || 'Africa/Cairo');
+      setSports(profileData.sports?.length ? profileData.sports : [DEFAULT_SPORT]);
     } catch (err: unknown) {
       const msg =
         err instanceof Error
@@ -172,10 +188,12 @@ function SettingsContent() {
         address: address.trim() || undefined,
         currency,
         timezone,
+        sports,
       };
 
       const updated = await api.tenancy.updateProfile(payload);
       setProfile(updated);
+      if (activeTenant) setCachedAcademySports(activeTenant.tenantId, updated.sports ?? sports);
       setSuccessMessage(ar ? 'تم حفظ التعديلات بنجاح' : 'Settings saved successfully');
     } catch (err: unknown) {
       const msg =
@@ -507,6 +525,64 @@ function SettingsContent() {
                     />
                   </div>
                 </div>
+              </div>
+
+              <div className="rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-5 shadow-sm space-y-4">
+                <h3 className="text-sm font-bold text-[var(--text-main)] flex items-center gap-2">
+                  <Trophy className="h-4 w-4 text-[var(--accent-primary)]" />
+                  <span>{ar ? 'رياضات الأكاديمية' : 'Academy sports'}</span>
+                </h3>
+                <p className="text-xs text-[var(--text-muted)]">
+                  {ar
+                    ? 'اختر الرياضات التي تقدمها أكاديميتك. الرياضة الأساسية تُستخدم تلقائياً للمجموعات والحصص والباقات الجديدة.'
+                    : 'Choose the sports your academy offers. The main sport is used by default for new groups, sessions and plans.'}
+                </p>
+                <div
+                  className="flex flex-wrap gap-2"
+                  role="group"
+                  aria-label={ar ? 'الرياضات' : 'Sports'}
+                >
+                  {SPORT_CODES.map((code) => {
+                    const selected = sports.includes(code);
+                    return (
+                      <button
+                        key={code}
+                        type="button"
+                        aria-pressed={selected}
+                        onClick={() => toggleSport(code)}
+                        className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
+                          selected
+                            ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)]/10 text-[var(--text-main)]'
+                            : 'border-[var(--border-subtle)] text-[var(--text-muted)] hover:border-[var(--accent-primary)]'
+                        }`}
+                      >
+                        {SPORT_ICONS[code]} {translateSport(code, ar ? 'ar' : 'en')}
+                      </button>
+                    );
+                  })}
+                </div>
+                {sports.length > 1 && (
+                  <div className="space-y-1.5 max-w-xs">
+                    <label
+                      htmlFor="settings-main-sport"
+                      className="text-xs font-semibold text-[var(--text-main)] block"
+                    >
+                      {ar ? 'الرياضة الأساسية' : 'Main sport'}
+                    </label>
+                    <select
+                      id="settings-main-sport"
+                      value={sports[0]}
+                      onChange={(e) => setMainSport(e.target.value as SportCode)}
+                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-main)] focus:outline-none focus:border-[var(--accent-primary)] cursor-pointer"
+                    >
+                      {sports.map((code) => (
+                        <option key={code} value={code}>
+                          {SPORT_ICONS[code]} {translateSport(code, ar ? 'ar' : 'en')}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
 
               <div className="rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-5 shadow-sm space-y-4">

@@ -1,6 +1,8 @@
 'use client';
 
 import React, { Suspense, useCallback, useEffect, useState } from 'react';
+import type { SportCode } from '@academy/shared';
+import { useAcademySports } from '@/hooks/useAcademySports';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
@@ -59,6 +61,7 @@ function SessionsContent() {
 
   const { user, activeTenant, isLoading } = useAuth();
   const { t, locale, isRtl } = useLocale();
+  const { mainSport } = useAcademySports();
   const { toast } = useToast();
   const requestConfirmation = useConfirm();
 
@@ -177,7 +180,8 @@ function SessionsContent() {
       const created = await api.attendance.createSession({
         branchId: createForm.branchId,
         groupId: createForm.groupId,
-        sport: 'FOOTBALL',
+        // A session is of its group's sport; a session without a group takes the academy's main sport.
+        sport: (selectedGroup?.sport as SportCode | undefined) ?? mainSport,
         groupName,
         sessionDate: createForm.sessionDate,
         startTime: createForm.startTime,

@@ -1,6 +1,7 @@
 'use client';
 
 import { useAcademyCurrency } from '@/hooks/useAcademyCurrency';
+import { useAcademySports } from '@/hooks/useAcademySports';
 import React, { useState } from 'react';
 import { useLocale } from '@/contexts/locale-context';
 import { useToast } from '@/components/ui/Toast';
@@ -18,6 +19,7 @@ export interface CreatePlanModalProps {
 export function CreatePlanModal({ isOpen, onClose, onSuccess }: CreatePlanModalProps) {
   const { locale } = useLocale();
   const { label: currencyLabel, code: currencyCode } = useAcademyCurrency();
+  const { mainSport } = useAcademySports();
   const isAr = locale === 'ar';
   const { toast } = useToast();
 
@@ -39,7 +41,7 @@ export function CreatePlanModal({ isOpen, onClose, onSuccess }: CreatePlanModalP
         feeAmount: Number(planPrice),
         currency: currencyCode,
         billingPeriod: planPeriod,
-        sport: 'FOOTBALL',
+        sport: mainSport,
         description: planDescription.trim() || undefined,
       });
       toast.success(

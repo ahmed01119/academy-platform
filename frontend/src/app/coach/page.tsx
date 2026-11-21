@@ -129,8 +129,8 @@ export default function CoachWorkspacePage() {
         <PageHeader
           title={
             locale === 'ar'
-              ? `مساحة المدرب: ${withCoachTitle(user?.name)} ⚽`
-              : `Coach Workspace: ${user?.name || ''} ⚽`
+              ? `مساحة المدرب: ${withCoachTitle(user?.name)} 🏅`
+              : `Coach Workspace: ${user?.name || ''} 🏅`
           }
           description={
             locale === 'ar'

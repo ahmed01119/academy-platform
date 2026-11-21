@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { SPORT_CODES } from '@academy/shared';
+import { SPORT_ICONS, SPORT_TRANSLATIONS } from '@/utils/data-translator';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
@@ -36,15 +38,13 @@ import {
   LogIn,
 } from 'lucide-react';
 
-const SPORTS_OPTIONS = [
-  { value: 'FOOTBALL', labelAr: 'كرة قدم', labelEn: 'Football', icon: '⚽' },
-  { value: 'PADEL', labelAr: 'بادل', labelEn: 'Padel', icon: '🎾' },
-  { value: 'SWIMMING', labelAr: 'سباحة', labelEn: 'Swimming', icon: '🏊' },
-  { value: 'BASKETBALL', labelAr: 'كرة سلة', labelEn: 'Basketball', icon: '🏀' },
-  { value: 'TENNIS', labelAr: 'تنس أرضي', labelEn: 'Tennis', icon: '🎾' },
-  { value: 'MARTIAL_ARTS', labelAr: 'فنون قتالية', labelEn: 'Martial Arts', icon: '🥋' },
-  { value: 'OTHER', labelAr: 'رياضة أخرى', labelEn: 'Other', icon: '🏆' },
-];
+// Every sport the platform supports (one list for the whole product: @academy/shared SPORT_CODES).
+const SPORTS_OPTIONS = SPORT_CODES.map((code) => ({
+  value: code,
+  labelAr: SPORT_TRANSLATIONS.ar[code] ?? code,
+  labelEn: SPORT_TRANSLATIONS.en[code] ?? code,
+  icon: SPORT_ICONS[code] ?? '🏅',
+}));
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -320,8 +320,8 @@ export default function RegisterPage() {
                           }}
                           placeholder={
                             locale === 'ar'
-                              ? 'مثال: أكاديمية النجوم لكرة القدم'
-                              : 'e.g. Stars Football Academy'
+                              ? 'مثال: أكاديمية النجوم الرياضية'
+                              : 'e.g. Stars Sports Academy'
                           }
                           className={`w-full rounded-xl border py-2.5 px-3 text-sm text-(--text-main) placeholder-(--text-muted) outline-none transition-all ${
                             fieldErrors.academyName

@@ -5,7 +5,7 @@ import { useLocale } from '@/contexts/locale-context';
 import { useAuth } from '@/contexts/auth-context';
 import { apiClient } from '@/api/client';
 import { useToast } from '../ui/Toast';
-import { translateDataString } from '@/utils/data-translator';
+import { translateDataString, translateSport } from '@/utils/data-translator';
 import {
   UserPlus,
   Clock,
@@ -423,7 +423,7 @@ export function PlayerJoinRequestsTab() {
                         </option>
                         {filteredGroups.map((g) => (
                           <option key={g.id} value={g.id}>
-                            {g.name} ({g.sport})
+                            {g.name} ({translateSport(g.sport, ar ? 'ar' : 'en')})
                           </option>
                         ))}
                       </select>
