@@ -266,7 +266,7 @@ Pre-2026-11-16 code:
 - **Plans**: per branch (optional), billing period MONTHLY/QUARTERLY/ANNUAL/PER_SESSION, fee, currency (default EGP).
 - **Player subscription**: net fee = max(0, fee − discount); status starts **ACTIVE if net fee = 0 else OVERDUE**.
 - **Collect payment** (`payments.create`): creates a COMPLETED `MEMBERSHIP_FEE` transaction with receipt number
-  (given or `REC-<year>-<4 random digits>`); applies the amount to the given subscription or the player's latest one:
+  (given or `REC-<yyyymmdd>-<8 random characters>`, unique per academy); applies the amount to the given subscription or the player's latest one:
   `paid += amount`, `outstanding = max(0, outstanding − amount)`, status `ACTIVE` if nothing outstanding else `PARTIAL`.
   Emails a receipt to the player's primary guardian with an email.
 - **Reverse** (`payments.refund`): reason required; never deletes; sets REVERSED with who/when; a reversed transaction cannot be reversed again;
@@ -280,6 +280,19 @@ Pre-2026-11-16 code:
   expenses, net cash movement. Non-assigned coaches cannot view it.
 - **Cashier close**: upserts one `SessionCashierClosing` per session (re-closing overwrites), marked reconciled; audited.
 - **Dashboard**: academy financial metrics (optional branch filter).
+
+### 2.10b Online payments (phase A, 2026-11-22)
+
+- A player, or a guardian for their children, sees **dues**: subscriptions with an outstanding balance > 0, not
+  EXEMPT/PAUSED/EXPIRED, in an ACTIVE academy.
+- **Pay now** pays the **whole outstanding balance** of one subscription by card or wallet (Paymob hosted checkout).
+  Only the subscription's player or one of their guardians can start it; the currency must match.
+- The money goes to the **platform's merchant account**; the platform owner transfers each academy its share later
+  (recorded in `academy_payouts`).
+- A payment counts only when Paymob's **signed** confirmation arrives (never from the return URL). It is then recorded
+  exactly like a cashier payment (method ONLINE, receipt number, receipt email to the guardian), and only once.
+- A declined or abandoned payment changes nothing in the balance.
+- Refunds are made in Paymob; reversing the ledger entry in the platform does not refund the card.
 
 ### 2.11 Branches & academy settings
 

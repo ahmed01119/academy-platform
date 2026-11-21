@@ -635,6 +635,57 @@ Notes:
   right after `@academy/shared` is rebuilt; the same commit passes on the next run. Environment, not code; to watch.
 - Not done: sport-specific features (swimming times, tennis rankings); evaluation templates stay generic (four axes).
 
+## 9k. Online payments, phase A: families pay subscriptions by card or wallet (2026-11-22)
+
+Owner request: real payments. Owner decisions: both flows (families pay the academy subscription; academies pay the
+platform subscription), gateway **Paymob**, and the families' money is collected in **one platform merchant account**;
+the owner then transfers each academy its share (payout ledger). Phase A (this section) is the family flow.
+
+| Layer    | Change                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Database | Migration `20261122100000_online_payments` (additive, applied to Neon dev with the owner role): enums `OnlinePaymentPurpose`, `OnlinePaymentStatus`; tables `online_payments` (one row per checkout attempt, `provider_order_id` unique, amount CHECK > 0) and `academy_payouts` (transfers from the platform to an academy). RLS forced on both. `online_payments_access`: own tenant, own payer, super admin, or the payment-webhook context. `academy_payouts`: tenant/super admin read, super admin insert. Grants for the three runtime roles. No definer function added or changed. |
+| Database | `withPaymentWebhookTransaction` (package + `PrismaService`): sets `app.auth_context = 'payment_webhook'`, which only the `online_payments` policy admits, so the unauthenticated webhook can find a payment by order id and nothing else.                                                                                                                                                                                                                                                                                                                                                 |
+| Shared   | `schemas/payments.ts`: `PaymentDueItem`, `CreateOnlinePaymentRequest/Response`, `OnlinePaymentStatusResponse`, `OnlinePaymentStatusSchema`.                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| API      | New `payments` module: `GET /v1/payments/dues` (what the signed-in player/guardian owes), `POST /v1/payments/online` (creates a Paymob intention, returns the hosted checkout URL), `GET /v1/payments/online/:id` (status for the result page), `POST /v1/payments/paymob/webhook` (public, signed). `FinanceService.recordPayment` split into `recordPaymentInTx` + `dispatchReceipt` (same behaviour) so the webhook records the payment through the same rules as the cashier.                                                                                                         |
+| Web      | `PaymentDues` card ("المستحقات" with «ادفع الآن») at the top of the guardian and player portals, hidden when nothing is due. New page `/payments/result` (authenticated) polls our API for the status; the provider's query string is never trusted.                                                                                                                                                                                                                                                                                                                                      |
+
+Security of the webhook:
+
+- Paymob's transaction HMAC (SHA-512 over 20 documented fields) is checked with a constant-time compare; a bad or
+  missing signature is 401.
+- The HMAC does not cover `merchant_order_id` or `extras`, so the payment is found by the **signed** `order.id` (stored
+  as `provider_order_id` when the intention was created), and the signed amount and currency must equal the stored ones.
+- Idempotent: `updateMany ... where status = PENDING` claims the payment inside the same transaction that writes the
+  ledger entry, so a retried callback records nothing twice. Declines set FAILED with the provider's message.
+- The ledger entry is a normal `MEMBERSHIP_FEE` with method `ONLINE`, reference `PAYMOB-<transaction id>` and the
+  payer as the recorder; the receipt email and the audit event `ONLINE_PAYMENT_CONFIRMED` follow the commit.
+
+Configuration (documented in `backend/.env.example`): `PAYMOB_SECRET_KEY`, `PAYMOB_PUBLIC_KEY`, `PAYMOB_HMAC_SECRET`,
+`PAYMOB_INTEGRATION_IDS` (comma-separated: card, wallet, ...), optional `PAYMOB_API_BASE`, `PAYMOB_CHECKOUT_URL`,
+`PAYMOB_CURRENCY` (EGP), and `APP_PUBLIC_URL`/`NEXT_PUBLIC_APP_URL` (builds the webhook and return URLs). Without the
+four keys online payment is off: dues still show, with "السداد لدى الأكاديمية".
+
+Verification:
+
+- Unit: `paymob.client.test.ts` (5) and `payments.service.test.ts` (8). Full suites: API 390 passed / 8 skipped,
+  web 392, shared 56, database 10; typecheck clean; lint 0 errors.
+- End to end against a local stand-in for Paymob (intention API plus a checkout page that sends a signed callback),
+  with the real API, web app and Neon dev database: 13/13 checks passed. Dues shown, then checkout; a declined card
+  leaves the balance; a paid card shows "تم الدفع بنجاح" with a receipt number and the subscription leaves the dues;
+  a retried callback adds no second ledger row (checked in the database); a forged signature and a tampered amount
+  get 401; another user gets 404 for the payment and for paying the subscription.
+
+Notes and pending:
+
+- Test data left on Neon dev: hany.parent's two demo subscriptions (Adam 300, Laila 1,650 EGP) are now paid online.
+- Not yet tested against Paymob itself: needs the owner's merchant account and keys (test mode first).
+- Phase B: academies pay the platform subscription online (`PLATFORM_SUBSCRIPTION` callbacks are accepted and logged
+  but not fulfilled yet; fulfilling needs a super-admin-level write on `tenant_subscriptions`/`saas_invoices`, a
+  security-reviewed path), and a platform screen with each academy's collected-online vs paid-out balance and payout
+  recording (the `academy_payouts` table is ready).
+- Refunds are not automated: reversing the ledger entry does not refund the card; a refund is made in Paymob.
+- Collecting on behalf of academies needs the owner's legal and accounting arrangement (contracts, invoices, fees).
+
 ## 10. Backend requirements (recorded by owner decisions)
 
 **Workflow (owner direction 2026-11-15):** frontend issues whose root cause is in the backend are now fixed across both
@@ -684,6 +735,7 @@ with e-mail verification, so invitees can accept invitations.
 
 | Date       | Change                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | Files                                                                                                                                                                                                                                                                                                                                                                                 |
 | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-11-22 | Online payments phase A (§9k): families pay subscriptions through Paymob into the platform account; a signed, idempotent webhook records the ledger entry and receipt; dues card and result page.                                                                                                                                                                                                                                                                                                          |
 | 2026-11-21 | Academies of any sport (§9j): 11 new sports, registration keeps the sport, academy sports in settings, forms follow the academy's sports.                                                                                                                                                                                                                                                                                                                                                                  |
 | 2026-11-20 | Detailed functional pass (§9i): debug reset code opt-in (D1), offline quick marks and scan dedupe (D2, D3), safe CSV (D4), printing (D5), report group filter (D6), accessible notifications (D7), 50 lost classes (D8), labels and group page language (D9).                                                                                                                                                                                                                                              |
 | 2026-11-20 | Full-platform walkthrough (§9h): guardian coach feedback via the portal (W1), UI follows the API permissions (W2), dashboard without refused counts or fake trend (W3), coach title (W4), laptop start script proxy settings (W5).                                                                                                                                                                                                                                                                         |

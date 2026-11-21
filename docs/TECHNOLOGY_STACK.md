@@ -71,14 +71,15 @@ client), no form library, no component library (custom `components/ui`).
 
 ## 6. Database & infrastructure
 
-| Component           | Version                                                                      | Notes                                                                    |
-| ------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| PostgreSQL          | 16 (Docker images); embedded-postgres 18.4.0-beta.17 for local no-Docker dev | RLS (`FORCE ROW LEVEL SECURITY`), triggers, `SECURITY DEFINER` functions |
-| Prisma CLI          | 6.19.3                                                                       | 23 migrations in `packages/database/prisma/migrations`                   |
-| Redis               | 7 (Docker)                                                                   | Rate limiting, metrics cache                                             |
-| Caddy 2             | `docker-compose.prod.yml`                                                    | TLS reverse proxy                                                        |
-| nginx + cloudflared | `docker-compose.selfhost.yml`                                                | Self-host behind Cloudflare Tunnel                                       |
-| Docker              | `Dockerfile` (API), `Dockerfile.web`, per-app Dockerfiles                    |                                                                          |
+| Component           | Version                                                                      | Notes                                                                          |
+| ------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| PostgreSQL          | 16 (Docker images); embedded-postgres 18.4.0-beta.17 for local no-Docker dev | RLS (`FORCE ROW LEVEL SECURITY`), triggers, `SECURITY DEFINER` functions       |
+| Prisma CLI          | 6.19.3                                                                       | 34 migrations in `packages/database/prisma/migrations`                         |
+| Redis               | 7 (Docker)                                                                   | Rate limiting, metrics cache                                                   |
+| Paymob              | Intention API v1 + unified checkout                                          | Online payments (card, wallet); HMAC-signed webhook; called with fetch, no SDK |
+| Caddy 2             | `docker-compose.prod.yml`                                                    | TLS reverse proxy                                                              |
+| nginx + cloudflared | `docker-compose.selfhost.yml`                                                | Self-host behind Cloudflare Tunnel                                             |
+| Docker              | `Dockerfile` (API), `Dockerfile.web`, per-app Dockerfiles                    |                                                                                |
 
 ## 7. CI/CD
 
