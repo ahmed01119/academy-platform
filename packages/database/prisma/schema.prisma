@@ -911,8 +911,9 @@ model SaaSInvoice {
   createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt      DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  tenant       Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  subscription TenantSubscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  tenant        Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  subscription  TenantSubscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  onlinePayment OnlinePayment?
 
   @@index([tenantId])
   @@map("saas_invoices")
@@ -1176,12 +1177,17 @@ model OnlinePayment {
   providerTransactionId String?              @map("provider_transaction_id")
   failureReason         String?              @map("failure_reason")
   transactionId         String?              @map("transaction_id") @db.Uuid
+  /// PLATFORM_SUBSCRIPTION only: how many months the payment buys, fixed when the checkout starts.
+  billingMonths         Int?                 @map("billing_months")
+  /// PLATFORM_SUBSCRIPTION only: the paid invoice created when the payment was confirmed.
+  saasInvoiceId         String?              @unique @map("saas_invoice_id") @db.Uuid
   paidAt                DateTime?            @map("paid_at") @db.Timestamptz(3)
   createdAt             DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt             DateTime             @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  payer  User   @relation("OnlinePaymentPayer", fields: [payerUserId], references: [id])
+  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  payer       User         @relation("OnlinePaymentPayer", fields: [payerUserId], references: [id])
+  saasInvoice SaaSInvoice? @relation(fields: [saasInvoiceId], references: [id], onDelete: SetNull)
 
   @@index([tenantId])
   @@index([payerUserId])
