@@ -753,6 +753,11 @@ Notes:
   a verified domain (`RESEND_API_KEY`, `MAIL_FROM_EMAIL`) or SMTP (`SMTP_*`). Owner decision pending.
 - Test data on Neon dev: three approved QA players (`qa.player.<n>@example.com`, guardians `qa.guardian.<n>@example.com`)
   in أكاديمية النجوم, and five "U12 QA" sessions today (all closed).
+- Build EPERM (`query_engine-windows.dll.node`): Windows locks the Prisma engine while an API process runs, and
+  `prisma generate` rewrites it every time. The root `build`, `build:backend` and `dev` now run
+  `db:generate:if-needed` (`packages/database/scripts/generate-if-needed.cjs`), which skips generation when the client
+  already matches the schema; verified by building while an API was running. After a schema change, stop the API
+  first. `pnpm db:generate` still always regenerates (CI, Docker).
 - Security-relevant SQL in this round: `submit_player_join_request` re-created with one extra parameter (same body);
   review before merging to main.
 

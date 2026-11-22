@@ -16,6 +16,7 @@
     "build": "node scripts/check-prisma-client.cjs && rimraf dist tsconfig.build.tsbuildinfo && tsc -p tsconfig.build.json",
     "clean": "rimraf dist tsconfig.tsbuildinfo tsconfig.build.tsbuildinfo",
     "generate": "prisma generate",
+    "generate:if-needed": "node scripts/generate-if-needed.cjs",
     "migrate:dev": "prisma migrate dev",
     "migrate:deploy": "prisma migrate deploy",
     "studio": "prisma studio",
