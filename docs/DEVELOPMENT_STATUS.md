@@ -749,8 +749,9 @@ separate local copy (ports 3100/3101, real Neon dev database, fake camera): 20/2
 
 Notes:
 
-- E-mails are only logged while `MAIL_PROVIDER=dev` (current `backend/.env`); real delivery needs a sender: Resend with
-  a verified domain (`RESEND_API_KEY`, `MAIL_FROM_EMAIL`) or SMTP (`SMTP_*`). Owner decision pending.
+- E-mail delivery (owner decision 2026-11-22): SMTP through a dedicated Gmail account of the platform (App
+  Password in `backend/.env`, never committed), sender name "Sportexus"; verified by sending test e-mails. All e-mails
+  are in English: `MAIL_LOCALE` (default `en`, or `ar`) sets the language; callers no longer force Arabic.
 - Test data on Neon dev: three approved QA players (`qa.player.<n>@example.com`, guardians `qa.guardian.<n>@example.com`)
   in أكاديمية النجوم, and five "U12 QA" sessions today (all closed).
 - Build EPERM (`query_engine-windows.dll.node`): Windows locks the Prisma engine while an API process runs, and

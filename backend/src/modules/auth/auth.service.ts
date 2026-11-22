@@ -200,7 +200,6 @@ export class AuthService {
         email,
         dto.name.trim(),
         dto.academyName.trim(),
-        'ar',
       );
     } catch (e) {
       this.logger.warn(`Failed to send application confirmation email: ${(e as Error)?.message}`);
@@ -655,7 +654,7 @@ export class AuthService {
         const appUrl =
           process.env.APP_PUBLIC_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
         const resetUrl = `${appUrl}/reset-password#token=${linkToken}&email=${encodeURIComponent(normalizedEmail)}`;
-        await this.emailService.sendPasswordReset(user.email, user.name, resetUrl, 'ar', code);
+        await this.emailService.sendPasswordReset(user.email, user.name, resetUrl, undefined, code);
       } catch (e) {
         this.logger.warn(`Failed to dispatch password reset email: ${(e as Error)?.message}`);
       }
@@ -756,12 +755,11 @@ export class AuthService {
         select: { email: true, name: true },
       });
       if (userRecord) {
-        await this.emailService.sendPasswordChangedNotification(
-          userRecord.email,
-          userRecord.name,
-          { ipAddress, userAgent, changedAt: new Date() },
-          'ar',
-        );
+        await this.emailService.sendPasswordChangedNotification(userRecord.email, userRecord.name, {
+          ipAddress,
+          userAgent,
+          changedAt: new Date(),
+        });
       }
     } catch (e) {
       this.logger.warn(
@@ -928,7 +926,7 @@ export class AuthService {
         const appUrl =
           process.env.APP_PUBLIC_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
         const verifyUrl = `${appUrl}/verify-email?token=${rawToken}`;
-        await this.emailService.sendEmailVerification(user.email, user.name, verifyUrl, 'ar');
+        await this.emailService.sendEmailVerification(user.email, user.name, verifyUrl);
       } catch (e) {
         this.logger.warn(`Failed to dispatch verification email: ${(e as Error)?.message}`);
       }
@@ -1084,12 +1082,11 @@ export class AuthService {
 
     // Security alert: dispatch password changed confirmation email
     try {
-      await this.emailService.sendPasswordChangedNotification(
-        user.email,
-        user.name,
-        { ipAddress, userAgent, changedAt: new Date() },
-        'ar',
-      );
+      await this.emailService.sendPasswordChangedNotification(user.email, user.name, {
+        ipAddress,
+        userAgent,
+        changedAt: new Date(),
+      });
     } catch (e) {
       this.logger.warn(
         `Failed to dispatch password changed security email: ${(e as Error)?.message}`,

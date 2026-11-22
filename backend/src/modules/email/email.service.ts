@@ -71,6 +71,8 @@ export class EmailService {
   private readonly fromName: string;
   private readonly resendApiKey?: string;
   private readonly appPublicUrl: string;
+  /** Language of every e-mail the platform sends (MAIL_LOCALE: 'en' default, or 'ar'). */
+  private readonly emailLocale: 'ar' | 'en';
 
   private readonly smtpHost?: string;
   private readonly smtpPort: number;
@@ -95,6 +97,9 @@ export class EmailService {
       this.configService.get<string>('NEXT_PUBLIC_APP_URL') ||
       this.configService.get<string>('APP_PUBLIC_URL') ||
       'http://localhost:3000';
+
+    this.emailLocale =
+      this.configService.get<string>('MAIL_LOCALE')?.trim().toLowerCase() === 'ar' ? 'ar' : 'en';
 
     this.smtpHost = this.configService.get<string>('SMTP_HOST');
     this.smtpPort = Number(this.configService.get<string | number>('SMTP_PORT')) || 587;
@@ -430,8 +435,10 @@ export class EmailService {
     to: string,
     ownerName: string,
     academyName: string,
-    locale: 'ar' | 'en' = 'ar',
+    requestedLocale?: 'ar' | 'en',
   ): Promise<SendEmailResult> {
+    // The platform's e-mail language (MAIL_LOCALE) unless a caller asks for a specific one.
+    const locale = requestedLocale ?? this.emailLocale;
     const isAr = locale === 'ar';
     const safeOwner = escapeHtml(ownerName);
     const safeAcademy = escapeHtml(academyName);
@@ -471,8 +478,10 @@ export class EmailService {
     ownerName: string,
     academyName: string,
     activationUrl: string,
-    locale: 'ar' | 'en' = 'ar',
+    requestedLocale?: 'ar' | 'en',
   ): Promise<SendEmailResult> {
+    // The platform's e-mail language (MAIL_LOCALE) unless a caller asks for a specific one.
+    const locale = requestedLocale ?? this.emailLocale;
     const isAr = locale === 'ar';
     const safeOwner = escapeHtml(ownerName);
     const safeAcademy = escapeHtml(academyName);
@@ -512,8 +521,10 @@ export class EmailService {
     ownerName: string,
     academyName: string,
     reason?: string,
-    locale: 'ar' | 'en' = 'ar',
+    requestedLocale?: 'ar' | 'en',
   ): Promise<SendEmailResult> {
+    // The platform's e-mail language (MAIL_LOCALE) unless a caller asks for a specific one.
+    const locale = requestedLocale ?? this.emailLocale;
     const isAr = locale === 'ar';
     const safeOwner = escapeHtml(ownerName);
     const safeAcademy = escapeHtml(academyName);
@@ -565,8 +576,10 @@ export class EmailService {
     ownerName: string,
     academyName: string,
     notes?: string,
-    locale: 'ar' | 'en' = 'ar',
+    requestedLocale?: 'ar' | 'en',
   ): Promise<SendEmailResult> {
+    // The platform's e-mail language (MAIL_LOCALE) unless a caller asks for a specific one.
+    const locale = requestedLocale ?? this.emailLocale;
     const isAr = locale === 'ar';
     const safeOwner = escapeHtml(ownerName);
     const safeAcademy = escapeHtml(academyName);
@@ -617,9 +630,11 @@ export class EmailService {
     to: string,
     name: string,
     resetUrl: string,
-    locale: 'ar' | 'en' = 'ar',
+    requestedLocale?: 'ar' | 'en',
     otpCode?: string,
   ): Promise<SendEmailResult> {
+    // The platform's e-mail language (MAIL_LOCALE) unless a caller asks for a specific one.
+    const locale = requestedLocale ?? this.emailLocale;
     const isAr = locale === 'ar';
     const safeName = escapeHtml(name);
     const safeOtp = otpCode ? escapeHtml(otpCode) : null;
@@ -680,8 +695,10 @@ export class EmailService {
       userAgent?: string;
       changedAt?: Date;
     },
-    locale: 'ar' | 'en' = 'ar',
+    requestedLocale?: 'ar' | 'en',
   ): Promise<SendEmailResult> {
+    // The platform's e-mail language (MAIL_LOCALE) unless a caller asks for a specific one.
+    const locale = requestedLocale ?? this.emailLocale;
     const isAr = locale === 'ar';
     const safeName = escapeHtml(name);
     const dateFormatted = (details?.changedAt || new Date()).toLocaleString(
@@ -730,8 +747,10 @@ export class EmailService {
     to: string,
     name: string,
     verifyUrl: string,
-    locale: 'ar' | 'en' = 'ar',
+    requestedLocale?: 'ar' | 'en',
   ): Promise<SendEmailResult> {
+    // The platform's e-mail language (MAIL_LOCALE) unless a caller asks for a specific one.
+    const locale = requestedLocale ?? this.emailLocale;
     const isAr = locale === 'ar';
     const safeName = escapeHtml(name);
 
@@ -769,8 +788,10 @@ export class EmailService {
     role: 'PLATFORM_OWNER' | 'PLATFORM_CO_OWNER' | 'SUPER_ADMIN',
     actionUrl: string,
     isNewUser: boolean,
-    locale: 'ar' | 'en' = 'ar',
+    requestedLocale?: 'ar' | 'en',
   ): Promise<SendEmailResult> {
+    // The platform's e-mail language (MAIL_LOCALE) unless a caller asks for a specific one.
+    const locale = requestedLocale ?? this.emailLocale;
     const isAr = locale === 'ar';
     const safeName = escapeHtml(name);
 
@@ -844,7 +865,7 @@ export class EmailService {
     branchName?: string;
     locale?: 'ar' | 'en';
   }): Promise<SendEmailResult> {
-    const locale = options.locale || 'ar';
+    const locale = options.locale ?? this.emailLocale;
     const isAr = locale === 'ar';
     const displayName = options.recipientName || (isAr ? 'عزيزنا العضو' : 'Valued Colleague');
     const safeDisplayName = escapeHtml(displayName);
@@ -931,7 +952,7 @@ export class EmailService {
     sport: string;
     locale?: 'ar' | 'en';
   }): Promise<SendEmailResult> {
-    const locale = options.locale || 'ar';
+    const locale = options.locale ?? this.emailLocale;
     const isAr = locale === 'ar';
     const safeGuardian = escapeHtml(options.guardianName);
     const safePlayer = escapeHtml(options.playerName);
@@ -993,7 +1014,7 @@ export class EmailService {
     date?: Date;
     locale?: 'ar' | 'en';
   }): Promise<SendEmailResult> {
-    const locale = options.locale || 'ar';
+    const locale = options.locale ?? this.emailLocale;
     const isAr = locale === 'ar';
     const safeRecipient = escapeHtml(options.recipientName);
     const safeAcademy = escapeHtml(options.academyName);
@@ -1092,7 +1113,7 @@ export class EmailService {
     status: 'EXPIRING_SOON' | 'EXPIRED' | 'PAST_DUE';
     locale?: 'ar' | 'en';
   }): Promise<SendEmailResult> {
-    const locale = options.locale || 'ar';
+    const locale = options.locale ?? this.emailLocale;
     const isAr = locale === 'ar';
     const safeOwner = escapeHtml(options.ownerName);
     const safeAcademy = escapeHtml(options.academyName);
@@ -1161,7 +1182,7 @@ export class EmailService {
     requesterType: 'PLAYER' | 'GUARDIAN';
     locale?: 'ar' | 'en';
   }): Promise<SendEmailResult> {
-    const isAr = (options.locale ?? 'ar') === 'ar';
+    const isAr = (options.locale ?? this.emailLocale) === 'ar';
     const name = escapeHtml(options.applicantName || options.playerName);
     const player = escapeHtml(options.playerName);
     const academy = escapeHtml(options.academyName);
@@ -1203,7 +1224,7 @@ export class EmailService {
     notes?: string | null;
     locale?: 'ar' | 'en';
   }): Promise<SendEmailResult> {
-    const isAr = (options.locale ?? 'ar') === 'ar';
+    const isAr = (options.locale ?? this.emailLocale) === 'ar';
     const name = escapeHtml(options.applicantName || options.playerName);
     const player = escapeHtml(options.playerName);
     const academy = escapeHtml(options.academyName);

@@ -548,17 +548,17 @@ describe('EmailService', () => {
         requesterType: 'GUARDIAN',
       });
       const [mail] = emailService.getSentEmails();
-      expect(mail?.subject).toContain('Academy A');
+      expect(mail?.subject).toBe('Join request received: Academy A — Sportexus');
       expect(mail?.html).toContain('>Sport</span><span style="color:#16A34A;">exus<');
-      expect(mail?.html).toContain('dir="rtl"');
+      expect(mail?.html).toContain('dir="ltr"');
       expect(mail?.html).toContain('Guardian &lt;b&gt;X&lt;/b&gt;'); // escaped
       expect(mail?.html).not.toContain('<style>'); // inline styles only (mail clients drop <style>)
     });
 
     it.each([
-      ['APPROVED', 'تمت الموافقة', true],
-      ['REJECTED', 'لم توافق', false],
-      ['MORE_INFO_REQUESTED', 'معلومات إضافية', false],
+      ['APPROVED', 'approved your join request', true],
+      ['REJECTED', 'did not approve', false],
+      ['MORE_INFO_REQUESTED', 'needs more information', false],
     ] as const)('%s decision e-mail', async (status, phrase, hasLoginButton) => {
       emailService = new EmailService(configService);
       await emailService.sendJoinRequestDecision({
@@ -573,6 +573,20 @@ describe('EmailService', () => {
       expect(mail?.html).toContain(phrase);
       expect(mail?.html.includes('https://sportexus.com/login')).toBe(hasLoginButton);
       expect(mail?.text).toContain('Academy A');
+    });
+  });
+
+  describe('E-mail language (owner decision 2026-11-22: English)', () => {
+    it('is English by default and Arabic only when MAIL_LOCALE=ar', async () => {
+      emailService = new EmailService(configService);
+      await emailService.sendAcademyRejected('owner@example.com', 'Owner', 'Academy A');
+      expect(emailService.getSentEmails()[0]?.subject).toContain('Update on Academy Application');
+
+      const arabic = new EmailService({
+        get: (key: string) => (key === 'MAIL_LOCALE' ? 'ar' : mockConfigValues[key]),
+      } as unknown as ConfigService);
+      await arabic.sendAcademyRejected('owner@example.com', 'Owner', 'Academy A');
+      expect(arabic.getSentEmails()[0]?.subject).toContain('تحديث بخصوص طلب تسجيل أكاديمية');
     });
   });
 });

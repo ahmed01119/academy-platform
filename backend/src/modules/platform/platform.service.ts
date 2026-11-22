@@ -1228,7 +1228,6 @@ export class PlatformService {
         dto.role ?? 'SUPER_ADMIN',
         actionUrl,
         isNewUser,
-        'ar',
       );
     } catch (e) {
       this.logger.warn(
@@ -1609,7 +1608,6 @@ export class PlatformService {
             result.item.applicantName || 'Academy Owner',
             result.academyName,
             `${appUrl}/login`,
-            'ar',
           );
         } catch (mailErr: any) {
           this.logger.warn(
@@ -1633,7 +1631,6 @@ export class PlatformService {
             result.item.applicantName || '',
             result.academyName,
             dto.reviewNotes,
-            'ar',
           );
         } catch (mailErr: any) {
           this.logger.warn(
@@ -1657,7 +1654,6 @@ export class PlatformService {
             result.item.applicantName || '',
             result.academyName,
             dto.reviewNotes,
-            'ar',
           );
         } catch (mailErr: any) {
           this.logger.warn(

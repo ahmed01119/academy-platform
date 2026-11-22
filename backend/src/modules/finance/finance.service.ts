@@ -457,9 +457,8 @@ export class FinanceService {
             amount: money(dto.amount),
             currency: transaction.currency,
             paymentMethod: dto.paymentMethod,
-            description: dto.notes || 'سداد رسوم اشتراك تدريبي',
+            description: dto.notes || 'Training subscription payment',
             date: now,
-            locale: 'ar',
           };
         }
       } catch (mailErr: unknown) {

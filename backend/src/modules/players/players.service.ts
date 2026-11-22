@@ -495,7 +495,6 @@ export class PlayersService {
               academyName: tenant?.name || 'Sportexus Academy',
               branchName: branch.name,
               sport: dto.sport,
-              locale: 'ar',
             });
           } catch (mailErr: unknown) {
             this.logger.warn(
