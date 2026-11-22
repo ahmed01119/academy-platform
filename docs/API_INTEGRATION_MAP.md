@@ -96,6 +96,8 @@ Phase 5 builds approved screens on the shared data-loading and error states from
 | `auth.logout`             | POST  | `/auth/logout`              | public         | contexts/auth-context.tsx                     |
 | `auth.forgotPassword`     | POST  | `/auth/forgot-password`     | public         | /auth-test, /forgot-password                  |
 | `auth.resetPassword`      | POST  | `/auth/reset-password`      | public         | /auth-test, /forgot-password, /reset-password |
+| `auth.sendEmailCode`      | POST  | `/auth/email-code`          | public         | /register, join forms, /auth-test             |
+| `auth.verifyEmailCode`    | POST  | `/auth/email-code/verify`   | public         | /register, join forms, /auth-test             |
 | `auth.verifyEmail`        | POST  | `/auth/verify-email`        | public         | /auth-test, /verify-email                     |
 | `auth.resendVerification` | POST  | `/auth/resend-verification` | public         | /auth-test, /verify-email                     |
 | `auth.getMe`              | GET   | `/auth/me`                  | signed in      | /auth-test, contexts/auth-context.tsx         |

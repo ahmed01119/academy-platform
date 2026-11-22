@@ -223,6 +223,10 @@ Pre-2026-11-16 code:
 5. REJECTED / MORE_INFO_REQUESTED: status + notes, notification and e-mail (a pending applicant cannot sign in, so the
    e-mail is how they learn the outcome). User-supplied values in e-mails are HTML-escaped.
 
+- **Confirmed e-mail for new accounts (2026-11-22)**: an academy application or a join request that creates an
+  account is accepted only after the applicant confirms the sign-in e-mail with a 6-digit code (10 minutes, 5
+  attempts). The account is stored as e-mail-verified. The optional guardian e-mail of a player request is not
+  confirmed by code (its owner is not filling the form) but must be on a domain that receives mail.
 - **Join request e-mails (2026-11-22)**: the applicant gets an e-mail when the request is received and when the
   academy approves, rejects or asks for more information (with the academy's notes); same for academy applications.
 - **E-mails in a PLAYER request (2026-11-22)**: `contactEmail` is the player's own sign-in e-mail; the guardian's

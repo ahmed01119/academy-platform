@@ -762,6 +762,39 @@ Notes:
 - Security-relevant SQL in this round: `submit_player_join_request` re-created with one extra parameter (same body);
   review before merging to main.
 
+## 9n. E-mail confirmation by code for new accounts (2026-11-22)
+
+Owner request: an applicant could type an e-mail that is not theirs or does not exist. Owner decisions: a code
+before submitting (not a link afterwards); the optional guardian e-mail of a player request gets a domain check only.
+
+- **Flow**: under the sign-in e-mail of the academy registration form (`/register`) and of the join forms (player and
+  guardian, when not signed in) the applicant presses "send verification code", gets a 6-digit code by e-mail and types
+  it. The form cannot be submitted before that; changing the address afterwards drops the confirmation.
+- **API** (public, CSRF-guarded): `POST /v1/auth/email-code` `{email}` and `POST /v1/auth/email-code/verify`
+  `{email, code}` -> `{proof, expiresAt}`. `POST /auth/register` now requires `emailProof`; `POST
+/portal/player-join-requests` requires it when the request creates a new account. Signed-in applicants need none.
+- **Rules** (`EmailCodeService`): code valid 10 minutes, 5 wrong attempts then discarded, one code per minute, 5 per
+  hour per address, 20 per hour per network; stored hashed in Redis under a hash of the address. The proof is an HMAC
+  over the address and its expiry (30 minutes), so it cannot be forged or used for another address. The domain is
+  checked in DNS first (MX, or address record; null MX and unknown domains refused; DNS failures let it through).
+  Addresses that already have an account are told to sign in.
+- **Database**: no migration. The new account is stored with `is_email_verified = true` inside the creating
+  transaction, through the existing definer functions `request_email_verification` + `verify_user_email`.
+- **Guardian e-mail** of a PLAYER request: refused when its domain cannot receive mail (`EMAIL_DOMAIN_INVALID`,
+  `details.field = guardianEmail`).
+- New error codes: `EMAIL_NOT_VERIFIED`, `EMAIL_DOMAIN_INVALID`, `EMAIL_DELIVERY_FAILED`.
+- With `MAIL_PROVIDER=dev` nothing is sent; outside production the code is written to the API log.
+
+Verification: unit tests (code service 12, gates in register/join 5, frontend helpers 5); full suites API 425 passed /
+8 skipped, web 403, shared 56; typecheck and lint clean. End to end on ports 3100/3101 against the Neon dev database
+(dev mail provider): 19/19 checks, and the three new accounts are stored verified. One real code e-mail sent through
+Gmail SMTP to the platform address.
+
+Not covered: e-mails typed by staff (adding a player or guardian, inviting staff) are not confirmed by code; invitations
+already prove the address when accepted. Existing accounts keep their current `is_email_verified` value.
+
+Test data on Neon dev: one academy application (`QA Verify ...`) and two join requests from `qa.verify.*@gmail.com`.
+
 ## 10. Backend requirements (recorded by owner decisions)
 
 **Workflow (owner direction 2026-11-15):** frontend issues whose root cause is in the backend are now fixed across both
@@ -811,6 +844,7 @@ with e-mail verification, so invitees can accept invitations.
 
 | Date       | Change                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | Files                                                                                                                                                                                                                                                                                                                                                                                 |
 | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-11-22 | E-mail confirmation by code before a new account is created (§9n): academy registration and join forms; domain check for the guardian e-mail.                                                                                                                                                                                                                                                                                                                                                              |
 | 2026-11-22 | Owner test-list fixes (§9m): landing at `/`, join-request e-mails in the platform design, separate player/guardian e-mails and forms, placeholders, single password eye, remember me, no sudden sign-outs, scanner stop button and live counter.                                                                                                                                                                                                                                                           |
 | 2026-11-22 | Online payments phase B (§9l): academies renew the platform subscription online (definer function, paid invoice); payouts ledger with platform-console tab and academy card.                                                                                                                                                                                                                                                                                                                               |
 | 2026-11-22 | Online payments phase A (§9k): families pay subscriptions through Paymob into the platform account; a signed, idempotent webhook records the ledger entry and receipt; dues card and result page.                                                                                                                                                                                                                                                                                                          |
