@@ -10,6 +10,7 @@ describe('validateWithSchema utility', () => {
       password: 'Password123!',
       academyName: 'Al-Hilal Academy',
       sport: 'FOOTBALL',
+      emailProof: 'v1.0.proof',
     };
 
     const result = validateWithSchema(RegisterRequestSchema, validData);

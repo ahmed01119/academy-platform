@@ -3,6 +3,8 @@
  */
 import type {
   AuthResponse,
+  EmailCodeProofResponse,
+  SendEmailCodeResponse,
   ForgotPasswordRequest,
   LoginRequest,
   RegisterRequest,
@@ -70,6 +72,22 @@ export const authApi = {
     return request('/auth/reset-password', {
       method: 'POST',
       body: JSON.stringify(data),
+    });
+  },
+
+  /** Sends a 6-digit code that confirms an applicant's e-mail before an account is created. */
+  async sendEmailCode(email: string): Promise<SendEmailCodeResponse> {
+    return request('/auth/email-code', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  },
+
+  /** Checks the code; the returned proof goes with the registration / join form as `emailProof`. */
+  async verifyEmailCode(email: string, code: string): Promise<EmailCodeProofResponse> {
+    return request('/auth/email-code/verify', {
+      method: 'POST',
+      body: JSON.stringify({ email, code }),
     });
   },
 

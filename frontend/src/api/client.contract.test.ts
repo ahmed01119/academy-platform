@@ -7,7 +7,7 @@ import * as client from './client';
  * `@/lib/http` + `@/features/<domain>/api`. Removing or renaming a method breaks callers.
  */
 const EXPECTED_API_SURFACE: Record<string, string[]> = {
-  auth: 'register login logout refresh forgotPassword resetPassword verifyEmail resendVerification getMe changePassword updateProfile'.split(
+  auth: 'register login logout refresh forgotPassword resetPassword verifyEmail resendVerification sendEmailCode verifyEmailCode getMe changePassword updateProfile'.split(
     ' ',
   ),
   tenancy:

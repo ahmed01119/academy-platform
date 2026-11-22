@@ -1,5 +1,6 @@
 import { RegisterRequestSchema } from '@academy/shared';
 import { ApiError } from '@/lib/http/api-error';
+import { signupEmailErrorMessage } from './email-code';
 import { validateWithSchema } from '@/utils/validation';
 
 type Locale = 'ar' | 'en';
@@ -38,7 +39,8 @@ export function validateRegisterForm(
   const errors: RegisterFieldErrors = {};
   const isAr = locale === 'ar';
 
-  const result = validateWithSchema(RegisterRequestSchema, {
+  // The e-mail confirmation (emailProof) is a separate step of the form, checked on submit.
+  const result = validateWithSchema(RegisterRequestSchema.omit({ emailProof: true }), {
     name: values.ownerName.trim(),
     email: values.email.trim().toLowerCase(),
     password: values.password,
@@ -95,6 +97,9 @@ export type RegisterErrorResolution =
 export function resolveRegisterError(err: unknown, locale: Locale): RegisterErrorResolution {
   const message = err instanceof ApiError ? err.message : '';
   const isAr = locale === 'ar';
+
+  const emailProblem = signupEmailErrorMessage(err, locale);
+  if (emailProblem) return { kind: 'field', field: 'email', message: emailProblem };
 
   if (
     message.includes('already exists') ||

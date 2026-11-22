@@ -16,6 +16,8 @@ import {
   type RegisterFieldErrors,
 } from '@/features/auth/register-form';
 import { PasswordVisibilityToggle } from '@/features/auth/components/PasswordVisibilityToggle';
+import { EmailCodeVerification } from '@/features/auth/components/EmailCodeVerification';
+import { emailNotConfirmedMessage } from '@/features/auth/email-code';
 import { readReturnPath, withReturnPath } from '@/lib/auth/safe-return-path';
 import { useSafeReturnPath } from '@/hooks/useSafeReturnPath';
 import { Navbar } from '../../components/Navbar';
@@ -60,6 +62,8 @@ export default function RegisterPage() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  // Proof that the e-mail was confirmed with a code (POST /auth/email-code/verify).
+  const [emailProof, setEmailProof] = useState<string | null>(null);
 
   const [fieldErrors, setFieldErrors] = useState<RegisterFieldErrors>({});
   const [error, setError] = useState<string | null>(null);
@@ -118,6 +122,11 @@ export default function RegisterPage() {
     if (!validateForm()) {
       return;
     }
+    if (!emailProof) {
+      setFieldErrors((prev) => ({ ...prev, email: emailNotConfirmedMessage(locale) }));
+      emailRef.current?.focus();
+      return;
+    }
 
     setIsSubmitting(true);
 
@@ -130,6 +139,7 @@ export default function RegisterPage() {
         email: email.trim().toLowerCase(),
         phone: phone.trim() ? phone.trim() : undefined,
         password,
+        emailProof,
       });
 
       if (res.status === 'PENDING_REVIEW') {
@@ -504,6 +514,16 @@ export default function RegisterPage() {
                           <span>{fieldErrors.email}</span>
                         </p>
                       )}
+                      <EmailCodeVerification
+                        email={email}
+                        locale={locale}
+                        onProofChange={(proof) => {
+                          setEmailProof(proof);
+                          if (proof) setFieldErrors((prev) => ({ ...prev, email: '' }));
+                        }}
+                        disabled={isSubmitting}
+                        idPrefix="register"
+                      />
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

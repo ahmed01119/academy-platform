@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation';
 import { Navbar } from '../../components/Navbar';
 import { useAuth } from '@/contexts/auth-context';
 import { api, ApiError } from '@/api/client';
+import { EmailCodeVerification } from '@/features/auth/components/EmailCodeVerification';
 import {
   ShieldCheck,
   ShieldAlert,
@@ -66,6 +67,7 @@ export default function AuthTestPage() {
   const [regSport, setRegSport] = useState('FOOTBALL');
   const [regOwnerName, setRegOwnerName] = useState('الكابتن عبد الرحمن');
   const [regEmail, setRegEmail] = useState('');
+  const [regEmailProof, setRegEmailProof] = useState<string | null>(null);
   const [regPhone, setRegPhone] = useState('+201012345678');
   const [regPassword, setRegPassword] = useState('P@ssword123!');
   const [isRegistering, setIsRegistering] = useState(false);
@@ -155,6 +157,7 @@ export default function AuthTestPage() {
         email: regEmail.trim().toLowerCase(),
         phone: regPhone.trim() || undefined,
         password: regPassword,
+        emailProof: regEmailProof ?? '',
       });
 
       addLog(
@@ -868,6 +871,12 @@ export default function AuthTestPage() {
                         onChange={(e) => setRegEmail(e.target.value)}
                         dir="ltr"
                         className="w-full rounded-xl border border-[#2b4c3e] bg-[#0f1c18] py-2 px-3 text-xs text-white placeholder-[#5a7a6c] focus:border-[#2f9e6b] outline-none font-mono"
+                      />
+                      <EmailCodeVerification
+                        email={regEmail}
+                        locale="ar"
+                        onProofChange={setRegEmailProof}
+                        idPrefix="auth-test-reg"
                       />
                     </div>
                     <div>

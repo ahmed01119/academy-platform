@@ -25,6 +25,8 @@ import {
   type PlayerJoinFormValues,
 } from '@/features/landing/player-join-request';
 import { UnsavedFieldsNotice } from './UnsavedFieldsNotice';
+import { EmailCodeVerification } from '@/features/auth/components/EmailCodeVerification';
+import { emailNotConfirmedMessage, signupEmailErrorMessage } from '@/features/auth/email-code';
 
 export interface PlayerJoinRequestModalProps {
   isOpen: boolean;
@@ -94,6 +96,8 @@ export function PlayerJoinRequestModal({
   // Section 5: new account (only when not signed in)
   const [joinPassword, setJoinPassword] = useState('');
   const [joinConfirmPassword, setJoinConfirmPassword] = useState('');
+  // Proof that the new account's e-mail was confirmed with a code (only when not signed in).
+  const [joinEmailProof, setJoinEmailProof] = useState<string | null>(null);
   // Submission Status
   const [isSubmittingJoin, setIsSubmittingJoin] = useState(false);
   const [joinSubmitted, setJoinSubmitted] = useState(false);
@@ -171,18 +175,27 @@ export function PlayerJoinRequestModal({
     // F17: `pendingBackendSupport` (gender, jersey, national ID, emergency contact name,
     // medical notes, relationship) is intentionally not sent until the API supports it.
     const { payload } = buildPlayerJoinRequest(values, isSignedIn);
+    if (!isSignedIn && !joinEmailProof) {
+      setJoinError(emailNotConfirmedMessage(locale));
+      return;
+    }
 
     setIsSubmittingJoin(true);
     setJoinError(null);
     try {
-      await portalApi.submitPlayerJoinRequest(payload);
+      await portalApi.submitPlayerJoinRequest(
+        isSignedIn ? payload : { ...payload, emailProof: joinEmailProof ?? undefined },
+      );
       setJoinSubmitted(true);
       // The password is not kept once the account exists.
       setJoinPassword('');
       setJoinConfirmPassword('');
       onSubmitted?.();
     } catch (err: unknown) {
-      setJoinError(getErrorMessage(err, 'Failed to submit player join request'));
+      setJoinError(
+        signupEmailErrorMessage(err, locale) ??
+          getErrorMessage(err, 'Failed to submit player join request'),
+      );
     } finally {
       setIsSubmittingJoin(false);
     }
@@ -384,6 +397,15 @@ export function PlayerJoinRequestModal({
                           placeholder="name@example.com"
                           className="w-full rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors font-mono"
                         />
+                        {!isSignedIn && (
+                          <EmailCodeVerification
+                            email={joinPlayerEmail}
+                            locale={locale}
+                            onProofChange={setJoinEmailProof}
+                            disabled={isSubmittingJoin}
+                            idPrefix="join-player"
+                          />
+                        )}
                       </div>
                     )}
 
@@ -626,6 +648,15 @@ export function PlayerJoinRequestModal({
                         placeholder="name@example.com"
                         className="w-full rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors font-mono"
                       />
+                      {!isSignedIn && requesterType === 'GUARDIAN' && (
+                        <EmailCodeVerification
+                          email={joinEmail}
+                          locale={locale}
+                          onProofChange={setJoinEmailProof}
+                          disabled={isSubmittingJoin}
+                          idPrefix="join-guardian"
+                        />
+                      )}
                     </div>
                   </div>
                 </div>
