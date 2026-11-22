@@ -293,6 +293,13 @@ Pre-2026-11-16 code:
   exactly like a cashier payment (method ONLINE, receipt number, receipt email to the guardian), and only once.
 - A declined or abandoned payment changes nothing in the balance.
 - Refunds are made in Paymob; reversing the ledger entry in the platform does not refund the card.
+- **Platform subscription (phase B)**: only the academy **owner** pays it online, one billing cycle per payment. Price =
+  monthly price (negotiated, else the plan's) times the cycle's months (1/3/6/12); an annual cycle on the list price uses
+  the plan's yearly price when set. After Paymob's signed confirmation the subscription becomes ACTIVE, the renewal date
+  moves forward one cycle from the later of today and the current renewal date, and a PAID invoice is issued.
+- **Payouts**: the platform owes each academy what its families paid online minus what was transferred. Platform staff
+  see the balances; only the **platform owner** records a transfer, never more than the balance. The academy sees its
+  own collections, transfers and the amount still held by the platform.
 
 ### 2.11 Branches & academy settings
 

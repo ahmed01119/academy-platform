@@ -145,22 +145,23 @@ tokens, registration) — these touch the non-RLS tables `users`/`refresh_tokens
 
 ### Endpoint map (controller → prefix)
 
-| Prefix           | Guarding                                                   | Highlights                                                                                                                                        |
-| ---------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/auth`          | public + CSRF; `me`, `change-password`, `profile` need JWT | register, login, refresh, logout, forgot/reset password, verify/resend email                                                                      |
-| `/tenants`       | JWT (+Tenant+Permissions per route)                        | my-memberships, switch, invitations (CRUD, accept, resend), memberships revoke, coach-delegation, staff, branches, profile                        |
-| `/branches`      | JWT+Tenant+Perm+CSRF                                       | list/get/create/update, deletion-impact, DELETE = archive                                                                                         |
-| `/players`       | JWT+Tenant+Perm+CSRF                                       | CRUD, qr-card (get/rotate/revoke), registration-requests (+ `join-requests` aliases) review, deletion-impact, DELETE = safe archive               |
-| `/enrollments`   | JWT+Tenant+Perm+CSRF                                       | list, create, `:id/transfer`                                                                                                                      |
-| `/groups`        | JWT+Tenant+Perm+CSRF                                       | CRUD, coaches, members, schedules                                                                                                                 |
-| `/attendance`    | JWT+Tenant+Perm+CSRF                                       | sessions (create/list/get/close/qr/checkin-qr/scan-player-qr/offline-sync/events), records, records/bulk, corrections, reports                    |
-| `/evaluations`   | JWT+Tenant+Perm+CSRF                                       | templates, create, player list/profile, session list, rankings                                                                                    |
-| `/finance`       | JWT+Tenant+Perm+CSRF                                       | subscription, player-plans, player-subscriptions, payments/collect, transactions/:id/reverse, sessions/:id/cashier                                | expense | close, expenses/:id/approve | reject, dashboard |
-| `/payments`      | JWT+CSRF (no tenant guard); webhook public and HMAC-signed | dues, online (start), online/:id (status), paymob/webhook                                                                                         |
-| `/portal`        | mixed                                                      | player/me, player/qr-card, guardian/me, claim (JWT); claim-token (staff); **public** player-join-requests, academies                              |
-| `/notifications` | JWT+CSRF (no tenant guard)                                 | list, unread-count, :id/read, mark-all-read                                                                                                       |
-| `/platform`      | JWT+PlatformSuperAdmin+CSRF (+PlatformOwner on some)       | metrics, academies, users, saas-plans, announcements, audit-logs, security-events, applications (public submit), super-admin invite/role, storage |
-| `/health`        | public                                                     | liveness, `/ready` (Postgres + Redis)                                                                                                             |
+| Prefix              | Guarding                                                                                             | Highlights                                                                                                                                        |
+| ------------------- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/auth`             | public + CSRF; `me`, `change-password`, `profile` need JWT                                           | register, login, refresh, logout, forgot/reset password, verify/resend email                                                                      |
+| `/tenants`          | JWT (+Tenant+Permissions per route)                                                                  | my-memberships, switch, invitations (CRUD, accept, resend), memberships revoke, coach-delegation, staff, branches, profile                        |
+| `/branches`         | JWT+Tenant+Perm+CSRF                                                                                 | list/get/create/update, deletion-impact, DELETE = archive                                                                                         |
+| `/players`          | JWT+Tenant+Perm+CSRF                                                                                 | CRUD, qr-card (get/rotate/revoke), registration-requests (+ `join-requests` aliases) review, deletion-impact, DELETE = safe archive               |
+| `/enrollments`      | JWT+Tenant+Perm+CSRF                                                                                 | list, create, `:id/transfer`                                                                                                                      |
+| `/groups`           | JWT+Tenant+Perm+CSRF                                                                                 | CRUD, coaches, members, schedules                                                                                                                 |
+| `/attendance`       | JWT+Tenant+Perm+CSRF                                                                                 | sessions (create/list/get/close/qr/checkin-qr/scan-player-qr/offline-sync/events), records, records/bulk, corrections, reports                    |
+| `/evaluations`      | JWT+Tenant+Perm+CSRF                                                                                 | templates, create, player list/profile, session list, rankings                                                                                    |
+| `/finance`          | JWT+Tenant+Perm+CSRF                                                                                 | subscription, player-plans, player-subscriptions, payments/collect, transactions/:id/reverse, sessions/:id/cashier                                | expense | close, expenses/:id/approve | reject, dashboard |
+| `/payments`         | JWT+CSRF; platform-subscription and academy-summary also Tenant+Perm; webhook public and HMAC-signed | dues, online (start), online/:id (status), platform-subscription (quote, pay), academy-summary, paymob/webhook                                    |
+| `/platform/payouts` | JWT+PlatformSuperAdmin+CSRF (+PlatformOwner to record)                                               | balances, list, record a transfer                                                                                                                 |
+| `/portal`           | mixed                                                                                                | player/me, player/qr-card, guardian/me, claim (JWT); claim-token (staff); **public** player-join-requests, academies                              |
+| `/notifications`    | JWT+CSRF (no tenant guard)                                                                           | list, unread-count, :id/read, mark-all-read                                                                                                       |
+| `/platform`         | JWT+PlatformSuperAdmin+CSRF (+PlatformOwner on some)                                                 | metrics, academies, users, saas-plans, announcements, audit-logs, security-events, applications (public submit), super-admin invite/role, storage |
+| `/health`           | public                                                                                               | liveness, `/ready` (Postgres + Redis)                                                                                                             |
 
 ## 6. Database architecture
 
@@ -185,7 +186,9 @@ PostgreSQL schema `public`, managed by Prisma (`packages/database/prisma/schema.
 - **SaaS billing (platform)**: `saas_plans` (limits: maxBranches/Players/Coaches), `tenant_subscriptions`
   (1 per tenant), `saas_invoices`.
 - **Online payments**: `online_payments` (one row per checkout attempt; Paymob order id unique; PENDING/PAID/FAILED;
-  links to the ledger entry it created), `academy_payouts` (platform-to-academy transfers).
+  links to the ledger entry or, for a platform subscription, the paid `saas_invoices` row), `academy_payouts`
+  (platform-to-academy transfers). Platform renewals are written only by the definer function
+  `fulfil_platform_subscription_payment`, callable only in the payment-webhook context.
 - **Platform & comms**: `platform_announcements`, `academy_applications`, `player_registration_requests`,
   `app_notifications`, `audit_logs` (append-only).
 

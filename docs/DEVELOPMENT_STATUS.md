@@ -679,12 +679,52 @@ Notes and pending:
 
 - Test data left on Neon dev: hany.parent's two demo subscriptions (Adam 300, Laila 1,650 EGP) are now paid online.
 - Not yet tested against Paymob itself: needs the owner's merchant account and keys (test mode first).
-- Phase B: academies pay the platform subscription online (`PLATFORM_SUBSCRIPTION` callbacks are accepted and logged
-  but not fulfilled yet; fulfilling needs a super-admin-level write on `tenant_subscriptions`/`saas_invoices`, a
-  security-reviewed path), and a platform screen with each academy's collected-online vs paid-out balance and payout
-  recording (the `academy_payouts` table is ready).
+- Phase B (academies pay the platform subscription; payouts screen): done, see §9l.
 - Refunds are not automated: reversing the ledger entry does not refund the card; a refund is made in Paymob.
 - Collecting on behalf of academies needs the owner's legal and accounting arrangement (contracts, invoices, fees).
+
+## 9l. Online payments, phase B: academies renew the platform subscription; payouts (2026-11-22)
+
+Owner request: continue with phase B.
+
+| Layer    | Change                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Database | Migration `20261122130000_platform_subscription_payments` (additive; applied to Neon dev with the owner's approval): `online_payments.billing_months` (1-12, CHECK) and `online_payments.saas_invoice_id` (unique, FK to `saas_invoices`, SET NULL). New definer function `fulfil_platform_subscription_payment(payment_id)`: callable only in the payment-webhook context, only for a PAID `PLATFORM_SUBSCRIPTION` payment; sets the subscription ACTIVE, moves `renewal_date` forward by `billing_months` from the later of the current renewal date and now, clears `grace_ends_at`, creates a PAID invoice (`INV-<yyyymmdd>-<10 chars>`, method ONLINE) and links it; idempotent. EXECUTE revoked from PUBLIC, granted to the runtime roles. **Security-relevant: please review the SQL in the migration before merging to main.**                                        |
+| Shared   | `SAAS_BILLING_CYCLE_MONTHS`, `PlatformSubscriptionQuote`, `AcademyPayoutBalanceItem`, `AcademyPayoutItem`, `CreateAcademyPayoutRequestSchema`, `AcademyOnlineCollectionsSummary`; `OnlinePaymentStatusResponse` gains optional `purpose`, `invoiceNumber`, `renewalDate` (backward compatible).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| API      | `GET /v1/payments/platform-subscription/quote` and `POST /v1/payments/platform-subscription` (tenant + `tenant.update`, i.e. the academy owner); `GET /v1/payments/academy-summary` (tenant + `payments.read`); `GET /v1/platform/payouts/balances`, `GET /v1/platform/payouts` (platform staff), `POST /v1/platform/payouts` (platform owner only). The webhook fulfils `PLATFORM_SUBSCRIPTION` payments: claim PENDING to PAID and call the definer function in one webhook transaction; audit `PLATFORM_SUBSCRIPTION_PAID_ONLINE`. Payouts: balance = PAID family payments minus payouts per academy and currency; a payout may not exceed the balance (`PAYOUT_EXCEEDS_BALANCE`), with a per-academy advisory lock; audit `ACADEMY_PAYOUT_RECORDED`. Checkout start now marks the payment FAILED if the provider order id cannot be stored (it could never be confirmed). |
+| Web      | Finance > plans tab: "جدّد اشتراك المنصة أونلاين" with amount, period and the new renewal date (owner only; hidden otherwise). Finance > overview: "الدفع الإلكتروني والتحويلات" card (collected online, transferred, still held, latest transfers; hidden until the first online payment). Platform console: new tab and sidebar entry "تحويلات الأكاديميات" (balances per academy, total owed, transfer history; "تسجيل تحويل" dialog for the platform owner). Result page handles platform payments (invoice number, renewed-until date).                                                                                                                                                                                                                                                                                                                                  |
+
+Business rule chosen (prices are monthly across the platform, as the console's MRR shows): one payment buys one billing
+cycle. Cycle price = monthly price (negotiated price, else the plan's monthly price) times the cycle's months
+(1/3/6/12); an annual cycle on the list price uses the plan's yearly price when it is set. The owner can change this.
+
+Verification:
+
+- Unit: payments 24 tests (pricing and renewal date, platform webhook fulfilment once, amount mismatch, checkout
+  abandoned when the order id cannot be stored) and payouts 4 tests (balances, record within balance, refuse above the
+  balance, unknown academy). Full suites: API 401 passed / 8 skipped, web 392, shared 56, database 10; typecheck and
+  lint clean.
+- End to end against the local Paymob stand-in with the real API, web app and Neon dev database: 14/14. The owner of
+  أكاديمية النجوم sees the renewal card (1,299 EGP, one month), pays, and the result page shows the invoice number and
+  the new date; the subscription moved from 2026-12-18 to 2027-01-18; a repeated callback renews nothing (one invoice in
+  the database); a manager gets 403; the academy summary shows 1,950 EGP collected; a platform admin sees the balance but
+  gets 403 when recording; a parent gets 403; a payout above the balance gets 400; the platform owner records 1,000 EGP
+  through the dialog and the balance drops to 950 for both the console and the academy.
+
+Notes and pending:
+
+- Test data left on Neon dev: أكاديمية النجوم renewed to 2027-01-18 with invoice `INV-20261121-DFA4EE091B`; a payout of
+  1,000 EGP (reference CIB-TRX-55821); one PENDING platform payment without an order id from a test-setup failure (the
+  stand-in reused an order number), harmless.
+- Environment incident: the first `prisma migrate deploy` ran against the **local** database (`localhost:5432`,
+  `packages/database/.env`), because the schema's `DATABASE_URL` wins over `DATABASE_ADMIN_URL` from the shell. That
+  local database was 12 migrations behind (from `20261116090000` to this one) and all of them were applied; it holds
+  almost nothing (0 academies, 7 users) and nothing was deleted. To target Neon, set `DATABASE_URL` itself for the CLI.
+- To check: `FinanceService.getTenantSubscription` creates a missing subscription in the academy's context, which RLS
+  allows only to platform staff; an academy without a subscription row would get an error there (pre-existing; every
+  demo academy has a row).
+- Platform subscription payment does not change the plan (upgrade/downgrade stays a platform-console action).
+- Not yet tested against Paymob itself (needs the merchant keys). Refunds stay manual in Paymob.
 
 ## 10. Backend requirements (recorded by owner decisions)
 
@@ -735,6 +775,7 @@ with e-mail verification, so invitees can accept invitations.
 
 | Date       | Change                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | Files                                                                                                                                                                                                                                                                                                                                                                                 |
 | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-11-22 | Online payments phase B (§9l): academies renew the platform subscription online (definer function, paid invoice); payouts ledger with platform-console tab and academy card.                                                                                                                                                                                                                                                                                                                               |
 | 2026-11-22 | Online payments phase A (§9k): families pay subscriptions through Paymob into the platform account; a signed, idempotent webhook records the ledger entry and receipt; dues card and result page.                                                                                                                                                                                                                                                                                                          |
 | 2026-11-21 | Academies of any sport (§9j): 11 new sports, registration keeps the sport, academy sports in settings, forms follow the academy's sports.                                                                                                                                                                                                                                                                                                                                                                  |
 | 2026-11-20 | Detailed functional pass (§9i): debug reset code opt-in (D1), offline quick marks and scan dedupe (D2, D3), safe CSV (D4), printing (D5), report group filter (D6), accessible notifications (D7), 50 lost classes (D8), labels and group page language (D9).                                                                                                                                                                                                                                              |
