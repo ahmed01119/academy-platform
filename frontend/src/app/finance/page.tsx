@@ -1,5 +1,6 @@
 'use client';
 
+import { OnlineCollectionsCard } from '@/components/payments/OnlineCollectionsCard';
 import { useAcademyCurrency } from '@/hooks/useAcademyCurrency';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/auth-context';
@@ -394,7 +395,10 @@ export default function FinanceDashboardPage() {
           </TabList>
 
           <TabContent value="OVERVIEW">
-            <OverviewTab metrics={metrics} onReverseTransaction={setReversalTx} />
+            <div className="space-y-6">
+              <OnlineCollectionsCard />
+              <OverviewTab metrics={metrics} onReverseTransaction={setReversalTx} />
+            </div>
           </TabContent>
 
           <TabContent value="SUBSCRIPTIONS">

@@ -173,6 +173,12 @@ export function Sidebar({ isMobileOpen = false, onCloseMobile }: SidebarProps) {
         id: 'sidebar-nav-platform-plans',
       },
       {
+        href: '/platform?tab=payouts',
+        label: locale === 'ar' ? 'تحويلات الأكاديميات' : 'Academy Payouts',
+        icon: Wallet,
+        id: 'sidebar-nav-platform-payouts',
+      },
+      {
         href: '/platform?tab=storage',
         label: locale === 'ar' ? 'التخزين والبيانات' : 'Storage & Lifecycle',
         icon: Database,

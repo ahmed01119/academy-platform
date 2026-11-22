@@ -72,24 +72,51 @@ function PaymentResult() {
   } else if (payment?.status === 'PAID') {
     icon = <CheckCircle2 className="h-12 w-12 text-emerald-500" />;
     title = ar ? 'تم الدفع بنجاح' : 'Payment successful';
-    const paidAmount = <bdi dir="ltr">{amount}</bdi>;
-    body = ar ? (
-      <>
-        تم سداد {paidAmount} إلى {payment.academyName}
-        {payment.playerName ? <> عن {payment.playerName}</> : null}.
-      </>
-    ) : (
-      <>
-        {paidAmount} paid to {payment.academyName}
-        {payment.playerName ? <> for {payment.playerName}</> : null}.
-      </>
+    const paidAmount = (
+      <bdi dir="ltr" className="whitespace-nowrap">
+        {amount}
+      </bdi>
     );
+    const until = payment.renewalDate ? (
+      <bdi dir="ltr" className="whitespace-nowrap">
+        {payment.renewalDate.slice(0, 10)}
+      </bdi>
+    ) : null;
+    body =
+      payment.purpose === 'PLATFORM_SUBSCRIPTION' ? (
+        ar ? (
+          <>
+            تم سداد {paidAmount} وتجديد اشتراك {payment.academyName} في المنصة
+            {until ? <> حتى {until}</> : null}.
+          </>
+        ) : (
+          <>
+            {paidAmount} paid; {payment.academyName}&apos;s platform subscription is renewed
+            {until ? <> until {until}</> : null}.
+          </>
+        )
+      ) : ar ? (
+        <>
+          تم سداد {paidAmount} إلى {payment.academyName}
+          {payment.playerName ? <> عن {payment.playerName}</> : null}.
+        </>
+      ) : (
+        <>
+          {paidAmount} paid to {payment.academyName}
+          {payment.playerName ? <> for {payment.playerName}</> : null}.
+        </>
+      );
   } else if (payment?.status === 'FAILED') {
     icon = <XCircle className="h-12 w-12 text-rose-500" />;
     title = ar ? 'لم تتم عملية الدفع' : 'Payment was not completed';
     body = ar
       ? 'لم يُخصم أي مبلغ. يمكنك المحاولة مرة أخرى من صفحة المستحقات.'
       : 'No money was taken. You can try again from your dues.';
+    if (payment.purpose === 'PLATFORM_SUBSCRIPTION') {
+      body = ar
+        ? 'لم يُخصم أي مبلغ. يمكنك المحاولة مرة أخرى من صفحة المالية.'
+        : 'No money was taken. You can try again from the finance page.';
+    }
   } else if (payment && polls >= POLL_LIMIT) {
     icon = <Clock className="h-12 w-12 text-amber-500" />;
     title = ar ? 'جاري تأكيد الدفع' : 'Your payment is being confirmed';
@@ -103,6 +130,14 @@ function PaymentResult() {
       <div className="flex justify-center">{icon}</div>
       <h1 className="text-xl font-bold text-(--text-main)">{title}</h1>
       {body && <p className="text-sm text-(--text-muted)">{body}</p>}
+      {payment?.status === 'PAID' && payment.invoiceNumber && (
+        <p className="text-xs text-(--text-muted)">
+          {ar ? 'رقم الفاتورة: ' : 'Invoice number: '}
+          <span dir="ltr" className="font-mono font-semibold text-(--text-main)">
+            {payment.invoiceNumber}
+          </span>
+        </p>
+      )}
       {payment?.status === 'PAID' && payment.receiptNumber && (
         <p className="text-xs text-(--text-muted)">
           {ar ? 'رقم الإيصال: ' : 'Receipt number: '}

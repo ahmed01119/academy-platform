@@ -31,6 +31,10 @@ const ApplicationsTab = dynamic(
   { loading: TabLoadingFallback },
 );
 
+const PlatformPayoutsTab = dynamic(
+  () => import('../../components/platform/PlatformPayoutsTab').then((m) => m.PlatformPayoutsTab),
+  { loading: TabLoadingFallback },
+);
 const StorageTab = dynamic(
   () => import('../../components/platform/StorageTab').then((m) => m.StorageTab),
   { loading: TabLoadingFallback },
@@ -69,6 +73,7 @@ function PlatformSuperAdminContent() {
     | 'applications'
     | 'users'
     | 'plans'
+    | 'payouts'
     | 'storage'
     | 'governance'
     | 'coowner'
@@ -83,6 +88,7 @@ function PlatformSuperAdminContent() {
       'applications',
       'users',
       'plans',
+      'payouts',
       'storage',
       'governance',
       'coowner',
@@ -545,6 +551,7 @@ function PlatformSuperAdminContent() {
         {activeTab === 'coowner' && <CoOwnerTab />}
 
         {/* Tab: Storage & Lifecycle */}
+        {activeTab === 'payouts' && <PlatformPayoutsTab />}
         {activeTab === 'storage' && <StorageTab />}
 
         {/* Tab: Governance & Sovereign Roles */}

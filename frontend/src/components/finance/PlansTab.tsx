@@ -6,6 +6,7 @@ import { useLocale } from '@/contexts/locale-context';
 import type { PlayerSubscriptionPlanItem, TenantSubscriptionItem } from '@academy/shared';
 import { ShieldCheck, PlusCircle } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { PlatformSubscriptionPay } from '@/components/payments/PlatformSubscriptionPay';
 
 export interface PlansTabProps {
   tenantSub: TenantSubscriptionItem | null;
@@ -91,6 +92,8 @@ export function PlansTab({ tenantSub, plans, onOpenCreatePlan }: PlansTabProps) 
               </span>
             </div>
           </div>
+
+          <PlatformSubscriptionPay />
         </div>
       )}
 
