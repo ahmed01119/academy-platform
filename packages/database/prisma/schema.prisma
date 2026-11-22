@@ -1114,6 +1114,8 @@ model PlayerRegistrationRequest {
   contactPhone     String?           @map("contact_phone")
   dateOfBirth      DateTime?         @map("date_of_birth") @db.Date
   guardianName     String?           @map("guardian_name")
+  /// The guardian's own e-mail (PLAYER requests); contactEmail is the applicant's account e-mail.
+  guardianEmail    String?           @map("guardian_email")
   status           ApplicationStatus @default(PENDING_REVIEW)
   reviewNotes      String?           @map("review_notes")
   reviewedByUserId String?           @map("reviewed_by_user_id") @db.Uuid
