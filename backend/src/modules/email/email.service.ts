@@ -536,14 +536,14 @@ export class EmailService {
       bodyHtml: isAr
         ? `<p>نشكرك على اهتمامك بمنصة <strong>سبورتكسس</strong>.</p>
            <p>نأسف لإبلاغك بأنه تعذر قبول طلب تسجيل أكاديمية <strong>"${safeAcademy}"</strong> في الوقت الحالي.</p>
-           <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; padding: 14px; margin: 16px 0; color: #fca5a5;">
+           <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; padding: 14px; margin: 16px 0; color: #b91c1c;">
              <strong>ملاحظات المراجعة:</strong><br/>
              ${safeReason}
            </div>
            <p>يمكنك التواصل مع فريق الدعم الفني لمزيد من الاستفسارات أو إعادة التقديم بعد استيفاء المتطلبات.</p>`
         : `<p>Thank you for your interest in <strong>Sportexus</strong>.</p>
            <p>We regret to inform you that we are unable to approve the application for <strong>"${safeAcademy}"</strong> at this time.</p>
-           <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; padding: 14px; margin: 16px 0; color: #fca5a5;">
+           <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; padding: 14px; margin: 16px 0; color: #b91c1c;">
              <strong>Review Notes:</strong><br/>
              ${safeReason}
            </div>
@@ -589,14 +589,14 @@ export class EmailService {
       bodyHtml: isAr
         ? `<p>يقوم فريق مراجعة منصة <strong>سبورتكسس</strong> بدراسة طلب تسجيل أكاديمية <strong>"${safeAcademy}"</strong>.</p>
            <p>نرجو التكرم بتزويدنا بالمعلومات الإضافية التالية لاستكمال إجراءات الاعتماد:</p>
-           <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 8px; padding: 14px; margin: 16px 0; color: #fcd34d;">
+           <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 8px; padding: 14px; margin: 16px 0; color: #b45309;">
              <strong>المطلوب:</strong><br/>
              ${safeNotes}
            </div>
            <p>يرجى الرد على هذه الرسالة أو التواصل مع فريق الدعم لتحديث ملفك.</p>`
         : `<p>Our platform review team is currently evaluating the application for <strong>"${safeAcademy}"</strong>.</p>
            <p>Please provide the following additional information to complete your verification:</p>
-           <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 8px; padding: 14px; margin: 16px 0; color: #fcd34d;">
+           <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 8px; padding: 14px; margin: 16px 0; color: #b45309;">
              <strong>Required Details:</strong><br/>
              ${safeNotes}
            </div>
@@ -651,11 +651,11 @@ export class EmailService {
         ? `<p>تلقينا طلباً لإعادة تعيين كلمة المرور الخاصة بحسابك على منصة سبورتكسس.</p>
            ${otpHtml}
            <p>استخدم رمز التحقق أعلاه أو انقر على الزر أدناه لإعادة تعيين كلمة المرور. الرمز صالح لمدة <strong>5 دقائق فقط</strong>.</p>
-           <p style="color: #94a3b8; font-size: 13px;">إذا لم تطلب إعادة تعيين كلمة المرور، يمكنك تجاهل هذه الرسالة بأمان وستظل كلمة مرورك الحالية دون تغيير.</p>`
+           <p style="color: #64748b; font-size: 13px;">إذا لم تطلب إعادة تعيين كلمة المرور، يمكنك تجاهل هذه الرسالة بأمان وستظل كلمة مرورك الحالية دون تغيير.</p>`
         : `<p>We received a request to reset the password for your Sportexus account.</p>
            ${otpHtml}
            <p>Use the verification code above or click the button below to reset your password. This code is valid for <strong>5 minutes only</strong>.</p>
-           <p style="color: #94a3b8; font-size: 13px;">If you did not request this, you can safely ignore this email.</p>`,
+           <p style="color: #64748b; font-size: 13px;">If you did not request this, you can safely ignore this email.</p>`,
       actionButton: {
         label: isAr ? 'تعيين كلمة المرور الجديدة' : 'Reset My Password',
         url: resetUrl,
@@ -703,17 +703,17 @@ export class EmailService {
       greeting: isAr ? `مرحباً ${safeName}،` : `Hello ${safeName},`,
       bodyHtml: isAr
         ? `<p>نود إبلاغك بأنه قد تم <strong>تغيير كلمة المرور</strong> لحسابك على منصة سبورتكسس بنجاح.</p>
-           <div style="background: rgba(15, 23, 42, 0.8); border: 1px solid #334155; border-radius: 8px; padding: 14px; margin: 16px 0; font-size: 13px; color: #94a3b8;">
+           <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; margin: 16px 0; font-size: 13px; color: #64748b;">
              <div><strong>التاريخ والتوقيت:</strong> ${dateFormatted} UTC</div>
              <div><strong>عنوان IP:</strong> ${safeIp}</div>
            </div>
-           <p style="color: #f87171; font-size: 13px;">إذا لم تقم بتغيير كلمة المرور بنفسك، يرجى التوجه فوراً لإعادة تعيينها والتواصل مع إدارة المنصة لتأمين حسابك.</p>`
+           <p style="color: #dc2626; font-size: 13px;">إذا لم تقم بتغيير كلمة المرور بنفسك، يرجى التوجه فوراً لإعادة تعيينها والتواصل مع إدارة المنصة لتأمين حسابك.</p>`
         : `<p>This is a confirmation that the password for your Sportexus account has been <strong>successfully changed</strong>.</p>
-           <div style="background: rgba(15, 23, 42, 0.8); border: 1px solid #334155; border-radius: 8px; padding: 14px; margin: 16px 0; font-size: 13px; color: #94a3b8;">
+           <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; margin: 16px 0; font-size: 13px; color: #64748b;">
              <div><strong>Date & Time:</strong> ${dateFormatted} UTC</div>
              <div><strong>IP Address:</strong> ${safeIp}</div>
            </div>
-           <p style="color: #f87171; font-size: 13px;">If you did not perform this change, please reset your password immediately and contact support.</p>`,
+           <p style="color: #dc2626; font-size: 13px;">If you did not perform this change, please reset your password immediately and contact support.</p>`,
     });
 
     const text = isAr
@@ -954,13 +954,13 @@ export class EmailService {
       greeting: isAr ? `مرحباً ${safeGuardian}،` : `Hello ${safeGuardian},`,
       bodyHtml: isAr
         ? `<p>يسعدنا إبلاغك بأنه قد تم تسجيل اللاعب <strong>${safePlayer}</strong> بنجاح في <strong>"${safeAcademy}"</strong>.</p>
-           <div style="background: rgba(15, 23, 42, 0.8); border: 1px solid #334155; border-radius: 8px; padding: 14px; margin: 16px 0; font-size: 14px; line-height: 1.8;">
+           <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; margin: 16px 0; font-size: 14px; line-height: 1.8;">
              <div><strong>الفرع:</strong> ${safeBranch}</div>
              <div><strong>الرياضة:</strong> ${safeSport}</div>
            </div>
            <p>يمكنك الآن متابعة حضور وغياب اللاعب، جداول الحصص التدريبية، والاشتراكات المالية عبر بوابة ولي الأمر واللاعبين.</p>`
         : `<p>We are excited to welcome you! Player <strong>${safePlayer}</strong> has been successfully enrolled in <strong>"${safeAcademy}"</strong>.</p>
-           <div style="background: rgba(15, 23, 42, 0.8); border: 1px solid #334155; border-radius: 8px; padding: 14px; margin: 16px 0; font-size: 14px; line-height: 1.8;">
+           <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; margin: 16px 0; font-size: 14px; line-height: 1.8;">
              <div><strong>Branch:</strong> ${safeBranch}</div>
              <div><strong>Sport:</strong> ${safeSport}</div>
            </div>
@@ -1023,53 +1023,53 @@ export class EmailService {
       greeting: isAr ? `مرحباً ${safeRecipient}،` : `Hello ${safeRecipient},`,
       bodyHtml: isAr
         ? `<p>تم استلام دفعتك المالية بنجاح لصالح <strong>"${safeAcademy}"</strong>. فيما يلي تفاصيل المعاملة:</p>
-           <div style="background: rgba(15, 23, 42, 0.9); border: 1px solid #334155; border-radius: 12px; padding: 18px; margin: 20px 0; font-size: 14px; line-height: 1.9;">
-             <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #1e293b; padding-bottom: 8px; margin-bottom: 8px;">
-               <span style="color: #94a3b8;">رقم الإيصال:</span>
-               <strong style="color: #00D6FF;">${safeReceipt}</strong>
+           <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; margin: 20px 0; font-size: 14px; line-height: 1.9;">
+             <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 8px;">
+               <span style="color: #64748b;">رقم الإيصال:</span>
+               <strong style="color: #0A3BFF;">${safeReceipt}</strong>
              </div>
-             <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #1e293b; padding-bottom: 8px; margin-bottom: 8px;">
-               <span style="color: #94a3b8;">المبلغ المدفوع:</span>
-               <strong style="color: #22c55e; font-size: 16px;">${safeAmount} ${safeCurrency}</strong>
+             <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 8px;">
+               <span style="color: #64748b;">المبلغ المدفوع:</span>
+               <strong style="color: #15803d; font-size: 16px;">${safeAmount} ${safeCurrency}</strong>
              </div>
-             <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #1e293b; padding-bottom: 8px; margin-bottom: 8px;">
-               <span style="color: #94a3b8;">طريقة الدفع:</span>
+             <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 8px;">
+               <span style="color: #64748b;">طريقة الدفع:</span>
                <span>${safeMethod}</span>
              </div>
-             <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #1e293b; padding-bottom: 8px; margin-bottom: 8px;">
-               <span style="color: #94a3b8;">التاريخ:</span>
+             <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 8px;">
+               <span style="color: #64748b;">التاريخ:</span>
                <span>${paymentDate}</span>
              </div>
              <div style="display: flex; justify-content: space-between;">
-               <span style="color: #94a3b8;">الوصف:</span>
+               <span style="color: #64748b;">الوصف:</span>
                <span>${safeDesc}</span>
              </div>
            </div>
-           <p style="color: #94a3b8; font-size: 13px;">هذا الإيصال تم إنشاؤه آلياً وهو سند رسمي لعملية الدفع.</p>`
+           <p style="color: #64748b; font-size: 13px;">هذا الإيصال تم إنشاؤه آلياً وهو سند رسمي لعملية الدفع.</p>`
         : `<p>Your payment has been successfully received by <strong>"${safeAcademy}"</strong>. Transaction summary:</p>
-           <div style="background: rgba(15, 23, 42, 0.9); border: 1px solid #334155; border-radius: 12px; padding: 18px; margin: 20px 0; font-size: 14px; line-height: 1.9;">
-             <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #1e293b; padding-bottom: 8px; margin-bottom: 8px;">
-               <span style="color: #94a3b8;">Receipt #:</span>
-               <strong style="color: #00D6FF;">${safeReceipt}</strong>
+           <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; margin: 20px 0; font-size: 14px; line-height: 1.9;">
+             <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 8px;">
+               <span style="color: #64748b;">Receipt #:</span>
+               <strong style="color: #0A3BFF;">${safeReceipt}</strong>
              </div>
-             <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #1e293b; padding-bottom: 8px; margin-bottom: 8px;">
-               <span style="color: #94a3b8;">Amount Paid:</span>
-               <strong style="color: #22c55e; font-size: 16px;">${safeAmount} ${safeCurrency}</strong>
+             <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 8px;">
+               <span style="color: #64748b;">Amount Paid:</span>
+               <strong style="color: #15803d; font-size: 16px;">${safeAmount} ${safeCurrency}</strong>
              </div>
-             <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #1e293b; padding-bottom: 8px; margin-bottom: 8px;">
-               <span style="color: #94a3b8;">Payment Method:</span>
+             <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 8px;">
+               <span style="color: #64748b;">Payment Method:</span>
                <span>${safeMethod}</span>
              </div>
-             <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #1e293b; padding-bottom: 8px; margin-bottom: 8px;">
-               <span style="color: #94a3b8;">Date:</span>
+             <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 8px;">
+               <span style="color: #64748b;">Date:</span>
                <span>${paymentDate}</span>
              </div>
              <div style="display: flex; justify-content: space-between;">
-               <span style="color: #94a3b8;">Description:</span>
+               <span style="color: #64748b;">Description:</span>
                <span>${safeDesc}</span>
              </div>
            </div>
-           <p style="color: #94a3b8; font-size: 13px;">This electronic receipt serves as an official confirmation of payment.</p>`,
+           <p style="color: #64748b; font-size: 13px;">This electronic receipt serves as an official confirmation of payment.</p>`,
     });
 
     const text = isAr
@@ -1120,13 +1120,13 @@ export class EmailService {
       greeting: isAr ? `مرحباً ${safeOwner}،` : `Hello ${safeOwner},`,
       bodyHtml: isAr
         ? `<p>نود إحاطتك علماً بحالة اشتراك باقة <strong>"${safePlan}"</strong> لأكاديمية <strong>"${safeAcademy}"</strong>.</p>
-           <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 8px; padding: 14px; margin: 16px 0; color: #fcd34d;">
+           <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 8px; padding: 14px; margin: 16px 0; color: #b45309;">
              <strong>تاريخ الانتهاء:</strong> ${expiryDate}<br/>
              <strong>الحالة:</strong> ${options.status === 'EXPIRED' ? 'منتهي الصلاحية' : 'يقترب موعد التجديد'}
            </div>
            <p>لضمان استمرار عمل مساحة الأكاديمية دون انقطاع وتفادي تعليق وصول المدربين والمشتركين، يرجى تجديد الاشتراك عبر الرابط أدناه.</p>`
         : `<p>This notice concerns your <strong>"${safePlan}"</strong> subscription for <strong>"${safeAcademy}"</strong>.</p>
-           <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 8px; padding: 14px; margin: 16px 0; color: #fcd34d;">
+           <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 8px; padding: 14px; margin: 16px 0; color: #b45309;">
              <strong>Expiration Date:</strong> ${expiryDate}<br/>
              <strong>Status:</strong> ${options.status === 'EXPIRED' ? 'Expired' : 'Expiring Soon'}
            </div>
@@ -1151,9 +1151,164 @@ export class EmailService {
   }
 
   /**
-   * Renders the branded, responsive HTML email shell.
+   * Join request received: sent to the applicant (player or guardian) right after the request is submitted.
    */
-  private renderBaseTemplate(options: {
+  async sendJoinRequestReceived(options: {
+    to: string;
+    applicantName: string;
+    playerName: string;
+    academyName: string;
+    requesterType: 'PLAYER' | 'GUARDIAN';
+    locale?: 'ar' | 'en';
+  }): Promise<SendEmailResult> {
+    const isAr = (options.locale ?? 'ar') === 'ar';
+    const name = escapeHtml(options.applicantName || options.playerName);
+    const player = escapeHtml(options.playerName);
+    const academy = escapeHtml(options.academyName);
+    const forChild = options.requesterType === 'GUARDIAN';
+    const subject = isAr
+      ? `تم استلام طلب الانضمام إلى ${options.academyName} — سبورتكسس`
+      : `Join request received: ${options.academyName} — Sportexus`;
+    const html = this.renderBaseTemplate({
+      locale: isAr ? 'ar' : 'en',
+      preheader: isAr
+        ? 'طلبك قيد المراجعة لدى الأكاديمية.'
+        : 'Your request is being reviewed by the academy.',
+      title: isAr ? 'تم استلام طلبك' : 'Request received',
+      greeting: isAr ? `مرحباً ${name}،` : `Hello ${name},`,
+      bodyHtml: isAr
+        ? `<p>تم استلام طلب انضمام ${forChild ? `<strong>${player}</strong>` : 'حضرتك'} إلى أكاديمية <strong>${academy}</strong> بنجاح.</p>
+           ${this.calloutHtml('info', 'الحالة', 'قيد المراجعة لدى إدارة الأكاديمية')}
+           <p>سيصلك بريد إلكتروني فور اتخاذ قرار بشأن الطلب. لا يمكن تسجيل الدخول بالحساب الجديد قبل الموافقة.</p>`
+        : `<p>Your request to join <strong>${academy}</strong>${forChild ? ` for <strong>${player}</strong>` : ''} was received.</p>
+           ${this.calloutHtml('info', 'Status', 'Under review by the academy')}
+           <p>You will get an email as soon as the academy decides. A new account can sign in only after approval.</p>`,
+    });
+    const text = isAr
+      ? `تم استلام طلب الانضمام إلى ${options.academyName}${forChild ? ` لـ ${options.playerName}` : ''}، وهو قيد المراجعة.`
+      : `Your request to join ${options.academyName}${forChild ? ` for ${options.playerName}` : ''} was received and is under review.`;
+    return this.sendEmailDetailed({ to: options.to, subject, html, text });
+  }
+
+  /**
+   * Join request decision: approved, rejected or more information needed, sent to the applicant.
+   */
+  async sendJoinRequestDecision(options: {
+    to: string;
+    applicantName?: string | null;
+    playerName: string;
+    academyName: string;
+    status: 'APPROVED' | 'REJECTED' | 'MORE_INFO_REQUESTED';
+    requesterType: 'PLAYER' | 'GUARDIAN';
+    notes?: string | null;
+    locale?: 'ar' | 'en';
+  }): Promise<SendEmailResult> {
+    const isAr = (options.locale ?? 'ar') === 'ar';
+    const name = escapeHtml(options.applicantName || options.playerName);
+    const player = escapeHtml(options.playerName);
+    const academy = escapeHtml(options.academyName);
+    const notes = options.notes ? escapeHtml(options.notes) : '';
+    const forChild = options.requesterType === 'GUARDIAN';
+    const who = isAr
+      ? forChild
+        ? `لـ <strong>${player}</strong> `
+        : ''
+      : forChild
+        ? ` for <strong>${player}</strong>`
+        : '';
+    const loginUrl = `${this.appPublicUrl.replace(/\/+$/, '')}/login`;
+    let subject: string;
+    let title: string;
+    let bodyHtml: string;
+    let text: string;
+    let actionButton: { label: string; url: string } | undefined;
+    if (options.status === 'APPROVED') {
+      subject = isAr
+        ? `تمت الموافقة على طلب الانضمام — ${options.academyName}`
+        : `Join request approved — ${options.academyName}`;
+      title = isAr ? 'تمت الموافقة على طلبك 🎉' : 'Your request is approved 🎉';
+      bodyHtml = isAr
+        ? `<p>يسعدنا إبلاغك بأن أكاديمية <strong>${academy}</strong> وافقت على طلب الانضمام ${who}.</p>
+           ${this.calloutHtml('success', 'الحالة', 'تمت الموافقة')}
+           <p>يمكنك الآن تسجيل الدخول بالبريد وكلمة المرور اللذين أنشأتهما مع الطلب، ومتابعة ${forChild ? 'ابنك/ابنتك' : 'تدريبك'} من بوابة ${forChild ? 'ولي الأمر' : 'اللاعب'}.</p>
+           ${notes ? this.calloutHtml('info', 'ملاحظات الأكاديمية', notes) : ''}`
+        : `<p><strong>${academy}</strong> approved your join request${who}.</p>
+           ${this.calloutHtml('success', 'Status', 'Approved')}
+           <p>You can now sign in with the email and password you created with the request.</p>
+           ${notes ? this.calloutHtml('info', 'Notes from the academy', notes) : ''}`;
+      actionButton = { label: isAr ? 'تسجيل الدخول' : 'Sign in', url: loginUrl };
+      text = isAr
+        ? `وافقت أكاديمية ${options.academyName} على طلب الانضمام. سجّل الدخول: ${loginUrl}`
+        : `${options.academyName} approved your join request. Sign in: ${loginUrl}`;
+    } else if (options.status === 'REJECTED') {
+      subject = isAr
+        ? `تحديث بخصوص طلب الانضمام — ${options.academyName}`
+        : `Update on your join request — ${options.academyName}`;
+      title = isAr ? 'لم تتم الموافقة على الطلب' : 'Request not approved';
+      bodyHtml = isAr
+        ? `<p>نأسف لإبلاغك بأن أكاديمية <strong>${academy}</strong> لم توافق على طلب الانضمام ${who}.</p>
+           ${this.calloutHtml('danger', 'السبب', notes || 'لم تذكر الأكاديمية سبباً.')}
+           <p>للاستفسار يمكنك التواصل مع إدارة الأكاديمية مباشرة.</p>`
+        : `<p>We are sorry: <strong>${academy}</strong> did not approve your join request${who}.</p>
+           ${this.calloutHtml('danger', 'Reason', notes || 'No reason was given.')}
+           <p>For questions, please contact the academy directly.</p>`;
+      text = isAr
+        ? `لم توافق أكاديمية ${options.academyName} على طلب الانضمام.${options.notes ? ` السبب: ${options.notes}` : ''}`
+        : `${options.academyName} did not approve your join request.${options.notes ? ` Reason: ${options.notes}` : ''}`;
+    } else {
+      subject = isAr
+        ? `مطلوب معلومات إضافية لطلب الانضمام — ${options.academyName}`
+        : `More information needed — ${options.academyName}`;
+      title = isAr ? 'مطلوب معلومات إضافية' : 'More information needed';
+      bodyHtml = isAr
+        ? `<p>تحتاج أكاديمية <strong>${academy}</strong> إلى معلومات إضافية لاستكمال طلب الانضمام ${who}.</p>
+           ${this.calloutHtml('warning', 'المطلوب', notes || 'يرجى التواصل مع الأكاديمية.')}
+           <p>يرجى التواصل مع إدارة الأكاديمية لاستكمال الطلب.</p>`
+        : `<p><strong>${academy}</strong> needs more information to complete your join request${who}.</p>
+           ${this.calloutHtml('warning', 'Needed', notes || 'Please contact the academy.')}
+           <p>Please contact the academy to complete the request.</p>`;
+      text = isAr
+        ? `تحتاج أكاديمية ${options.academyName} إلى معلومات إضافية لطلب الانضمام.${options.notes ? ` المطلوب: ${options.notes}` : ''}`
+        : `${options.academyName} needs more information for your join request.${options.notes ? ` Needed: ${options.notes}` : ''}`;
+    }
+    const html = this.renderBaseTemplate({
+      locale: isAr ? 'ar' : 'en',
+      preheader: title,
+      title,
+      greeting: isAr ? `مرحباً ${name}،` : `Hello ${name},`,
+      bodyHtml,
+      actionButton,
+    });
+    return this.sendEmailDetailed({
+      to: options.to,
+      subject,
+      html,
+      text,
+      actionUrl: actionButton?.url,
+    });
+  }
+
+  /** A coloured note box in the platform's status colours (values must already be escaped). */
+  private calloutHtml(
+    kind: 'info' | 'success' | 'warning' | 'danger',
+    label: string,
+    value: string,
+  ): string {
+    const palette = {
+      info: { bg: '#eff6ff', border: '#bfdbfe', fg: '#1e40af' },
+      success: { bg: '#f0fdf4', border: '#bbf7d0', fg: '#15803d' },
+      warning: { bg: '#fffbeb', border: '#fde68a', fg: '#b45309' },
+      danger: { bg: '#fef2f2', border: '#fecaca', fg: '#b91c1c' },
+    }[kind];
+    return `<div style="background:${palette.bg};border:1px solid ${palette.border};border-radius:12px;padding:12px 16px;margin:16px 0;color:${palette.fg};"><strong>${label}:</strong> ${value}</div>`;
+  }
+
+  /**
+   * Renders the branded HTML email shell. It follows the platform's look (white cards on a light grey page, the
+   * Sportexus wordmark with "exus" in the logo green, the blue-to-cyan brand gradient) and uses inline styles and
+   * tables only, because most mail clients (Gmail, Outlook) drop <style> blocks and modern CSS layout.
+   */
+  renderBaseTemplate(options: {
     locale: 'ar' | 'en';
     preheader: string;
     title: string;
@@ -1163,134 +1318,54 @@ export class EmailService {
   }): string {
     const isAr = options.locale === 'ar';
     const dir = isAr ? 'rtl' : 'ltr';
-    const fontFamily = isAr
-      ? "Cairo, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
-      : "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+    const align = isAr ? 'right' : 'left';
+    const font = isAr
+      ? "Cairo, Tahoma, 'Segoe UI', Arial, sans-serif"
+      : "'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Arial, sans-serif";
+    const button = options.actionButton
+      ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:28px auto 8px;">
+           <tr><td align="center" bgcolor="#0A3BFF" style="border-radius:12px;background:#0A3BFF;background-image:linear-gradient(135deg,#0A3BFF 0%,#00C4FF 100%);">
+             <a href="${escapeHtml(options.actionButton.url)}" target="_blank" style="display:inline-block;padding:14px 34px;font-family:${font};font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:12px;">${escapeHtml(options.actionButton.label)}</a>
+           </td></tr>
+         </table>`
+      : '';
 
     return `<!DOCTYPE html>
 <html lang="${options.locale}" dir="${dir}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light only">
   <title>${escapeHtml(options.title)}</title>
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
-      background-color: #0b1120;
-      color: #e2e8f0;
-      font-family: ${fontFamily};
-      -webkit-font-smoothing: antialiased;
-    }
-    .wrapper {
-      width: 100%;
-      background-color: #0b1120;
-      padding: 32px 12px;
-      box-sizing: border-box;
-    }
-    .container {
-      max-width: 580px;
-      margin: 0 auto;
-      background: #0f172a;
-      border: 1px solid #1e293b;
-      border-radius: 16px;
-      overflow: hidden;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.4);
-    }
-    .header {
-      padding: 32px 28px 24px;
-      text-align: center;
-      background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
-      border-bottom: 1px solid #1e293b;
-    }
-    .brand-pill {
-      display: inline-block;
-      padding: 6px 14px;
-      background: rgba(10, 59, 255, 0.15);
-      border: 1px solid rgba(0, 214, 255, 0.3);
-      border-radius: 9999px;
-      color: #00D6FF;
-      font-size: 13px;
-      font-weight: 700;
-      letter-spacing: 0.5px;
-      margin-bottom: 12px;
-    }
-    .title {
-      margin: 8px 0 0;
-      color: #ffffff;
-      font-size: 22px;
-      font-weight: 800;
-      letter-spacing: -0.3px;
-    }
-    .content {
-      padding: 28px;
-      font-size: 15px;
-      line-height: 1.7;
-      color: #cbd5e1;
-    }
-    .greeting {
-      font-size: 16px;
-      font-weight: 700;
-      color: #f8fafc;
-      margin-bottom: 16px;
-    }
-    .button-wrap {
-      text-align: center;
-      margin: 32px 0 24px;
-    }
-    .btn {
-      display: inline-block;
-      background: linear-gradient(135deg, #0A3BFF 0%, #00D6FF 100%);
-      color: #ffffff !important;
-      text-decoration: none;
-      font-weight: 700;
-      font-size: 15px;
-      padding: 14px 32px;
-      border-radius: 10px;
-      box-shadow: 0 8px 20px rgba(10, 59, 255, 0.35);
-    }
-    .footer {
-      padding: 20px 28px;
-      background: #090e17;
-      border-top: 1px solid #1e293b;
-      text-align: center;
-      font-size: 12px;
-      color: #64748b;
-      line-height: 1.6;
-    }
-    .footer a {
-      color: #00D6FF;
-      text-decoration: none;
-    }
-  </style>
 </head>
-<body>
-  <div style="display:none;font-size:1px;color:#333;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">
-    ${escapeHtml(options.preheader)}
-  </div>
-  <div class="wrapper">
-    <div class="container">
-      <div class="header">
-        <div class="brand-pill">SPORTEXUS</div>
-        <h1 class="title">${escapeHtml(options.title)}</h1>
-      </div>
-      <div class="content">
-        <div class="greeting">${options.greeting}</div>
-        ${options.bodyHtml}
-        ${
-          options.actionButton
-            ? `<div class="button-wrap">
-                 <a href="${options.actionButton.url}" class="btn" target="_blank">${escapeHtml(options.actionButton.label)}</a>
-               </div>`
-            : ''
-        }
-      </div>
-      <div class="footer">
-        <p>SPORTEXUS — ${isAr ? 'منصة واحدة. لكل أكاديمية.' : 'One Platform. Every Academy.'}</p>
-        <p><a href="${this.appPublicUrl}">sportexus.com</a></p>
-      </div>
-    </div>
-  </div>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:${font};-webkit-font-smoothing:antialiased;">
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:#f1f5f9;">${escapeHtml(options.preheader)}</div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f1f5f9;">
+    <tr><td align="center" style="padding:32px 12px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" dir="${dir}" style="max-width:580px;background:#ffffff;border:1px solid #e2e8f0;border-radius:18px;overflow:hidden;">
+        <tr><td style="height:6px;line-height:6px;font-size:0;background:#0A3BFF;background-image:linear-gradient(90deg,#0A3BFF 0%,#00C4FF 60%,#22C55E 100%);">&nbsp;</td></tr>
+        <tr><td align="center" style="padding:28px 28px 8px;">
+          <div dir="ltr" style="font-family:'Segoe UI',Arial,sans-serif;font-size:28px;font-weight:800;letter-spacing:-0.5px;line-height:1;">
+            <span style="color:#0F172A;">Sport</span><span style="color:#16A34A;">exus</span>
+          </div>
+          <div dir="ltr" style="font-family:'Segoe UI',Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:3px;color:#64748b;margin-top:6px;">ACADEMY PLATFORM</div>
+        </td></tr>
+        <tr><td align="center" style="padding:16px 28px 4px;">
+          <h1 style="margin:0;font-family:${font};font-size:22px;font-weight:800;color:#0F172A;">${escapeHtml(options.title)}</h1>
+        </td></tr>
+        <tr><td dir="${dir}" style="padding:20px 32px 28px;text-align:${align};font-family:${font};font-size:15px;line-height:1.8;color:#334155;">
+          <div style="font-size:16px;font-weight:700;color:#0F172A;margin-bottom:12px;">${options.greeting}</div>
+          ${options.bodyHtml}
+          ${button}
+        </td></tr>
+        <tr><td align="center" style="padding:18px 28px;background:#f8fafc;border-top:1px solid #e2e8f0;font-family:${font};font-size:12px;line-height:1.7;color:#64748b;">
+          <div style="font-weight:700;color:#0F172A;">Sportexus — ${isAr ? 'منصة واحدة لكل أكاديمية' : 'One Platform. Every Academy.'}</div>
+          <div>${isAr ? 'هذه رسالة آلية من منصة سبورتكسس، يُرجى عدم الرد عليها.' : 'This is an automated message from Sportexus; please do not reply.'}</div>
+          <div style="margin-top:6px;"><a href="${escapeHtml(this.appPublicUrl)}" style="color:#0A3BFF;text-decoration:none;font-weight:700;">${escapeHtml(this.appPublicUrl.replace(/^https?:\/\//, ''))}</a></div>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
 </body>
 </html>`;
   }

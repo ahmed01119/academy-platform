@@ -536,4 +536,43 @@ describe('EmailService', () => {
       );
     });
   });
+
+  describe('Join request e-mails (owner request 2026-11-22)', () => {
+    it('confirms a received request to the applicant, in the platform design', async () => {
+      emailService = new EmailService(configService);
+      await emailService.sendJoinRequestReceived({
+        to: 'parent@example.com',
+        applicantName: 'Guardian <b>X</b>',
+        playerName: 'Child',
+        academyName: 'Academy A',
+        requesterType: 'GUARDIAN',
+      });
+      const [mail] = emailService.getSentEmails();
+      expect(mail?.subject).toContain('Academy A');
+      expect(mail?.html).toContain('>Sport</span><span style="color:#16A34A;">exus<');
+      expect(mail?.html).toContain('dir="rtl"');
+      expect(mail?.html).toContain('Guardian &lt;b&gt;X&lt;/b&gt;'); // escaped
+      expect(mail?.html).not.toContain('<style>'); // inline styles only (mail clients drop <style>)
+    });
+
+    it.each([
+      ['APPROVED', 'تمت الموافقة', true],
+      ['REJECTED', 'لم توافق', false],
+      ['MORE_INFO_REQUESTED', 'معلومات إضافية', false],
+    ] as const)('%s decision e-mail', async (status, phrase, hasLoginButton) => {
+      emailService = new EmailService(configService);
+      await emailService.sendJoinRequestDecision({
+        to: 'player@example.com',
+        playerName: 'Player One',
+        academyName: 'Academy A',
+        status,
+        requesterType: 'PLAYER',
+        notes: 'Bring a medical form',
+      });
+      const [mail] = emailService.getSentEmails();
+      expect(mail?.html).toContain(phrase);
+      expect(mail?.html.includes('https://sportexus.com/login')).toBe(hasLoginButton);
+      expect(mail?.text).toContain('Academy A');
+    });
+  });
 });

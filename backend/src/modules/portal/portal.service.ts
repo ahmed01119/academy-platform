@@ -8,9 +8,11 @@ import {
   Inject,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import type { TenantTransactionClient } from '@academy/database';
 import { PrismaService } from '../database/prisma.service';
+import { EmailService } from '../email/email.service';
 import {
   ErrorCode,
   type GuardianChildSummary,
@@ -121,6 +123,7 @@ export class PortalService {
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(RedisService) private readonly redisService: RedisService,
     @Inject(PasswordService) private readonly passwordService: PasswordService,
+    @Optional() @Inject(EmailService) private readonly emailService?: EmailService,
   ) {}
 
   /**
@@ -578,6 +581,7 @@ export class PortalService {
       const created = applicantUserId
         ? await this.submitJoinRequestForSignedInUser(dto, applicantUserId)
         : await this.submitJoinRequestWithNewAccount(dto, ipAddress);
+      this.sendJoinRequestReceivedEmail(dto, created.tenant_name);
       return {
         id: created.request_id,
         tenantId: dto.tenantId,
@@ -589,6 +593,7 @@ export class PortalService {
         contactPhone: dto.contactPhone?.trim() || null,
         dateOfBirth: dto.dateOfBirth ?? null,
         guardianName: dto.guardianName?.trim() || null,
+        guardianEmail: dto.guardianEmail ?? null,
         status: 'PENDING_REVIEW' as ApplicationStatus,
         reviewNotes: null,
         reviewedByUserId: null,
@@ -668,6 +673,22 @@ export class PortalService {
     }
   }
 
+  /** Confirms the request to the applicant by e-mail; never blocks or fails the submission. */
+  private sendJoinRequestReceivedEmail(dto: CreatePlayerJoinRequest, academyName: string): void {
+    if (!this.emailService) return;
+    const requesterType = dto.requesterType === 'GUARDIAN' ? 'GUARDIAN' : 'PLAYER';
+    void this.emailService
+      .sendJoinRequestReceived({
+        to: dto.contactEmail,
+        applicantName:
+          requesterType === 'GUARDIAN' ? (dto.guardianName ?? dto.playerName) : dto.playerName,
+        playerName: dto.playerName,
+        academyName,
+        requesterType,
+      })
+      .catch(() => undefined);
+  }
+
   /** Calls submit_player_join_request; the applicant is the transaction's actor (or none). */
   private async callSubmitJoinRequest(tx: TenantTransactionClient, dto: CreatePlayerJoinRequest) {
     const rows = await tx.$queryRaw<
@@ -682,7 +703,8 @@ export class PortalService {
               requester_type, created_at
        FROM public.submit_player_join_request(
          ${dto.tenantId}::uuid, ${dto.playerName}, ${dto.contactEmail}, ${dto.contactPhone ?? null},
-         ${dto.dateOfBirth ?? null}::date, ${dto.guardianName ?? null}, ${dto.requesterType}
+         ${dto.dateOfBirth ?? null}::date, ${dto.guardianName ?? null}, ${dto.requesterType},
+         ${dto.guardianEmail ?? null}
        )`;
     return singleRow(rows);
   }

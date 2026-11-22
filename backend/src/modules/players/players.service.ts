@@ -1,4 +1,4 @@
-import { EmailService, escapeHtml } from '../email/email.service';
+import { EmailService } from '../email/email.service';
 import crypto from 'node:crypto';
 import {
   BadRequestException,
@@ -1049,6 +1049,7 @@ export class PlayersService {
         contactPhone: req.contactPhone,
         dateOfBirth: req.dateOfBirth ? req.dateOfBirth.toISOString().split('T')[0] : null,
         guardianName: req.guardianName,
+        guardianEmail: req.guardianEmail,
         requesterType: req.requesterType,
         status: req.status as ApplicationStatus,
         reviewNotes: req.reviewNotes,
@@ -1256,7 +1257,8 @@ export class PlayersService {
                 firstName: request.guardianName.split(' ')[0] || request.guardianName,
                 lastName: request.guardianName.split(' ').slice(1).join(' ') || '-',
                 phone: request.contactPhone,
-                email: request.contactEmail,
+                // A PLAYER request's contactEmail is the player's own sign-in; the guardian's is stored apart.
+                email: request.guardianEmail ?? null,
                 relationship: 'GUARDIAN',
                 isPrimary: true,
               },
@@ -1364,6 +1366,7 @@ export class PlayersService {
         contactPhone: updated.contactPhone,
         dateOfBirth: updated.dateOfBirth ? updated.dateOfBirth.toISOString().split('T')[0] : null,
         guardianName: updated.guardianName,
+        guardianEmail: updated.guardianEmail,
         requesterType: updated.requesterType,
         status: updated.status as ApplicationStatus,
         reviewNotes: updated.reviewNotes,
@@ -1376,6 +1379,9 @@ export class PlayersService {
           requesterType: updated.requesterType,
           tenantId: updated.tenantId,
           playerName: updated.playerName,
+          // The person who applied: the guardian for a GUARDIAN request, the player otherwise.
+          applicantName:
+            updated.requesterType === 'GUARDIAN' ? updated.guardianName : updated.playerName,
           status: dto.status,
           reviewNotes: dto.reviewNotes,
         },
@@ -1407,13 +1413,15 @@ export class PlayersService {
             tx.tenant.findUnique({ where: { id: tenantContext.tenantId }, select: { name: true } }),
         )
         .catch(() => ({ name: 'Academy' }));
-      void this.dispatchPlayerReviewEmail(
-        result._meta.email,
-        result._meta.playerName,
-        result._meta.status,
-        tenant?.name ?? 'Academy',
-        result._meta.reviewNotes ?? null,
-      );
+      void this.dispatchPlayerReviewEmail({
+        email: result._meta.email,
+        playerName: result._meta.playerName,
+        status: result._meta.status,
+        academyName: tenant?.name ?? 'Academy',
+        requesterType: result._meta.requesterType,
+        applicantName: result._meta.applicantName,
+        reviewNotes: result._meta.reviewNotes ?? null,
+      });
     }
 
     // Strip internal _meta before returning
@@ -1487,60 +1495,26 @@ export class PlayersService {
    * still pending this is the only channel: they cannot sign in to read in-app notifications until approval.
    * Every user-supplied value is HTML-escaped.
    */
-  private async dispatchPlayerReviewEmail(
-    email: string,
-    playerName: string,
-    status: string,
-    academyName: string,
-    reviewNotes?: string | null,
-  ): Promise<void> {
+  private async dispatchPlayerReviewEmail(review: {
+    email: string;
+    playerName: string;
+    status: 'APPROVED' | 'REJECTED' | 'MORE_INFO_REQUESTED';
+    academyName: string;
+    requesterType: 'PLAYER' | 'GUARDIAN';
+    applicantName: string | null;
+    reviewNotes: string | null;
+  }): Promise<void> {
     if (!this.emailService) return;
-    const player = escapeHtml(playerName);
-    const academy = escapeHtml(academyName);
-    const notes = reviewNotes ? escapeHtml(reviewNotes) : '';
     try {
-      if (status === 'APPROVED') {
-        await this.emailService.sendEmailDetailed({
-          to: email,
-          subject: `تمت الموافقة على طلب الانضمام — ${academyName} | Join Request Approved`,
-          html: `<div dir='rtl' style='font-family:Arial;padding:20px;'>
-            <h2 style='color:#0A3BFF;'>تمت الموافقة على طلب الانضمام 🎉</h2>
-            <p>مرحباً، تمت الموافقة على طلب الانضمام لـ <strong>${player}</strong> في أكاديمية <strong>${academy}</strong>.</p>
-            <p>يمكنك الآن تسجيل الدخول بالحساب الذي أنشأته مع الطلب لمتابعة تفاصيل الاشتراك والحصص التدريبية.</p>
-            <hr style='border-color:#334155;margin:20px 0;'/>
-            <p dir='ltr' style='color:#64748b;'>Your join request for <strong>${player}</strong> at <strong>${academy}</strong> has been <strong>approved</strong>. You can now sign in with the account you created with the request.</p>
-          </div>`,
-          text: `تمت الموافقة على طلب انضمام ${playerName} في ${academyName}. | Join request for ${playerName} at ${academyName} has been approved.`,
-        });
-      } else if (status === 'REJECTED') {
-        await this.emailService.sendEmailDetailed({
-          to: email,
-          subject: `تحديث طلب الانضمام — ${academyName} | Join Request Update`,
-          html: `<div dir='rtl' style='font-family:Arial;padding:20px;'>
-            <h2 style='color:#ef4444;'>تحديث طلب الانضمام</h2>
-            <p>نأسف لإبلاغك بأنه تم رفض طلب الانضمام لـ <strong>${player}</strong> في أكاديمية <strong>${academy}</strong>.</p>
-            ${notes ? `<p><strong>السبب:</strong> ${notes}</p>` : ''}
-            <p>للمزيد من التفاصيل، يرجى التواصل مع إدارة الأكاديمية.</p>
-            <hr style='border-color:#334155;margin:20px 0;'/>
-            <p dir='ltr' style='color:#64748b;'>The join request for <strong>${player}</strong> at <strong>${academy}</strong> was <strong>not accepted</strong>. ${notes ? 'Reason: ' + notes : ''}</p>
-          </div>`,
-          text: `تم رفض طلب انضمام ${playerName} في ${academyName}. | Join request for ${playerName} at ${academyName} was rejected.`,
-        });
-      } else if (status === 'MORE_INFO_REQUESTED') {
-        await this.emailService.sendEmailDetailed({
-          to: email,
-          subject: `مطلوب معلومات إضافية — ${academyName} | More Information Needed`,
-          html: `<div dir='rtl' style='font-family:Arial;padding:20px;'>
-            <h2 style='color:#f59e0b;'>مطلوب معلومات إضافية</h2>
-            <p>تحتاج أكاديمية <strong>${academy}</strong> إلى معلومات إضافية عن طلب الانضمام لـ <strong>${player}</strong>.</p>
-            ${notes ? `<p><strong>المطلوب:</strong> ${notes}</p>` : ''}
-            <p>يرجى التواصل مع إدارة الأكاديمية.</p>
-            <hr style='border-color:#334155;margin:20px 0;'/>
-            <p dir='ltr' style='color:#64748b;'><strong>${academy}</strong> needs more information about the join request for <strong>${player}</strong>. ${notes ? 'Details: ' + notes : ''} Please contact the academy.</p>
-          </div>`,
-          text: `مطلوب معلومات إضافية عن طلب انضمام ${playerName} في ${academyName}. | ${academyName} needs more information about the join request for ${playerName}.`,
-        });
-      }
+      await this.emailService.sendJoinRequestDecision({
+        to: review.email,
+        applicantName: review.applicantName,
+        playerName: review.playerName,
+        academyName: review.academyName,
+        status: review.status,
+        requesterType: review.requesterType,
+        notes: review.reviewNotes,
+      });
     } catch (err: any) {
       this.logger.warn(`Failed to dispatch player review email: ${err?.message}`);
     }

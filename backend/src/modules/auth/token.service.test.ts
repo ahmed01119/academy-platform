@@ -16,6 +16,7 @@ interface MockPrisma {
     create: MockFn;
     findUnique: MockFn;
     findUniqueOrThrow: MockFn;
+    findFirst: MockFn;
     update: MockFn;
     updateMany: MockFn;
   };
@@ -65,6 +66,8 @@ describe('TokenService', () => {
         create: vi.fn().mockResolvedValue({}),
         findUnique: vi.fn(),
         findUniqueOrThrow: vi.fn().mockResolvedValue({ isRevoked: false, sessionVersion: 3 }),
+        // No token issued in the family within the reuse grace window (the default).
+        findFirst: vi.fn().mockResolvedValue(null),
         update: vi.fn().mockResolvedValue({}),
         updateMany: vi.fn().mockResolvedValue({ count: 1 }),
       },
@@ -221,6 +224,45 @@ describe('TokenService', () => {
       data: { isRevoked: true },
     });
     expect(mockPrisma.refreshToken.create).not.toHaveBeenCalled();
+  });
+
+  it('grace window: a just-rotated token whose answer was lost gets a fresh token instead of a logout', async () => {
+    mockPrisma.refreshToken.findUnique.mockResolvedValue(activeToken());
+    mockPrisma.refreshToken.findUniqueOrThrow.mockResolvedValue({
+      isRevoked: true,
+      sessionVersion: 3,
+    });
+    mockPrisma.refreshToken.findFirst.mockResolvedValue({ id: 'successor-1' });
+
+    const result = await tokenService.rotateRefreshToken('raw-lost-answer-token');
+
+    expect(result.tokens.refreshToken).toBeTruthy();
+    expect(mockPrisma.refreshToken.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ familyId: 'family-1', isRevoked: false }),
+      }),
+    );
+    // Only the unused successor is revoked, never the whole family; one new token is issued.
+    expect(mockPrisma.refreshToken.updateMany).toHaveBeenCalledWith({
+      where: { id: 'successor-1', isRevoked: false },
+      data: { isRevoked: true },
+    });
+    expect(mockPrisma.refreshToken.updateMany).not.toHaveBeenCalledWith({
+      where: { familyId: 'family-1' },
+      data: { isRevoked: true },
+    });
+    expect(mockPrisma.refreshToken.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('grace window: two parallel refreshes with the same token both keep the user signed in', async () => {
+    mockPrisma.refreshToken.findUnique.mockResolvedValue(activeToken());
+    mockPrisma.refreshToken.updateMany.mockResolvedValueOnce({ count: 0 }).mockResolvedValue({
+      count: 1,
+    });
+    mockPrisma.refreshToken.findFirst.mockResolvedValue({ id: 'winner-token' });
+
+    await expect(tokenService.rotateRefreshToken('raw-racing-token')).resolves.toBeTruthy();
+    expect(mockPrisma.refreshToken.create).toHaveBeenCalledTimes(1);
   });
 
   it('rejects an expired refresh token', async () => {

@@ -288,6 +288,18 @@ export const CreatePlayerJoinRequestSchema = z
     dateOfBirth: z.string().optional(),
     /** The guardian's full name. Required for GUARDIAN requests (it is the applicant's own name). */
     guardianName: z.string().trim().max(100).optional(),
+    /**
+     * The guardian's own e-mail. For a PLAYER request `contactEmail` is the player's (it becomes their sign-in), so
+     * the guardian's e-mail is asked separately; for a GUARDIAN request the guardian is the applicant.
+     */
+    guardianEmail: z
+      .string()
+      .trim()
+      .toLowerCase()
+      .email()
+      .max(254)
+      .optional()
+      .or(z.literal('').transform(() => undefined)),
     /** Password for the new account; only used when the applicant is not signed in. */
     password: PasswordSchema.optional(),
     branchId: z.string().uuid().optional(),
@@ -324,6 +336,7 @@ export const PlayerJoinRequestItemSchema = z.object({
   contactPhone: z.string().nullable().optional(),
   dateOfBirth: z.string().nullable().optional(),
   guardianName: z.string().nullable().optional(),
+  guardianEmail: z.string().nullable().optional(),
   status: ApplicationStatusSchema,
   reviewNotes: z.string().nullable().optional(),
   reviewedByUserId: z.string().uuid().nullable().optional(),

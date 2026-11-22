@@ -18,6 +18,9 @@ export interface JwtPayload {
   sv?: number;
 }
 
+/** How long after a rotation the previous refresh token is still accepted once (lost-response grace window). */
+export const REFRESH_REUSE_GRACE_MS = 60_000;
+
 export interface GeneratedTokens {
   accessToken: string;
   refreshToken: string;
@@ -41,6 +44,33 @@ export class TokenService {
 
   generateSecureRandomString(bytes = 32): string {
     return crypto.randomBytes(bytes).toString('hex');
+  }
+
+  /**
+   * Reuse grace window: when an already-rotated refresh token comes back and its family's newest token was issued less
+   * than REFRESH_REUSE_GRACE_MS ago, the earlier answer most likely never reached the browser (two parallel requests,
+   * or a request cut off by a page change). That successor is revoked and the caller issues a fresh one, so exactly one
+   * live token remains and the user stays signed in. Outside the window a reuse is still treated as theft.
+   */
+  private async takeOverRecentSuccessor(
+    tx: Prisma.TransactionClient,
+    familyId: string,
+  ): Promise<boolean> {
+    const successor = await tx.refreshToken.findFirst({
+      where: {
+        familyId,
+        isRevoked: false,
+        createdAt: { gte: new Date(Date.now() - REFRESH_REUSE_GRACE_MS) },
+      },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true },
+    });
+    if (!successor) return false;
+    const revoked = await tx.refreshToken.updateMany({
+      where: { id: successor.id, isRevoked: false },
+      data: { isRevoked: true },
+    });
+    return revoked.count === 1;
   }
 
   /**
@@ -161,11 +191,15 @@ export class TokenService {
           // Revoked by a password change / suspension / revocation, not reuse.
           return { revokedSession: true as const };
         }
-        await tx.refreshToken.updateMany({
-          where: { familyId: existingToken.familyId },
-          data: { isRevoked: true },
-        });
-        return { compromised: true as const };
+        // A token rotated moments ago whose answer never reached the browser (request cut off by a navigation or a
+        // network blip): the browser still holds it. Within the grace window this is not theft.
+        if (!(await this.takeOverRecentSuccessor(tx, existingToken.familyId))) {
+          await tx.refreshToken.updateMany({
+            where: { familyId: existingToken.familyId },
+            data: { isRevoked: true },
+          });
+          return { compromised: true as const };
+        }
       }
 
       if (existingToken.expiresAt < new Date()) {
@@ -184,11 +218,16 @@ export class TokenService {
       }
 
       // Consume exactly once: a concurrent rotation of the same token loses this conditional update.
-      const updateResult = await tx.refreshToken.updateMany({
-        where: { id: existingToken.id, isRevoked: false, sessionVersion: user.session_version },
-        data: { isRevoked: true },
-      });
-      if (updateResult.count === 0) {
+      const updateResult = current.isRevoked
+        ? { count: 1 } // grace path above: already revoked, its unused successor was just revoked too
+        : await tx.refreshToken.updateMany({
+            where: { id: existingToken.id, isRevoked: false, sessionVersion: user.session_version },
+            data: { isRevoked: true },
+          });
+      if (
+        updateResult.count === 0 &&
+        !(await this.takeOverRecentSuccessor(tx, existingToken.familyId))
+      ) {
         await tx.refreshToken.updateMany({
           where: { familyId: existingToken.familyId },
           data: { isRevoked: true },

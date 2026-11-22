@@ -47,6 +47,9 @@ const ResendVerificationSchema = z.object({
   email: z.string().email(),
 });
 
+/** Marks a session the user asked to remember; read on refresh to keep the refresh cookie persistent. */
+const REMEMBER_ME_COOKIE = 'remember_me';
+
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -70,14 +73,30 @@ export class AuthController {
     });
 
     if (rememberMe) {
+      const maxAge = this.config.refreshTokenExpiresDays * 24 * 60 * 60 * 1000;
       res.cookie('refresh_token', tokens.refreshToken, {
         httpOnly: true,
         secure: isProduction,
         sameSite: 'lax',
         path: '/v1/auth',
-        maxAge: this.config.refreshTokenExpiresDays * 24 * 60 * 60 * 1000,
+        maxAge,
+      });
+      // Remembers the choice for later rotations: without it the first refresh (every 15 minutes) turned the
+      // persistent session into a browser-session cookie and "remember me" stopped working.
+      res.cookie(REMEMBER_ME_COOKIE, '1', {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: 'lax',
+        path: '/v1/auth',
+        maxAge,
       });
     } else {
+      res.clearCookie(REMEMBER_ME_COOKIE, {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: 'lax',
+        path: '/v1/auth',
+      });
       res.cookie('refresh_token', tokens.refreshToken, {
         httpOnly: true,
         secure: isProduction,
@@ -98,6 +117,12 @@ export class AuthController {
     });
 
     res.clearCookie('refresh_token', {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: 'lax',
+      path: '/v1/auth',
+    });
+    res.clearCookie(REMEMBER_ME_COOKIE, {
       httpOnly: true,
       secure: isProduction,
       sameSite: 'lax',
@@ -170,7 +195,8 @@ export class AuthController {
       userAgent,
       activeTenantId,
     );
-    this.setAuthCookies(res, rawTokens);
+    // Keep the session as persistent as the user chose at sign-in.
+    this.setAuthCookies(res, rawTokens, req.cookies?.[REMEMBER_ME_COOKIE] === '1');
 
     return response;
   }
@@ -273,7 +299,8 @@ export class AuthController {
       ipAddress,
       userAgent,
     );
-    this.setAuthCookies(res, rawTokens);
+    // Keep the session as persistent as the user chose at sign-in.
+    this.setAuthCookies(res, rawTokens, req.cookies?.[REMEMBER_ME_COOKIE] === '1');
     return { message };
   }
 
