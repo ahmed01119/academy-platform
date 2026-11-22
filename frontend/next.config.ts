@@ -66,15 +66,8 @@ const nextConfig: NextConfig = {
   async rewrites() {
     return [];
   },
-  async redirects() {
-    return [
-      {
-        source: '/',
-        destination: '/dashboard',
-        permanent: false,
-      },
-    ];
-  },
+  // No redirect for "/": the site opens on the landing page (src/app/page.tsx), which offers signed-in visitors a link
+  // to their dashboard. Redirecting "/" to /dashboard sent every new visitor to the login page instead.
 };
 
 export default nextConfig;

@@ -33,7 +33,10 @@ export interface PlayerJoinFormValues {
   guardianName: string;
   guardianRelationship: string;
   phone: string;
+  /** GUARDIAN request: the guardian's e-mail (sign-in). PLAYER request: the guardian's contact e-mail (optional). */
   email: string;
+  /** PLAYER request: the player's own e-mail (sign-in). Unused for GUARDIAN requests. */
+  playerEmail?: string;
   // New account (only when not signed in)
   password: string;
   confirmPassword: string;
@@ -100,10 +103,24 @@ export function validatePlayerJoinForm(
   if (!values.guardianName.trim()) {
     return locale === 'ar' ? 'يرجى ملء اسم ولي الأمر الأساسي' : 'Please enter guardian name';
   }
-  if (!values.email.trim()) {
+  const accountEmail = accountEmailOf(values);
+  if (!accountEmail) {
+    return values.requesterType === 'PLAYER'
+      ? locale === 'ar'
+        ? 'يرجى إدخال بريدك الإلكتروني (بريد اللاعب)'
+        : "Please enter your (the player's) e-mail"
+      : locale === 'ar'
+        ? 'يرجى إدخال بريدك الإلكتروني (بريد ولي الأمر)'
+        : "Please enter your (the guardian's) e-mail";
+  }
+  if (
+    values.requesterType === 'PLAYER' &&
+    values.email.trim() &&
+    values.email.trim().toLowerCase() === accountEmail.toLowerCase()
+  ) {
     return locale === 'ar'
-      ? 'يرجى إدخال البريد الإلكتروني للتواصل'
-      : 'Please enter contact email address';
+      ? 'بريد ولي الأمر يجب أن يكون مختلفاً عن بريد اللاعب (أو اتركه فارغاً)'
+      : "The guardian's e-mail must differ from the player's (or leave it empty)";
   }
   if (!isSignedIn) {
     if (values.password.length < JOIN_PASSWORD_MIN_LENGTH) {
@@ -116,6 +133,11 @@ export function validatePlayerJoinForm(
     }
   }
   return null;
+}
+
+/** The applicant's sign-in e-mail: the player's own for a PLAYER request, the guardian's for a GUARDIAN request. */
+function accountEmailOf(values: PlayerJoinFormValues): string {
+  return (values.requesterType === 'PLAYER' ? (values.playerEmail ?? '') : values.email).trim();
 }
 
 /**
@@ -138,7 +160,9 @@ export function buildPlayerJoinRequest(
       requesterType: values.requesterType,
       ...(isSignedIn ? {} : { password: values.password }),
       playerName: `${values.firstName.trim()} ${values.lastName.trim()}`.trim(),
-      contactEmail: values.email.trim(),
+      contactEmail: accountEmailOf(values),
+      guardianEmail:
+        values.requesterType === 'PLAYER' && values.email.trim() ? values.email.trim() : undefined,
       contactPhone: values.phone.trim() || values.emergencyContactPhone.trim() || undefined,
       dateOfBirth,
       guardianName: values.guardianName.trim() || undefined,

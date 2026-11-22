@@ -29,7 +29,10 @@ import { UnsavedFieldsNotice } from './UnsavedFieldsNotice';
 export interface PlayerJoinRequestModalProps {
   isOpen: boolean;
   onClose: () => void;
-  /** Pre-selected "who is applying" (e.g. GUARDIAN from the guardian portal). Defaults to GUARDIAN. */
+  /**
+   * Who is applying, chosen by the button that opened the form: PLAYER ("join as a player") or GUARDIAN ("register my
+   * child"). The two are separate forms; the applicant does not switch inside the form.
+   */
   defaultRequesterType?: JoinRequesterType;
   /** Called after a request was accepted by the API (e.g. to refresh the portal's request list). */
   onSubmitted?: () => void;
@@ -86,6 +89,8 @@ export function PlayerJoinRequestModal({
   const [joinGuardianRelationship, setJoinGuardianRelationship] = useState('FATHER');
   const [joinPhone, setJoinPhone] = useState('');
   const [joinEmail, setJoinEmail] = useState('');
+  // PLAYER request: the player's own e-mail is the sign-in; the guardian's e-mail is separate (optional).
+  const [joinPlayerEmail, setJoinPlayerEmail] = useState('');
   // Section 5: new account (only when not signed in)
   const [joinPassword, setJoinPassword] = useState('');
   const [joinConfirmPassword, setJoinConfirmPassword] = useState('');
@@ -105,7 +110,10 @@ export function PlayerJoinRequestModal({
     setJoinError(null);
     setRequesterType(defaultRequesterType);
     // A signed-in applicant's request is linked to their account; their e-mail is the natural contact address.
-    if (user?.email) setJoinEmail((current) => current || user.email);
+    if (user?.email) {
+      if (defaultRequesterType === 'PLAYER') setJoinPlayerEmail((current) => current || user.email);
+      else setJoinEmail((current) => current || user.email);
+    }
     if (publicAcademies.length > 0) return;
 
     let cancelled = false;
@@ -149,6 +157,7 @@ export function PlayerJoinRequestModal({
       guardianRelationship: joinGuardianRelationship,
       phone: joinPhone,
       email: joinEmail,
+      playerEmail: joinPlayerEmail,
       password: joinPassword,
       confirmPassword: joinConfirmPassword,
     };
@@ -196,14 +205,22 @@ export function PlayerJoinRequestModal({
                 </div>
                 <div>
                   <h3 className="text-lg sm:text-xl font-extrabold text-(--text-main)">
-                    {locale === 'ar'
-                      ? 'استمارة طلب انضمام لاعب جديد'
-                      : 'New Player Join Request Form'}
+                    {requesterType === 'PLAYER'
+                      ? isAr
+                        ? 'طلب انضمام كلاعب'
+                        : 'Join as a player'
+                      : isAr
+                        ? 'تسجيل ابن / ابنة (ولي الأمر)'
+                        : 'Register my child (guardian)'}
                   </h3>
                   <p className="text-xs text-(--text-muted)">
-                    {locale === 'ar'
-                      ? 'تسجيل بيانات اللاعب الرياضية ومعلومات ولي الأمر لإرسالها لإدارة الأكاديمية فوراً.'
-                      : 'Fill in athlete sports details and guardian contact to submit your application.'}
+                    {requesterType === 'PLAYER'
+                      ? isAr
+                        ? 'سجّل بياناتك وبريدك الإلكتروني الخاص بك، وتابع تدريبك من بوابة اللاعب بعد موافقة الأكاديمية.'
+                        : 'Enter your details and your own e-mail; follow your training in the player portal once approved.'
+                      : isAr
+                        ? 'سجّل بيانات ابنك/ابنتك وبياناتك كولي أمر، وتابعه من بوابة ولي الأمر بعد موافقة الأكاديمية.'
+                        : "Enter your child's details and yours; follow them in the guardian portal once approved."}
                   </p>
                 </div>
               </div>
@@ -260,52 +277,6 @@ export function PlayerJoinRequestModal({
 
                 {/* F17: fields that are not submitted/saved yet — shown before the applicant types */}
                 <UnsavedFieldsNotice locale={locale === 'ar' ? 'ar' : 'en'} />
-
-                {/* Section 0 (K6): who is applying. Academy owners/coaches use the academy registration form. */}
-                <fieldset className="rounded-2xl border border-(--border-subtle) bg-(--bg-surface-subtle)/40 p-5 shadow-xs space-y-3">
-                  <legend className="px-1 text-sm font-bold text-(--text-main)">
-                    {isAr ? 'من يقدّم الطلب؟ *' : 'Who is applying? *'}
-                  </legend>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {(
-                      [
-                        {
-                          value: 'GUARDIAN',
-                          title: isAr ? 'أنا ولي الأمر' : 'I am the guardian',
-                          hint: isAr
-                            ? 'أسجّل ابني / ابنتي، وأتابعه من بوابة ولي الأمر.'
-                            : 'I am registering my child and will follow them in the guardian portal.',
-                        },
-                        {
-                          value: 'PLAYER',
-                          title: isAr ? 'أنا اللاعب نفسه' : 'I am the player',
-                          hint: isAr
-                            ? 'أسجّل نفسي، وأتابع تدريبي من بوابة اللاعب.'
-                            : 'I am registering myself and will follow my training in the player portal.',
-                        },
-                      ] as const
-                    ).map((option) => (
-                      <button
-                        key={option.value}
-                        type="button"
-                        aria-pressed={requesterType === option.value}
-                        onClick={() => setRequesterType(option.value)}
-                        className={`rounded-xl border p-3 text-start transition-colors cursor-pointer ${
-                          requesterType === option.value
-                            ? 'border-(--accent-primary) bg-(--accent-primary)/10'
-                            : 'border-(--border-subtle) bg-[var(--bg-surface)] hover:border-(--accent-primary)/50'
-                        }`}
-                      >
-                        <span className="block text-xs font-bold text-(--text-main)">
-                          {option.title}
-                        </span>
-                        <span className="block text-[11px] text-(--text-muted) mt-1">
-                          {option.hint}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </fieldset>
 
                 {/* Section 1: Target Sports Academy */}
                 <div className="rounded-2xl border border-(--border-subtle) bg-(--bg-surface-subtle)/40 p-5 shadow-xs space-y-4">
@@ -374,7 +345,7 @@ export function PlayerJoinRequestModal({
                         required
                         value={joinFirstName}
                         onChange={(e) => setJoinFirstName(e.target.value)}
-                        placeholder={locale === 'ar' ? 'مثال: يوسف' : 'e.g. Youssef'}
+                        placeholder={locale === 'ar' ? 'الاسم الأول' : 'First name'}
                         className="w-full rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors"
                       />
                     </div>
@@ -388,10 +359,33 @@ export function PlayerJoinRequestModal({
                         required
                         value={joinLastName}
                         onChange={(e) => setJoinLastName(e.target.value)}
-                        placeholder={locale === 'ar' ? 'مثال: الشريف' : 'e.g. El-Sharif'}
+                        placeholder={locale === 'ar' ? 'اسم العائلة' : 'Last name'}
                         className="w-full rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors"
                       />
                     </div>
+
+                    {requesterType === 'PLAYER' && (
+                      <div className="sm:col-span-2">
+                        <label
+                          htmlFor="join-player-email"
+                          className="block text-xs font-semibold text-(--text-muted) mb-1.5"
+                        >
+                          {isAr
+                            ? 'بريدك الإلكتروني (للدخول إلى المنصة) *'
+                            : 'Your e-mail (your sign-in) *'}
+                        </label>
+                        <input
+                          id="join-player-email"
+                          type="email"
+                          required
+                          autoComplete="email"
+                          value={joinPlayerEmail}
+                          onChange={(e) => setJoinPlayerEmail(e.target.value)}
+                          placeholder="name@example.com"
+                          className="w-full rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors font-mono"
+                        />
+                      </div>
+                    )}
 
                     <div>
                       <label className="block text-xs font-semibold text-(--text-muted) mb-1.5">
@@ -440,7 +434,7 @@ export function PlayerJoinRequestModal({
                           max={new Date().getFullYear()}
                           value={joinBirthYear}
                           onChange={(e) => setJoinBirthYear(e.target.value)}
-                          placeholder={locale === 'ar' ? 'مثال: 2015' : 'e.g. 2015'}
+                          placeholder="YYYY"
                           className="w-full rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors"
                         />
                       ) : (
@@ -466,7 +460,7 @@ export function PlayerJoinRequestModal({
                         max="99"
                         value={joinJerseyNumber}
                         onChange={(e) => setJoinJerseyNumber(e.target.value)}
-                        placeholder={locale === 'ar' ? 'مثال: 10' : 'e.g. 10'}
+                        placeholder="--"
                         className="w-full rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors"
                       />
                     </div>
@@ -510,11 +504,7 @@ export function PlayerJoinRequestModal({
                         type="text"
                         value={joinEmergencyName}
                         onChange={(e) => setJoinEmergencyName(e.target.value)}
-                        placeholder={
-                          locale === 'ar'
-                            ? 'مثال: أحمد الشريف (الأب)'
-                            : 'e.g. Ahmed El-Sharif (Father)'
-                        }
+                        placeholder={locale === 'ar' ? 'الاسم بالكامل' : 'Full name'}
                         className="w-full rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors"
                       />
                     </div>
@@ -527,7 +517,7 @@ export function PlayerJoinRequestModal({
                         type="tel"
                         value={joinEmergencyPhone}
                         onChange={(e) => setJoinEmergencyPhone(e.target.value)}
-                        placeholder={locale === 'ar' ? 'مثال: +201012345678' : 'e.g. +201012345678'}
+                        placeholder="01XXXXXXXXX"
                         className="w-full rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors font-mono"
                       />
                     </div>
@@ -613,25 +603,27 @@ export function PlayerJoinRequestModal({
                         required
                         value={joinPhone}
                         onChange={(e) => setJoinPhone(e.target.value)}
-                        placeholder={
-                          locale === 'ar'
-                            ? 'رقم الهاتف المحمول لولي الأمر'
-                            : 'Guardian mobile number'
-                        }
+                        placeholder="01XXXXXXXXX"
                         className="w-full rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors font-mono"
                       />
                     </div>
 
                     <div>
                       <label className="block text-xs font-semibold text-(--text-muted) mb-1.5">
-                        {locale === 'ar' ? 'البريد الإلكتروني للتواصل *' : 'Contact Email *'}
+                        {requesterType === 'GUARDIAN'
+                          ? isAr
+                            ? 'بريدك الإلكتروني (للدخول إلى المنصة) *'
+                            : 'Your e-mail (your sign-in) *'
+                          : isAr
+                            ? 'البريد الإلكتروني لولي الأمر (اختياري)'
+                            : "Guardian's e-mail (optional)"}
                       </label>
                       <input
                         type="email"
-                        required
+                        required={requesterType === 'GUARDIAN'}
                         value={joinEmail}
                         onChange={(e) => setJoinEmail(e.target.value)}
-                        placeholder="parent@example.com"
+                        placeholder="name@example.com"
                         className="w-full rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors font-mono"
                       />
                     </div>
@@ -655,8 +647,8 @@ export function PlayerJoinRequestModal({
                     <>
                       <p className="text-xs text-(--text-muted) leading-relaxed">
                         {isAr
-                          ? 'سيتم إنشاء حساب بالبريد الإلكتروني أعلاه وكلمة المرور التالية. يبقى الحساب قيد المراجعة ولا يمكن تسجيل الدخول به حتى توافق الأكاديمية على الطلب. لديك حساب بالفعل؟ سجّل الدخول أولاً ثم أرسل الطلب.'
-                          : 'An account is created with the e-mail above and this password. It stays pending and cannot sign in until the academy approves the request. Already have an account? Sign in first, then send the request.'}
+                          ? `سيتم إنشاء حساب ${requesterType === 'PLAYER' ? 'للاعب ببريده الإلكتروني' : 'لولي الأمر ببريده الإلكتروني'} وكلمة المرور التالية. يبقى الحساب قيد المراجعة ولا يمكن تسجيل الدخول به حتى توافق الأكاديمية على الطلب. لديك حساب بالفعل؟ سجّل الدخول أولاً ثم أرسل الطلب.`
+                          : `An account is created for ${requesterType === 'PLAYER' ? "the player's e-mail" : "the guardian's e-mail"} with this password. It stays pending and cannot sign in until the academy approves the request. Already have an account? Sign in first, then send the request.`}
                       </p>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>

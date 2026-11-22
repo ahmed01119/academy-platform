@@ -276,7 +276,7 @@ export default function AccountPage() {
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="+20 10 1234 5678"
+                placeholder="01XXXXXXXXX"
                 dir="ltr"
                 className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) py-2.5 px-3 text-sm text-(--text-main) placeholder-(--text-muted) focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all"
               />

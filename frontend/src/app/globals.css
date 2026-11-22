@@ -346,3 +346,18 @@ html[lang='ar'],
   --font-body: var(--font-plex-arabic), 'Segoe UI', -apple-system, sans-serif;
   font-family: var(--font-body);
 }
+
+/* Form hints: a placeholder (example text, or the dots of a password field) disappears as soon as the field is
+   focused, so it is never mistaken for typed text. */
+input:focus::placeholder,
+textarea:focus::placeholder {
+  color: transparent;
+  opacity: 0;
+}
+
+/* Password fields show only the platform's own show/hide button: hide the browser's built-in reveal and clear
+   buttons (Microsoft Edge / IE draw a second eye inside the field). */
+input[type='password']::-ms-reveal,
+input[type='password']::-ms-clear {
+  display: none;
+}

@@ -333,7 +333,7 @@ export function GovernanceTab({
                   required
                   value={saName}
                   onChange={(e) => setSaName(e.target.value)}
-                  placeholder="e.g. Captain Ahmed"
+                  placeholder="Full name"
                   className="w-full px-3 py-2 rounded-xl bg-(--bg-surface-subtle) border border-(--border-subtle) text-xs text-(--text-main) focus:outline-none focus:border-amber-500"
                 />
               </div>
@@ -347,7 +347,7 @@ export function GovernanceTab({
                   required
                   value={saEmail}
                   onChange={(e) => setSaEmail(e.target.value)}
-                  placeholder="admin@platform.com"
+                  placeholder="name@example.com"
                   className="w-full px-3 py-2 rounded-xl bg-(--bg-surface-subtle) border border-(--border-subtle) text-xs text-(--text-main) focus:outline-none focus:border-amber-500"
                 />
               </div>
@@ -437,7 +437,7 @@ export function GovernanceTab({
                   required
                   value={userName}
                   onChange={(e) => setUserName(e.target.value)}
-                  placeholder="e.g. Coach Tarek"
+                  placeholder="Full name"
                   className="w-full px-3 py-2 rounded-xl bg-(--bg-surface-subtle) border border-(--border-subtle) text-xs text-(--text-main) focus:outline-none focus:border-emerald-500"
                 />
               </div>
@@ -451,7 +451,7 @@ export function GovernanceTab({
                   required
                   value={userEmail}
                   onChange={(e) => setUserEmail(e.target.value)}
-                  placeholder="user@example.com"
+                  placeholder="name@example.com"
                   className="w-full px-3 py-2 rounded-xl bg-(--bg-surface-subtle) border border-(--border-subtle) text-xs text-(--text-main) focus:outline-none focus:border-emerald-500"
                 />
               </div>

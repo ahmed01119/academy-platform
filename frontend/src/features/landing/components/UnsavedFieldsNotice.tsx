@@ -40,8 +40,8 @@ export function UnsavedFieldsNotice({ locale }: { locale: 'ar' | 'en' }) {
         </p>
         <p>
           {isAr
-            ? 'يُرسل مع الطلب فقط: الأكاديمية، مقدّم الطلب (اللاعب أو ولي الأمر)، اسم اللاعب، تاريخ الميلاد، اسم ولي الأمر، البريد الإلكتروني ورقم الهاتف، وكلمة مرور الحساب الجديد. يُستخدم هاتف الطوارئ كرقم تواصل فقط إذا تُرك حقل الهاتف / الواتساب فارغاً.'
-            : 'Only the academy, who is applying (player or guardian), player name, date of birth, guardian name, contact email and phone are sent, plus the new account password. The emergency phone is used as the contact number only if the Phone / WhatsApp field is left empty.'}
+            ? 'يُرسل مع الطلب فقط: الأكاديمية، مقدّم الطلب (اللاعب أو ولي الأمر)، اسم اللاعب، تاريخ الميلاد، اسم ولي الأمر وبريده، البريد الإلكتروني لصاحب الحساب ورقم الهاتف، وكلمة مرور الحساب الجديد. يُستخدم هاتف الطوارئ كرقم تواصل فقط إذا تُرك حقل الهاتف / الواتساب فارغاً.'
+            : 'Only the academy, who is applying (player or guardian), player name, date of birth, guardian name and e-mail, the account e-mail and phone are sent, plus the new account password. The emergency phone is used as the contact number only if the Phone / WhatsApp field is left empty.'}
         </p>
       </div>
     </div>

@@ -415,7 +415,7 @@ export default function BranchesPage() {
                       id="input-create-branch-name"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      placeholder={ar ? 'مثال: فرع التجمع الخامس' : 'e.g. Main Training Center'}
+                      placeholder={ar ? 'اسم الفرع' : 'Branch name'}
                       className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-base) px-3.5 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none"
                     />
                   </div>
@@ -451,7 +451,7 @@ export default function BranchesPage() {
                       id="input-create-branch-city"
                       value={city}
                       onChange={(e) => setCity(e.target.value)}
-                      placeholder={ar ? 'القاهرة' : 'Cairo'}
+                      placeholder={ar ? 'المدينة' : 'City'}
                       className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-base) px-3.5 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none"
                     />
                   </div>
@@ -470,7 +470,7 @@ export default function BranchesPage() {
                       onChange={(e) =>
                         setCapacity(e.target.value === '' ? '' : parseInt(e.target.value, 10))
                       }
-                      placeholder={ar ? 'مثال: 150' : 'e.g. 150'}
+                      placeholder="0"
                       className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-base) px-3.5 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none font-mono"
                     />
                   </div>
@@ -509,7 +509,7 @@ export default function BranchesPage() {
                     id="input-create-branch-phone"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    placeholder="+201012345678"
+                    placeholder="01XXXXXXXXX"
                     className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-base) px-3.5 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none font-mono"
                   />
                 </div>

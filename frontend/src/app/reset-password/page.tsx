@@ -140,7 +140,7 @@ function ResetPasswordForm() {
                     autoComplete="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="user@example.com"
+                    placeholder="name@example.com"
                     dir="ltr"
                     className={AUTH_ICON_INPUT}
                   />

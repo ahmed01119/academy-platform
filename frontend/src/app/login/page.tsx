@@ -160,7 +160,7 @@ export default function LoginPage() {
                       value={email}
                       onChange={handleEmailChange}
                       onBlur={() => handleBlur('email')}
-                      placeholder="admin@academy.sa"
+                      placeholder="name@example.com"
                       dir="ltr"
                       aria-invalid={Boolean(touched.email && fieldErrors.email)}
                       aria-describedby={

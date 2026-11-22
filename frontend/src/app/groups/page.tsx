@@ -592,7 +592,7 @@ export default function GroupsPage() {
                     id="create-group-age"
                     value={createForm.ageCategory}
                     onChange={(e) => setCreateForm({ ...createForm, ageCategory: e.target.value })}
-                    placeholder={locale === 'ar' ? 'مثال: U12 أو U14' : 'e.g. U12, U14'}
+                    placeholder={locale === 'ar' ? 'اسم المجموعة' : 'Group name'}
                     className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3.5 py-2.5 text-xs text-(--text-main) placeholder-(--text-muted) focus:border-(--accent-primary) focus:bg-[var(--bg-surface)] transition-all outline-none"
                   />
                 </div>

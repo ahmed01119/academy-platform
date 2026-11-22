@@ -2,7 +2,7 @@ import { API_BASE_URL } from '@/config/env';
 import { API_CACHE_TTL_MS } from '@/config/constants';
 import { ApiError } from './api-error';
 import { getActiveTenantIdHeader } from './active-tenant';
-import { executeSingleFlightTokenRefresh } from './token-refresh';
+import { executeSingleFlightTokenRefresh, TransientRefreshError } from './token-refresh';
 
 /** Auth endpoints that must never carry an `x-tenant-id` header. */
 const AUTH_ENDPOINTS_WITHOUT_TENANT_HEADER = [
@@ -94,7 +94,20 @@ export async function request<T>(endpoint: string, options: RequestOptions = {})
       !NO_AUTO_REFRESH_PATHS.some((path) => endpoint.startsWith(path));
 
     if (shouldTryRefresh) {
-      const refreshed = await executeSingleFlightTokenRefresh();
+      let refreshed: Awaited<ReturnType<typeof executeSingleFlightTokenRefresh>>;
+      try {
+        refreshed = await executeSingleFlightTokenRefresh();
+      } catch (err) {
+        if (err instanceof TransientRefreshError) {
+          // Still signed in: report a retryable connection problem instead of a 401.
+          throw new ApiError(
+            'تعذر الاتصال بالخادم، حاول مرة أخرى (Connection problem, please try again)',
+            503,
+            'NETWORK_UNAVAILABLE',
+          );
+        }
+        throw err;
+      }
       if (refreshed) {
         return request<T>(endpoint, {
           ...options,

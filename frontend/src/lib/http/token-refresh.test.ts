@@ -112,3 +112,42 @@ describe('executeSingleFlightTokenRefresh across tabs', () => {
     expect(browser.state()).toEqual({ familyRevoked: false, rotations: 1 });
   });
 });
+
+describe('executeSingleFlightTokenRefresh on temporary failures (owner report: sudden sign-outs)', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  async function tabWith(fetchImpl: () => Promise<Response>) {
+    vi.stubGlobal('fetch', vi.fn(fetchImpl));
+    vi.stubGlobal('localStorage', { getItem: () => null, setItem: () => {}, removeItem: () => {} });
+    vi.stubGlobal('navigator', {});
+    vi.resetModules();
+    const tab = await import('./token-refresh');
+    const events = await import('./auth-events');
+    const seen: string[] = [];
+    events.onAuthEvent((e) => seen.push(e));
+    return { tab, seen };
+  }
+
+  it.each([
+    ['a server error', () => Promise.resolve(new Response('{}', { status: 503 }))],
+    ['a rate limit', () => Promise.resolve(new Response('{}', { status: 429 }))],
+    ['a network error', () => Promise.reject(new TypeError('Failed to fetch'))],
+  ])(
+    '%s keeps the session (no SESSION_EXPIRED) and reports a retryable error',
+    async (_l, impl) => {
+      const { tab, seen } = await tabWith(impl);
+      await expect(tab.executeSingleFlightTokenRefresh()).rejects.toBeInstanceOf(
+        tab.TransientRefreshError,
+      );
+      expect(seen).not.toContain('SESSION_EXPIRED');
+    },
+  );
+
+  it('a refused refresh token still ends the session', async () => {
+    const { tab, seen } = await tabWith(() => Promise.resolve(new Response('{}', { status: 401 })));
+    await expect(tab.executeSingleFlightTokenRefresh()).resolves.toBeNull();
+    expect(seen).toContain('SESSION_EXPIRED');
+  });
+});

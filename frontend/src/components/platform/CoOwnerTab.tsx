@@ -221,7 +221,7 @@ export function CoOwnerTab() {
                   required
                   value={inviteEmail}
                   onChange={(e) => setInviteEmail(e.target.value)}
-                  placeholder={ar ? 'example@domain.com' : 'example@domain.com'}
+                  placeholder="name@example.com"
                   className="w-full rounded-xl border border-(--border-app) bg-(--bg-base) px-3 py-2.5 text-sm text-(--text-main) placeholder:text-(--text-muted) focus:outline-none focus:border-amber-500/60"
                 />
               </div>

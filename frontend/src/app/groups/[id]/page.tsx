@@ -1055,7 +1055,7 @@ export default function GroupDetailsPage() {
                   id="input-schedule-location"
                   value={scheduleForm.location}
                   onChange={(e) => setScheduleForm({ ...scheduleForm, location: e.target.value })}
-                  placeholder={isAr ? 'مثال: الملعب الرئيسي A' : 'e.g. Main Pitch A'}
+                  placeholder={isAr ? 'اسم الملعب' : 'Pitch name'}
                   className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors"
                 />
               </div>

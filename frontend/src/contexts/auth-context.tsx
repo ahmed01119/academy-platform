@@ -54,21 +54,6 @@ const TAB_ID =
     ? crypto.randomUUID()
     : Math.random().toString(36).substring(2);
 
-function getJwtExpiry(token?: string): number | null {
-  if (!token) return null;
-  try {
-    const parts = token.split('.');
-    const payloadPart = parts[1];
-    if (parts.length !== 3 || !payloadPart) return null;
-    const base64 = payloadPart.replace(/-/g, '+').replace(/_/g, '/');
-    const json = atob(base64);
-    const payload = JSON.parse(json);
-    return typeof payload.exp === 'number' ? payload.exp * 1000 : null;
-  } catch {
-    return null;
-  }
-}
-
 function getInitialStoredSession(): {
   hasSession: boolean;
   cachedUser: UserSummary | null;
@@ -86,17 +71,10 @@ function getInitialStoredSession(): {
       return { hasSession: false, cachedUser: null };
     }
 
+    // The access token lasts 15 minutes and is renewed by the refresh cookie on the next request, so its expiry
+    // says nothing about the session: only the server decides (GET /auth/me, refreshed on 401).
     const hasSession = localStorage.getItem('sportexus_has_session') === 'true';
-    const expiryStr = localStorage.getItem('sportexus_auth_expiry');
-    const expiry = expiryStr ? Number(expiryStr) : null;
-    const isExpired = expiry !== null && Date.now() > expiry;
-
-    if (!hasSession || isExpired) {
-      if (isExpired) {
-        localStorage.removeItem('sportexus_has_session');
-        localStorage.removeItem('sportexus_auth_expiry');
-        localStorage.removeItem('sportexus_auth_user');
-      }
+    if (!hasSession) {
       return { hasSession: false, cachedUser: null };
     }
 
@@ -196,6 +174,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const data = await api.auth.getMe();
       applyAuthState(data);
     } catch (err: unknown) {
+      const sessionRefused =
+        err instanceof ApiError && (err.statusCode === 401 || err.statusCode === 403);
+      if (!sessionRefused) {
+        // Offline, a slow database or a server error: keep the user signed in; the next request retries.
+        setAuthState((prev) => (prev === 'REFRESHING' ? 'AUTHENTICATED' : prev));
+        if (err instanceof ApiError) setError(err.message);
+        return;
+      }
       setUser(null);
       setActiveTenant(null);
       setMemberships([]);
@@ -228,32 +214,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setAuthState('UNAUTHENTICATED');
     }
   }, [refreshUser]);
-
-  // Periodic token expiration check (verifies token duration every 10 seconds)
-  useEffect(() => {
-    if (authState !== 'AUTHENTICATED') return;
-
-    const interval = setInterval(() => {
-      if (typeof window === 'undefined') return;
-      const expiryStr = localStorage.getItem('sportexus_auth_expiry');
-      if (expiryStr) {
-        const expiry = Number(expiryStr);
-        if (expiry && Date.now() > expiry) {
-          // Token duration elapsed: end session cleanly without auto-login loop
-          setUser(null);
-          setActiveTenant(null);
-          setMemberships([]);
-          setActiveTenantIdHeader(null);
-          setAuthState('UNAUTHENTICATED');
-          localStorage.removeItem('sportexus_has_session');
-          localStorage.removeItem('sportexus_auth_expiry');
-          localStorage.removeItem('sportexus_auth_user');
-        }
-      }
-    }, 10_000);
-
-    return () => clearInterval(interval);
-  }, [authState]);
 
   // Cross-tab synchronization and session-expiration listeners
   useEffect(() => {
@@ -339,9 +299,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Save token duration and session flags in storage
     if (typeof window !== 'undefined') {
       try {
-        const expiry = getJwtExpiry(res.accessToken) || Date.now() + 15 * 60 * 1000;
         localStorage.setItem('sportexus_has_session', 'true');
-        localStorage.setItem('sportexus_auth_expiry', String(expiry));
+        localStorage.removeItem('sportexus_auth_expiry');
         localStorage.setItem('sportexus_auth_user', JSON.stringify(res.user));
       } catch {
         // Ignore storage error

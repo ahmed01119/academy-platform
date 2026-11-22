@@ -55,16 +55,18 @@ describe('UnsavedFieldsNotice (F17)', () => {
       guardianName: 'G',
       guardianRelationship: 'FATHER',
       phone: '010',
-      email: 'e@x.co',
+      email: 'g@x.co',
+      playerEmail: 'e@x.co',
       password: 'Str0ng-Passw0rd!',
       confirmPassword: 'Str0ng-Passw0rd!',
     });
-    // academy, who is applying, player name, date of birth, guardian name, contact email, phone, account password
+    // academy, who is applying, player name, date of birth, guardian name and e-mail, account e-mail, phone, password
     expect(Object.keys(payload).sort()).toEqual(
       [
         'contactEmail',
         'contactPhone',
         'dateOfBirth',
+        'guardianEmail',
         'guardianName',
         'password',
         'playerName',

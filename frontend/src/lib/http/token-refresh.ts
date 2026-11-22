@@ -5,6 +5,17 @@ import { emitAuthEvent } from './auth-events';
 
 let refreshPromise: Promise<AuthResponse | null> | null = null;
 
+/**
+ * The refresh could not be completed for a temporary reason (offline, server error, rate limit, slow database). The
+ * session is not over: nobody is signed out; the request fails with a retryable error instead.
+ */
+export class TransientRefreshError extends Error {
+  constructor(message = 'Temporary failure while refreshing the session') {
+    super(message);
+    this.name = 'TransientRefreshError';
+  }
+}
+
 /** Web Locks name shared by every tab of the app on this origin. */
 export const CROSS_TAB_REFRESH_LOCK = 'sportexus-token-refresh';
 /** localStorage key holding the time of the last successful rotation (any tab). */
@@ -57,14 +68,23 @@ async function adoptSessionFromOtherTab(): Promise<AuthResponse | null> {
 }
 
 async function rotate(explicitRefreshToken?: string): Promise<AuthResponse | null> {
-  const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(explicitRefreshToken ? { refreshToken: explicitRefreshToken } : {}),
-    credentials: 'include',
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(explicitRefreshToken ? { refreshToken: explicitRefreshToken } : {}),
+      credentials: 'include',
+    });
+  } catch {
+    throw new TransientRefreshError('Network error while refreshing the session');
+  }
+  // Only a refusal of the refresh token ends the session; server errors and rate limits are temporary.
+  if (response.status >= 500 || response.status === 429) {
+    throw new TransientRefreshError(`Session refresh failed with status ${response.status}`);
+  }
   if (!response.ok) return null;
   markRotated();
   return (await response.json()) as AuthResponse;
@@ -100,7 +120,8 @@ export async function executeSingleFlightTokenRefresh(
       }
       emitAuthEvent('REFRESH_SUCCESS');
       return resData;
-    } catch {
+    } catch (err) {
+      if (err instanceof TransientRefreshError) throw err;
       emitAuthEvent('SESSION_EXPIRED');
       return null;
     } finally {

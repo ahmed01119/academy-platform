@@ -229,7 +229,7 @@ function VerifyEmailContent() {
                   aria-label={locale === 'ar' ? 'البريد الإلكتروني' : 'Email address'}
                   value={resendEmail}
                   onChange={(e) => setResendEmail(e.target.value)}
-                  placeholder="user@example.com"
+                  placeholder="name@example.com"
                   dir="ltr"
                   className={`${AUTH_INPUT_BASE} py-2 pl-9 pr-3 text-xs`}
                 />

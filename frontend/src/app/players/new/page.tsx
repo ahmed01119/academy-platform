@@ -176,7 +176,7 @@ export default function NewPlayerPage() {
                   id="input-first-name"
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
-                  placeholder={locale === 'ar' ? 'مثال: يوسف' : 'e.g. Youssef'}
+                  placeholder={locale === 'ar' ? 'الاسم الأول' : 'First name'}
                   className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors"
                 />
               </div>
@@ -194,7 +194,7 @@ export default function NewPlayerPage() {
                   id="input-last-name"
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
-                  placeholder={locale === 'ar' ? 'مثال: الشريف' : 'e.g. El-Sharif'}
+                  placeholder={locale === 'ar' ? 'اسم العائلة' : 'Last name'}
                   className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors"
                 />
               </div>
@@ -251,7 +251,7 @@ export default function NewPlayerPage() {
                     max={new Date().getFullYear()}
                     value={birthYear}
                     onChange={(e) => setBirthYear(e.target.value)}
-                    placeholder={locale === 'ar' ? 'مثال: 2015' : 'e.g. 2015'}
+                    placeholder="YYYY"
                     className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors"
                   />
                 ) : (
@@ -277,7 +277,7 @@ export default function NewPlayerPage() {
                   max="99"
                   value={jerseyNumber}
                   onChange={(e) => setJerseyNumber(e.target.value)}
-                  placeholder={locale === 'ar' ? 'مثال: 10' : 'e.g. 10'}
+                  placeholder="--"
                   className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors"
                 />
               </div>
@@ -350,7 +350,7 @@ export default function NewPlayerPage() {
                   id="input-emergency-phone"
                   value={emergencyContactPhone}
                   onChange={(e) => setEmergencyContactPhone(e.target.value)}
-                  placeholder={locale === 'ar' ? 'مثال: +201012345678' : 'e.g. +201012345678'}
+                  placeholder="01XXXXXXXXX"
                   className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors font-mono"
                 />
               </div>
@@ -465,7 +465,7 @@ export default function NewPlayerPage() {
                   id="input-guardian-email"
                   value={guardianEmail}
                   onChange={(e) => setGuardianEmail(e.target.value)}
-                  placeholder="parent@example.com"
+                  placeholder="name@example.com"
                   className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors font-mono"
                 />
               </div>

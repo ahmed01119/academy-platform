@@ -48,9 +48,11 @@ export const attendanceApi = {
     });
   },
 
-  async getSession(id: string): Promise<SessionDetails> {
+  /** `fresh` bypasses the short GET cache (live counters such as the QR scanner's). */
+  async getSession(id: string, opts: { fresh?: boolean } = {}): Promise<SessionDetails> {
     return request(`/attendance/sessions/${id}`, {
       method: 'GET',
+      skipCache: opts.fresh,
     });
   },
 

@@ -58,7 +58,16 @@ export default function HomePage() {
     return t('nav.dashboard');
   };
 
-  const openPlayerJoinModal = () => setIsPlayerJoinModalOpen(true);
+  // Two separate entry points: a player applies for themself, a guardian registers a child.
+  const [joinRequesterType, setJoinRequesterType] = useState<'PLAYER' | 'GUARDIAN'>('PLAYER');
+  const openJoinAsPlayer = () => {
+    setJoinRequesterType('PLAYER');
+    setIsPlayerJoinModalOpen(true);
+  };
+  const openJoinAsGuardian = () => {
+    setJoinRequesterType('GUARDIAN');
+    setIsPlayerJoinModalOpen(true);
+  };
 
   const ChevronIcon = isRtl ? ChevronLeft : ChevronRight;
 
@@ -132,11 +141,24 @@ export default function HomePage() {
 
                     <button
                       type="button"
-                      onClick={openPlayerJoinModal}
+                      onClick={openJoinAsPlayer}
                       className="flex items-center gap-2 rounded-xl border border-(--border-app) bg-[var(--bg-surface)] px-5 py-3.5 text-sm font-semibold text-(--text-main) hover:border-[var(--accent-primary)] hover:text-(--accent-primary) transition-all shadow-sm cursor-pointer"
                     >
                       <UserPlus className="h-4 w-4 text-[var(--accent-primary)]" />
-                      <span>{locale === 'ar' ? 'طلب انضمام لاعب / ناشئ' : 'Join as Player'}</span>
+                      <span>{locale === 'ar' ? 'انضمام كلاعب' : 'Join as a player'}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={openJoinAsGuardian}
+                      className="flex items-center gap-2 rounded-xl border border-(--border-app) bg-[var(--bg-surface)] px-5 py-3.5 text-sm font-semibold text-(--text-main) hover:border-[var(--accent-primary)] hover:text-(--accent-primary) transition-all shadow-sm cursor-pointer"
+                    >
+                      <Users className="h-4 w-4 text-[var(--accent-primary)]" />
+                      <span>
+                        {locale === 'ar'
+                          ? 'تسجيل ابني / ابنتي (ولي أمر)'
+                          : 'Register my child (guardian)'}
+                      </span>
                     </button>
 
                     <Link
@@ -635,11 +657,23 @@ export default function HomePage() {
                 </Link>
                 <button
                   type="button"
-                  onClick={openPlayerJoinModal}
+                  onClick={openJoinAsPlayer}
                   className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] px-6 py-4 text-sm font-semibold text-[var(--text-main)] hover:border-[var(--accent-primary)] hover:text-(--accent-primary) transition-all cursor-pointer shadow-xs"
                 >
                   <UserPlus className="h-4 w-4 text-[var(--accent-primary)]" />
-                  <span>{locale === 'ar' ? 'طلب انضمام لاعب ناشئ' : 'Join as Player'}</span>
+                  <span>{locale === 'ar' ? 'انضمام كلاعب' : 'Join as a player'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={openJoinAsGuardian}
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] px-6 py-4 text-sm font-semibold text-[var(--text-main)] hover:border-[var(--accent-primary)] hover:text-(--accent-primary) transition-all cursor-pointer shadow-xs"
+                >
+                  <Users className="h-4 w-4 text-[var(--accent-primary)]" />
+                  <span>
+                    {locale === 'ar'
+                      ? 'تسجيل ابني / ابنتي (ولي أمر)'
+                      : 'Register my child (guardian)'}
+                  </span>
                 </button>
               </div>
             </div>
@@ -719,10 +753,18 @@ export default function HomePage() {
             <span>•</span>
             <button
               type="button"
-              onClick={openPlayerJoinModal}
+              onClick={openJoinAsPlayer}
               className="hover:text-(--text-main) transition-colors cursor-pointer"
             >
-              {locale === 'ar' ? 'طلب انضمام لاعب' : 'Join as Player'}
+              {locale === 'ar' ? 'انضمام كلاعب' : 'Join as a player'}
+            </button>
+            <span>•</span>
+            <button
+              type="button"
+              onClick={openJoinAsGuardian}
+              className="hover:text-(--text-main) transition-colors cursor-pointer"
+            >
+              {locale === 'ar' ? 'تسجيل ولي أمر' : 'Register as a guardian'}
             </button>
             <span>•</span>
             <Link href="/login" className="hover:text-(--text-main) transition-colors">
@@ -736,6 +778,7 @@ export default function HomePage() {
       <PlayerJoinRequestModal
         isOpen={isPlayerJoinModalOpen}
         onClose={() => setIsPlayerJoinModalOpen(false)}
+        defaultRequesterType={joinRequesterType}
       />
     </div>
   );

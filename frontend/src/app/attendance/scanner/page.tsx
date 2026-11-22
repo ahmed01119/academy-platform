@@ -66,6 +66,10 @@ export default function MobileAttendanceScannerPage() {
   // Camera State
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  // The live camera stream, and a counter that invalidates a start still waiting for permission when the camera is
+  // stopped (or the page left) in the meantime: such a late stream is closed at once instead of staying on.
+  const streamRef = useRef<MediaStream | null>(null);
+  const cameraRunRef = useRef(0);
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -244,6 +248,26 @@ export default function MobileAttendanceScannerPage() {
     }
   }, []);
 
+  // Live attendance counter: reload the selected session's totals from the server.
+  const refreshSelectedSession = useCallback(async () => {
+    if (!selectedSessionId) return;
+    try {
+      const fresh = await apiClient.attendance.getSession(selectedSessionId, { fresh: true });
+      setSessions((prev) => prev.map((s) => (s.id === fresh.id ? { ...s, ...fresh } : s)));
+    } catch {
+      // Keep the last known totals; the next scan or poll tries again.
+    }
+  }, [selectedSessionId]);
+
+  // Other devices may scan the same session: keep the counter current while the page is visible.
+  useEffect(() => {
+    if (!selectedSessionId) return;
+    const timer = setInterval(() => {
+      if (document.visibilityState === 'visible' && navigator.onLine) void refreshSelectedSession();
+    }, 15_000);
+    return () => clearInterval(timer);
+  }, [selectedSessionId, refreshSelectedSession]);
+
   // Sync Pending Offline Scans
   const handleSyncPendingScans = useCallback(async () => {
     if (!selectedSessionId || isSyncingOffline) return;
@@ -259,6 +283,7 @@ export default function MobileAttendanceScannerPage() {
         );
       }
       await refreshPendingCount();
+      void refreshSelectedSession();
     } catch (err: unknown) {
       setSyncStatusBanner(
         (err as Error)?.message ||
@@ -269,7 +294,7 @@ export default function MobileAttendanceScannerPage() {
     } finally {
       setIsSyncingOffline(false);
     }
-  }, [selectedSessionId, isSyncingOffline, refreshPendingCount, locale]);
+  }, [selectedSessionId, isSyncingOffline, refreshPendingCount, refreshSelectedSession, locale]);
 
   // Prepare for Offline Use (caches rosters & upcoming sessions into IndexedDB)
   const handlePrepareOffline = useCallback(async () => {
@@ -377,6 +402,7 @@ export default function MobileAttendanceScannerPage() {
   // Start Camera Stream
   const startCamera = useCallback(async () => {
     setCameraError(null);
+    const run = ++cameraRunRef.current;
     try {
       if (!navigator.mediaDevices?.getUserMedia) {
         throw new Error(
@@ -395,13 +421,19 @@ export default function MobileAttendanceScannerPage() {
         audio: false,
       });
 
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.setAttribute('playsinline', 'true');
-        await videoRef.current.play();
-        setIsCameraActive(true);
+      if (run !== cameraRunRef.current || !videoRef.current) {
+        // Stopped while the browser was still opening the camera.
+        stream.getTracks().forEach((track) => track.stop());
+        return;
       }
+      streamRef.current?.getTracks().forEach((track) => track.stop());
+      streamRef.current = stream;
+      videoRef.current.srcObject = stream;
+      videoRef.current.setAttribute('playsinline', 'true');
+      await videoRef.current.play();
+      setIsCameraActive(true);
     } catch (err: unknown) {
+      if (run !== cameraRunRef.current) return;
       setCameraError(
         (err as Error)?.message ||
           (locale === 'en'
@@ -414,11 +446,10 @@ export default function MobileAttendanceScannerPage() {
 
   // Stop Camera Stream
   const stopCamera = useCallback(() => {
-    if (videoRef.current?.srcObject) {
-      const stream = videoRef.current.srcObject as MediaStream;
-      stream.getTracks().forEach((track) => track.stop());
-      videoRef.current.srcObject = null;
-    }
+    cameraRunRef.current += 1; // cancels a start that is still waiting for the camera
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
+    if (videoRef.current) videoRef.current.srcObject = null;
     setIsCameraActive(false);
   }, []);
 
@@ -501,6 +532,7 @@ export default function MobileAttendanceScannerPage() {
           setRecentScans((prev) => [fb, ...prev.slice(0, 19)]);
           playFeedbackSound(feedbackType);
           triggerHaptic(feedbackType);
+          if (!res.alreadyCheckedIn) void refreshSelectedSession();
         } catch (err: unknown) {
           const errMsg =
             (err as Error)?.message ||
@@ -557,7 +589,14 @@ export default function MobileAttendanceScannerPage() {
         }
       }
     },
-    [selectedSessionId, playFeedbackSound, triggerHaptic, refreshPendingCount, locale],
+    [
+      selectedSessionId,
+      playFeedbackSound,
+      triggerHaptic,
+      refreshPendingCount,
+      refreshSelectedSession,
+      locale,
+    ],
   );
 
   // Continuous Camera Frame Scanner Loop
@@ -884,6 +923,18 @@ export default function MobileAttendanceScannerPage() {
                   )}
                 </button>
 
+                {isCameraActive && (
+                  <button
+                    type="button"
+                    onClick={stopCamera}
+                    className="flex h-8 items-center gap-1.5 rounded-full bg-red-600/90 px-3 text-[11px] font-bold text-white backdrop-blur-md border border-white/10 hover:bg-red-600 cursor-pointer"
+                    title={locale === 'en' ? 'Stop camera' : 'إيقاف الكاميرا'}
+                  >
+                    <CameraOff className="h-4 w-4" />
+                    <span>{locale === 'en' ? 'Stop' : 'إيقاف'}</span>
+                  </button>
+                )}
+
                 <button
                   type="button"
                   onClick={handleToggleFacingMode}
@@ -904,7 +955,7 @@ export default function MobileAttendanceScannerPage() {
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-[var(--bg-surface)] p-6 text-center text-(--text-muted) z-10">
                 <CameraOff className="h-12 w-12 text-red-500 mb-3 opacity-60" />
                 <p className="text-sm font-bold text-(--text-main)">
-                  {locale === 'en' ? 'Camera is inactive' : 'الكاميرا غير مفعلة'}
+                  {locale === 'en' ? 'Camera is off' : 'الكاميرا متوقفة'}
                 </p>
                 <p className="text-xs text-(--text-muted) mt-1 max-w-xs">
                   {cameraError ||

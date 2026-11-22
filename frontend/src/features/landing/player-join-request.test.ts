@@ -103,11 +103,36 @@ describe('validatePlayerJoinForm (order: academy → name → guardian → email
     [{ tenantId: '' }, 'Please select an academy'],
     [{ firstName: ' ', lastName: '' }, 'Please enter player first and last name'],
     [{ guardianName: ' ' }, 'Please enter guardian name'],
-    [{ email: '' }, 'Please enter contact email address'],
+    [{ email: '' }, "Please enter your (the guardian's) e-mail"],
     [{ password: 'short', confirmPassword: 'short' }, 'Password must be at least 8 characters'],
     [{ confirmPassword: 'Different-1' }, 'Passwords do not match'],
   ])('%j → %s', (patch, message) => {
     expect(validatePlayerJoinForm({ ...form, ...patch }, 'en')).toBe(message);
+  });
+
+  it("PLAYER request: the player's own e-mail is the sign-in; the guardian's is separate", () => {
+    const player = {
+      ...form,
+      requesterType: 'PLAYER' as const,
+      playerEmail: ' player@example.com ',
+    };
+    expect(validatePlayerJoinForm({ ...player, playerEmail: '' }, 'en')).toBe(
+      "Please enter your (the player's) e-mail",
+    );
+    // The bug the owner reported: the guardian's e-mail used as the player's account.
+    expect(validatePlayerJoinForm({ ...player, email: 'PLAYER@example.com' }, 'en')).toBe(
+      "The guardian's e-mail must differ from the player's (or leave it empty)",
+    );
+    expect(validatePlayerJoinForm({ ...player, email: '' }, 'en')).toBeNull();
+    const { payload } = buildPlayerJoinRequest(player);
+    expect(payload.contactEmail).toBe('player@example.com');
+    expect(payload.guardianEmail).toBe('parent@example.com');
+  });
+
+  it('GUARDIAN request: the guardian e-mail is the sign-in and no separate guardian e-mail is sent', () => {
+    const { payload } = buildPlayerJoinRequest(form);
+    expect(payload.contactEmail).toBe('parent@example.com');
+    expect(payload.guardianEmail).toBeUndefined();
   });
 
   it('does not ask a signed-in applicant for a password', () => {

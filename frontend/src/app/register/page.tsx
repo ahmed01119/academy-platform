@@ -416,7 +416,7 @@ export default function RegisterPage() {
                               setFieldErrors((prev) => ({ ...prev, ownerName: '' }));
                             }
                           }}
-                          placeholder={locale === 'ar' ? 'الكابتن أحمد محمود' : 'Captain Ahmed'}
+                          placeholder={locale === 'ar' ? 'الاسم بالكامل' : 'Full name'}
                           className={`w-full rounded-xl border py-2.5 px-3 text-sm text-(--text-main) placeholder-(--text-muted) outline-none transition-all ${
                             fieldErrors.ownerName
                               ? 'border-rose-500 bg-rose-500/10 focus:border-rose-500 focus:ring-1 focus:ring-rose-500'
@@ -450,7 +450,7 @@ export default function RegisterPage() {
                                 setFieldErrors((prev) => ({ ...prev, phone: '' }));
                               }
                             }}
-                            placeholder="+20 10 1234 5678"
+                            placeholder="01XXXXXXXXX"
                             dir="ltr"
                             className={`w-full rounded-xl border py-2.5 pr-3 pl-9 text-sm text-(--text-main) placeholder-(--text-muted) outline-none transition-all ${
                               fieldErrors.phone
@@ -488,7 +488,7 @@ export default function RegisterPage() {
                               setFieldErrors((prev) => ({ ...prev, email: '' }));
                             }
                           }}
-                          placeholder="owner@academy.com"
+                          placeholder="name@example.com"
                           dir="ltr"
                           className={`w-full rounded-xl border py-2.5 pr-3 pl-9 text-sm text-(--text-main) placeholder-(--text-muted) outline-none transition-all ${
                             fieldErrors.email

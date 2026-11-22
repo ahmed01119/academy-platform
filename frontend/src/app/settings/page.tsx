@@ -466,7 +466,7 @@ function SettingsContent() {
                       type="text"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      placeholder={ar ? 'أكاديمية النجوم الرياضية' : 'Stars Athletic Academy'}
+                      placeholder={ar ? 'اسم الأكاديمية' : 'Academy name'}
                       className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-main)] focus:outline-none focus:border-[var(--accent-primary)]"
                     />
                   </div>
@@ -492,7 +492,7 @@ function SettingsContent() {
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder="info@academy.com"
+                      placeholder="name@example.com"
                       className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-main)] focus:outline-none focus:border-[var(--accent-primary)]"
                     />
                   </div>
@@ -505,7 +505,7 @@ function SettingsContent() {
                       type="tel"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
-                      placeholder="+201000000000"
+                      placeholder="01XXXXXXXXX"
                       className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-main)] focus:outline-none focus:border-[var(--accent-primary)] font-mono"
                     />
                   </div>
@@ -520,7 +520,7 @@ function SettingsContent() {
                       type="text"
                       value={address}
                       onChange={(e) => setAddress(e.target.value)}
-                      placeholder={ar ? 'القاهرة، مصر' : 'Cairo, Egypt'}
+                      placeholder={ar ? 'المدينة، الدولة' : 'City, country'}
                       className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-main)] focus:outline-none focus:border-[var(--accent-primary)]"
                     />
                   </div>
@@ -1144,7 +1144,7 @@ function SettingsContent() {
                     type="email"
                     value={inviteEmail}
                     onChange={(e) => setInviteEmail(e.target.value)}
-                    placeholder="email@example.com"
+                    placeholder="name@example.com"
                     required
                     className="w-full rounded-xl border border-[var(--border-app)] bg-[var(--bg-base)] ps-9 pe-3 py-2.5 text-xs text-[var(--text-main)] placeholder:text-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-primary)]/20 transition-all"
                   />

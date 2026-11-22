@@ -333,7 +333,7 @@ export function Sidebar({ isMobileOpen = false, onCloseMobile }: SidebarProps) {
           }`}
         >
           <div onClick={onCloseMobile} className="overflow-hidden">
-            <SportexusLogo variant={isCollapsed ? 'symbol' : 'full'} href="/" size="sm" />
+            <SportexusLogo variant={isCollapsed ? 'symbol' : 'full'} href="/dashboard" size="sm" />
           </div>
 
           {/* Mobile close button */}

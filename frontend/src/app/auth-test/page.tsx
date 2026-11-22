@@ -1010,7 +1010,7 @@ export default function AuthTestPage() {
                         required
                         value={verifyEmailAddress}
                         onChange={(e) => setVerifyEmailAddress(e.target.value)}
-                        placeholder="email@example.com"
+                        placeholder="name@example.com"
                         dir="ltr"
                         className="flex-1 rounded-xl border border-[#2b4c3e] bg-[#0f1c18] py-2 px-3 text-xs text-white placeholder-[#5a7a6c] focus:border-[#2f9e6b] outline-none font-mono"
                       />
@@ -1109,7 +1109,7 @@ export default function AuthTestPage() {
                         required
                         value={forgotEmail}
                         onChange={(e) => setForgotEmail(e.target.value)}
-                        placeholder="email@example.com"
+                        placeholder="name@example.com"
                         dir="ltr"
                         className="flex-1 rounded-xl border border-[#2b4c3e] bg-[#0f1c18] py-2 px-3 text-xs text-white placeholder-[#5a7a6c] focus:border-[#2f9e6b] outline-none font-mono"
                       />
@@ -1178,7 +1178,7 @@ export default function AuthTestPage() {
                         required
                         value={resetNewPassword}
                         onChange={(e) => setResetNewPassword(e.target.value)}
-                        placeholder="كلمة المرور الجديدة (مثال: NewP@ssword456!)"
+                        placeholder="كلمة المرور الجديدة"
                         dir="ltr"
                         className="w-full rounded-xl border border-[#2b4c3e] bg-[#0f1c18] py-2 px-3 text-xs text-white placeholder-[#5a7a6c] focus:border-[#2f9e6b] outline-none"
                       />
