@@ -74,7 +74,7 @@ client), no form library, no component library (custom `components/ui`).
 | Component           | Version                                                                      | Notes                                                                          |
 | ------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
 | PostgreSQL          | 16 (Docker images); embedded-postgres 18.4.0-beta.17 for local no-Docker dev | RLS (`FORCE ROW LEVEL SECURITY`), triggers, `SECURITY DEFINER` functions       |
-| Prisma CLI          | 6.19.3                                                                       | 35 migrations in `packages/database/prisma/migrations`                         |
+| Prisma CLI          | 6.19.3                                                                       | 36 migrations in `packages/database/prisma/migrations`                         |
 | Redis               | 7 (Docker)                                                                   | Rate limiting, metrics cache                                                   |
 | Paymob              | Intention API v1 + unified checkout                                          | Online payments (card, wallet); HMAC-signed webhook; called with fetch, no SDK |
 | Caddy 2             | `docker-compose.prod.yml`                                                    | TLS reverse proxy                                                              |

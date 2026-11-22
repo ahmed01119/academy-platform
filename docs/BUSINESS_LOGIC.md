@@ -223,6 +223,13 @@ Pre-2026-11-16 code:
 5. REJECTED / MORE_INFO_REQUESTED: status + notes, notification and e-mail (a pending applicant cannot sign in, so the
    e-mail is how they learn the outcome). User-supplied values in e-mails are HTML-escaped.
 
+- **Join request e-mails (2026-11-22)**: the applicant gets an e-mail when the request is received and when the
+  academy approves, rejects or asks for more information (with the academy's notes); same for academy applications.
+- **E-mails in a PLAYER request (2026-11-22)**: `contactEmail` is the player's own sign-in e-mail; the guardian's
+  e-mail is separate and optional (`guardianEmail`, must differ) and goes on the guardian record at approval. In a
+  GUARDIAN request `contactEmail` is the guardian's sign-in.
+- The landing page offers two separate entry points: "join as a player" and "register my child (guardian)".
+
 ### 2.6 Enrollments
 
 - One active enrollment per player: creating a second → "Use branch transfer instead".
