@@ -18,6 +18,7 @@ import {
 import { PasswordVisibilityToggle } from '@/features/auth/components/PasswordVisibilityToggle';
 import { EmailCodeVerification } from '@/features/auth/components/EmailCodeVerification';
 import { emailNotConfirmedMessage } from '@/features/auth/email-code';
+import { EGYPT_GOVERNORATES, governorateLabel } from '@/features/auth/egypt-governorates';
 import { readReturnPath, withReturnPath } from '@/lib/auth/safe-return-path';
 import { useSafeReturnPath } from '@/hooks/useSafeReturnPath';
 import { Navbar } from '../../components/Navbar';
@@ -242,7 +243,9 @@ export default function RegisterPage() {
                     <span className="text-(--text-muted)">
                       {locale === 'ar' ? 'المدينة' : 'City'}
                     </span>
-                    <span className="text-(--text-main)">{submittedData.city}</span>
+                    <span className="text-(--text-main)">
+                      {governorateLabel(submittedData.city, locale)}
+                    </span>
                   </div>
                 </div>
 
@@ -378,22 +381,31 @@ export default function RegisterPage() {
                         className="block text-xs font-semibold text-(--text-sub) mb-1.5"
                         htmlFor="city"
                       >
-                        {locale === 'ar'
-                          ? 'المدينة / الدولة (اختياري)'
-                          : 'City / Country (optional)'}
+                        {locale === 'ar' ? 'المحافظة (اختياري)' : 'Governorate (optional)'}
                       </label>
                       <div className="relative">
-                        <input
+                        <select
                           id="city"
-                          type="text"
                           value={city}
                           onChange={(e) => setCity(e.target.value)}
-                          placeholder={
-                            locale === 'ar' ? 'مثال: الرياض، السعودية' : 'e.g. Riyadh, KSA'
-                          }
-                          className="w-full rounded-xl border border-(--border-app) bg-(--bg-surface-subtle) py-2.5 pr-3 pl-9 text-sm text-(--text-main) placeholder-(--text-muted) focus:border-(--accent-primary) focus:ring-1 focus:ring-(--accent-primary) outline-none transition-all"
-                        />
-                        <MapPin className="absolute left-3 top-3 h-4 w-4 text-(--text-muted)" />
+                          className={`w-full rounded-xl border border-(--border-app) bg-(--bg-surface-subtle) py-2.5 ps-9 pe-3 text-sm focus:border-(--accent-primary) focus:ring-1 focus:ring-(--accent-primary) outline-none transition-all cursor-pointer ${
+                            city ? 'text-(--text-main)' : 'text-(--text-muted)'
+                          }`}
+                        >
+                          <option value="" className="bg-[var(--bg-surface)]">
+                            {locale === 'ar' ? 'اختر المحافظة' : 'Select a governorate'}
+                          </option>
+                          {EGYPT_GOVERNORATES.map((g) => (
+                            <option
+                              key={g.value}
+                              value={g.value}
+                              className="bg-[var(--bg-surface)] text-(--text-main)"
+                            >
+                              {locale === 'ar' ? g.ar : g.en}
+                            </option>
+                          ))}
+                        </select>
+                        <MapPin className="pointer-events-none absolute start-3 top-3 h-4 w-4 text-(--text-muted)" />
                       </div>
                     </div>
                   </div>

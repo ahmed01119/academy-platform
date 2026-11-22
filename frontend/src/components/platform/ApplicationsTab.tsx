@@ -20,6 +20,7 @@ import {
   Filter,
 } from 'lucide-react';
 import type { AcademyApplicationItem } from '@academy/shared';
+import { governorateLabel } from '@/features/auth/egypt-governorates';
 
 interface ApplicationsTabProps {
   applications: AcademyApplicationItem[];
@@ -53,7 +54,8 @@ export function ApplicationsTab({
       app.academySlug.toLowerCase().includes(q) ||
       (app.applicantName && app.applicantName.toLowerCase().includes(q)) ||
       app.contactEmail.toLowerCase().includes(q) ||
-      (app.city && app.city.toLowerCase().includes(q));
+      (app.city &&
+        (app.city.toLowerCase().includes(q) || governorateLabel(app.city, 'ar').includes(q)));
 
     const matchesStatus = statusFilter === 'ALL' || app.status === statusFilter;
     return matchesSearch && matchesStatus;
@@ -212,7 +214,7 @@ export function ApplicationsTab({
                       </span>
                       {app.city && (
                         <span className="flex items-center gap-1">
-                          <MapPin className="w-3.5 h-3.5" /> {app.city}
+                          <MapPin className="w-3.5 h-3.5" /> {governorateLabel(app.city, locale)}
                         </span>
                       )}
                     </div>
