@@ -14,6 +14,7 @@ import {
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
+import { EmailCodeService } from './email-code.service';
 import { AppConfigService } from '../../config/app-config.service';
 import { Public } from './guards/public.decorator';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
@@ -25,10 +26,14 @@ import {
   ForgotPasswordRequestSchema,
   LoginRequestSchema,
   RegisterRequestSchema,
+  SendEmailCodeRequestSchema,
+  VerifyEmailCodeRequestSchema,
   ResetPasswordRequestSchema,
   ChangePasswordRequestSchema,
   UpdateUserProfileRequestSchema,
   type AuthResponse,
+  type EmailCodeProofResponse,
+  type SendEmailCodeResponse,
   type ForgotPasswordRequest,
   type LoginRequest,
   type RegisterRequest,
@@ -54,6 +59,7 @@ const REMEMBER_ME_COOKIE = 'remember_me';
 export class AuthController {
   constructor(
     @Inject(AuthService) private readonly authService: AuthService,
+    @Inject(EmailCodeService) private readonly emailCodeService: EmailCodeService,
     @Inject(AppConfigService) private readonly config: AppConfigService,
   ) {}
 
@@ -128,6 +134,29 @@ export class AuthController {
       sameSite: 'lax',
       path: '/v1/auth',
     });
+  }
+
+  /**
+   * Step 1 of confirming an applicant's e-mail before an account is created: sends a 6-digit code.
+   * 400 EMAIL_DOMAIN_INVALID, 409 EMAIL_ALREADY_EXISTS, 429 while a recent code is still fresh, 503 when sending failed.
+   */
+  @Public()
+  @UseGuards(CsrfGuard)
+  @Post('email-code')
+  @HttpCode(HttpStatus.OK)
+  async sendEmailCode(@Body() body: unknown, @Req() req: Request): Promise<SendEmailCodeResponse> {
+    const dto = SendEmailCodeRequestSchema.parse(body);
+    return this.emailCodeService.sendCode(dto.email, req.clientIp);
+  }
+
+  /** Step 2: checks the code and returns the proof that the registration / join form sends as `emailProof`. */
+  @Public()
+  @UseGuards(CsrfGuard)
+  @Post('email-code/verify')
+  @HttpCode(HttpStatus.OK)
+  async verifyEmailCode(@Body() body: unknown): Promise<EmailCodeProofResponse> {
+    const dto = VerifyEmailCodeRequestSchema.parse(body);
+    return this.emailCodeService.verifyCode(dto.email, dto.code);
   }
 
   @Public()

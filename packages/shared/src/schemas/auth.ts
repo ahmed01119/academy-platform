@@ -19,6 +19,41 @@ export const EmailSchema = z
   .email('Invalid email address')
   .toLowerCase();
 
+/**
+ * E-mail confirmation before an account is created (academy application, join request): the applicant asks for a
+ * 6-digit code, types it, and gets a short-lived proof that is sent with the form as `emailProof`.
+ */
+export const EMAIL_CODE_LENGTH = 6;
+
+export const SendEmailCodeRequestSchema = z.object({ email: EmailSchema });
+export type SendEmailCodeRequest = z.infer<typeof SendEmailCodeRequestSchema>;
+
+export const VerifyEmailCodeRequestSchema = z.object({
+  email: EmailSchema,
+  code: z
+    .string()
+    .trim()
+    .regex(/^\d{6}$/, 'The code is 6 digits'),
+});
+export type VerifyEmailCodeRequest = z.infer<typeof VerifyEmailCodeRequestSchema>;
+
+export const SendEmailCodeResponseSchema = z.object({
+  message: z.string(),
+  /** Seconds the code stays valid. */
+  expiresInSeconds: z.number().int(),
+});
+export type SendEmailCodeResponse = z.infer<typeof SendEmailCodeResponseSchema>;
+
+export const EmailCodeProofResponseSchema = z.object({
+  /** Opaque proof that the e-mail was confirmed. */
+  proof: z.string(),
+  expiresAt: z.string(),
+});
+export type EmailCodeProofResponse = z.infer<typeof EmailCodeProofResponseSchema>;
+
+/** The proof returned by POST /auth/email-code/verify. */
+export const EmailProofSchema = z.string().trim().min(1).max(512);
+
 export const RegisterRequestSchema = z.object({
   name: z.string().trim().min(2, 'Name must be at least 2 characters').max(100),
   email: EmailSchema,
@@ -34,6 +69,8 @@ export const RegisterRequestSchema = z.object({
     .regex(/^[a-z0-9-]+$/, 'Slug must be lowercase alphanumeric with hyphens')
     .optional(),
   sport: SportCodeSchema.default('FOOTBALL'),
+  /** Proof that `email` was confirmed with a code (POST /auth/email-code/verify). */
+  emailProof: EmailProofSchema,
 });
 
 export type RegisterRequest = z.infer<typeof RegisterRequestSchema>;

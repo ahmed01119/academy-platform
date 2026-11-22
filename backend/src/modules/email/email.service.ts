@@ -780,6 +780,59 @@ export class EmailService {
   }
 
   /**
+   * 7b. One-time code that confirms an e-mail address before an account is created (academy application, join
+   * request). Sent with `forceSend`: asking for a new code must always deliver it.
+   */
+  async sendEmailConfirmationCode(options: {
+    to: string;
+    code: string;
+    expiresInMinutes: number;
+    locale?: 'ar' | 'en';
+  }): Promise<SendEmailResult> {
+    const locale = options.locale ?? this.emailLocale;
+    const isAr = locale === 'ar';
+    const safeCode = escapeHtml(options.code);
+    const minutes = options.expiresInMinutes;
+
+    // The code stays out of the subject: subjects are written to the server logs.
+    const subject = isAr
+      ? `رمز تأكيد البريد الإلكتروني — Sportexus`
+      : `Your Sportexus verification code`;
+
+    const codeHtml = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin: 20px 0;">
+        <tr><td align="center" style="background: #f0fdf4; border: 2px dashed #16A34A; border-radius: 12px; padding: 20px;">
+          <div style="font-size: 12px; color: #64748b; letter-spacing: 1px; margin-bottom: 8px; font-weight: 600;">
+            ${isAr ? 'رمز التأكيد' : 'VERIFICATION CODE'}
+          </div>
+          <div dir="ltr" style="font-size: 34px; font-weight: 800; letter-spacing: 10px; color: #15803D; font-family: monospace;">${safeCode}</div>
+          <div style="font-size: 13px; color: #64748b; margin-top: 8px;">
+            ${isAr ? `صالح لمدة ${minutes} دقائق` : `Valid for ${minutes} minutes`}
+          </div>
+        </td></tr>
+      </table>`;
+
+    const html = this.renderBaseTemplate({
+      locale,
+      preheader: isAr ? `رمز التأكيد: ${safeCode}` : `Your code: ${safeCode}`,
+      title: isAr ? 'تأكيد البريد الإلكتروني' : 'Confirm your email address',
+      greeting: isAr ? 'مرحباً،' : 'Hello,',
+      bodyHtml: isAr
+        ? `<p>اكتب هذا الرمز في النموذج على منصة Sportexus لتأكيد أن هذا البريد الإلكتروني ملكك.</p>
+           ${codeHtml}
+           <p style="color: #64748b; font-size: 13px;">لا تشارك هذا الرمز مع أي شخص. إذا لم تطلبه، تجاهل هذه الرسالة؛ لن يُنشأ أي حساب بدون الرمز.</p>`
+        : `<p>Enter this code in the form on Sportexus to confirm that this email address is yours.</p>
+           ${codeHtml}
+           <p style="color: #64748b; font-size: 13px;">Do not share this code with anyone. If you did not ask for it, ignore this email; no account is created without the code.</p>`,
+    });
+
+    const text = isAr
+      ? `رمز تأكيد البريد الإلكتروني على Sportexus: ${options.code} (صالح لمدة ${minutes} دقائق). لا تشاركه مع أحد.`
+      : `Your Sportexus verification code: ${options.code} (valid for ${minutes} minutes). Do not share it with anyone.`;
+
+    return this.sendEmailDetailed({ to: options.to, subject, html, text, forceSend: true });
+  }
+
+  /**
    * 8. Platform Co-Owner or Super Admin invitation.
    */
   async sendPlatformAdminInvite(

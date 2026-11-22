@@ -13,6 +13,7 @@ import { PasswordService } from './password.service';
 import { TokenService, type GeneratedTokens } from './token.service';
 import { rateLimitIpKey } from '../../common/client-ip';
 import { insertApplicantAccount, isDuplicateEmailError } from './applicant-account';
+import { EmailCodeService } from './email-code.service';
 import { databaseFunctionErrorCode, singleRow } from '../../common/db-function-error';
 import { RedisService } from '../redis/redis.service';
 import { AuditService } from '../audit/audit.service';
@@ -77,6 +78,7 @@ export class AuthService {
     @Inject(AppConfigService) private readonly config: AppConfigService,
     @Inject(EmailService) private readonly emailService: EmailService,
     @Inject(NotificationsService) private readonly notificationsService: NotificationsService,
+    @Inject(EmailCodeService) private readonly emailCodeService: EmailCodeService,
   ) {}
 
   private async isAcademySlugInUse(slug: string): Promise<boolean> {
@@ -102,6 +104,8 @@ export class AuthService {
     userAgent?: string,
   ): Promise<{ response: RegisterResponse }> {
     const email = dto.email.toLowerCase().trim();
+    // The applicant confirmed the address with a code (POST /auth/email-code/verify) before submitting.
+    this.emailCodeService.assertProof(email, dto.emailProof);
     const existingUser = await this.prisma.user.findUnique({
       where: { email },
     });
@@ -146,6 +150,7 @@ export class AuthService {
             phone: dto.phone,
           }),
         };
+        await this.emailCodeService.markVerifiedInTx(tx, email);
         const applicationRows = await tx.$queryRaw<Array<{ id: string }>>`
           INSERT INTO public.academy_applications (
             id, applicant_user_id, academy_name, academy_slug, sport, city, contact_email, contact_phone, notes,

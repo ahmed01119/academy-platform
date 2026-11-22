@@ -4,6 +4,7 @@ import { PortalService } from './portal.service';
 import type { PrismaService } from '../database/prisma.service';
 import type { RedisService } from '../redis/redis.service';
 import type { PasswordService } from '../auth/password.service';
+import type { EmailCodeService } from '../auth/email-code.service';
 import { CreatePlayerJoinRequestSchema } from '@academy/shared';
 
 /**
@@ -36,6 +37,7 @@ describe('PortalService.submitPlayerJoinRequest (K6)', () => {
   };
   let redis: { incrementRateLimit: MockFn };
   let password: { hash: MockFn };
+  let emailCode: { assertProof: MockFn; markVerifiedInTx: MockFn; assertDomainAcceptsMail: MockFn };
   let service: PortalService;
 
   const guardianDto = (extra: Record<string, unknown> = {}) =>
@@ -67,10 +69,16 @@ describe('PortalService.submitPlayerJoinRequest (K6)', () => {
     };
     redis = { incrementRateLimit: vi.fn().mockResolvedValue({ count: 1, remainingTime: 3600 }) };
     password = { hash: vi.fn().mockResolvedValue('argon2id$hash') };
+    emailCode = {
+      assertProof: vi.fn(),
+      markVerifiedInTx: vi.fn().mockResolvedValue(undefined),
+      assertDomainAcceptsMail: vi.fn().mockResolvedValue(undefined),
+    };
     service = new PortalService(
       prisma as unknown as PrismaService,
       redis as unknown as RedisService,
       password as unknown as PasswordService,
+      emailCode as unknown as EmailCodeService,
     );
   });
 
@@ -98,6 +106,52 @@ describe('PortalService.submitPlayerJoinRequest (K6)', () => {
       requesterType: 'GUARDIAN',
       status: 'PENDING_REVIEW',
     });
+  });
+
+  it('anonymous: the new account e-mail must be confirmed and is stored as verified', async () => {
+    await service.submitPlayerJoinRequest(
+      guardianDto({ password: 'Str0ng-Passw0rd!', emailProof: 'proof' }),
+      undefined,
+    );
+    expect(emailCode.assertProof).toHaveBeenCalledWith('parent@example.test', 'proof');
+    expect(emailCode.markVerifiedInTx).toHaveBeenCalledWith(tx, 'parent@example.test');
+
+    emailCode.assertProof.mockImplementation(() => {
+      throw new BadRequestException({ code: 'EMAIL_NOT_VERIFIED' });
+    });
+    prisma.$transaction.mockClear();
+    await expect(
+      service.submitPlayerJoinRequest(guardianDto({ password: 'Str0ng-Passw0rd!' }), undefined),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("a PLAYER request's guardian e-mail must have a domain that receives mail", async () => {
+    emailCode.assertDomainAcceptsMail.mockRejectedValue(
+      new BadRequestException({ code: 'EMAIL_DOMAIN_INVALID' }),
+    );
+    const dto = CreatePlayerJoinRequestSchema.parse({
+      tenantId: TENANT,
+      requesterType: 'PLAYER',
+      playerName: 'Player Name',
+      contactEmail: 'player@example.test',
+      guardianEmail: 'guardian@gmial.test',
+      password: 'Str0ng-Passw0rd!',
+      emailProof: 'proof',
+    });
+    await expect(service.submitPlayerJoinRequest(dto, undefined)).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+    expect(emailCode.assertDomainAcceptsMail).toHaveBeenCalledWith(
+      'guardian@gmial.test',
+      'guardianEmail',
+    );
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('signed in: no e-mail code is needed (the account already exists)', async () => {
+    await service.submitPlayerJoinRequest(guardianDto(), USER);
+    expect(emailCode.assertProof).not.toHaveBeenCalled();
   });
 
   it('anonymous without a password is refused before anything is written', async () => {

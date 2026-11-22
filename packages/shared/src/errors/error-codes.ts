@@ -15,6 +15,12 @@ export const ErrorCode = {
   EMAIL_ALREADY_EXISTS: 'EMAIL_ALREADY_EXISTS',
   TOKEN_EXPIRED: 'TOKEN_EXPIRED',
   TOKEN_INVALID: 'TOKEN_INVALID',
+  /** A new account's e-mail was not confirmed with a code, or the confirmation expired. */
+  EMAIL_NOT_VERIFIED: 'EMAIL_NOT_VERIFIED',
+  /** The e-mail's domain does not exist or does not accept mail. */
+  EMAIL_DOMAIN_INVALID: 'EMAIL_DOMAIN_INVALID',
+  /** The platform could not send an e-mail (provider failure). */
+  EMAIL_DELIVERY_FAILED: 'EMAIL_DELIVERY_FAILED',
   MEMBERSHIP_REQUIRED: 'MEMBERSHIP_REQUIRED',
   MEMBERSHIP_REVOKED: 'MEMBERSHIP_REVOKED',
   INSUFFICIENT_PERMISSIONS: 'INSUFFICIENT_PERMISSIONS',

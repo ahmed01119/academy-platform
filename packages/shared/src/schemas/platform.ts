@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { SportCodeSchema } from '../constants/sports';
-import { PasswordSchema } from './auth';
+import { EmailProofSchema, PasswordSchema } from './auth';
 
 export const PlatformOverviewMetricsSchema = z.object({
   totalAcademies: z.number(),
@@ -302,6 +302,11 @@ export const CreatePlayerJoinRequestSchema = z
       .or(z.literal('').transform(() => undefined)),
     /** Password for the new account; only used when the applicant is not signed in. */
     password: PasswordSchema.optional(),
+    /**
+     * Proof that `contactEmail` was confirmed with a code (POST /auth/email-code/verify). Required when the request
+     * creates a new account, i.e. the applicant is not signed in.
+     */
+    emailProof: EmailProofSchema.optional(),
     branchId: z.string().uuid().optional(),
   })
   .superRefine((value, ctx) => {

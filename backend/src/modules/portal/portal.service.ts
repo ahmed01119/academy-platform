@@ -29,6 +29,7 @@ import {
 import { RedisService } from '../redis/redis.service';
 import { PasswordService } from '../auth/password.service';
 import { insertApplicantAccount, isDuplicateEmailError } from '../auth/applicant-account';
+import { EmailCodeService } from '../auth/email-code.service';
 import { rateLimitIpKey } from '../../common/client-ip';
 import { databaseFunctionErrorCode, singleRow } from '../../common/db-function-error';
 
@@ -123,6 +124,7 @@ export class PortalService {
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(RedisService) private readonly redisService: RedisService,
     @Inject(PasswordService) private readonly passwordService: PasswordService,
+    @Inject(EmailCodeService) private readonly emailCodeService: EmailCodeService,
     @Optional() @Inject(EmailService) private readonly emailService?: EmailService,
   ) {}
 
@@ -577,6 +579,11 @@ export class PortalService {
     applicantUserId?: string,
     ipAddress?: string,
   ): Promise<PlayerJoinRequestItem> {
+    // The guardian's optional e-mail (PLAYER request) is not confirmed with a code, its owner is not filling the form:
+    // at least its domain must be able to receive mail.
+    if (dto.requesterType !== 'GUARDIAN' && dto.guardianEmail) {
+      await this.emailCodeService.assertDomainAcceptsMail(dto.guardianEmail, 'guardianEmail');
+    }
     try {
       const created = applicantUserId
         ? await this.submitJoinRequestForSignedInUser(dto, applicantUserId)
@@ -637,6 +644,8 @@ export class PortalService {
     }
 
     const email = dto.contactEmail.trim().toLowerCase();
+    // The new account's e-mail was confirmed with a code (POST /auth/email-code/verify) before submitting.
+    this.emailCodeService.assertProof(email, dto.emailProof);
     const existing = await this.prisma.user.findUnique({ where: { email }, select: { id: true } });
     if (existing) {
       throw new ConflictException({
@@ -659,6 +668,7 @@ export class PortalService {
           name: accountName,
           phone: dto.contactPhone,
         });
+        await this.emailCodeService.markVerifiedInTx(tx, email);
         return this.callSubmitJoinRequest(tx, dto);
       });
     } catch (err) {

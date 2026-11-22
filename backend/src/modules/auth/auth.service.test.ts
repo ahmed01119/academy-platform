@@ -78,6 +78,10 @@ describe('AuthService', () => {
   let mockRedis: MockRedis;
   let mockAudit: MockAudit;
   let mockConfig: { nodeEnv: string; exposeDebugOtp: boolean };
+  let mockEmailCode: {
+    assertProof: ReturnType<typeof vi.fn>;
+    markVerifiedInTx: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(() => {
     mockPrisma = {
@@ -166,6 +170,11 @@ describe('AuthService', () => {
       sendEmail: vi.fn().mockResolvedValue(true),
     };
 
+    mockEmailCode = {
+      assertProof: vi.fn(),
+      markVerifiedInTx: vi.fn().mockResolvedValue(undefined),
+    };
+
     const mockNotifications = {
       createNotification: vi.fn().mockResolvedValue({}),
     };
@@ -179,6 +188,7 @@ describe('AuthService', () => {
       mockConfig as unknown as AppConfigService,
       mockEmail as any,
       mockNotifications as any,
+      mockEmailCode as any,
     );
   });
 
@@ -193,6 +203,7 @@ describe('AuthService', () => {
           password: 'Password123!',
           academyName: 'Nankatsu SC',
           sport: 'FOOTBALL',
+          emailProof: 'proof',
         }),
       ).rejects.toThrow(ConflictException);
     });
@@ -212,6 +223,41 @@ describe('AuthService', () => {
     const callsMatching = (text: string) =>
       mockPrisma.$queryRaw.mock.calls.filter((c: unknown[]) => sqlText(c).includes(text));
 
+    it('refuses an e-mail that was not confirmed with a code, before anything is written', async () => {
+      mockEmailCode.assertProof.mockImplementation(() => {
+        throw new BadRequestException({ code: 'EMAIL_NOT_VERIFIED' });
+      });
+      await expect(
+        authService.register({
+          name: 'Academy Owner',
+          email: 'owner@example.com',
+          password: 'Password123!',
+          academyName: 'Academy',
+          sport: 'FOOTBALL',
+          emailProof: 'forged',
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(mockEmailCode.assertProof).toHaveBeenCalledWith('owner@example.com', 'forged');
+      expect(mockPrisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('marks the new account e-mail as verified in the registration transaction', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue(null);
+      routeRegisterQueries();
+      await authService.register({
+        name: 'Academy Owner',
+        email: 'Owner@Example.com',
+        password: 'Password123!',
+        academyName: 'Academy',
+        sport: 'FOOTBALL',
+        emailProof: 'proof',
+      });
+      expect(mockEmailCode.markVerifiedInTx).toHaveBeenCalledWith(
+        expect.anything(),
+        'owner@example.com',
+      );
+    });
+
     it('registers new user, creates academy application in PENDING_REVIEW, and dispatches confirmation email', async () => {
       mockPrisma.user.findUnique.mockResolvedValue(null);
       routeRegisterQueries();
@@ -222,6 +268,7 @@ describe('AuthService', () => {
         password: 'Password123!',
         academyName: 'Nankatsu SC',
         sport: 'FOOTBALL',
+        emailProof: 'proof',
       });
 
       expect(result.response.status).toBe('PENDING_REVIEW');
@@ -276,6 +323,7 @@ describe('AuthService', () => {
         password: 'Password123!',
         academyName: 'Nankatsu SC',
         sport: 'FOOTBALL',
+        emailProof: 'proof',
       });
 
       expect(result.response.status).toBe('PENDING_REVIEW');
@@ -301,6 +349,7 @@ describe('AuthService', () => {
           password: 'Password123!',
           academyName: 'Nankatsu SC',
           sport: 'FOOTBALL',
+          emailProof: 'proof',
         }),
       ).rejects.toThrow(ConflictException);
     });
