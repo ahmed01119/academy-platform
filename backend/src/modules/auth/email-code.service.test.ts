@@ -42,6 +42,39 @@ describe('checkEmailDomain', () => {
     await expect(checkEmailDomain('a@localhost', resolver)).resolves.toBe('no-mail');
   });
 
+  it('accepts the large providers without asking DNS', async () => {
+    const broken: DnsResolver = {
+      resolveMx: async () => {
+        throw notFound();
+      },
+      resolve4: async () => {
+        throw notFound();
+      },
+      resolve6: async () => {
+        throw notFound();
+      },
+    };
+    await expect(checkEmailDomain('someone@Gmail.com', broken)).resolves.toBe('ok');
+  });
+
+  it('a single wrong "not found" answer does not refuse a real domain', async () => {
+    // First pass answers NXDOMAIN (resolver hiccup), the retry finds the mail servers.
+    let calls = 0;
+    const flaky: DnsResolver = {
+      ...resolver,
+      resolveMx: async (host) => {
+        calls += 1;
+        if (calls === 1) throw notFound();
+        return resolver.resolveMx(host === 'real.test' ? 'mail.test' : host);
+      },
+    };
+    await expect(checkEmailDomain('a@real.test', flaky)).resolves.toBe('ok');
+
+    // DNS keeps saying "not found" but the operating system's resolver finds the domain.
+    const osFinds: DnsResolver = { ...resolver, lookup: async () => ({ address: '192.0.2.1' }) };
+    await expect(checkEmailDomain('a@gmial.test', osFinds)).resolves.toBe('ok');
+  });
+
   it('lets the address through when DNS fails or is slow', async () => {
     const failing: DnsResolver = {
       ...resolver,
