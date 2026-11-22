@@ -11,9 +11,12 @@ import {
 } from '@nestjs/common';
 import {
   ErrorCode,
+  SAAS_BILLING_CYCLE_MONTHS,
   type CreateOnlinePaymentResponse,
   type OnlinePaymentStatusResponse,
   type PaymentDueItem,
+  type PlatformSubscriptionQuote,
+  type SaaSBillingCycleCode,
   type TenantContext,
 } from '@academy/shared';
 import { PrismaService } from '../database/prisma.service';
@@ -35,6 +38,38 @@ function appUrl(): string {
     process.env.NEXT_PUBLIC_APP_URL ||
     'http://localhost:3000'
   ).replace(/\/+$/, '');
+}
+
+/**
+ * The price of one billing cycle of an academy's platform subscription. Prices are monthly across the platform (the
+ * negotiated price and the plan's monthly price are what the console shows as MRR), so a cycle costs the monthly price
+ * times its months; an annual cycle on the list price uses the plan's yearly price when one is set.
+ */
+export function platformCyclePrice(input: {
+  billingCycle: SaaSBillingCycleCode;
+  negotiatedPrice: number | null;
+  priceMonthly: number;
+  priceYearly: number;
+}): { months: number; amount: number } {
+  const months = SAAS_BILLING_CYCLE_MONTHS[input.billingCycle] ?? 1;
+  if (input.billingCycle === 'ANNUAL' && input.negotiatedPrice === null && input.priceYearly > 0) {
+    return { months, amount: money(input.priceYearly) };
+  }
+  const monthly = input.negotiatedPrice ?? input.priceMonthly;
+  return { months, amount: money(monthly * months) };
+}
+
+/** The renewal date after paying `months`: counted from the later of today and the current renewal date. */
+export function nextRenewalDate(renewalDate: Date, months: number, now = new Date()): Date {
+  const next = new Date(Math.max(renewalDate.getTime(), now.getTime()));
+  next.setUTCMonth(next.getUTCMonth() + months);
+  return next;
+}
+
+interface CheckoutUser {
+  name: string | null;
+  email: string | null;
+  phone: string | null;
 }
 
 interface PaymobTransactionCallback {
@@ -102,12 +137,7 @@ export class PaymentsService {
     userId: string,
     subscriptionId: string,
   ): Promise<CreateOnlinePaymentResponse> {
-    if (!this.paymob.isConfigured) {
-      throw new ServiceUnavailableException({
-        code: 'ONLINE_PAYMENT_UNAVAILABLE',
-        message: 'الدفع الإلكتروني غير متاح حالياً (Online payment is not available yet)',
-      });
-    }
+    this.assertConfigured();
 
     const prepared = await this.prisma.withPortalUserTransaction(
       { actorUserId: userId },
@@ -165,92 +195,172 @@ export class PaymentsService {
       },
     );
 
-    const [firstName, ...rest] = (prepared.user?.name ?? '').trim().split(/\s+/);
-    let intention;
-    try {
-      intention = await this.paymob.createIntention({
-        amountCents: toMinorUnits(prepared.amount),
-        currency: prepared.currency,
-        specialReference: prepared.payment.id,
-        itemName: `${prepared.sub.plan?.name ?? 'Subscription'} - ${prepared.sub.player.firstName}`,
-        billing: {
-          firstName: firstName ?? '',
-          lastName: rest.join(' '),
-          email: prepared.user?.email ?? '',
-          phone: prepared.user?.phone ?? '',
-        },
-        notificationUrl: `${appUrl()}/v1/payments/paymob/webhook`,
-        redirectionUrl: `${appUrl()}/payments/result?payment=${prepared.payment.id}`,
-        extras: { paymentId: prepared.payment.id },
-      });
-    } catch (err) {
-      this.logger.error(
-        `Paymob intention for payment ${prepared.payment.id} failed: ${(err as Error).message}`,
-      );
-      await this.prisma.withPortalUserTransaction({ actorUserId: userId }, (tx) =>
-        tx.onlinePayment.update({
-          where: { id: prepared.payment.id },
-          data: {
-            status: 'FAILED',
-            failureReason: 'Could not start the payment with the provider',
-          },
-        }),
-      );
-      throw new BadGatewayException({
-        code: 'PAYMENT_PROVIDER_ERROR',
-        message:
-          'تعذر بدء الدفع الآن، حاول مرة أخرى بعد قليل (Could not start the payment, please try again)',
+    return this.openCheckout(userId, prepared.payment.id, {
+      amount: prepared.amount,
+      currency: prepared.currency,
+      itemName: `${prepared.sub.plan?.name ?? 'Subscription'} - ${prepared.sub.player.firstName}`,
+      user: prepared.user,
+    });
+  }
+
+  /** What renewing the academy's platform subscription online costs now (owner's finance page). */
+  async getPlatformSubscriptionQuote(
+    tenantContext: TenantContext,
+  ): Promise<PlatformSubscriptionQuote> {
+    return this.prisma.withTenantTransaction(
+      { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
+      async (tx) => {
+        const sub = await tx.tenantSubscription.findUnique({
+          where: { tenantId: tenantContext.tenantId },
+          include: { plan: true },
+        });
+        if (!sub) {
+          throw new NotFoundException({
+            code: ErrorCode.NOT_FOUND,
+            message: 'This academy has no platform subscription yet',
+          });
+        }
+        const cycle = sub.billingCycle as SaaSBillingCycleCode;
+        const { months, amount } = platformCyclePrice({
+          billingCycle: cycle,
+          negotiatedPrice: sub.negotiatedPrice === null ? null : money(sub.negotiatedPrice),
+          priceMonthly: money(sub.plan.priceMonthly),
+          priceYearly: money(sub.plan.priceYearly),
+        });
+        const currency = sub.currency.toUpperCase();
+        return {
+          planName: sub.plan.name,
+          status: sub.status,
+          billingCycle: cycle,
+          months,
+          amount,
+          currency,
+          renewalDate: sub.renewalDate.toISOString(),
+          nextRenewalDate: nextRenewalDate(sub.renewalDate, months).toISOString(),
+          canPayOnline: this.paymob.isConfigured && amount > 0 && currency === this.paymob.currency,
+        };
+      },
+    );
+  }
+
+  /** Starts the online payment of one billing cycle of the academy's platform subscription (academy owner). */
+  async createPlatformSubscriptionPayment(
+    tenantContext: TenantContext,
+  ): Promise<CreateOnlinePaymentResponse> {
+    this.assertConfigured();
+    const quote = await this.getPlatformSubscriptionQuote(tenantContext);
+    if (quote.amount <= 0) {
+      throw new BadRequestException({
+        code: ErrorCode.VALIDATION_FAILED,
+        message: 'There is nothing to pay on this subscription',
       });
     }
-
-    await this.prisma.withPortalUserTransaction({ actorUserId: userId }, (tx) =>
-      tx.onlinePayment.update({
-        where: { id: prepared.payment.id },
-        data: { providerOrderId: intention.orderId, providerIntentionId: intention.intentionId },
-      }),
+    if (quote.currency !== this.paymob.currency) {
+      throw new BadRequestException({
+        code: 'CURRENCY_NOT_SUPPORTED',
+        message: `Online payment is available in ${this.paymob.currency} only`,
+      });
+    }
+    const userId = tenantContext.actorUserId;
+    const prepared = await this.prisma.withTenantTransaction(
+      { tenantId: tenantContext.tenantId, actorUserId: userId },
+      async (tx) => {
+        const [tenant, user] = await Promise.all([
+          tx.tenant.findUnique({ where: { id: tenantContext.tenantId }, select: { name: true } }),
+          tx.user.findUnique({
+            where: { id: userId },
+            select: { name: true, email: true, phone: true },
+          }),
+        ]);
+        const payment = await tx.onlinePayment.create({
+          data: {
+            tenantId: tenantContext.tenantId,
+            purpose: 'PLATFORM_SUBSCRIPTION',
+            payerUserId: userId,
+            amount: quote.amount,
+            currency: quote.currency,
+            billingMonths: quote.months,
+          },
+        });
+        return { payment, tenantName: tenant?.name ?? '', user };
+      },
     );
-    return {
-      paymentId: prepared.payment.id,
-      checkoutUrl: this.paymob.checkoutUrl(intention.clientSecret),
-    };
+    return this.openCheckout(userId, prepared.payment.id, {
+      amount: quote.amount,
+      currency: quote.currency,
+      itemName:
+        `Sportexus ${quote.planName} - ${quote.months} month(s) - ${prepared.tenantName}`.slice(
+          0,
+          250,
+        ),
+      user: prepared.user,
+    });
   }
 
   /** The payer's view of one payment (the result page after the checkout). */
   async getPaymentStatus(userId: string, paymentId: string): Promise<OnlinePaymentStatusResponse> {
-    return this.prisma.withPortalUserTransaction({ actorUserId: userId }, async (tx) => {
-      const p = await tx.onlinePayment.findFirst({
-        where: { id: paymentId, payerUserId: userId },
-        include: { tenant: { select: { name: true } } },
-      });
-      if (!p)
-        throw new NotFoundException({ code: ErrorCode.NOT_FOUND, message: 'Payment not found' });
-      let playerName: string | null = null;
-      let receiptNumber: string | null = null;
-      if (p.playerSubscriptionId) {
-        const sub = await tx.playerSubscription.findUnique({
-          where: { id: p.playerSubscriptionId },
-          include: { player: { select: { firstName: true, lastName: true } } },
+    const base = await this.prisma.withPortalUserTransaction(
+      { actorUserId: userId },
+      async (tx) => {
+        const p = await tx.onlinePayment.findFirst({
+          where: { id: paymentId, payerUserId: userId },
+          include: { tenant: { select: { name: true } } },
         });
-        playerName = sub ? `${sub.player.firstName} ${sub.player.lastName}`.trim() : null;
-      }
-      if (p.transactionId) {
-        const t = await tx.academyFinancialTransaction.findUnique({
-          where: { id: p.transactionId },
-          select: { receiptNumber: true },
-        });
-        receiptNumber = t?.receiptNumber ?? null;
-      }
-      return {
-        id: p.id,
-        status: p.status,
-        amount: money(p.amount),
-        currency: p.currency,
-        academyName: p.tenant.name,
-        playerName,
-        receiptNumber,
-        paidAt: p.paidAt?.toISOString() ?? null,
-      };
-    });
+        if (!p)
+          throw new NotFoundException({ code: ErrorCode.NOT_FOUND, message: 'Payment not found' });
+        let playerName: string | null = null;
+        let receiptNumber: string | null = null;
+        if (p.playerSubscriptionId) {
+          const sub = await tx.playerSubscription.findUnique({
+            where: { id: p.playerSubscriptionId },
+            include: { player: { select: { firstName: true, lastName: true } } },
+          });
+          playerName = sub ? `${sub.player.firstName} ${sub.player.lastName}`.trim() : null;
+        }
+        if (p.transactionId) {
+          const t = await tx.academyFinancialTransaction.findUnique({
+            where: { id: p.transactionId },
+            select: { receiptNumber: true },
+          });
+          receiptNumber = t?.receiptNumber ?? null;
+        }
+        return {
+          id: p.id,
+          purpose: p.purpose,
+          status: p.status,
+          amount: money(p.amount),
+          currency: p.currency,
+          academyName: p.tenant.name,
+          playerName,
+          receiptNumber,
+          paidAt: p.paidAt?.toISOString() ?? null,
+          tenantId: p.tenantId,
+          saasInvoiceId: p.saasInvoiceId,
+        };
+      },
+    );
+    const { tenantId, saasInvoiceId, ...result } = base;
+    if (result.purpose !== 'PLATFORM_SUBSCRIPTION') return result;
+    // Platform invoices and the academy's subscription are readable in the academy's own context only.
+    const extra = await this.prisma.withTenantTransaction(
+      { tenantId, actorUserId: userId },
+      async (tx) => {
+        const [invoice, sub] = await Promise.all([
+          saasInvoiceId
+            ? tx.saaSInvoice.findUnique({
+                where: { id: saasInvoiceId },
+                select: { invoiceNumber: true },
+              })
+            : null,
+          tx.tenantSubscription.findUnique({ where: { tenantId }, select: { renewalDate: true } }),
+        ]);
+        return {
+          invoiceNumber: invoice?.invoiceNumber ?? null,
+          renewalDate: sub?.renewalDate.toISOString() ?? null,
+        };
+      },
+    );
+    return { ...result, ...extra };
   }
 
   /**
@@ -312,11 +422,12 @@ export class PaymentsService {
       return { received: true };
     }
 
-    if (payment.purpose !== 'PLAYER_SUBSCRIPTION' || !payment.playerSubscriptionId) {
-      // Platform subscriptions are phase B; never mark something paid that nothing fulfils.
-      this.logger.error(
-        `Paymob callback for payment ${payment.id} of purpose ${payment.purpose}: not handled yet`,
-      );
+    if (payment.purpose === 'PLATFORM_SUBSCRIPTION') {
+      await this.fulfilPlatformSubscription(payment, orderId, String(obj.id ?? ''));
+      return { received: true };
+    }
+    if (!payment.playerSubscriptionId) {
+      this.logger.error(`Paymob callback for payment ${payment.id}: no subscription to credit`);
       return { received: true };
     }
 
@@ -396,6 +507,131 @@ export class PaymentsService {
       })
       .catch(() => undefined);
     return { received: true };
+  }
+
+  /**
+   * Marks a platform-subscription payment paid and renews the academy's subscription, in one transaction: the renewal
+   * and the paid invoice are written by the definer function fulfil_platform_subscription_payment, which acts only on
+   * a PAID payment of that purpose and only in the webhook context (platform tables are not writable otherwise).
+   */
+  private async fulfilPlatformSubscription(
+    payment: {
+      id: string;
+      tenantId: string;
+      payerUserId: string;
+      amount: unknown;
+      currency: string;
+    },
+    orderId: string,
+    providerTransactionId: string,
+  ): Promise<void> {
+    const invoiceId = await this.prisma.withPaymentWebhookTransaction(async (tx) => {
+      const claimed = await tx.onlinePayment.updateMany({
+        where: { id: payment.id, status: 'PENDING' },
+        data: { status: 'PAID', paidAt: new Date(), providerTransactionId },
+      });
+      if (claimed.count === 0) return null; // already processed
+      const rows = await tx.$queryRaw<Array<{ invoice_id: string }>>`
+        SELECT public.fulfil_platform_subscription_payment(${payment.id}::uuid)::text AS invoice_id`;
+      return rows[0]?.invoice_id ?? null;
+    });
+    if (!invoiceId) return;
+    await this.audit
+      .logEvent({
+        tenantId: payment.tenantId,
+        actorUserId: payment.payerUserId,
+        action: 'PLATFORM_SUBSCRIPTION_PAID_ONLINE',
+        resourceType: 'OnlinePayment',
+        resourceId: payment.id,
+        metadata: {
+          provider: 'PAYMOB',
+          orderId,
+          invoiceId,
+          amount: money(payment.amount as number),
+          currency: payment.currency,
+        },
+      })
+      .catch(() => undefined);
+  }
+
+  /** Sends the payer to the provider's checkout for a payment row already created as PENDING. */
+  private async openCheckout(
+    userId: string,
+    paymentId: string,
+    input: { amount: number; currency: string; itemName: string; user: CheckoutUser | null },
+  ): Promise<CreateOnlinePaymentResponse> {
+    const [firstName, ...rest] = (input.user?.name ?? '').trim().split(/\s+/);
+    let intention: Awaited<ReturnType<PaymobClient['createIntention']>>;
+    try {
+      intention = await this.paymob.createIntention({
+        amountCents: toMinorUnits(input.amount),
+        currency: input.currency,
+        specialReference: paymentId,
+        itemName: input.itemName,
+        billing: {
+          firstName: firstName ?? '',
+          lastName: rest.join(' '),
+          email: input.user?.email ?? '',
+          phone: input.user?.phone ?? '',
+        },
+        notificationUrl: `${appUrl()}/v1/payments/paymob/webhook`,
+        redirectionUrl: `${appUrl()}/payments/result?payment=${paymentId}`,
+        extras: { paymentId },
+      });
+    } catch (err) {
+      this.logger.error(
+        `Paymob intention for payment ${paymentId} failed: ${(err as Error).message}`,
+      );
+      return this.abandonCheckout(
+        userId,
+        paymentId,
+        'Could not start the payment with the provider',
+      );
+    }
+
+    try {
+      await this.prisma.withPortalUserTransaction({ actorUserId: userId }, (tx) =>
+        tx.onlinePayment.update({
+          where: { id: paymentId },
+          data: { providerOrderId: intention.orderId, providerIntentionId: intention.intentionId },
+        }),
+      );
+    } catch (err) {
+      // Without the stored order id no confirmation could ever match this payment: never send the payer to pay it.
+      this.logger.error(
+        `Could not store Paymob order ${intention.orderId} for payment ${paymentId}: ${(err as Error).message}`,
+      );
+      return this.abandonCheckout(userId, paymentId, 'Could not record the provider order');
+    }
+    return { paymentId, checkoutUrl: this.paymob.checkoutUrl(intention.clientSecret) };
+  }
+
+  /** Marks a checkout that could not be opened as FAILED (best effort) and tells the payer to retry. */
+  private async abandonCheckout(userId: string, paymentId: string, reason: string): Promise<never> {
+    await this.prisma
+      .withPortalUserTransaction({ actorUserId: userId }, (tx) =>
+        tx.onlinePayment.update({
+          where: { id: paymentId },
+          data: { status: 'FAILED', failureReason: reason },
+        }),
+      )
+      .catch((e: Error) =>
+        this.logger.error(`Could not mark payment ${paymentId} as failed: ${e.message}`),
+      );
+    throw new BadGatewayException({
+      code: 'PAYMENT_PROVIDER_ERROR',
+      message:
+        'تعذر بدء الدفع الآن، حاول مرة أخرى بعد قليل (Could not start the payment, please try again)',
+    });
+  }
+
+  private assertConfigured(): void {
+    if (!this.paymob.isConfigured) {
+      throw new ServiceUnavailableException({
+        code: 'ONLINE_PAYMENT_UNAVAILABLE',
+        message: 'الدفع الإلكتروني غير متاح حالياً (Online payment is not available yet)',
+      });
+    }
   }
 
   /** Players the user may pay for: their own player profile and the children they are guardian of. */

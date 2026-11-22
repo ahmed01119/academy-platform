@@ -5,10 +5,16 @@ import { FinanceModule } from '../finance/finance.module';
 import { PaymentsController } from './payments.controller';
 import { PAYMOB_CLIENT, PaymentsService } from './payments.service';
 import { PaymobClient } from './paymob.client';
+import { PayoutsController } from './payouts.controller';
+import { PayoutsService } from './payouts.service';
 
 @Module({
   imports: [DatabaseModule, AuditModule, FinanceModule],
-  controllers: [PaymentsController],
-  providers: [PaymentsService, { provide: PAYMOB_CLIENT, useFactory: () => new PaymobClient() }],
+  controllers: [PaymentsController, PayoutsController],
+  providers: [
+    PaymentsService,
+    PayoutsService,
+    { provide: PAYMOB_CLIENT, useFactory: () => new PaymobClient() },
+  ],
 })
 export class PaymentsModule {}
