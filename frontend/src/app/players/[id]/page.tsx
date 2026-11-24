@@ -30,6 +30,7 @@ import {
 } from '@/features/players/player-profile';
 import { TransferBranchModal } from '@/features/players/components/TransferBranchModal';
 import { EditPlayerModal } from '@/features/players/components/EditPlayerModal';
+import { GuardianLinkCodeButton } from '@/features/players/components/GuardianLinkCodeButton';
 import { ArchivePlayerModal } from '@/features/players/components/ArchivePlayerModal';
 
 const CARD = 'rounded-2xl border border-(--border-subtle) bg-(--bg-surface) p-6 shadow-sm';
@@ -373,6 +374,15 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
                       </div>
                       {g.email && <div className="text-[11px] truncate">{g.email}</div>}
                     </div>
+                    {g.hasAccount ? (
+                      <div className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                        {isAr ? 'مرتبط بحساب ولي أمر على المنصة' : 'Linked to a guardian account'}
+                      </div>
+                    ) : (
+                      permissions.canIssueLinkCode && (
+                        <GuardianLinkCodeButton guardianId={g.id} locale={isAr ? 'ar' : 'en'} />
+                      )
+                    )}
                   </li>
                 ))}
               </ul>

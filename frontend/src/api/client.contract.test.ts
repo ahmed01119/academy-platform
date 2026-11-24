@@ -41,7 +41,7 @@ const EXPECTED_API_SURFACE: Record<string, string[]> = {
       ' ',
     ),
   portal:
-    'getPlayerProfile getMyPlayerQrCard getGuardianProfile redeemClaimToken generateClaimToken listPublicAcademies submitPlayerJoinRequest listMyJoinRequests'.split(
+    'getPlayerProfile getMyPlayerQrCard getGuardianProfile redeemClaimToken generateClaimToken requestGuardianLink getGuardianLinkRequest decideGuardianLink listPublicAcademies submitPlayerJoinRequest listMyJoinRequests'.split(
       ' ',
     ),
   notifications: 'list getUnreadCount markRead markAllRead'.split(' '),

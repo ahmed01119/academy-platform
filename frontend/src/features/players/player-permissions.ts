@@ -10,6 +10,11 @@ export function canViewSensitivePlayerData(role: TenantRole | null | undefined):
   return Boolean(role && hasPermission(role, Permission.PLAYERS_SENSITIVE_READ));
 }
 
+/** May hand guardians a link code for the guardian portal (`players.update`, as the API requires). */
+export function canIssueGuardianLinkCode(role: TenantRole | null | undefined): boolean {
+  return Boolean(role && hasPermission(role, Permission.PLAYERS_UPDATE));
+}
+
 /** May archive (safe-delete) a player (`players.delete`). */
 export function canArchivePlayer(role: TenantRole | null | undefined): boolean {
   return Boolean(role && hasPermission(role, Permission.PLAYERS_DELETE));

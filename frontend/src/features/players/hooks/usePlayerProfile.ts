@@ -14,6 +14,7 @@ import { branchesApi } from '@/features/branches/api';
 import { enrollmentsApi } from '@/features/enrollments/api';
 import {
   canArchivePlayer,
+  canIssueGuardianLinkCode,
   canViewSensitivePlayerData,
 } from '@/features/players/player-permissions';
 import {
@@ -44,6 +45,7 @@ export function usePlayerProfile(playerId: string, locale: Locale) {
 
   const canViewSensitive = canViewSensitivePlayerData(activeTenant?.role);
   const canDelete = canArchivePlayer(activeTenant?.role);
+  const canIssueLinkCode = canIssueGuardianLinkCode(activeTenant?.role);
 
   const [player, setPlayer] = useState<PlayerDetails | null>(null);
   const [branches, setBranches] = useState<BranchSummary[]>([]);
@@ -217,7 +219,7 @@ export function usePlayerProfile(playerId: string, locale: Locale) {
     branches,
     errorMessage,
     successMessage,
-    permissions: { canViewSensitive, canDelete },
+    permissions: { canViewSensitive, canDelete, canIssueLinkCode },
     transfer: {
       isOpen: isTransferModalOpen,
       open: () => setIsTransferModalOpen(true),

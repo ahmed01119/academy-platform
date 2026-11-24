@@ -231,6 +231,15 @@ Pre-2026-11-16 code:
   has a button to a reply page (signed link, valid 14 days, only for that request, usable once). The applicant writes
   an answer and may correct governorate and phone; the application returns to PENDING_REVIEW, every platform admin is
   notified, and the answer is shown in the platform console's review window. A newer request replaces the old link.
+- **Linking a guardian to a player (2026-11-24)**, three ways:
+  1. the guardian registers the child (GUARDIAN join request): linked on approval (unchanged);
+  2. the child has a player account: the guardian (signed in) types the child's sign-in e-mail and their own phone. The
+     link needs the academy's record (the phone's last 10 digits must match a guardian the academy registered for that
+     player, not yet linked) AND the child's consent (approve / decline from an e-mail to the child, link valid 7 days,
+     usable once). The form answers the same whether or not anything matched. On approval the academy's owner and
+     managers are notified and an audit entry is written;
+  3. staff hand the guardian a one-time link code (7 days) from the guardian card of the player profile; the guardian
+     enters it in the guardian portal (for children without an account).
 - **Review notes in every review e-mail (2026-11-24)**: approval, rejection and "more details" e-mails show the
   reviewer's notes.
 - **Join request e-mails (2026-11-22)**: the applicant gets an e-mail when the request is received and when the

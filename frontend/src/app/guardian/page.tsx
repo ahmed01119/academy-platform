@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { MyJoinRequests } from '@/features/portal/components/MyJoinRequests';
 import { useAccessGuard } from '@/hooks/useAccessGuard';
 import { useLocale } from '@/contexts/locale-context';
+import { GuardianLinkByEmail } from '@/features/portal/components/GuardianLinkByEmail';
 import { translateDataString } from '@/utils/data-translator';
 import { apiClient } from '@/api/client';
 import { AppShell } from '../../components/layout/AppShell';
@@ -154,7 +155,7 @@ export default function GuardianPortalPage() {
               </h1>
               <p className="text-sm text-(--text-muted) mt-2 leading-relaxed">
                 {ar
-                  ? 'لم يتم ربط أي أبناء مسجلين بحسابك حتى الآن. يرجى إدخال رمز المطالبة (Claim Code) الممنوح لك من قِبل الأكاديمية لربط ملف ابنك ومتابعة حضوره وأدائه.'
+                  ? 'لم يتم ربط أي أبناء بحسابك حتى الآن. أدخل رمز الربط الذي أعطته لك الأكاديمية، أو اطلب الربط ببريد ابنك إن كان له حساب لاعب.'
                   : 'No players are currently linked to your guardian account. Please enter the claim code provided by the academy administration to track attendance and evaluations.'}
               </p>
             </div>
@@ -205,6 +206,13 @@ export default function GuardianPortalPage() {
                 ? 'رمز المطالبة يوفره المشرف أو المدرب لتأكيد صلة القرابة برقم الهوية أو الجوال.'
                 : 'The token is supplied by the coaching staff or admin desk to verify guardianship.'}
             </p>
+
+            <div className="flex items-center gap-3 text-[11px] text-(--text-muted)">
+              <span className="h-px flex-1 bg-(--border-subtle)" />
+              <span>{ar ? 'أو بالبريد الإلكتروني لابنك' : "or with your child's e-mail"}</span>
+              <span className="h-px flex-1 bg-(--border-subtle)" />
+            </div>
+            <GuardianLinkByEmail locale={ar ? 'ar' : 'en'} />
           </div>
         </div>
       </AppShell>
@@ -237,7 +245,7 @@ export default function GuardianPortalPage() {
               className="flex items-center gap-2 rounded-xl border border-purple-500/30 bg-purple-500/10 px-4 py-2 text-xs font-bold text-purple-600 dark:text-purple-300 hover:bg-purple-500/20 transition-all cursor-pointer"
             >
               <PlusCircle className="h-4 w-4" />
-              <span>{ar ? 'ربط ابن آخر برمز المطالبة' : 'Link Another Child'}</span>
+              <span>{ar ? 'ربط ابن آخر' : 'Link Another Child'}</span>
             </button>
           }
         />
@@ -532,6 +540,13 @@ export default function GuardianPortalPage() {
                 </button>
               </div>
             </form>
+
+            <div className="flex items-center gap-3 text-[11px] text-(--text-muted)">
+              <span className="h-px flex-1 bg-(--border-subtle)" />
+              <span>{ar ? 'أو بالبريد الإلكتروني لابنك' : "or with your child's e-mail"}</span>
+              <span className="h-px flex-1 bg-(--border-subtle)" />
+            </div>
+            <GuardianLinkByEmail locale={ar ? 'ar' : 'en'} />
           </div>
         </div>
       )}

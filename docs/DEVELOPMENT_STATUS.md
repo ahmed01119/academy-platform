@@ -855,6 +855,26 @@ PENDING_REVIEW with the corrected governorate.
 
 Known: notification titles across the platform are stored in English (not translated in the bell).
 
+Stage 4, linking a guardian to a player (owner decision: child's consent + academy's record):
+
+- **Guardian portal**: "Link another child" now offers the academy code or "link with your child's e-mail" (child's
+  sign-in e-mail + own phone). Rate limit 5 requests per hour per account; same answer whether or not it matched.
+- **Child**: e-mail "Guardian link request" with a button to `/guardian-link?token=...` (signed: guardian record +
+  requesting account + expiry, 7 days, `g1.` tokens, key derived from `JWT_SECRET`); approve or decline. Approving
+  links the record (`approve_guardian_link`), writes `GUARDIAN_LINKED_BY_CHILD_APPROVAL` to the audit log and
+  notifies the academy's OWNER / MANAGER / BRANCH_MANAGER; the guardian is notified either way.
+- **Staff**: the guardian card on the player profile shows "linked to a guardian account" or a "guardian link code"
+  button (existing `/portal/claim-token`, which had no UI); `GuardianSummary.hasAccount` added.
+- **Database**: migration `20261124100000_guardian_link_by_child` (applied to Neon dev): definer functions
+  `find_guardian_link_candidates`, `guardian_link_request_view`, `approve_guardian_link`. No table changes.
+  **Security SQL to review before main.**
+
+Verification: API tests 446 passed / 8 skipped (new: guardian link 9); web 410; lint, typecheck, Prettier clean. End
+to end on 3100/3101 against Neon dev (11 checks): wrong phone sends nothing and answers the same; the matching phone
+in another format sends the e-mail; the child's page, approval, single use; the child appears in the guardian portal;
+4 notifications and 1 audit entry; staff see "linked" and can issue a code. The demo link (hany -> Ziad's guardian
+record) was undone afterwards; one unused link code remains on the test player "يوسف سنة 7325" (expires in 7 days).
+
 ## 10. Backend requirements (recorded by owner decisions)
 
 **Workflow (owner direction 2026-11-15):** frontend issues whose root cause is in the backend are now fixed across both

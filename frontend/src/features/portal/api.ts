@@ -8,6 +8,9 @@ import type {
   PlayerQrCardResponse,
   PlayerJoinRequestItem,
   CreatePlayerJoinRequest,
+  DecideGuardianLinkRequest,
+  GuardianLinkRequestView,
+  RequestGuardianLinkRequest,
 } from '@academy/shared';
 import { request } from '@/lib/http/request';
 
@@ -59,6 +62,29 @@ export const portalApi = {
     targetId: string;
   }): Promise<{ claimToken: string; expiresAt: string }> {
     return request('/portal/claim-token', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * Asks to be linked to a child who has a player account. The child gets an approval e-mail only when the phone
+   * matches the guardian the academy registered; the answer is the same either way.
+   */
+  async requestGuardianLink(data: RequestGuardianLinkRequest): Promise<{ success: true }> {
+    return request('/portal/guardian-links', { method: 'POST', body: JSON.stringify(data) });
+  },
+
+  /** The link request the child is asked to approve (public; signed link). */
+  async getGuardianLinkRequest(token: string): Promise<GuardianLinkRequestView> {
+    return request(`/portal/guardian-links/approval?token=${encodeURIComponent(token)}`, {
+      skipCache: true,
+    });
+  },
+
+  /** The child's answer to a link request. */
+  async decideGuardianLink(data: DecideGuardianLinkRequest): Promise<{ linked: boolean }> {
+    return request('/portal/guardian-links/approval', {
       method: 'POST',
       body: JSON.stringify(data),
     });
