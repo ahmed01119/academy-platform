@@ -5,6 +5,7 @@ import {
   hasPermission,
   isBranchScopedRole,
   Permission,
+  ACTIVE_TENANT_ROLES,
   ROLE_PERMISSIONS,
   TenantRole,
 } from './roles-permissions';
@@ -59,7 +60,7 @@ describe('ROLE_PERMISSIONS matches docs/security/ROLE_PERMISSION_MATRIX.md', () 
     expect([...ROLE_PERMISSIONS[role]].sort()).toEqual(documented.sort());
   });
 });
-import { EmailSchema, PasswordSchema } from '../schemas/auth';
+import { EmailSchema, InviteStaffRequestSchema, PasswordSchema } from '../schemas/auth';
 
 describe('roles and permissions', () => {
   it('owner has all operational and tenant administrative permissions', () => {
@@ -77,27 +78,48 @@ describe('roles and permissions', () => {
     expect(hasPermission(TenantRole.COACH, Permission.PAYMENTS_CREATE)).toBe(false);
     expect(hasPermission(TenantRole.COACH, Permission.STAFF_MANAGE)).toBe(false);
     expect(hasPermission(TenantRole.COACH, Permission.TENANT_UPDATE)).toBe(false);
+    expect(hasPermission(TenantRole.COACH, Permission.SESSION_EXPENSES_CREATE)).toBe(false);
   });
 
-  it('accountant has financial and report permissions but cannot modify staff or mark attendance', () => {
-    expect(hasPermission(TenantRole.ACCOUNTANT, Permission.PAYMENTS_READ)).toBe(true);
-    expect(hasPermission(TenantRole.ACCOUNTANT, Permission.PAYMENTS_CREATE)).toBe(true);
-    expect(hasPermission(TenantRole.ACCOUNTANT, Permission.PAYMENTS_REFUND)).toBe(true);
-    expect(hasPermission(TenantRole.ACCOUNTANT, Permission.REPORTS_READ)).toBe(true);
-    expect(hasPermission(TenantRole.ACCOUNTANT, Permission.ATTENDANCE_MARK)).toBe(false);
-    expect(hasPermission(TenantRole.ACCOUNTANT, Permission.STAFF_MANAGE)).toBe(false);
+  it("2026-11-24: money is the owner's alone; the admin runs everything else", () => {
+    const money = [
+      Permission.PAYMENTS_READ,
+      Permission.PAYMENTS_CREATE,
+      Permission.PAYMENTS_REFUND,
+      Permission.SESSION_EXPENSES_READ,
+      Permission.SESSION_EXPENSES_CREATE,
+      Permission.SESSION_EXPENSES_APPROVE,
+      Permission.SESSION_CASHIER_CLOSE,
+    ];
+    for (const permission of money) {
+      const holders = Object.values(TenantRole).filter((r) => hasPermission(r, permission));
+      expect(holders).toEqual(['OWNER']);
+    }
+    for (const permission of [
+      Permission.BRANCHES_MANAGE,
+      Permission.GROUPS_MANAGE,
+      Permission.PLAYERS_CREATE,
+      Permission.SESSIONS_MANAGE,
+      Permission.ATTENDANCE_CLOSE,
+      Permission.STAFF_MANAGE,
+    ]) {
+      expect(hasPermission(TenantRole.MANAGER, permission)).toBe(true);
+    }
+    expect(hasPermission(TenantRole.MANAGER, Permission.TENANT_UPDATE)).toBe(false);
   });
 
-  it('K8: only management and the accountant close a session cashier', () => {
-    const closers = Object.values(TenantRole).filter((r) =>
-      hasPermission(r, Permission.SESSION_CASHIER_CLOSE),
+  it('2026-11-24: the retired roles grant nothing and cannot be invited', () => {
+    for (const role of ['BRANCH_MANAGER', 'RECEPTIONIST', 'ACCOUNTANT', 'VIEWER'] as const) {
+      expect(ROLE_PERMISSIONS[role]).toEqual([]);
+      expect(InviteStaffRequestSchema.safeParse({ email: 'a@b.co', role }).success).toBe(false);
+    }
+    expect([...ACTIVE_TENANT_ROLES]).toEqual(['OWNER', 'MANAGER', 'COACH']);
+    expect(InviteStaffRequestSchema.safeParse({ email: 'a@b.co', role: 'COACH' }).success).toBe(
+      true,
     );
-    expect(closers.sort()).toEqual(['ACCOUNTANT', 'BRANCH_MANAGER', 'MANAGER', 'OWNER']);
   });
 
   it('correctly identifies branch-scoped roles', () => {
-    expect(isBranchScopedRole(TenantRole.BRANCH_MANAGER)).toBe(true);
-    expect(isBranchScopedRole(TenantRole.RECEPTIONIST)).toBe(true);
     expect(isBranchScopedRole(TenantRole.COACH)).toBe(true);
     expect(isBranchScopedRole(TenantRole.OWNER)).toBe(false);
     expect(isBranchScopedRole(TenantRole.MANAGER)).toBe(false);

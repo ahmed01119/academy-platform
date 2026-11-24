@@ -14,6 +14,19 @@ export type TenantRole = (typeof TenantRole)[keyof typeof TenantRole];
 
 export const TenantRoleSchema = z.nativeEnum(TenantRole);
 
+/**
+ * The academy roles in use (owner decision 2026-11-24): OWNER (everything, money included), MANAGER (the admin: sporting
+ * side and staff, no money) and COACH (own groups only). BRANCH_MANAGER, RECEPTIONIST, ACCOUNTANT and VIEWER are retired:
+ * they remain in the database enum but nobody holds them and they cannot be assigned.
+ */
+export const ACTIVE_TENANT_ROLES = [
+  TenantRole.OWNER,
+  TenantRole.MANAGER,
+  TenantRole.COACH,
+] as const;
+export const ActiveTenantRoleSchema = z.enum(ACTIVE_TENANT_ROLES);
+export type ActiveTenantRole = z.infer<typeof ActiveTenantRoleSchema>;
+
 export const MembershipStatus = {
   INVITED: 'INVITED',
   ACTIVE: 'ACTIVE',
@@ -76,14 +89,15 @@ export type Permission = (typeof Permission)[keyof typeof Permission];
 export const PermissionSchema = z.nativeEnum(Permission);
 
 /**
- * Tenant RBAC matrix. Source of truth: docs/security/ROLE_PERMISSION_MATRIX.md (owner decision 2026-11-16), plus
- * `session_cashier.close` (K8). The API enforces it (PermissionsGuard); the web app uses the same map to decide what each
+ * Tenant RBAC matrix. Source of truth: docs/security/ROLE_PERMISSION_MATRIX.md (owner decisions 2026-11-16 and
+ * 2026-11-24), plus `session_cashier.close` (K8). The API enforces it (PermissionsGuard); the web app uses the same map to decide what each
  * role sees, so a role is never shown a page or button it cannot use.
  *
  * Narrower rules that a permission alone cannot express are enforced in the services:
- *  - COACH `attendance.mark` / `session_expenses.*`: only sessions the coach is assigned to (session coach or group coach);
+ *  - COACH: only their own groups, those groups' sessions and active players (common/coach-scope.ts in the API);
+ *    `attendance.mark` only for sessions the coach is assigned to (session coach or group coach);
  *  - COACH `player.application.review`: only when the membership has `canReviewApplications` (PermissionsGuard);
- *  - BRANCH_MANAGER, RECEPTIONIST, COACH: pinned to their branch (TenantGuard).
+ *  - COACH: pinned to their branch (TenantGuard).
  */
 export const ROLE_PERMISSIONS: Record<TenantRole, readonly Permission[]> = {
   // Academy owner: everything in the academy.
@@ -119,7 +133,9 @@ export const ROLE_PERMISSIONS: Record<TenantRole, readonly Permission[]> = {
     Permission.EVALUATIONS_CREATE,
     Permission.EVALUATIONS_MANAGE,
   ],
-  // General manager: everything except the academy profile itself.
+  // Admin (إداري, owner decision 2026-11-24): runs the sporting side (branches, groups, players, sessions, attendance,
+  // evaluations, join requests) and the staff; no money at all (payments, refunds, session expenses and the cashier are
+  // the owner's), and not the academy profile.
   [TenantRole.MANAGER]: [
     Permission.BRANCHES_MANAGE,
     Permission.BRANCHES_READ,
@@ -135,13 +151,6 @@ export const ROLE_PERMISSIONS: Record<TenantRole, readonly Permission[]> = {
     Permission.ATTENDANCE_MARK,
     Permission.ATTENDANCE_CORRECT,
     Permission.ATTENDANCE_CLOSE,
-    Permission.PAYMENTS_READ,
-    Permission.PAYMENTS_CREATE,
-    Permission.PAYMENTS_REFUND,
-    Permission.SESSION_EXPENSES_READ,
-    Permission.SESSION_EXPENSES_CREATE,
-    Permission.SESSION_EXPENSES_APPROVE,
-    Permission.SESSION_CASHIER_CLOSE,
     Permission.REPORTS_READ,
     Permission.GROUPS_READ,
     Permission.GROUPS_MANAGE,
@@ -151,83 +160,26 @@ export const ROLE_PERMISSIONS: Record<TenantRole, readonly Permission[]> = {
     Permission.EVALUATIONS_CREATE,
     Permission.EVALUATIONS_MANAGE,
   ],
-  // Branch manager: runs one branch (players, attendance, groups, sessions, collections); no refunds, approvals or reports.
-  [TenantRole.BRANCH_MANAGER]: [
-    Permission.BRANCHES_READ,
-    Permission.STAFF_READ,
-    Permission.PLAYERS_READ,
-    Permission.PLAYERS_CREATE,
-    Permission.PLAYERS_UPDATE,
-    Permission.PLAYERS_SENSITIVE_READ,
-    Permission.PLAYER_APPLICATION_REVIEW,
-    Permission.ATTENDANCE_READ,
-    Permission.ATTENDANCE_MARK,
-    Permission.ATTENDANCE_CORRECT,
-    Permission.ATTENDANCE_CLOSE,
-    Permission.PAYMENTS_READ,
-    Permission.PAYMENTS_CREATE,
-    Permission.SESSION_EXPENSES_READ,
-    Permission.SESSION_EXPENSES_CREATE,
-    Permission.SESSION_CASHIER_CLOSE,
-    Permission.GROUPS_READ,
-    Permission.GROUPS_MANAGE,
-    Permission.SESSIONS_READ,
-    Permission.SESSIONS_MANAGE,
-    Permission.EVALUATIONS_READ,
-    Permission.EVALUATIONS_CREATE,
-  ],
-  // Front desk: registers players, reviews join requests, marks attendance, collects payments.
-  [TenantRole.RECEPTIONIST]: [
-    Permission.BRANCHES_READ,
-    Permission.STAFF_READ,
-    Permission.PLAYERS_READ,
-    Permission.PLAYERS_CREATE,
-    Permission.PLAYERS_UPDATE,
-    Permission.PLAYER_APPLICATION_REVIEW,
-    Permission.ATTENDANCE_READ,
-    Permission.ATTENDANCE_MARK,
-    Permission.PAYMENTS_READ,
-    Permission.PAYMENTS_CREATE,
-    Permission.GROUPS_READ,
-    Permission.SESSIONS_READ,
-  ],
-  // Coach: own sessions (attendance, expense claims, evaluations); no player administration or money.
+  // Retired roles (owner decision 2026-11-24): their members became MANAGER (VIEWER members were revoked) by migration
+  // 20261124110000_simplify_tenant_roles. Kept only because the database enum still has the values; they grant nothing
+  // and cannot be assigned.
+  [TenantRole.BRANCH_MANAGER]: [],
+  [TenantRole.RECEPTIONIST]: [],
+  // Coach (owner decision 2026-11-24): only their own groups, those groups' sessions and players (narrowed in the
+  // services, common/coach-scope.ts); marks attendance and writes evaluations / comments. No money, no administration.
   [TenantRole.COACH]: [
     Permission.BRANCHES_READ,
     Permission.STAFF_READ,
     Permission.PLAYERS_READ,
     Permission.ATTENDANCE_READ,
     Permission.ATTENDANCE_MARK,
-    Permission.SESSION_EXPENSES_READ,
-    Permission.SESSION_EXPENSES_CREATE,
     Permission.GROUPS_READ,
     Permission.SESSIONS_READ,
     Permission.EVALUATIONS_READ,
     Permission.EVALUATIONS_CREATE,
   ],
-  // Accountant: money and financial reports; no attendance, groups or sessions.
-  [TenantRole.ACCOUNTANT]: [
-    Permission.BRANCHES_READ,
-    Permission.STAFF_READ,
-    Permission.PLAYERS_READ,
-    Permission.PAYMENTS_READ,
-    Permission.PAYMENTS_CREATE,
-    Permission.PAYMENTS_REFUND,
-    Permission.SESSION_EXPENSES_READ,
-    Permission.SESSION_EXPENSES_APPROVE,
-    Permission.SESSION_CASHIER_CLOSE,
-    Permission.REPORTS_READ,
-  ],
-  // Viewer: read-only view of the sporting side (no money, no sensitive data).
-  [TenantRole.VIEWER]: [
-    Permission.BRANCHES_READ,
-    Permission.STAFF_READ,
-    Permission.PLAYERS_READ,
-    Permission.ATTENDANCE_READ,
-    Permission.GROUPS_READ,
-    Permission.SESSIONS_READ,
-    Permission.EVALUATIONS_READ,
-  ],
+  [TenantRole.ACCOUNTANT]: [],
+  [TenantRole.VIEWER]: [],
 };
 
 export function hasPermission(role: TenantRole, permission: Permission): boolean {

@@ -958,7 +958,9 @@ export class AuthService {
       const user = await tx.user.findUniqueOrThrow({
         where: { id: userId },
         include: {
+          // ACTIVE only: RLS hides the academy of other memberships (see JwtStrategy).
           memberships: {
+            where: { status: 'ACTIVE' },
             include: {
               tenant: true,
               branch: true,

@@ -1,5 +1,6 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
+import { coachPlayerWhere, coachSessionWhere, isCoachContext } from '../../common/coach-scope';
 import { AuditService } from '../audit/audit.service';
 import {
   ErrorCode,
@@ -223,6 +224,9 @@ export class EvaluationsService {
             tenantId: tenantContext.tenantId,
             playerId,
             ...(isGuardianOrPlayerView ? { isPublished: true } : {}),
+            ...(isCoachContext(tenantContext)
+              ? { player: coachPlayerWhere(tenantContext.actorUserId) }
+              : {}),
           },
           orderBy: { evaluationDate: 'desc' },
           include: {
@@ -284,6 +288,9 @@ export class EvaluationsService {
           where: {
             tenantId: tenantContext.tenantId,
             sessionId,
+            ...(isCoachContext(tenantContext)
+              ? { session: coachSessionWhere(tenantContext.actorUserId) }
+              : {}),
           },
           orderBy: { createdAt: 'desc' },
           include: {

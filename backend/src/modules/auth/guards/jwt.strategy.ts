@@ -38,7 +38,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       tx.user.findUnique({
         where: { id: payload.sub },
         include: {
+          // Only ACTIVE memberships: the academy of any other membership is hidden by RLS (tenants_auth_discovery), so
+          // including it made the whole lookup fail (500) for anyone with a suspended, invited or revoked membership.
           memberships: {
+            where: { status: 'ACTIVE' },
             include: { tenant: true, branch: true },
           },
         },

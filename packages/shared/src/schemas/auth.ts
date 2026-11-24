@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { SportCodeSchema } from '../constants/sports';
-import { TenantRoleSchema } from '../constants/roles-permissions';
+import { ActiveTenantRoleSchema, TenantRoleSchema } from '../constants/roles-permissions';
 
 export const PasswordSchema = z
   .string({ required_error: 'Password is required' })
@@ -133,7 +133,8 @@ export type ResetPasswordRequest = z.infer<typeof ResetPasswordRequestSchema>;
 
 export const InviteStaffRequestSchema = z.object({
   email: EmailSchema,
-  role: TenantRoleSchema,
+  /** OWNER, MANAGER or COACH; the retired roles cannot be assigned. */
+  role: ActiveTenantRoleSchema,
   branchId: z.string().uuid().optional(),
 });
 

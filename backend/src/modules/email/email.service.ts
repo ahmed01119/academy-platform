@@ -1045,20 +1045,14 @@ ${isAr ? 'للرد:' : 'Answer here:'} ${replyUrl}`
 
     const roleNameArMap: Record<string, string> = {
       COACH: 'مدرب رياضي (Coach)',
-      MANAGER: 'مدير تنفيذي للأكاديمية (Manager)',
-      BRANCH_MANAGER: 'مدير فرع (Branch Manager)',
-      RECEPTIONIST: 'مسؤول استقبال وحضور (Receptionist)',
-      ACCOUNTANT: 'محاسب مالي (Accountant)',
-      VIEWER: 'مراقب (Viewer)',
+      MANAGER: 'إداري الأكاديمية (Admin)',
+      OWNER: 'مالك الأكاديمية (Owner)',
     };
 
     const roleNameEnMap: Record<string, string> = {
       COACH: 'Coach',
-      MANAGER: 'Academy Manager',
-      BRANCH_MANAGER: 'Branch Manager',
-      RECEPTIONIST: 'Receptionist & Attendance Officer',
-      ACCOUNTANT: 'Accountant',
-      VIEWER: 'Viewer',
+      MANAGER: 'Academy Admin',
+      OWNER: 'Academy Owner',
     };
 
     const roleLabel = isAr

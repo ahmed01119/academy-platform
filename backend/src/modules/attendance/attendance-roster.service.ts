@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import type { SessionQuery, SessionSummary, TenantContext } from '@academy/shared';
+import { coachSessionWhere, isCoachContext } from '../../common/coach-scope';
 
 @Injectable()
 export class AttendanceRosterService {
@@ -29,6 +30,7 @@ export class AttendanceRosterService {
           ...(effectiveBranchId ? { branchId: effectiveBranchId } : {}),
           ...(query?.groupId ? { groupId: query.groupId } : {}),
           ...(query?.coachUserId ? { coachUserId: query.coachUserId } : {}),
+          ...(isCoachContext(tenantContext) ? coachSessionWhere(tenantContext.actorUserId) : {}),
           ...(query?.status ? { status: query.status } : {}),
           ...(query?.dateFrom || query?.dateTo
             ? {

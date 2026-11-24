@@ -294,7 +294,7 @@ describe('FinanceService', () => {
       role: 'COACH',
     };
 
-    it('submits valid expense by assigned coach in PENDING status for separation of duties review', async () => {
+    it('2026-11-24: even an assigned coach can no longer claim session expenses (money is the owner)', async () => {
       mockTx.attendanceSession.findUnique.mockResolvedValue({
         id: sessionId,
         tenantId: tenantContext.tenantId,
@@ -303,52 +303,15 @@ describe('FinanceService', () => {
         group: { coaches: [] },
       });
 
-      mockTx.academyFinancialTransaction.create.mockResolvedValue({
-        id: 'exp-1',
-        tenantId: tenantContext.tenantId,
-        branchId,
-        sessionId,
-        recordedByUserId: coachUserId,
-        type: 'SESSION_EXPENSE',
-        amount: 85.5,
-        currency: 'SAR',
-        paymentMethod: 'CASH',
-        status: 'PENDING',
-        receiptNumber: 'EXP-2026-0001',
-        notes: 'Bottled water for squad',
-        approvedByUserId: null,
-        approvedAt: null,
-        rejectionReason: null,
-        idempotencyKey: null,
-        createdAt: new Date(),
-        branch: { name: 'Main Branch' },
-        recordedByUser: { name: 'Coach Tarek' },
-        approvedByUser: null,
-      });
-
-      const res = await service.recordSessionExpense(coachContext, sessionId, {
-        branchId,
-        amount: 85.5,
-        paymentMethod: 'CASH',
-        notes: 'Bottled water for squad',
-      });
-
-      expect(res.status).toBe('PENDING');
-      expect(res.amount).toBe(85.5);
-      expect(mockTx.academyFinancialTransaction.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            status: 'PENDING',
-            approvedByUserId: null,
-            approvedAt: null,
-          }),
+      await expect(
+        service.recordSessionExpense(coachContext, sessionId, {
+          branchId,
+          amount: 85.5,
+          paymentMethod: 'CASH',
+          notes: 'Bottled water for squad',
         }),
-      );
-      expect(mockAudit.logEvent).toHaveBeenCalledWith(
-        expect.objectContaining({
-          action: 'SESSION_EXPENSE_SUBMITTED',
-        }),
-      );
+      ).rejects.toThrow(ForbiddenException);
+      expect(mockTx.academyFinancialTransaction.create).not.toHaveBeenCalled();
     });
 
     it('rejects expense submission by unassigned coach with ForbiddenException', async () => {
@@ -454,7 +417,7 @@ describe('FinanceService', () => {
         approvedByUser: null,
       });
 
-      const res = await service.recordSessionExpense(coachContext, sessionId, {
+      const res = await service.recordSessionExpense(tenantContext, sessionId, {
         branchId,
         amount: 50,
         paymentMethod: 'CASH',

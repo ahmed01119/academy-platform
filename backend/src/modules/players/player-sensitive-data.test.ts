@@ -11,7 +11,7 @@ describe('canViewSensitivePlayerData', () => {
   it.each([
     ['OWNER', true],
     ['MANAGER', true],
-    ['BRANCH_MANAGER', true],
+    ['BRANCH_MANAGER', false], // retired 2026-11-24: grants nothing
     ['RECEPTIONIST', false],
     ['COACH', false],
     ['ACCOUNTANT', false],

@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import crypto from 'node:crypto';
 import { PrismaService } from '../database/prisma.service';
+import { assertCoachCanSee, coachSessionWhere, isCoachContext } from '../../common/coach-scope';
 import { AuditService } from '../audit/audit.service';
 import {
   ErrorCode,
@@ -192,6 +193,16 @@ export class AttendanceService {
             code: ErrorCode.NOT_FOUND,
             message: 'Attendance session not found',
           });
+        }
+        if (isCoachContext(tenantContext)) {
+          const visible = await tx.attendanceSession.count({
+            where: {
+              tenantId: tenantContext.tenantId,
+              id: sessionId,
+              ...coachSessionWhere(tenantContext.actorUserId),
+            },
+          });
+          assertCoachCanSee(tenantContext, visible > 0, 'Session');
         }
 
         if (tenantContext.branchId && session.branchId !== tenantContext.branchId) {

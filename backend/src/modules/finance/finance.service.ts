@@ -818,7 +818,8 @@ export class FinanceService {
             tx.tenantMembership.findMany({
               where: {
                 tenantId: tenantContext.tenantId,
-                role: { in: ['OWNER', 'MANAGER', 'ACCOUNTANT'] },
+                // Money is the owner's (owner decision 2026-11-24).
+                role: 'OWNER',
                 status: 'ACTIVE',
               },
               select: { userId: true },
@@ -1353,28 +1354,20 @@ export class FinanceService {
 }
 
 /**
- * Who may see or claim money for a training session (cashier summary, expense claims):
- *  - OWNER, MANAGER, ACCOUNTANT: any session of the academy;
- *  - BRANCH_MANAGER: sessions of their own branch;
- *  - COACH: only sessions they are assigned to (session coach or group coach) - "self only" in the permission matrix.
+ * Who may see or claim money for a training session (cashier summary, expense claims): the OWNER, for any session of
+ * the academy (owner decision 2026-11-24: money is the owner's; the admin and coaches no longer hold these permissions).
  * The permission itself (session_expenses.read / .create) is checked by PermissionsGuard before this.
  */
 function assertSessionMoneyAccess(
   tenantContext: TenantContext,
-  session: {
+  _session: {
     branchId: string;
     coachUserId: string | null;
     group?: { coaches: Array<{ coachUserId: string }> } | null;
   },
   message: string,
 ): void {
-  const role = tenantContext.role;
-  if (role === 'OWNER' || role === 'MANAGER' || role === 'ACCOUNTANT') return;
-  if (role === 'BRANCH_MANAGER' && session.branchId === tenantContext.branchId) return;
-  const isAssigned =
-    session.coachUserId === tenantContext.actorUserId ||
-    Boolean(session.group?.coaches.some((c) => c.coachUserId === tenantContext.actorUserId));
-  if (role === 'COACH' && isAssigned) return;
+  if (tenantContext.role === 'OWNER') return;
   throw new ForbiddenException({ code: ErrorCode.FORBIDDEN, message });
 }
 

@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { databaseFunctionErrorCode } from '../../common/db-function-error';
+import { assertCoachCanSee, coachPlayerWhere, isCoachContext } from '../../common/coach-scope';
 import type { Prisma } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
 import {
@@ -94,6 +95,7 @@ export class PlayersService {
       async (tx) => {
         const whereClause: Prisma.PlayerWhereInput = {
           tenantId: tenantContext.tenantId,
+          ...(isCoachContext(tenantContext) ? coachPlayerWhere(tenantContext.actorUserId) : {}),
         };
 
         if (options?.status) {
@@ -232,6 +234,16 @@ export class PlayersService {
             code: ErrorCode.NOT_FOUND,
             message: 'Player not found',
           });
+        }
+        if (isCoachContext(tenantContext)) {
+          const visible = await tx.player.count({
+            where: {
+              tenantId: tenantContext.tenantId,
+              id: playerId,
+              ...coachPlayerWhere(tenantContext.actorUserId),
+            },
+          });
+          assertCoachCanSee(tenantContext, visible > 0, 'Player');
         }
 
         if (tenantContext.branchId) {

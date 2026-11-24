@@ -474,17 +474,7 @@ export const PlatformInviteUserRequestSchema = z.object({
   email: z.string().email(),
   name: z.string().min(2).max(100),
   phone: z.string().max(30).optional(),
-  role: z.enum([
-    'SUPER_ADMIN',
-    'OWNER',
-    'MANAGER',
-    'BRANCH_MANAGER',
-    'COACH',
-    'RECEPTIONIST',
-    'ACCOUNTANT',
-    'PLAYER',
-    'GUARDIAN',
-  ]),
+  role: z.enum(['SUPER_ADMIN', 'OWNER', 'MANAGER', 'COACH', 'PLAYER', 'GUARDIAN']),
   tenantId: z.string().uuid().optional(),
   branchId: z.string().uuid().optional(),
 });
