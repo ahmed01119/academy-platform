@@ -875,6 +875,31 @@ in another format sends the e-mail; the child's page, approval, single use; the 
 4 notifications and 1 audit entry; staff see "linked" and can issue a code. The demo link (hany -> Ziad's guardian
 record) was undone afterwards; one unused link code remains on the test player "يوسف سنة 7325" (expires in 7 days).
 
+Stage 5, academy roles (owner decisions: branch manager, receptionist and accountant become the admin; viewer retired;
+the admin has no money; staff management stays with owner and admin; the coach sees only own groups, no expenses):
+
+- **Matrix** (`ROLE_PERMISSIONS`, `docs/security/ROLE_PERMISSION_MATRIX.md`, three columns now): money permissions
+  (payments, refunds, session expenses, cashier) are the OWNER's only; MANAGER keeps the rest except the academy
+  profile; COACH loses session expenses. Retired roles grant nothing; invites accept OWNER / MANAGER / COACH only
+  (`ActiveTenantRoleSchema`; the platform invite list too).
+- **Coach scope** (`backend/src/common/coach-scope.ts`): groups, sessions, players and evaluations are narrowed to the
+  coach's groups in list endpoints; single records outside them answer 404.
+- **Data** (migration `20261124110000_simplify_tenant_roles`, applied to Neon dev after exporting the affected rows to
+  `database-backups/neon-dev-retired-roles-2026-11-24.json`, not committed): 3 demo memberships became MANAGER
+  (karim.branch, sara.reception, hala.accounts) and 1 was revoked (youssef.viewer); no pending invitations.
+- **Fix found on the way**: a signed-in account with any non-ACTIVE membership got 500 on every request (RLS hides that
+  academy, and the session lookup included it). The session lookup and `/auth/me` now load ACTIVE memberships only.
+- **Web**: role labels say "إداري / Admin" for MANAGER; invite lists offer owner / admin / coach; only the owner sees
+  expense approval in a session; routing no longer names the retired roles.
+
+Verification: API tests 449 passed / 8 skipped, web 411, shared 56; lint and typecheck clean. On 3100/3101 against Neon
+dev: the owner opens finance; the former branch manager (now admin) and the manager open the dashboard, see all groups,
+are turned away from finance and have no finance menu item; a coach sees 1 of 2 groups and 5 of 15 players, and gets
+404 for another coach's group; the retired viewer signs in without errors.
+
+Known: an account without any academy (like the retired viewer) lands on an empty dashboard, as before for accounts
+without an academy. The demo credentials file still labels the converted accounts with their old roles.
+
 ## 10. Backend requirements (recorded by owner decisions)
 
 **Workflow (owner direction 2026-11-15):** frontend issues whose root cause is in the backend are now fixed across both

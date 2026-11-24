@@ -39,7 +39,7 @@ export function Navbar() {
 
   const roleLabels: Record<string, string> = {
     OWNER: locale === 'ar' ? 'مالك الأكاديمية' : 'Academy Owner',
-    MANAGER: locale === 'ar' ? 'مدير عام' : 'General Manager',
+    MANAGER: locale === 'ar' ? 'إداري' : 'Admin',
     BRANCH_MANAGER: locale === 'ar' ? 'مدير فرع' : 'Branch Manager',
     COACH: locale === 'ar' ? 'مدرب معتمد' : 'Coach',
     RECEPTIONIST: locale === 'ar' ? 'استقبال' : 'Receptionist',

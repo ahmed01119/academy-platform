@@ -32,14 +32,14 @@ Academies typically run on paper, WhatsApp and spreadsheets. The platform replac
 
 ## 3. Target users
 
-| Layer    | User                                                                 | How they get access                                                        |
-| -------- | -------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| Platform | **Platform Owner** (`users.is_platform_owner`)                       | Provisioned out-of-band (`scripts/create-superadmin.js`)                   |
-| Platform | **Platform Super Admin** (`users.is_platform_super_admin`)           | Invited by a Platform Owner                                                |
-| Academy  | **OWNER**                                                            | Self-registers an academy → approved by platform staff                     |
-| Academy  | **MANAGER, BRANCH_MANAGER, RECEPTIONIST, COACH, ACCOUNTANT, VIEWER** | Invited by academy staff with `staff.manage`                               |
-| End user | **Player**                                                           | Account linked to a `Player` record (join request approval or claim token) |
-| End user | **Guardian** (parent)                                                | Account linked to a `Guardian` record via claim token                      |
+| Layer    | User                                                       | How they get access                                                        |
+| -------- | ---------------------------------------------------------- | -------------------------------------------------------------------------- |
+| Platform | **Platform Owner** (`users.is_platform_owner`)             | Provisioned out-of-band (`scripts/create-superadmin.js`)                   |
+| Platform | **Platform Super Admin** (`users.is_platform_super_admin`) | Invited by a Platform Owner                                                |
+| Academy  | **OWNER**                                                  | Self-registers an academy → approved by platform staff                     |
+| Academy  | **MANAGER** (admin, no money), **COACH** (own groups only) | Invited by academy staff with `staff.manage` (owner decision 2026-11-24)   |
+| End user | **Player**                                                 | Account linked to a `Player` record (join request approval or claim token) |
+| End user | **Guardian** (parent)                                      | Account linked to a `Guardian` record via claim token                      |
 
 One user account can hold memberships in several academies and switch between them.
 

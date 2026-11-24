@@ -21,8 +21,21 @@
 
 ### 1.2 Academy (tenant) roles — `TenantRole`
 
-Permissions are a static map (`ROLE_PERMISSIONS`) that equals `docs/security/ROLE_PERMISSION_MATRIX.md` (owner decision
-2026-11-16; a test fails on any difference). The table below is the pre-2026-11-16 code version, kept for history; the
+**Academy roles since 2026-11-24 (owner decision):**
+
+- **OWNER**: responsible for everything in the academy, and the only role with money (payments, refunds, session
+  expenses, cashier, finance page).
+- **MANAGER = the admin (إداري)**: branches, groups, players, sessions, attendance, evaluations, join requests and staff
+  (invites coaches and admins); no money; cannot edit the academy profile.
+- **COACH**: sees only the groups they coach, those groups' sessions and active players; marks attendance and writes
+  evaluations / comments. No money, no administration. Other records answer 404.
+- **Player** (portal): own sessions, academy and branch. **Guardian** (portal): own children and their progress.
+- BRANCH_MANAGER, RECEPTIONIST and ACCOUNTANT members became MANAGER; VIEWER was retired (memberships revoked). The
+  values remain in the database enum, grant nothing and cannot be assigned (migration
+  `20261124110000_simplify_tenant_roles`).
+
+Permissions are a static map (`ROLE_PERMISSIONS`) that equals `docs/security/ROLE_PERMISSION_MATRIX.md` (owner decisions
+2026-11-16 and 2026-11-24; a test fails on any difference). The table below is the pre-2026-11-16 code version, kept for history; the
 matrix document is authoritative. Narrower rules: a COACH marks attendance and claims expenses only for sessions they are
 assigned to; `session_cashier.close` (owner, manager, branch manager, accountant) closes a cashier once (K8).
 
@@ -64,10 +77,10 @@ Pre-2026-11-16 code:
 
 ### 1.3 Scoping rules
 
-- **Branch-scoped roles**: BRANCH_MANAGER, RECEPTIONIST, COACH. They **must** have `membership.branchId`
+- **Branch-scoped role**: COACH (BRANCH_MANAGER and RECEPTIONIST were retired on 2026-11-24). It **must** have `membership.branchId`
   (else 403 `BRANCH_REQUIRED`); every request is pinned to that branch and an `x-branch-id` for another branch is rejected.
   Services repeat the check ("Access restricted to your assigned branch").
-- OWNER / MANAGER / ACCOUNTANT / VIEWER are academy-wide; they may narrow with `x-branch-id`.
+- OWNER and MANAGER are academy-wide; they may narrow with `x-branch-id`.
 - Membership must be `ACTIVE`; `INVITED`, `SUSPENDED`, `REVOKED` are rejected with specific codes.
 - **Suspended academy** (K3): every request of its members is refused (`ACADEMY_SUSPENDED`), its memberships are left out
   at login, and its players' and children's records are hidden from the portals, until the platform reactivates it.
@@ -298,7 +311,7 @@ Pre-2026-11-16 code:
 - **Reverse** (`payments.refund`): reason required; never deletes; sets REVERSED with who/when; a reversed transaction cannot be reversed again;
   for membership fees, restores outstanding/paid and recomputes status (`PARTIAL` / `OVERDUE` / `ACTIVE`).
 - **Session expense** (`session_expenses.create`): amount > 0 (rounded to 2 dp); session branch must match; branch-scoped users only for their branch;
-  roles other than OWNER/MANAGER/ACCOUNTANT must be assigned to the session (session coach or group coach);
+  since 2026-11-24 only the OWNER records session expenses (and they are approved at once);
   idempotency key + 60-second duplicate guard. Created as PENDING.
 - **Approve / reject** (`session_expenses.approve`): **separation of duties** — an approver cannot approve their own expense;
   already-approved/rejected/reversed expenses are refused accordingly.

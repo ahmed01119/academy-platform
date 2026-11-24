@@ -65,7 +65,7 @@ docs/                    this documentation set + ADRs, audits, QA reports
    - `JwtAuthGuard` — Passport JWT from `access_token` cookie or `Authorization: Bearer`; honors `@Public()`.
      `JwtStrategy.validate` reloads the user + memberships from DB on every request.
    - `TenantGuard` — tenant id from `x-tenant-id` header → `tenant_id` cookie → `?tenantId` → route param → JWT `tenantId`;
-     requires an ACTIVE membership; branch-scoped roles (BRANCH_MANAGER, RECEPTIONIST, COACH) are pinned to their
+     requires an ACTIVE membership; the branch-scoped role (COACH) is pinned to their
      `membership.branchId`; builds `request.tenantContext` `{tenantId, branchId, actorUserId, locale, role, permissions}`.
    - `PermissionsGuard` — checks `@RequirePermissions(...)` against `ROLE_PERMISSIONS` (shared package);
      special case: COACH with `canReviewApplications` passes `player.application.review`.
@@ -118,8 +118,8 @@ tokens, registration) — these touch the non-RLS tables `users`/`refresh_tokens
   redirects only after auth has resolved, never to the current route, and at most once per decision.
   `components/layout/AuthGuard.tsx` wraps the same hook for declarative use. There is no `middleware.ts`.
   UI checks are convenience only — the API enforces authorization.
-- **Role landing**: super admin → `/dashboard`; COACH → `/coach`; OWNER/MANAGER/BRANCH_MANAGER/
-  ACCOUNTANT/RECEPTIONIST → `/dashboard`; player → `/player`; guardian → `/guardian`.
+- **Role landing**: super admin → `/dashboard`; COACH → `/coach`; OWNER/MANAGER → `/dashboard`; player → `/player`;
+  guardian → `/guardian`.
 - **i18n**: `contexts/locale-context.tsx` + `locales/translations.ts`; `utils/data-translator.ts`
   translates enum/data values; `dir` switches RTL/LTR.
 - **PWA/offline**: `public/sw.js` caches the app shell (cache name = build VERSION);

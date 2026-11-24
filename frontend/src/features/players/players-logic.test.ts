@@ -28,8 +28,7 @@ const ROLES: TenantRole[] = [
 
 describe('player permissions follow the documented matrix', () => {
   // docs/security/ROLE_PERMISSION_MATRIX.md: players.sensitive.read and players.delete.
-  const legacySensitive = (role?: TenantRole) =>
-    role === 'OWNER' || role === 'MANAGER' || role === 'BRANCH_MANAGER';
+  const legacySensitive = (role?: TenantRole) => role === 'OWNER' || role === 'MANAGER';
   const legacyDelete = (role?: TenantRole) => role === 'OWNER' || role === 'MANAGER';
 
   it.each([...ROLES, undefined])('role %s', (role) => {

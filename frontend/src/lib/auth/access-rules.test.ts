@@ -150,14 +150,8 @@ describe('resolveAccess behaviour', () => {
     }
   });
 
-  it('admin: allows OWNER/MANAGER/BRANCH_MANAGER/ACCOUNTANT/RECEPTIONIST and super admins', () => {
-    for (const role of [
-      'OWNER',
-      'MANAGER',
-      'BRANCH_MANAGER',
-      'ACCOUNTANT',
-      'RECEPTIONIST',
-    ] as const) {
+  it('admin: allows the owner, the admin (MANAGER) and super admins', () => {
+    for (const role of ['OWNER', 'MANAGER'] as const) {
       expect(at('admin', USERS.staff, tenant(role)).status).toBe('allowed');
     }
     expect(at('admin', USERS.superAdmin, null).status).toBe('allowed');
@@ -169,26 +163,22 @@ describe('resolveAccess behaviour', () => {
     expect(at('admin', USERS.guardian, null)).toMatchObject({ to: '/guardian' });
   });
 
-  it('admin: VIEWER (read-only staff) has the dashboard too', () => {
-    expect(at('admin', USERS.staff, tenant('VIEWER')).status).toBe('allowed');
+  it('admin: the retired roles (2026-11-24) have no dashboard', () => {
+    for (const role of ['BRANCH_MANAGER', 'RECEPTIONIST', 'ACCOUNTANT', 'VIEWER'] as const) {
+      expect(at('admin', USERS.staff, tenant(role)).status, role).toBe('redirect');
+    }
   });
 
-  it('admin-or-coach: COACH is allowed; ACCOUNTANT and VIEWER allowed via admin', () => {
+  it('admin-or-coach: COACH and the admin are allowed', () => {
     expect(at('admin-or-coach', USERS.staff, tenant('COACH')).status).toBe('allowed');
-    expect(at('admin-or-coach', USERS.staff, tenant('ACCOUNTANT')).status).toBe('allowed');
-    expect(at('admin-or-coach', USERS.staff, tenant('VIEWER')).status).toBe('allowed');
+    expect(at('admin-or-coach', USERS.staff, tenant('MANAGER')).status).toBe('allowed');
   });
 
   it('permission rule: follows the RBAC matrix, forbidden roles go to their home', () => {
     const markAttendance: AccessRule = { anyOf: [Permission.ATTENDANCE_MARK] };
-    for (const role of ['OWNER', 'MANAGER', 'BRANCH_MANAGER', 'RECEPTIONIST', 'COACH'] as const) {
+    for (const role of ['OWNER', 'MANAGER', 'COACH'] as const) {
       expect(at(markAttendance, USERS.staff, tenant(role)).status, role).toBe('allowed');
     }
-    expect(at(markAttendance, USERS.staff, tenant('ACCOUNTANT'))).toEqual({
-      status: 'redirect',
-      to: '/dashboard',
-      reason: 'forbidden',
-    });
     expect(at(markAttendance, USERS.staff, tenant('VIEWER')).status).toBe('redirect');
     // suspended memberships have no academy permissions
     expect(at(markAttendance, USERS.staff, tenant('OWNER', 'SUSPENDED')).status).toBe('redirect');
@@ -197,13 +187,17 @@ describe('resolveAccess behaviour', () => {
     expect(at(markAttendance, USERS.superAdmin, null).status).toBe('allowed');
   });
 
-  it('permission rule with several permissions allows any of them (finance)', () => {
-    const finance: AccessRule = {
-      anyOf: [Permission.PAYMENTS_READ, Permission.SESSION_EXPENSES_READ, Permission.REPORTS_READ],
-    };
-    expect(at(finance, USERS.staff, tenant('COACH')).status).toBe('allowed'); // own session expenses
-    expect(at(finance, USERS.staff, tenant('ACCOUNTANT')).status).toBe('allowed');
-    expect(at(finance, USERS.staff, tenant('VIEWER')).status).toBe('redirect');
+  it('permission rule with several permissions allows any of them', () => {
+    const rule: AccessRule = { anyOf: [Permission.PAYMENTS_READ, Permission.REPORTS_READ] };
+    expect(at(rule, USERS.staff, tenant('MANAGER')).status).toBe('allowed'); // reports.read
+    expect(at(rule, USERS.staff, tenant('COACH')).status).toBe('redirect');
+  });
+
+  it("2026-11-24: the finance page (payments.read) is the owner's only", () => {
+    const finance: AccessRule = { anyOf: [Permission.PAYMENTS_READ] };
+    expect(at(finance, USERS.staff, tenant('OWNER')).status).toBe('allowed');
+    expect(at(finance, USERS.staff, tenant('MANAGER')).status).toBe('redirect');
+    expect(at(finance, USERS.staff, tenant('COACH')).status).toBe('redirect');
   });
 
   it('platform-staff: super admins and owners allowed; everyone else → /dashboard', () => {

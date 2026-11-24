@@ -66,7 +66,8 @@ describe('role-routing', () => {
       expect(canAccessAdminRoutes(superAdmin, null)).toBe(true);
       expect(canAccessAdminRoutes(baseUser, createTenant('OWNER'))).toBe(true);
       expect(canAccessAdminRoutes(baseUser, createTenant('MANAGER'))).toBe(true);
-      expect(canAccessAdminRoutes(baseUser, createTenant('BRANCH_MANAGER'))).toBe(true);
+      // retired 2026-11-24
+      expect(canAccessAdminRoutes(baseUser, createTenant('BRANCH_MANAGER'))).toBe(false);
     });
 
     it('strictly forbids Coach, Player, and Guardian from admin routes', () => {

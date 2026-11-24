@@ -37,9 +37,7 @@ export function GovernanceTab({
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [userName, setUserName] = useState('');
   const [userEmail, setUserEmail] = useState('');
-  const [userRole, setUserRole] = useState<
-    'OWNER' | 'MANAGER' | 'BRANCH_MANAGER' | 'RECEPTIONIST' | 'COACH' | 'ACCOUNTANT'
-  >('MANAGER');
+  const [userRole, setUserRole] = useState<'OWNER' | 'MANAGER' | 'COACH'>('MANAGER');
   const [userTenantId, setUserTenantId] = useState<string>(academies[0]?.id || '');
   const [isSubmittingUser, setIsSubmittingUser] = useState(false);
 
@@ -462,32 +460,11 @@ export function GovernanceTab({
                 </label>
                 <select
                   value={userRole}
-                  onChange={(e) =>
-                    setUserRole(
-                      e.target.value as
-                        | 'OWNER'
-                        | 'MANAGER'
-                        | 'BRANCH_MANAGER'
-                        | 'RECEPTIONIST'
-                        | 'COACH'
-                        | 'ACCOUNTANT',
-                    )
-                  }
+                  onChange={(e) => setUserRole(e.target.value as 'OWNER' | 'MANAGER' | 'COACH')}
                   className="w-full px-3 py-2 rounded-xl bg-(--bg-surface-subtle) border border-(--border-subtle) text-xs text-(--text-main)"
                 >
                   <option value="COACH">{locale === 'ar' ? 'مدرب (COACH)' : 'Coach'}</option>
-                  <option value="BRANCH_MANAGER">
-                    {locale === 'ar' ? 'مدير فرع (BRANCH_MANAGER)' : 'Branch Manager'}
-                  </option>
-                  <option value="RECEPTIONIST">
-                    {locale === 'ar' ? 'استقبال (RECEPTIONIST)' : 'Receptionist'}
-                  </option>
-                  <option value="ACCOUNTANT">
-                    {locale === 'ar' ? 'محاسب (ACCOUNTANT)' : 'Accountant'}
-                  </option>
-                  <option value="MANAGER">
-                    {locale === 'ar' ? 'مدير عام (MANAGER)' : 'Manager'}
-                  </option>
+                  <option value="MANAGER">{locale === 'ar' ? 'إداري (MANAGER)' : 'Admin'}</option>
                   <option value="OWNER">{locale === 'ar' ? 'مالك (OWNER)' : 'Owner'}</option>
                 </select>
               </div>

@@ -123,12 +123,8 @@ export default function SessionAttendancePage() {
   const [isSubmittingRejectExpense, setIsSubmittingRejectExpense] = useState(false);
 
   const userRole = activeTenant?.role;
-  const canApproveExpenses =
-    Boolean(user?.isPlatformSuperAdmin) ||
-    userRole === 'OWNER' ||
-    userRole === 'MANAGER' ||
-    userRole === 'BRANCH_MANAGER' ||
-    userRole === 'ACCOUNTANT';
+  // Money is the owner's (owner decision 2026-11-24); the API enforces the same rule.
+  const canApproveExpenses = Boolean(user?.isPlatformSuperAdmin) || userRole === 'OWNER';
 
   // Close Cashier Modal
   const [isCloseCashierModalOpen, setIsCloseCashierModalOpen] = useState(false);

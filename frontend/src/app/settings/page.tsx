@@ -95,9 +95,7 @@ function SettingsContent() {
   // Invite Staff Modal State
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState<
-    'OWNER' | 'MANAGER' | 'BRANCH_MANAGER' | 'COACH' | 'RECEPTIONIST' | 'ACCOUNTANT' | 'VIEWER'
-  >('COACH');
+  const [inviteRole, setInviteRole] = useState<'OWNER' | 'MANAGER' | 'COACH'>('COACH');
   const [isInviting, setIsInviting] = useState(false);
   const [inviteMsg, setInviteMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(
     null,
@@ -1158,30 +1156,15 @@ function SettingsContent() {
                 <select
                   value={inviteRole}
                   aria-label={locale === 'ar' ? 'الدور الوظيفي' : 'Role'}
-                  onChange={(e) =>
-                    setInviteRole(
-                      e.target.value as
-                        | 'OWNER'
-                        | 'MANAGER'
-                        | 'BRANCH_MANAGER'
-                        | 'COACH'
-                        | 'RECEPTIONIST'
-                        | 'ACCOUNTANT'
-                        | 'VIEWER',
-                    )
-                  }
+                  onChange={(e) => setInviteRole(e.target.value as 'OWNER' | 'MANAGER' | 'COACH')}
                   className="w-full rounded-xl border border-[var(--border-app)] bg-[var(--bg-base)] px-3 py-2.5 text-xs text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-primary)]/20 transition-all cursor-pointer"
                 >
                   <option value="COACH">{ar ? 'مدرب (COACH)' : 'Coach'}</option>
-                  <option value="MANAGER">{ar ? 'مدير عام (MANAGER)' : 'General Manager'}</option>
-                  <option value="BRANCH_MANAGER">
-                    {ar ? 'مدير فرع (BRANCH_MANAGER)' : 'Branch Manager'}
+                  <option value="MANAGER">
+                    {ar
+                      ? 'إداري (الفروع والمجاميع واللاعبين والحصص، بدون الخزنة)'
+                      : 'Admin (branches, groups, players, sessions; no treasury)'}
                   </option>
-                  <option value="RECEPTIONIST">
-                    {ar ? 'موظف استقبال (RECEPTIONIST)' : 'Receptionist'}
-                  </option>
-                  <option value="ACCOUNTANT">{ar ? 'محاسب (ACCOUNTANT)' : 'Accountant'}</option>
-                  <option value="VIEWER">{ar ? 'مراقب فقط (VIEWER)' : 'Viewer'}</option>
                 </select>
               </div>
 

@@ -111,9 +111,7 @@ export default function GroupDetailsPage() {
     setActionError(null);
     try {
       const staff = await api.tenancy.listStaff();
-      const coaches = staff.filter(
-        (s) => s.role === 'COACH' || s.role === 'MANAGER' || s.role === 'BRANCH_MANAGER',
-      );
+      const coaches = staff.filter((s) => s.role === 'COACH' || s.role === 'MANAGER');
       setAvailableStaff(coaches);
       const firstCoach = coaches[0];
       if (firstCoach) {
