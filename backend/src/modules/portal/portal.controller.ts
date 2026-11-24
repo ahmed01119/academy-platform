@@ -6,11 +6,13 @@ import {
   HttpStatus,
   Inject,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { PortalService } from './portal.service';
+import { GuardianLinkService } from './guardian-link.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { CsrfGuard } from '../auth/guards/csrf.guard';
@@ -21,6 +23,10 @@ import { CurrentTenantContext, CurrentUser } from '../auth/decorators/auth-user.
 import {
   ClaimAccountRequestSchema,
   CreatePlayerJoinRequestSchema,
+  DecideGuardianLinkSchema,
+  GuardianLinkTokenSchema,
+  RequestGuardianLinkSchema,
+  type GuardianLinkRequestView,
   Permission,
   type ClaimAccountRequest,
   type CreatePlayerJoinRequest,
@@ -35,7 +41,10 @@ const GenerateClaimTokenDto = z.object({
 
 @Controller('portal')
 export class PortalController {
-  constructor(@Inject(PortalService) private readonly portalService: PortalService) {}
+  constructor(
+    @Inject(PortalService) private readonly portalService: PortalService,
+    @Inject(GuardianLinkService) private readonly guardianLinks: GuardianLinkService,
+  ) {}
 
   @Get('player/me')
   @UseGuards(JwtAuthGuard, CsrfGuard)
@@ -102,5 +111,30 @@ export class PortalController {
   @Get('academies')
   async listPublicAcademies() {
     return this.portalService.listPublicAcademies();
+  }
+
+  /**
+   * A signed-in guardian asks to be linked to a child with a player account (child's e-mail + the guardian's phone as
+   * the academy registered it). Always 200 with the same answer; the child gets an approval e-mail when both match.
+   */
+  @Post('guardian-links')
+  @UseGuards(JwtAuthGuard, CsrfGuard)
+  @HttpCode(HttpStatus.OK)
+  async requestGuardianLink(@CurrentUser('id') actorUserId: string, @Body() body: unknown) {
+    return this.guardianLinks.requestLink(actorUserId, RequestGuardianLinkSchema.parse(body));
+  }
+
+  /** The request the child is asked to approve (public; the signed link from the e-mail is the credential). */
+  @Get('guardian-links/approval')
+  async getGuardianLinkRequest(@Query('token') token: unknown): Promise<GuardianLinkRequestView> {
+    return this.guardianLinks.getRequest(GuardianLinkTokenSchema.parse(token));
+  }
+
+  /** The child's answer: APPROVE links the guardian record to the requesting account; DECLINE leaves it unlinked. */
+  @Post('guardian-links/approval')
+  @UseGuards(CsrfGuard)
+  @HttpCode(HttpStatus.OK)
+  async decideGuardianLink(@Body() body: unknown) {
+    return this.guardianLinks.decide(DecideGuardianLinkSchema.parse(body));
   }
 }

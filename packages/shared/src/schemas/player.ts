@@ -116,6 +116,8 @@ export interface GuardianSummary {
   phone: string;
   email?: string | null;
   isPrimary: boolean;
+  /** True when a guardian account is linked to this record (guardian portal). */
+  hasAccount?: boolean;
 }
 
 export interface PlayerSummary {

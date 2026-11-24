@@ -290,6 +290,7 @@ export class PlayersService {
             phone: g.phone,
             email: g.email,
             isPrimary: g.isPrimary,
+            hasAccount: g.userId !== null,
           })),
           enrollments: p.enrollments.map((e) => ({
             id: e.id,

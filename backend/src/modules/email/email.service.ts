@@ -894,6 +894,62 @@ ${isAr ? 'للرد:' : 'Answer here:'} ${replyUrl}`
   }
 
   /**
+   * Asks a player to confirm that the account asking for a guardian link really is their guardian. Sent to the
+   * player's own sign-in address; the button opens the approve / decline page.
+   */
+  async sendGuardianLinkRequest(options: {
+    to: string;
+    playerFirstName: string;
+    requesterName: string;
+    guardianName: string;
+    academyName: string;
+    approvalUrl: string;
+    expiresInDays: number;
+    locale?: 'ar' | 'en';
+  }): Promise<SendEmailResult> {
+    const locale = options.locale ?? this.emailLocale;
+    const isAr = locale === 'ar';
+    const player = escapeHtml(options.playerFirstName);
+    const requester = escapeHtml(options.requesterName);
+    const guardian = escapeHtml(options.guardianName);
+    const academy = escapeHtml(options.academyName);
+
+    const subject = isAr
+      ? `طلب ربط حساب ولي أمر — ${options.academyName}`
+      : `Guardian account link request — ${options.academyName}`;
+    const html = this.renderBaseTemplate({
+      locale,
+      preheader: isAr ? 'هل هذا ولي أمرك؟' : 'Is this your guardian?',
+      title: isAr ? 'طلب ربط حساب ولي أمر' : 'Guardian link request',
+      greeting: isAr ? `مرحباً ${player}،` : `Hello ${player},`,
+      bodyHtml: isAr
+        ? `<p>صاحب الحساب <strong>${requester}</strong> يطلب ربط حسابه بملفك في <strong>${academy}</strong> كولي أمر، ليتابع حصصك وحضورك ومستواك.</p>
+           ${this.calloutHtml('info', 'ولي الأمر المسجّل لدى الأكاديمية', guardian)}
+           <p>إذا كان هذا ولي أمرك اضغط الزر ووافق. إن لم تعرفه، ارفض الطلب أو تجاهل الرسالة؛ لن يُربط أي حساب بدون موافقتك.</p>
+           <p style="color: #64748b; font-size: 13px;">الرابط صالح لمدة ${options.expiresInDays} أيام.</p>`
+        : `<p>The account <strong>${requester}</strong> asks to be linked to your profile at <strong>${academy}</strong> as your guardian, to follow your sessions, attendance and progress.</p>
+           ${this.calloutHtml('info', 'Guardian registered by the academy', guardian)}
+           <p>If this is your guardian, press the button and approve. If you do not know them, decline or ignore this e-mail; no account is linked without your approval.</p>
+           <p style="color: #64748b; font-size: 13px;">The link is valid for ${options.expiresInDays} days.</p>`,
+      actionButton: {
+        label: isAr ? 'مراجعة الطلب' : 'Review the request',
+        url: options.approvalUrl,
+      },
+    });
+    const text = isAr
+      ? `${options.requesterName} يطلب ربط حسابه بملفك في ${options.academyName} كولي أمر. للموافقة أو الرفض: ${options.approvalUrl}`
+      : `${options.requesterName} asks to be linked to your profile at ${options.academyName} as your guardian. Approve or decline: ${options.approvalUrl}`;
+
+    return this.sendEmailDetailed({
+      to: options.to,
+      subject,
+      html,
+      text,
+      actionUrl: options.approvalUrl,
+    });
+  }
+
+  /**
    * 8. Platform Co-Owner or Super Admin invitation.
    */
   async sendPlatformAdminInvite(
