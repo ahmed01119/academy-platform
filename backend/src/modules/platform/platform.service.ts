@@ -1608,6 +1608,8 @@ export class PlatformService {
             result.item.applicantName || 'Academy Owner',
             result.academyName,
             `${appUrl}/login`,
+            undefined,
+            dto.reviewNotes,
           );
         } catch (mailErr: any) {
           this.logger.warn(

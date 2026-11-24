@@ -54,6 +54,37 @@ export function escapeHtml(unsafe: unknown): string {
     .replace(/'/g, '&#039;');
 }
 
+/**
+ * Dark colours of the e-mail shell and of the light colours used inside e-mail bodies, applied when the reader's
+ * device is in dark mode (`renderBaseTemplate`). Body elements are matched by the light colour in their inline style,
+ * so every existing e-mail follows without per-e-mail changes.
+ */
+export const EMAIL_DARK_MODE_CSS = `
+:root { color-scheme: light dark; supported-color-schemes: light dark; }
+@media (prefers-color-scheme: dark) {
+  .sx-page { background:#0b1220 !important; }
+  .sx-card { background:#111827 !important; border-color:#1f2937 !important; }
+  .sx-strong { color:#f1f5f9 !important; }
+  .sx-text { color:#cbd5e1 !important; }
+  .sx-text strong { color:#f1f5f9 !important; }
+  .sx-foot { background:#0f172a !important; border-color:#1f2937 !important; color:#94a3b8 !important; }
+  .sx-foot a { color:#60a5fa !important; }
+  .sx-text [style*="#f8fafc"], .sx-text [style*="#f1f5f9"] { background:#1e293b !important; border-color:#334155 !important; }
+  .sx-text [style*="#e2e8f0"] { border-color:#334155 !important; }
+  .sx-text [style*="#eff6ff"], .sx-text [style*="rgba(10, 59, 255"] { background:#172554 !important; border-color:#1e40af !important; color:#bfdbfe !important; }
+  .sx-text [style*="#f0fdf4"] { background:#052e16 !important; border-color:#166534 !important; color:#bbf7d0 !important; }
+  .sx-text [style*="#fffbeb"], .sx-text [style*="rgba(245, 158, 11"] { background:#451a03 !important; border-color:#92400e !important; color:#fde68a !important; }
+  .sx-text [style*="#fef2f2"], .sx-text [style*="rgba(239, 68, 68"] { background:#450a0a !important; border-color:#991b1b !important; color:#fecaca !important; }
+  .sx-text [style*="color: #0F172A"], .sx-text [style*="color:#0F172A"], .sx-text [style*="color: #334155"] { color:#f1f5f9 !important; }
+  .sx-text [style*="color: #64748b"], .sx-text [style*="color:#64748b"] { color:#94a3b8 !important; }
+  .sx-text [style*="color: #15803d"], .sx-text [style*="color: #15803D"], .sx-text [style*="color:#16A34A"] { color:#4ade80 !important; }
+  .sx-text [style*="color: #0A3BFF"], .sx-text [style*="color:#0A3BFF"] { color:#60a5fa !important; }
+  .sx-text [style*="color: #b91c1c"], .sx-text [style*="color: #dc2626"], .sx-text [style*="color: #ef4444"] { color:#fca5a5 !important; }
+  .sx-text [style*="color: #b45309"] { color:#fcd34d !important; }
+  .sx-text a[style*="color:#ffffff"] { color:#ffffff !important; }
+}
+`;
+
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
@@ -479,12 +510,18 @@ export class EmailService {
     academyName: string,
     activationUrl: string,
     requestedLocale?: 'ar' | 'en',
+    /** The reviewer's notes, shown to the owner when given. */
+    notes?: string | null,
   ): Promise<SendEmailResult> {
     // The platform's e-mail language (MAIL_LOCALE) unless a caller asks for a specific one.
     const locale = requestedLocale ?? this.emailLocale;
     const isAr = locale === 'ar';
     const safeOwner = escapeHtml(ownerName);
     const safeAcademy = escapeHtml(academyName);
+    const safeNotes = notes?.trim() ? escapeHtml(notes.trim()) : '';
+    const notesHtml = safeNotes
+      ? this.calloutHtml('info', isAr ? 'ملاحظات المراجعة' : 'Review notes', safeNotes)
+      : '';
 
     const subject = isAr
       ? `تهانينا! تم اعتماد أكاديمية "${academyName}" على سبورتكسس`
@@ -497,8 +534,10 @@ export class EmailService {
       greeting: isAr ? `أهلاً ${safeOwner}،` : `Hello ${safeOwner},`,
       bodyHtml: isAr
         ? `<p>يسرنا إبلاغك بأنه تمت الموافقة على طلب تسجيل أكاديمية <strong>"${safeAcademy}"</strong> وتفعيل مساحة العمل الخاصة بك على منصة سبورتكسس.</p>
+           ${notesHtml}
            <p>يمكنك الآن تسجيل الدخول والبدء في إعداد الفروع، إضافة المدربين واللاعبين، وإدارة الحصص التدريبية والاشتراكات.</p>`
         : `<p>We are delighted to inform you that your application for <strong>"${safeAcademy}"</strong> has been approved and your workspace is now active.</p>
+           ${notesHtml}
            <p>You can now sign in and begin configuring your branches, coaches, players, schedules, and finances.</p>`,
       actionButton: {
         label: isAr ? 'الدخول إلى لوحة التحكم' : 'Open Academy Dashboard',
@@ -506,9 +545,14 @@ export class EmailService {
       },
     });
 
+    const notesText = notes?.trim()
+      ? isAr
+        ? ` ملاحظات المراجعة: ${notes.trim()}`
+        : ` Review notes: ${notes.trim()}`
+      : '';
     const text = isAr
-      ? `تهانينا ${ownerName}! تم اعتماد أكاديمية "${academyName}". رابط لوحة التحكم: ${activationUrl}`
-      : `Congratulations ${ownerName}! ${academyName} is approved. Access your dashboard here: ${activationUrl}`;
+      ? `تهانينا ${ownerName}! تم اعتماد أكاديمية "${academyName}".${notesText} رابط لوحة التحكم: ${activationUrl}`
+      : `Congratulations ${ownerName}! ${academyName} is approved.${notesText} Access your dashboard here: ${activationUrl}`;
 
     return this.sendEmailDetailed({ to, subject, html, text, actionUrl: activationUrl });
   }
@@ -1380,7 +1424,12 @@ export class EmailService {
   /**
    * Renders the branded HTML email shell. It follows the platform's look (white cards on a light grey page, the
    * Sportexus wordmark with "exus" in the logo green, the blue-to-cyan brand gradient) and uses inline styles and
-   * tables only, because most mail clients (Gmail, Outlook) drop <style> blocks and modern CSS layout.
+   * tables, because most mail clients (Gmail, Outlook) drop <style> blocks and modern CSS layout.
+   *
+   * Dark mode: the e-mail follows the reader's device theme where the mail app supports it (Apple Mail, iOS Mail,
+   * Outlook for Mac/iOS/Android, Thunderbird): `EMAIL_DARK_MODE_CSS` recolours the shell and the known light colours
+   * of the bodies. Clients that ignore it (Gmail on the web) show the light version; Gmail's apps apply their own
+   * dark colours.
    */
   renderBaseTemplate(options: {
     locale: 'ar' | 'en';
@@ -1409,31 +1458,33 @@ export class EmailService {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="color-scheme" content="light only">
+  <meta name="color-scheme" content="light dark">
+  <meta name="supported-color-schemes" content="light dark">
   <title>${escapeHtml(options.title)}</title>
+  <style>${EMAIL_DARK_MODE_CSS}</style>
 </head>
-<body style="margin:0;padding:0;background:#f1f5f9;font-family:${font};-webkit-font-smoothing:antialiased;">
+<body class="sx-page" style="margin:0;padding:0;background:#f1f5f9;font-family:${font};-webkit-font-smoothing:antialiased;">
   <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:#f1f5f9;">${escapeHtml(options.preheader)}</div>
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f1f5f9;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="sx-page" style="background:#f1f5f9;">
     <tr><td align="center" style="padding:32px 12px;">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" dir="${dir}" style="max-width:580px;background:#ffffff;border:1px solid #e2e8f0;border-radius:18px;overflow:hidden;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" dir="${dir}" class="sx-card" style="max-width:580px;background:#ffffff;border:1px solid #e2e8f0;border-radius:18px;overflow:hidden;">
         <tr><td style="height:6px;line-height:6px;font-size:0;background:#0A3BFF;background-image:linear-gradient(90deg,#0A3BFF 0%,#00C4FF 60%,#22C55E 100%);">&nbsp;</td></tr>
         <tr><td align="center" style="padding:28px 28px 8px;">
           <div dir="ltr" style="font-family:'Segoe UI',Arial,sans-serif;font-size:28px;font-weight:800;letter-spacing:-0.5px;line-height:1;">
-            <span style="color:#0F172A;">Sport</span><span style="color:#16A34A;">exus</span>
+            <span class="sx-strong" style="color:#0F172A;">Sport</span><span style="color:#16A34A;">exus</span>
           </div>
           <div dir="ltr" style="font-family:'Segoe UI',Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:3px;color:#64748b;margin-top:6px;">ACADEMY PLATFORM</div>
         </td></tr>
         <tr><td align="center" style="padding:16px 28px 4px;">
-          <h1 style="margin:0;font-family:${font};font-size:22px;font-weight:800;color:#0F172A;">${escapeHtml(options.title)}</h1>
+          <h1 class="sx-strong" style="margin:0;font-family:${font};font-size:22px;font-weight:800;color:#0F172A;">${escapeHtml(options.title)}</h1>
         </td></tr>
-        <tr><td dir="${dir}" style="padding:20px 32px 28px;text-align:${align};font-family:${font};font-size:15px;line-height:1.8;color:#334155;">
-          <div style="font-size:16px;font-weight:700;color:#0F172A;margin-bottom:12px;">${options.greeting}</div>
+        <tr><td dir="${dir}" class="sx-text" style="padding:20px 32px 28px;text-align:${align};font-family:${font};font-size:15px;line-height:1.8;color:#334155;">
+          <div class="sx-strong" style="font-size:16px;font-weight:700;color:#0F172A;margin-bottom:12px;">${options.greeting}</div>
           ${options.bodyHtml}
           ${button}
         </td></tr>
-        <tr><td align="center" style="padding:18px 28px;background:#f8fafc;border-top:1px solid #e2e8f0;font-family:${font};font-size:12px;line-height:1.7;color:#64748b;">
-          <div style="font-weight:700;color:#0F172A;">Sportexus — ${isAr ? 'منصة واحدة لكل أكاديمية' : 'One Platform. Every Academy.'}</div>
+        <tr><td align="center" class="sx-foot" style="padding:18px 28px;background:#f8fafc;border-top:1px solid #e2e8f0;font-family:${font};font-size:12px;line-height:1.7;color:#64748b;">
+          <div class="sx-strong" style="font-weight:700;color:#0F172A;">Sportexus — ${isAr ? 'منصة واحدة لكل أكاديمية' : 'One Platform. Every Academy.'}</div>
           <div>${isAr ? 'هذه رسالة آلية من منصة سبورتكسس، يُرجى عدم الرد عليها.' : 'This is an automated message from Sportexus; please do not reply.'}</div>
           <div style="margin-top:6px;"><a href="${escapeHtml(this.appPublicUrl)}" style="color:#0A3BFF;text-decoration:none;font-weight:700;">${escapeHtml(this.appPublicUrl.replace(/^https?:\/\//, ''))}</a></div>
         </td></tr>

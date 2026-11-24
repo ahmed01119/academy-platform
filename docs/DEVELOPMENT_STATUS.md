@@ -821,6 +821,18 @@ Not changed yet: the player profile and "edit player" dialog still show the emer
 
 Test data on Neon dev: player "يوسف سنة 7325" in the owner demo academy.
 
+Stage 2, e-mails:
+
+- **Device theme**: every e-mail declares `color-scheme: light dark` and carries one `<style>` block
+  (`EMAIL_DARK_MODE_CSS`) that recolours the shell and the known light colours of the bodies when the reader's device
+  is dark. The light design stays inline. Works in Apple Mail / iOS Mail, Outlook for Mac/iOS/Android, Thunderbird;
+  Gmail on the web shows the light version (it ignores `prefers-color-scheme`), Gmail's apps use their own dark colours.
+- **Review notes in every review e-mail**: the academy approval e-mail now shows the reviewer's notes (escaped) and
+  puts them in the text version; rejection and "more details" e-mails already did, and so do join-request decisions.
+
+Verification: API tests 429 passed / 8 skipped (new: approval notes, theme); e-mails rendered in Chromium with light
+and dark colour schemes and checked by eye.
+
 ## 10. Backend requirements (recorded by owner decisions)
 
 **Workflow (owner direction 2026-11-15):** frontend issues whose root cause is in the backend are now fixed across both

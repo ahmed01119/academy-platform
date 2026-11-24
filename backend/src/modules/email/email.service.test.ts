@@ -338,6 +338,34 @@ describe('EmailService', () => {
       expect(sent[0]?.subject).toContain('تهانينا!');
       expect(sent[0]?.html).toContain('https://sportexus.com/dashboard');
       expect(sent[0]?.html).toContain('الدخول إلى لوحة التحكم');
+      expect(sent[0]?.html).not.toContain('ملاحظات المراجعة');
+    });
+
+    it("2b. sendAcademyApproved shows the reviewer's notes, escaped, in the e-mail and its text", async () => {
+      await emailService.sendAcademyApproved(
+        'owner@academy.com',
+        'Ahmed',
+        'Knights Academy',
+        'https://sportexus.com/login',
+        'en',
+        'Welcome! Upload your <b>logo</b> first.',
+      );
+      const sent = emailService.getSentEmails();
+      expect(sent[0]?.html).toContain('Review notes');
+      expect(sent[0]?.html).toContain('Upload your &lt;b&gt;logo&lt;/b&gt; first.');
+      expect(sent[0]?.text).toContain('Review notes: Welcome! Upload your <b>logo</b> first.');
+    });
+
+    it("follows the reader's device theme: light and dark colour schemes", async () => {
+      await emailService.sendAcademyApproved('o@a.com', 'A', 'B', 'https://x.test/login', 'en');
+      const html = emailService.getSentEmails()[0]?.html ?? '';
+      expect(html).toContain('<meta name="color-scheme" content="light dark">');
+      expect(html).not.toContain('light only');
+      expect(html).toContain('@media (prefers-color-scheme: dark)');
+      // the shell carries the classes the dark rules target
+      for (const cls of ['sx-page', 'sx-card', 'sx-text', 'sx-foot', 'sx-strong']) {
+        expect(html).toContain(`class="${cls}"`);
+      }
     });
 
     it('3. sendAcademyRejected renders constructive review feedback', async () => {
@@ -552,7 +580,10 @@ describe('EmailService', () => {
       expect(mail?.html).toContain('>Sport</span><span style="color:#16A34A;">exus<');
       expect(mail?.html).toContain('dir="ltr"');
       expect(mail?.html).toContain('Guardian &lt;b&gt;X&lt;/b&gt;'); // escaped
-      expect(mail?.html).not.toContain('<style>'); // inline styles only (mail clients drop <style>)
+      // The light design is inline (mail clients may drop <style>); the only <style> block is the optional dark mode.
+      const styleBlocks = mail?.html.match(/<style>[\s\S]*?<\/style>/g) ?? [];
+      expect(styleBlocks).toHaveLength(1);
+      expect(styleBlocks[0]).toContain('@media (prefers-color-scheme: dark)');
     });
 
     it.each([
