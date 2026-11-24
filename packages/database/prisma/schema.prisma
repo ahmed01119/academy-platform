@@ -1090,6 +1090,9 @@ model AcademyApplication {
   reviewedByUserId    String?           @map("reviewed_by_user_id") @db.Uuid
   reviewedAt          DateTime?         @map("reviewed_at") @db.Timestamptz(3)
   provisionedTenantId String?           @map("provisioned_tenant_id") @db.Uuid
+  /// The applicant's latest answer to a MORE_INFO_REQUESTED review (written by submit_academy_application_reply).
+  applicantReply      String?           @map("applicant_reply")
+  applicantRepliedAt  DateTime?         @map("applicant_replied_at") @db.Timestamptz(3)
   createdAt           DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt           DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
 

@@ -50,6 +50,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { EmailService } from '../email/email.service';
 import { RedisService } from '../redis/redis.service';
 import { PlatformMetricsService } from './platform-metrics.service';
+import { ApplicationReplyService } from './application-reply.service';
 
 const PLATFORM_FUNCTION_MESSAGES = {
   PLATFORM_ADMIN_REQUIRED: 'Platform administrator privileges are required',
@@ -82,6 +83,9 @@ export class PlatformService {
     @Inject(EmailService) private readonly emailService: EmailService,
     @Inject(PlatformMetricsService) private readonly metricsService: PlatformMetricsService,
     @Optional() @Inject(RedisService) private readonly redisService?: RedisService,
+    @Optional()
+    @Inject(ApplicationReplyService)
+    private readonly applicationReplies?: ApplicationReplyService,
   ) {}
 
   /**
@@ -1455,6 +1459,8 @@ export class PlatformService {
         reviewedByUserId: app.reviewedByUserId,
         reviewedAt: app.reviewedAt?.toISOString() ?? null,
         provisionedTenantId: app.provisionedTenantId,
+        applicantReply: app.applicantReply,
+        applicantRepliedAt: app.applicantRepliedAt?.toISOString() ?? null,
         createdAt: app.createdAt.toISOString(),
         updatedAt: app.updatedAt.toISOString(),
       }));
@@ -1557,6 +1563,8 @@ export class PlatformService {
           reviewedByUserId: updated.reviewedByUserId,
           reviewedAt: updated.reviewedAt?.toISOString() ?? null,
           provisionedTenantId: updated.provisionedTenantId,
+          applicantReply: updated.applicantReply,
+          applicantRepliedAt: updated.applicantRepliedAt?.toISOString() ?? null,
           createdAt: updated.createdAt.toISOString(),
           updatedAt: updated.updatedAt.toISOString(),
         },
@@ -1651,11 +1659,22 @@ export class PlatformService {
 
         // Dispatch branded more info requested email
         try {
+          // The e-mail's button opens the reply page; the link is signed for this request only.
+          const reviewedAt = result.item.reviewedAt ? new Date(result.item.reviewedAt) : null;
+          const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+          const replyUrl =
+            this.applicationReplies && reviewedAt
+              ? `${appUrl}/application-reply?token=${encodeURIComponent(
+                  this.applicationReplies.createToken(applicationId, reviewedAt),
+                )}`
+              : undefined;
           await this.emailService.sendAcademyMoreInfoRequested(
             result.item.contactEmail,
             result.item.applicantName || '',
             result.academyName,
             dto.reviewNotes,
+            undefined,
+            replyUrl,
           );
         } catch (mailErr: any) {
           this.logger.warn(

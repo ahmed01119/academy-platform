@@ -356,6 +356,22 @@ describe('EmailService', () => {
       expect(sent[0]?.text).toContain('Review notes: Welcome! Upload your <b>logo</b> first.');
     });
 
+    it('4b. sendAcademyMoreInfoRequested has a button to the reply page when a link is given', async () => {
+      await emailService.sendAcademyMoreInfoRequested(
+        'owner@academy.com',
+        'Ahmed',
+        'Knights Academy',
+        'Send the commercial register',
+        'en',
+        'https://sportexus.example/application-reply?token=abc',
+      );
+      const [mail] = emailService.getSentEmails();
+      expect(mail?.html).toContain('Answer the request');
+      expect(mail?.html).toContain('https://sportexus.example/application-reply?token=abc');
+      expect(mail?.html).not.toContain('reply to this email');
+      expect(mail?.text).toContain('https://sportexus.example/application-reply?token=abc');
+    });
+
     it("follows the reader's device theme: light and dark colour schemes", async () => {
       await emailService.sendAcademyApproved('o@a.com', 'A', 'B', 'https://x.test/login', 'en');
       const html = emailService.getSentEmails()[0]?.html ?? '';

@@ -249,11 +249,42 @@ export const AcademyApplicationItemSchema = z.object({
   reviewedByUserId: z.string().uuid().nullable().optional(),
   reviewedAt: z.string().or(z.date()).nullable().optional(),
   provisionedTenantId: z.string().uuid().nullable().optional(),
+  /** The applicant's latest answer to a "more details" request, sent from the e-mailed reply link. */
+  applicantReply: z.string().nullable().optional(),
+  applicantRepliedAt: z.string().or(z.date()).nullable().optional(),
   createdAt: z.string().or(z.date()),
   updatedAt: z.string().or(z.date()),
 });
 
 export type AcademyApplicationItem = z.infer<typeof AcademyApplicationItemSchema>;
+
+/**
+ * Answering a "more details" request (MORE_INFO_REQUESTED) from the link in the e-mail. The applicant's account is
+ * still pending, so the signed `token` from the link is the only credential; it names the application and the request,
+ * and stops working once answered or when a newer request is made.
+ */
+export const ApplicationReplyTokenSchema = z.string().trim().min(1).max(512);
+
+export const AcademyApplicationReplyViewSchema = z.object({
+  academyName: z.string(),
+  sport: z.string(),
+  city: z.string().nullable(),
+  contactPhone: z.string().nullable(),
+  /** What the platform asked for. */
+  reviewNotes: z.string().nullable(),
+});
+export type AcademyApplicationReplyView = z.infer<typeof AcademyApplicationReplyViewSchema>;
+
+export const SubmitAcademyApplicationReplySchema = z.object({
+  token: ApplicationReplyTokenSchema,
+  reply: z.string().trim().min(2).max(2000),
+  /** Corrections, when the request asked for them; empty keeps the current value. */
+  city: z.string().trim().max(100).optional(),
+  contactPhone: z.string().trim().max(30).optional(),
+});
+export type SubmitAcademyApplicationReplyRequest = z.infer<
+  typeof SubmitAcademyApplicationReplySchema
+>;
 
 // ==========================================
 // Player Join Requests & Approvals

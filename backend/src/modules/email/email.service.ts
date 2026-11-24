@@ -621,6 +621,8 @@ export class EmailService {
     academyName: string,
     notes?: string,
     requestedLocale?: 'ar' | 'en',
+    /** The signed link to the reply page; without it the e-mail asks to contact the team. */
+    replyUrl?: string,
   ): Promise<SendEmailResult> {
     // The platform's e-mail language (MAIL_LOCALE) unless a caller asks for a specific one.
     const locale = requestedLocale ?? this.emailLocale;
@@ -650,21 +652,36 @@ export class EmailService {
              <strong>المطلوب:</strong><br/>
              ${safeNotes}
            </div>
-           <p>يرجى الرد على هذه الرسالة أو التواصل مع فريق الدعم لتحديث ملفك.</p>`
+           <p>${
+             replyUrl
+               ? 'اضغط الزر بالأسفل لكتابة ردك وتحديث بيانات الطلب؛ سيعود الطلب للمراجعة فور إرساله.'
+               : 'يرجى التواصل مع فريق الدعم لتحديث ملفك.'
+           }</p>`
         : `<p>Our platform review team is currently evaluating the application for <strong>"${safeAcademy}"</strong>.</p>
            <p>Please provide the following additional information to complete your verification:</p>
            <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 8px; padding: 14px; margin: 16px 0; color: #b45309;">
              <strong>Required Details:</strong><br/>
              ${safeNotes}
            </div>
-           <p>Please reply to this email or reach out to our team with the requested details.</p>`,
+           <p>${
+             replyUrl
+               ? 'Press the button below to write your answer and update the application; it goes back to review as soon as you send it.'
+               : 'Please reach out to our team with the requested details.'
+           }</p>`,
+      actionButton: replyUrl
+        ? { label: isAr ? 'الرد على الطلب' : 'Answer the request', url: replyUrl }
+        : undefined,
     });
 
     const text = isAr
       ? `مرحباً ${ownerName}، مطلوب معلومات إضافية لطلب تسجيل "${academyName}": ${notes || ''}`
       : `Hello ${ownerName}, additional information is required for "${academyName}": ${notes || ''}`;
+    const textWithLink = replyUrl
+      ? `${text}
+${isAr ? 'للرد:' : 'Answer here:'} ${replyUrl}`
+      : text;
 
-    return this.sendEmailDetailed({ to, subject, html, text });
+    return this.sendEmailDetailed({ to, subject, html, text: textWithLink, actionUrl: replyUrl });
   }
 
   /**
