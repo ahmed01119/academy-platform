@@ -11,7 +11,9 @@ import {
   Optional,
 } from '@nestjs/common';
 import type { TenantTransactionClient } from '@academy/database';
+import type { GroupOccurrenceStatus } from '@academy/shared';
 import { PrismaService } from '../database/prisma.service';
+import { addDays, buildGroupCalendar, formatDay, todayInCairo } from '../groups/group-calendar';
 import { EmailService } from '../email/email.service';
 import {
   ErrorCode,
@@ -140,6 +142,10 @@ export class PortalService {
       endTime: string;
       groupName: string;
       branchName?: string;
+      /** SCHEDULED, CANCELLED, MOVED (see note: the new time), RESCHEDULED or EXTRA. */
+      status: GroupOccurrenceStatus;
+      /** The reason of a change, or where a moved session went. */
+      note: string | null;
     }>;
     attendanceSummary: {
       totalEligible: number;
@@ -225,31 +231,16 @@ export class PortalService {
         attendanceRate,
       };
 
-      // Upcoming sessions
-      const groupIds = player.groupMemberships.map((gm) => gm.groupId);
-      const upcomingSessionsRaw = await tx.attendanceSession.findMany({
-        where: {
-          groupId: { in: groupIds },
-          sessionDate: { gte: new Date() },
-          status: { in: ['SCHEDULED', 'IN_PROGRESS'] },
-        },
-        orderBy: [{ sessionDate: 'asc' }, { startTime: 'asc' }],
-        take: 10,
-        include: {
-          group: {
-            include: { branch: { select: { name: true } } },
-          },
-        },
-      });
-
-      const upcomingSessions = upcomingSessionsRaw.map((s) => ({
-        id: s.id,
-        sessionDate: s.sessionDate.toISOString().split('T')[0]!,
-        startTime: s.startTime,
-        endTime: s.endTime,
-        groupName: s.group?.name ?? s.groupName,
-        branchName: s.group?.branch?.name,
-      }));
+      // Upcoming sessions (owner request 2026-11-24): the groups' fixed weekly timetable with its one-off changes
+      // (cancelled, moved, extra) for the next two weeks, plus any training session staff opened outside it.
+      const upcomingSessions = await loadPortalUpcomingSessions(
+        tx,
+        player.groupMemberships.map((gm) => ({
+          id: gm.groupId,
+          name: gm.group?.name ?? '',
+          branchName: gm.group?.branch?.name,
+        })),
+      );
 
       // Recent evaluations (published only, hide private coach notes)
       const evals = await tx.playerEvaluation.findMany({
@@ -799,4 +790,125 @@ export class PortalService {
     return this.prisma.$queryRaw<Array<{ id: string; name: string; slug: string }>>`
       SELECT id::text AS id, name, slug FROM public.list_public_academies()`;
   }
+}
+
+/** Days of timetable shown as "upcoming" in the player portal. */
+const PORTAL_UPCOMING_DAYS = 14;
+
+/**
+ * The next sessions of the player's groups: the weekly timetable with its changes (a cancelled or moved session is
+ * listed with its status so the player sees it), plus training sessions staff opened outside the timetable. Read under
+ * the portal policies (training_schedules / schedule_exceptions of the user's own groups).
+ */
+async function loadPortalUpcomingSessions(
+  tx: TenantTransactionClient,
+  groups: Array<{ id: string; name: string; branchName?: string }>,
+): Promise<
+  Array<{
+    id: string;
+    sessionDate: string;
+    startTime: string;
+    endTime: string;
+    groupName: string;
+    branchName?: string;
+    status: GroupOccurrenceStatus;
+    note: string | null;
+  }>
+> {
+  if (groups.length === 0) return [];
+  const groupIds = groups.map((g) => g.id);
+  const from = todayInCairo();
+  const to = addDays(from, PORTAL_UPCOMING_DAYS - 1);
+  const range = { gte: new Date(`${from}T00:00:00Z`), lte: new Date(`${to}T00:00:00Z`) };
+  const [slots, changes, opened] = await Promise.all([
+    tx.trainingSchedule.findMany({ where: { groupId: { in: groupIds } } }),
+    tx.scheduleException.findMany({
+      where: { groupId: { in: groupIds }, OR: [{ originalDate: range }, { sessionDate: range }] },
+    }),
+    tx.attendanceSession.findMany({
+      where: {
+        groupId: { in: groupIds },
+        sessionDate: { gte: new Date(`${from}T00:00:00Z`) },
+        status: { in: ['SCHEDULED', 'IN_PROGRESS'] },
+      },
+      orderBy: [{ sessionDate: 'asc' }, { startTime: 'asc' }],
+      take: 20,
+    }),
+  ]);
+  const day = (d: Date | null) => (d ? formatDay(d.getTime()) : null);
+
+  const items: Array<{
+    id: string;
+    sessionDate: string;
+    startTime: string;
+    endTime: string;
+    groupName: string;
+    branchName?: string;
+    status: GroupOccurrenceStatus;
+    note: string | null;
+  }> = [];
+  for (const group of groups) {
+    const occurrences = buildGroupCalendar(
+      slots
+        .filter((s) => s.groupId === group.id)
+        .map((s) => ({ ...s, status: s.status as 'ACTIVE' | 'INACTIVE' })),
+      changes
+        .filter((c) => c.groupId === group.id)
+        .map((c) => ({
+          id: c.id,
+          kind: c.kind,
+          scheduleId: c.scheduleId,
+          originalDate: day(c.originalDate),
+          sessionDate: day(c.sessionDate),
+          startTime: c.startTime,
+          endTime: c.endTime,
+          location: c.location,
+          reason: c.reason,
+        })),
+      from,
+      to,
+    );
+    for (const o of occurrences) {
+      items.push({
+        id: o.exceptionId ?? `${o.scheduleId}:${o.date}`,
+        sessionDate: o.date,
+        startTime: o.startTime,
+        endTime: o.endTime,
+        groupName: group.name,
+        branchName: group.branchName,
+        status: o.status,
+        note: o.movedTo
+          ? `${o.movedTo.date} ${o.movedTo.startTime}-${o.movedTo.endTime}`
+          : o.reason,
+      });
+    }
+  }
+  // Sessions staff opened that the timetable does not already list.
+  for (const s of opened) {
+    const date = formatDay(s.sessionDate.getTime());
+    const listed = items.some(
+      (i) =>
+        i.sessionDate === date &&
+        i.startTime === s.startTime &&
+        groups.find((g) => g.id === s.groupId)?.name === i.groupName,
+    );
+    if (listed) continue;
+    const group = groups.find((g) => g.id === s.groupId);
+    items.push({
+      id: s.id,
+      sessionDate: date,
+      startTime: s.startTime,
+      endTime: s.endTime,
+      groupName: group?.name ?? s.groupName ?? '',
+      branchName: group?.branchName,
+      status: 'EXTRA',
+      note: null,
+    });
+  }
+  return items
+    .sort(
+      (a, b) =>
+        a.sessionDate.localeCompare(b.sessionDate) || a.startTime.localeCompare(b.startTime),
+    )
+    .slice(0, 12);
 }

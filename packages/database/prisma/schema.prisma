@@ -224,6 +224,13 @@ enum ScheduleStatus {
   INACTIVE
 }
 
+/// A one-off change to a group's weekly timetable (owner request 2026-11-24).
+enum ScheduleExceptionKind {
+  CANCELLED
+  MOVED
+  EXTRA
+}
+
 enum AttendanceEventSource {
   MANUAL
   QR_CHECKIN
@@ -266,6 +273,7 @@ model User {
   managedBranches      Branch[]                      @relation("BranchManagerUser")
   groupCoaches         GroupCoach[]
   coachedSessions      AttendanceSession[]           @relation("SessionCoachUser")
+  scheduleExceptions   ScheduleException[]           @relation("ScheduleExceptionCreator")
   playerProfile        Player?                       @relation("PlayerUser")
   guardianProfiles     Guardian[]                    @relation("GuardianUser")
   evaluationsGiven     PlayerEvaluation[]            @relation("EvaluatorUser")
@@ -681,12 +689,13 @@ model TrainingGroup {
   createdAt   DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt   DateTime    @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  tenant    Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  branch    Branch              @relation(fields: [tenantId, branchId], references: [tenantId, id], onDelete: Restrict)
-  coaches   GroupCoach[]
-  members   GroupMember[]
-  schedules TrainingSchedule[]
-  sessions  AttendanceSession[]
+  tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch             Branch              @relation(fields: [tenantId, branchId], references: [tenantId, id], onDelete: Restrict)
+  coaches            GroupCoach[]
+  members            GroupMember[]
+  schedules          TrainingSchedule[]
+  scheduleExceptions ScheduleException[]
+  sessions           AttendanceSession[]
 
   @@unique([tenantId, id])
   @@index([tenantId])
@@ -750,12 +759,41 @@ model TrainingSchedule {
   createdAt DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  group TrainingGroup @relation(fields: [tenantId, groupId], references: [tenantId, id], onDelete: Cascade)
+  group      TrainingGroup       @relation(fields: [tenantId, groupId], references: [tenantId, id], onDelete: Cascade)
+  exceptions ScheduleException[]
 
   @@unique([tenantId, id])
   @@index([tenantId])
   @@index([groupId])
   @@map("training_schedules")
+}
+
+/// One-off change to a group's weekly timetable: a cancelled or moved occurrence, or an extra session.
+/// CANCELLED / MOVED name the occurrence (scheduleId + originalDate); MOVED / EXTRA give the new date and times.
+model ScheduleException {
+  id              String                @id @default(uuid()) @db.Uuid
+  tenantId        String                @map("tenant_id") @db.Uuid
+  groupId         String                @map("group_id") @db.Uuid
+  scheduleId      String?               @map("schedule_id") @db.Uuid
+  kind            ScheduleExceptionKind
+  originalDate    DateTime?             @map("original_date") @db.Date
+  sessionDate     DateTime?             @map("session_date") @db.Date
+  startTime       String?               @map("start_time")
+  endTime         String?               @map("end_time")
+  location        String?
+  reason          String?
+  createdByUserId String?               @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  group     TrainingGroup     @relation(fields: [tenantId, groupId], references: [tenantId, id], onDelete: Cascade)
+  schedule  TrainingSchedule? @relation(fields: [tenantId, scheduleId], references: [tenantId, id], onDelete: Cascade)
+  createdBy User?             @relation("ScheduleExceptionCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, id])
+  @@index([tenantId])
+  @@index([groupId, sessionDate])
+  @@index([groupId, originalDate])
+  @@map("schedule_exceptions")
 }
 
 /// Append-only immutable log of every attendance marking, QR scan, and status change.

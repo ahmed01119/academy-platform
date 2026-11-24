@@ -15,6 +15,7 @@ import {
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { GroupsService } from './groups.service';
+import { GroupScheduleService } from './group-schedule.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { TenantGuard } from '../auth/guards/tenant.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
@@ -23,7 +24,10 @@ import { RequirePermissions } from '../auth/guards/require-permissions.decorator
 import {
   AssignCoachRequestSchema,
   AssignPlayerRequestSchema,
+  CreateScheduleExceptionRequestSchema,
   CreateScheduleRequestSchema,
+  GroupCalendarQuerySchema,
+  UpdateScheduleRequestSchema,
   CreateTrainingGroupRequestSchema,
   GroupQuerySchema,
   Permission,
@@ -35,7 +39,10 @@ import {
 @Controller('groups')
 @UseGuards(JwtAuthGuard, TenantGuard, PermissionsGuard, CsrfGuard)
 export class GroupsController {
-  constructor(@Inject(GroupsService) private readonly groupsService: GroupsService) {}
+  constructor(
+    @Inject(GroupsService) private readonly groupsService: GroupsService,
+    @Inject(GroupScheduleService) private readonly scheduleService: GroupScheduleService,
+  ) {}
 
   @Post()
   @RequirePermissions(Permission.GROUPS_MANAGE)
@@ -152,5 +159,73 @@ export class GroupsController {
     const tenantContext: TenantContext = (req as Request & { tenantContext: TenantContext })
       .tenantContext;
     return this.groupsService.deleteSchedule(tenantContext, validGroupId, validScheduleId);
+  }
+
+  /** Planned sessions: the weekly timetable with its one-off changes (cancelled, moved, extra). */
+  @Get(':id/calendar')
+  @RequirePermissions(Permission.GROUPS_READ)
+  async getCalendar(@Param('id') id: string, @Query() query: unknown, @Req() req: Request) {
+    const tenantContext: TenantContext = (req as Request & { tenantContext: TenantContext })
+      .tenantContext;
+    return this.scheduleService.getCalendar(
+      tenantContext,
+      UuidParamSchema.parse(id),
+      GroupCalendarQuerySchema.parse(query),
+    );
+  }
+
+  /** Changes the weekly slot itself; the coaches and players are notified. */
+  @Patch(':id/schedules/:scheduleId')
+  @RequirePermissions(Permission.GROUPS_MANAGE)
+  async updateSchedule(
+    @Param('id') id: string,
+    @Param('scheduleId') scheduleId: string,
+    @Body() body: unknown,
+    @Req() req: Request,
+  ) {
+    const tenantContext: TenantContext = (req as Request & { tenantContext: TenantContext })
+      .tenantContext;
+    return this.scheduleService.updateSchedule(
+      tenantContext,
+      UuidParamSchema.parse(id),
+      UuidParamSchema.parse(scheduleId),
+      UpdateScheduleRequestSchema.parse(body),
+    );
+  }
+
+  /** Cancels or moves one occurrence, or adds an extra session; the coaches and players are notified. */
+  @Post(':id/schedule-exceptions')
+  @RequirePermissions(Permission.GROUPS_MANAGE)
+  @HttpCode(HttpStatus.CREATED)
+  async createScheduleException(
+    @Param('id') id: string,
+    @Body() body: unknown,
+    @Req() req: Request,
+  ) {
+    const tenantContext: TenantContext = (req as Request & { tenantContext: TenantContext })
+      .tenantContext;
+    return this.scheduleService.createException(
+      tenantContext,
+      UuidParamSchema.parse(id),
+      CreateScheduleExceptionRequestSchema.parse(body),
+    );
+  }
+
+  /** Undoes a one-off change. */
+  @Delete(':id/schedule-exceptions/:exceptionId')
+  @RequirePermissions(Permission.GROUPS_MANAGE)
+  @HttpCode(HttpStatus.OK)
+  async deleteScheduleException(
+    @Param('id') id: string,
+    @Param('exceptionId') exceptionId: string,
+    @Req() req: Request,
+  ) {
+    const tenantContext: TenantContext = (req as Request & { tenantContext: TenantContext })
+      .tenantContext;
+    return this.scheduleService.deleteException(
+      tenantContext,
+      UuidParamSchema.parse(id),
+      UuidParamSchema.parse(exceptionId),
+    );
   }
 }
