@@ -283,6 +283,8 @@ export function ApplicationsTab({
                   {app.reviewNotes}
                 </div>
               )}
+
+              {app.applicantReply && <ApplicantReply app={app} locale={locale} />}
             </div>
           ))}
         </div>
@@ -308,6 +310,8 @@ export function ApplicationsTab({
                 {reviewingApp.academyName} ({reviewingApp.academySlug})
               </p>
             </div>
+
+            {reviewingApp.applicantReply && <ApplicantReply app={reviewingApp} locale={locale} />}
 
             <form onSubmit={handleSubmitReview} className="space-y-4">
               {/* Decision radio */}
@@ -452,6 +456,28 @@ export function ApplicationsTab({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/** The applicant's latest answer to a "more details" request (sent from the e-mailed reply link). */
+function ApplicantReply({ app, locale }: { app: AcademyApplicationItem; locale: string }) {
+  const isAr = locale === 'ar';
+  return (
+    <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-xs text-(--text-main)">
+      <span className="font-semibold block mb-0.5 text-emerald-600 dark:text-emerald-400">
+        {isAr ? 'رد مقدّم الطلب' : "Applicant's reply"}
+        {app.applicantRepliedAt && (
+          <span className="font-normal text-(--text-muted)">
+            {' · '}
+            {new Date(app.applicantRepliedAt).toLocaleString(isAr ? 'ar-EG' : 'en-US', {
+              dateStyle: 'medium',
+              timeStyle: 'short',
+            })}
+          </span>
+        )}
+      </span>
+      <span className="whitespace-pre-line">{app.applicantReply}</span>
     </div>
   );
 }

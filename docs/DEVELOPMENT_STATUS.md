@@ -833,6 +833,28 @@ Stage 2, e-mails:
 Verification: API tests 429 passed / 8 skipped (new: approval notes, theme); e-mails rendered in Chromium with light
 and dark colour schemes and checked by eye.
 
+Stage 3, answering "more details" on an academy application:
+
+- **E-mail**: the "more details" e-mail has a button "Answer the request" to `/application-reply?token=...` (it used to
+  ask the applicant to reply to a no-reply address). The link is signed (`r1.<id>.<reviewedAt>.<expiry>.<HMAC>`, key
+  derived from `JWT_SECRET`), valid 14 days, and bound to the request's `reviewed_at`: it stops working once answered
+  or when a newer request is made. The API log masks the token.
+- **API** (public): `GET /v1/academy-applications/reply?token=` and `POST /v1/academy-applications/reply` (CSRF-guarded)
+  `{token, reply, city?, contactPhone?}`. `AcademyApplicationItem` gains `applicantReply`, `applicantRepliedAt`.
+- **Database** (migration `20261124090000_academy_application_reply`, applied to Neon dev): columns
+  `applicant_reply`, `applicant_replied_at`; definer functions `academy_application_for_reply` and
+  `submit_academy_application_reply` (the applicant's account is pending and the runtime role may not update
+  applications). **Security SQL to review before main.**
+- **Platform**: every platform admin gets a notification; the console shows the reply on the card and in the review
+  window.
+
+Verification: API tests 437 passed / 8 skipped (new: reply service 7, e-mail button 1); web tests 410; lint and
+typecheck clean. End to end on 3100/3101 against Neon dev: request details -> e-mail with link (masked in log) -> reply
+page -> answer sent -> same link refused -> console shows the reply; both platform admins notified; status back to
+PENDING_REVIEW with the corrected governorate.
+
+Known: notification titles across the platform are stored in English (not translated in the bell).
+
 ## 10. Backend requirements (recorded by owner decisions)
 
 **Workflow (owner direction 2026-11-15):** frontend issues whose root cause is in the backend are now fixed across both

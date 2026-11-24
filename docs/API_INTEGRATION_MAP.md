@@ -89,20 +89,22 @@ Phase 5 builds approved screens on the shared data-loading and error states from
 
 ### auth
 
-| Frontend call             | HTTP  | Endpoint (`/v1`)            | Backend access | Used by                                       |
-| ------------------------- | ----- | --------------------------- | -------------- | --------------------------------------------- |
-| `auth.register`           | POST  | `/auth/register`            | public         | contexts/auth-context.tsx                     |
-| `auth.login`              | POST  | `/auth/login`               | public         | /auth-test, contexts/auth-context.tsx         |
-| `auth.logout`             | POST  | `/auth/logout`              | public         | contexts/auth-context.tsx                     |
-| `auth.forgotPassword`     | POST  | `/auth/forgot-password`     | public         | /auth-test, /forgot-password                  |
-| `auth.resetPassword`      | POST  | `/auth/reset-password`      | public         | /auth-test, /forgot-password, /reset-password |
-| `auth.sendEmailCode`      | POST  | `/auth/email-code`          | public         | /register, join forms, /auth-test             |
-| `auth.verifyEmailCode`    | POST  | `/auth/email-code/verify`   | public         | /register, join forms, /auth-test             |
-| `auth.verifyEmail`        | POST  | `/auth/verify-email`        | public         | /auth-test, /verify-email                     |
-| `auth.resendVerification` | POST  | `/auth/resend-verification` | public         | /auth-test, /verify-email                     |
-| `auth.getMe`              | GET   | `/auth/me`                  | signed in      | /auth-test, contexts/auth-context.tsx         |
-| `auth.changePassword`     | POST  | `/auth/change-password`     | signed in      | /account                                      |
-| `auth.updateProfile`      | PATCH | `/auth/profile`             | signed in      | /account                                      |
+| Frontend call                | HTTP  | Endpoint (`/v1`)                     | Backend access       | Used by                                       |
+| ---------------------------- | ----- | ------------------------------------ | -------------------- | --------------------------------------------- |
+| `auth.register`              | POST  | `/auth/register`                     | public               | contexts/auth-context.tsx                     |
+| `auth.login`                 | POST  | `/auth/login`                        | public               | /auth-test, contexts/auth-context.tsx         |
+| `auth.logout`                | POST  | `/auth/logout`                       | public               | contexts/auth-context.tsx                     |
+| `auth.forgotPassword`        | POST  | `/auth/forgot-password`              | public               | /auth-test, /forgot-password                  |
+| `auth.resetPassword`         | POST  | `/auth/reset-password`               | public               | /auth-test, /forgot-password, /reset-password |
+| `auth.sendEmailCode`         | POST  | `/auth/email-code`                   | public               | /register, join forms, /auth-test             |
+| `auth.verifyEmailCode`       | POST  | `/auth/email-code/verify`            | public               | /register, join forms, /auth-test             |
+| `applicationReplyApi.get`    | GET   | `/academy-applications/reply?token=` | public (signed link) | /application-reply                            |
+| `applicationReplyApi.submit` | POST  | `/academy-applications/reply`        | public (signed link) | /application-reply                            |
+| `auth.verifyEmail`           | POST  | `/auth/verify-email`                 | public               | /auth-test, /verify-email                     |
+| `auth.resendVerification`    | POST  | `/auth/resend-verification`          | public               | /auth-test, /verify-email                     |
+| `auth.getMe`                 | GET   | `/auth/me`                           | signed in            | /auth-test, contexts/auth-context.tsx         |
+| `auth.changePassword`        | POST  | `/auth/change-password`              | signed in            | /account                                      |
+| `auth.updateProfile`         | PATCH | `/auth/profile`                      | signed in            | /account                                      |
 
 Contract changes in Phase 3A.1 (2026-11-15):
 

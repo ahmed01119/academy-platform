@@ -12,6 +12,7 @@ const AUTH_ENDPOINTS_WITHOUT_TENANT_HEADER = [
   '/auth/reset-password',
   '/auth/verify-email',
   '/auth/resend-verification',
+  '/academy-applications/reply',
 ];
 
 /** Endpoints where a 401 is a real answer, not an expired access token. */
@@ -24,6 +25,7 @@ const NO_AUTO_REFRESH_PATHS = [
   '/auth/reset-password',
   '/auth/verify-email',
   '/auth/resend-verification',
+  '/academy-applications/reply',
 ];
 
 export interface RequestOptions extends RequestInit {
