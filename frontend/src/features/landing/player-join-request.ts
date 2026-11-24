@@ -1,4 +1,9 @@
 import type { CreatePlayerJoinRequest, JoinRequesterType } from '@academy/shared';
+import {
+  birthYearToDate,
+  validatePlayerProfileFields,
+  type PlayerProfileFieldValues,
+} from '@/features/players/player-profile-fields';
 
 type Locale = 'ar' | 'en';
 
@@ -6,34 +11,18 @@ type Locale = 'ar' | 'en';
 export const JOIN_PASSWORD_MIN_LENGTH = 8;
 
 /**
- * Every value the "join an academy" form collects.
+ * Every value the "join an academy" form collects: the shared player fields (same as the staff enrollment form,
+ * `PlayerProfileFieldValues`) plus the academy and the applicant's account.
  *
  * Who is asking (K6): `requesterType` PLAYER = the athlete for themself, GUARDIAN = a parent/guardian for a child.
  * (Academy owners/coaches use the separate academy registration form.) Either way the request belongs to an account:
- * a signed-in user's own account, or a new one created from `email` + `password`, which stays pending until the
- * academy reviews the request.
+ * a signed-in user's own account, or a new one created from the account e-mail + `password`, which stays pending
+ * until the academy reviews the request.
  */
-export interface PlayerJoinFormValues {
+export interface PlayerJoinFormValues extends PlayerProfileFieldValues {
   tenantId: string;
   requesterType: JoinRequesterType;
-  // Athlete
-  firstName: string;
-  lastName: string;
-  gender: 'MALE' | 'FEMALE';
-  birthYearOnly: boolean;
-  birthYear: string;
-  dateOfBirth: string;
-  jerseyNumber: string;
-  nationalId: string;
-  // Emergency & health
-  emergencyContactName: string;
-  emergencyContactPhone: string;
-  medicalNotes: string;
-  // Primary guardian
-  guardianName: string;
-  guardianRelationship: string;
-  phone: string;
-  /** GUARDIAN request: the guardian's e-mail (sign-in). PLAYER request: the guardian's contact e-mail (optional). */
+  /** GUARDIAN request: the guardian's e-mail (sign-in). Unused for PLAYER requests. */
   email: string;
   /** PLAYER request: the player's own e-mail (sign-in). Unused for GUARDIAN requests. */
   playerEmail?: string;
@@ -54,9 +43,7 @@ export const JOIN_FIELDS_PENDING_BACKEND_SUPPORT = [
   'gender',
   'jerseyNumber',
   'nationalId',
-  'emergencyContactName',
   'medicalNotes',
-  'guardianRelationship',
 ] as const;
 
 export type PendingJoinField = (typeof JOIN_FIELDS_PENDING_BACKEND_SUPPORT)[number];
@@ -64,11 +51,9 @@ export type PendingJoinField = (typeof JOIN_FIELDS_PENDING_BACKEND_SUPPORT)[numb
 /** Form labels of the pending fields (same wording as the form), used by the applicant notice. */
 export const PENDING_JOIN_FIELD_LABELS: Record<PendingJoinField, { ar: string; en: string }> = {
   gender: { ar: 'الجنس', en: 'Gender' },
-  jerseyNumber: { ar: 'رقم القميص المفضل', en: 'Preferred jersey number' },
+  jerseyNumber: { ar: 'رقم القميص', en: 'Jersey number' },
   nationalId: { ar: 'الرقم القومي / جواز السفر', en: 'National ID / Passport' },
-  emergencyContactName: { ar: 'اسم جهة الاتصال للطوارئ', en: 'Emergency contact name' },
   medicalNotes: { ar: 'الملاحظات الطبية أو الحساسية', en: 'Medical notes / allergies' },
-  guardianRelationship: { ar: 'صلة القرابة', en: 'Relationship' },
 };
 
 /** Sensitive fields that need protected storage and role-based access in the backend phase. */
@@ -82,29 +67,22 @@ export interface PlayerJoinRequestBuild {
 }
 
 /**
- * Client-side checks. Order: academy → name → guardian → email → password.
- * The guardian's name is required for a GUARDIAN request (it is the applicant's own name) and stays required for a
- * PLAYER request as the athlete's emergency guardian contact (unchanged). The password is checked only when a new
- * account will be created (`isSignedIn` false).
+ * Client-side checks. Order: academy → shared player fields (names → birth year → guardian name and phone) →
+ * account e-mail → password. The password is checked only when a new account will be created (`isSignedIn` false).
  */
 export function validatePlayerJoinForm(
   values: PlayerJoinFormValues,
   locale: Locale,
   isSignedIn = false,
+  currentYear: number = new Date().getFullYear(),
 ): string | null {
   if (!values.tenantId) {
     return locale === 'ar' ? 'يرجى اختيار الأكاديمية الرياضية' : 'Please select an academy';
   }
-  if (!`${values.firstName.trim()} ${values.lastName.trim()}`.trim()) {
-    return locale === 'ar'
-      ? 'يرجى ملء الاسم الأول واسم العائلة للاعب'
-      : 'Please enter player first and last name';
-  }
-  if (!values.guardianName.trim()) {
-    return locale === 'ar' ? 'يرجى ملء اسم ولي الأمر الأساسي' : 'Please enter guardian name';
-  }
-  const accountEmail = accountEmailOf(values);
-  if (!accountEmail) {
+  const fieldError = validatePlayerProfileFields(values, locale, currentYear);
+  if (fieldError) return fieldError;
+
+  if (!accountEmailOf(values)) {
     return values.requesterType === 'PLAYER'
       ? locale === 'ar'
         ? 'يرجى إدخال بريدك الإلكتروني (بريد اللاعب)'
@@ -112,15 +90,6 @@ export function validatePlayerJoinForm(
       : locale === 'ar'
         ? 'يرجى إدخال بريدك الإلكتروني (بريد ولي الأمر)'
         : "Please enter your (the guardian's) e-mail";
-  }
-  if (
-    values.requesterType === 'PLAYER' &&
-    values.email.trim() &&
-    values.email.trim().toLowerCase() === accountEmail.toLowerCase()
-  ) {
-    return locale === 'ar'
-      ? 'بريد ولي الأمر يجب أن يكون مختلفاً عن بريد اللاعب (أو اتركه فارغاً)'
-      : "The guardian's e-mail must differ from the player's (or leave it empty)";
   }
   if (!isSignedIn) {
     if (values.password.length < JOIN_PASSWORD_MIN_LENGTH) {
@@ -141,19 +110,14 @@ function accountEmailOf(values: PlayerJoinFormValues): string {
 }
 
 /**
- * Maps the form to the API payload and the explicitly-held fields. The password is sent only when a new account is
- * created (`isSignedIn` false); a signed-in user's request is linked to their account by the API.
+ * Maps the form to the API payload and the explicitly-held fields. The birth date is January 1st of the birth year;
+ * the contact phone is the guardian's phone. The password is sent only when a new account is created (`isSignedIn`
+ * false); a signed-in user's request is linked to their account by the API.
  */
 export function buildPlayerJoinRequest(
   values: PlayerJoinFormValues,
   isSignedIn = false,
 ): PlayerJoinRequestBuild {
-  const dateOfBirth = values.birthYearOnly
-    ? values.birthYear.trim()
-      ? `${values.birthYear.trim()}-01-01`
-      : undefined
-    : values.dateOfBirth || undefined;
-
   return {
     payload: {
       tenantId: values.tenantId,
@@ -161,19 +125,15 @@ export function buildPlayerJoinRequest(
       ...(isSignedIn ? {} : { password: values.password }),
       playerName: `${values.firstName.trim()} ${values.lastName.trim()}`.trim(),
       contactEmail: accountEmailOf(values),
-      guardianEmail:
-        values.requesterType === 'PLAYER' && values.email.trim() ? values.email.trim() : undefined,
-      contactPhone: values.phone.trim() || values.emergencyContactPhone.trim() || undefined,
-      dateOfBirth,
+      contactPhone: values.guardianPhone.trim() || undefined,
+      dateOfBirth: birthYearToDate(values.birthYear) || undefined,
       guardianName: values.guardianName.trim() || undefined,
     },
     pendingBackendSupport: {
       gender: values.gender,
       jerseyNumber: values.jerseyNumber.trim(),
       nationalId: values.nationalId.trim(),
-      emergencyContactName: values.emergencyContactName.trim(),
       medicalNotes: values.medicalNotes.trim(),
-      guardianRelationship: values.guardianRelationship,
     },
   };
 }

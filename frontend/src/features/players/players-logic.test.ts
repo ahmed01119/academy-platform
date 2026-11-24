@@ -138,18 +138,12 @@ const newForm: NewPlayerFormValues = {
   firstName: ' Omar ',
   lastName: ' Ali ',
   gender: 'MALE',
-  dateOfBirth: '2012-05-04',
-  useBirthYearOnly: false,
-  birthYear: '',
+  birthYear: '2012',
   jerseyNumber: ' 10 ',
   nationalId: '',
-  emergencyContactName: 'Uncle Sami',
-  emergencyContactPhone: '01000000001',
   medicalNotes: '',
   guardianName: ' Ali  Hassan Omar ',
-  guardianRelationship: 'FATHER',
-  guardianPhone: '01000000002',
-  guardianEmail: '',
+  guardianPhone: ' 01000000002 ',
   branchId: '33333333-3333-4333-8333-333333333333',
   enrollmentStartDate: '2026-09-01',
 };
@@ -168,34 +162,26 @@ describe('F21: enrollment start date is sent to the API', () => {
   });
 });
 
-describe('validateNewPlayerForm (order preserved)', () => {
+describe('validateNewPlayerForm (names → birth year → guardian → branch)', () => {
   it('accepts a complete form', () => {
     expect(validateNewPlayerForm(newForm, 'en', 2026)).toBeNull();
   });
 
   it.each([
-    [{ firstName: '' }, 'Please fill in first name, last name, and date of birth'],
-    [
-      { useBirthYearOnly: true, birthYear: '' },
-      'Please fill in first name, last name, and birth year',
-    ],
-    [
-      { useBirthYearOnly: true, birthYear: '1949' },
-      'Please enter a valid birth year between 1950 and 2026',
-    ],
-    [
-      { useBirthYearOnly: true, birthYear: '2027' },
-      'Please enter a valid birth year between 1950 and 2026',
-    ],
-    [{ emergencyContactPhone: ' ' }, 'Please fill in emergency contact name and phone'],
-    [{ guardianPhone: '' }, 'Please fill in guardian name and phone number'],
+    [{ firstName: '' }, "Please enter the player's first and last name"],
+    [{ birthYear: '' }, 'Please enter a valid birth year between 1950 and 2026'],
+    [{ birthYear: '1949' }, 'Please enter a valid birth year between 1950 and 2026'],
+    [{ birthYear: '2027' }, 'Please enter a valid birth year between 1950 and 2026'],
+    [{ birthYear: '12' }, 'Please enter a valid birth year between 1950 and 2026'],
+    [{ guardianName: ' ' }, "Please enter the guardian's name"],
+    [{ guardianPhone: '' }, "Please enter the guardian's phone"],
     [{ branchId: '' }, 'Please select a branch to enroll the player in'],
   ])('%j → %s', (patch, message) => {
     expect(validateNewPlayerForm({ ...newForm, ...patch }, 'en', 2026)).toBe(message);
   });
 });
 
-describe('buildCreatePlayerPayload (mapping unchanged)', () => {
+describe('buildCreatePlayerPayload', () => {
   it('produces a payload the API schema accepts', () => {
     expect(buildCreatePlayerPayload(newForm, 'en', 'SWIMMING').sport).toBe('SWIMMING');
     const payload = buildCreatePlayerPayload(newForm, 'en');
@@ -203,8 +189,8 @@ describe('buildCreatePlayerPayload (mapping unchanged)', () => {
     expect(payload).toMatchObject({
       firstName: 'Omar',
       lastName: 'Ali',
-      dateOfBirth: '2012-05-04',
-      birthYear: undefined,
+      dateOfBirth: '2012-01-01',
+      birthYear: 2012,
       jerseyNumber: 10,
       nationalId: undefined,
       medicalNotes: undefined,
@@ -213,17 +199,21 @@ describe('buildCreatePlayerPayload (mapping unchanged)', () => {
       primaryGuardian: {
         firstName: 'Ali',
         lastName: 'Hassan Omar',
+        relationship: 'FATHER',
+        phone: '01000000002',
         isPrimary: true,
-        email: undefined,
       },
     });
   });
 
-  it('uses Jan 1st and the numeric year when only the birth year is known', () => {
-    const payload = buildCreatePlayerPayload(
-      { ...newForm, useBirthYearOnly: true, birthYear: '2013' },
-      'en',
-    );
+  it("uses the guardian's name and phone as the emergency contact", () => {
+    const payload = buildCreatePlayerPayload(newForm, 'en');
+    expect(payload.emergencyContactName).toBe('Ali  Hassan Omar');
+    expect(payload.emergencyContactPhone).toBe('01000000002');
+  });
+
+  it('sends January 1st and the numeric year of the birth year', () => {
+    const payload = buildCreatePlayerPayload({ ...newForm, birthYear: '2013' }, 'en');
     expect(payload.dateOfBirth).toBe('2013-01-01');
     expect(payload.birthYear).toBe(2013);
   });

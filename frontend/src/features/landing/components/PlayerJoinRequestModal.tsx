@@ -1,18 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import {
-  AlertCircle,
-  Building2,
-  CheckCircle2,
-  Heart,
-  KeyRound,
-  Save,
-  User,
-  UserPlus,
-  Users,
-  X,
-} from 'lucide-react';
+import { AlertCircle, Building2, CheckCircle2, KeyRound, Save, UserPlus, X } from 'lucide-react';
 import type { JoinRequesterType } from '@academy/shared';
 import { useLocale } from '@/contexts/locale-context';
 import { useAuth } from '@/contexts/auth-context';
@@ -27,6 +16,11 @@ import {
 import { UnsavedFieldsNotice } from './UnsavedFieldsNotice';
 import { EmailCodeVerification } from '@/features/auth/components/EmailCodeVerification';
 import { emailNotConfirmedMessage, signupEmailErrorMessage } from '@/features/auth/email-code';
+import { PlayerProfileFields } from '@/features/players/components/PlayerProfileFields';
+import {
+  EMPTY_PLAYER_PROFILE,
+  type PlayerProfileFieldValues,
+} from '@/features/players/player-profile-fields';
 
 export interface PlayerJoinRequestModalProps {
   isOpen: boolean;
@@ -73,25 +67,11 @@ export function PlayerJoinRequestModal({
   >([]);
   const [isLoadingAcademies, setIsLoadingAcademies] = useState(false);
   const [joinTenantId, setJoinTenantId] = useState('');
-  // Section 1: Athlete Personal Information
-  const [joinFirstName, setJoinFirstName] = useState('');
-  const [joinLastName, setJoinLastName] = useState('');
-  const [joinGender, setJoinGender] = useState<'MALE' | 'FEMALE'>('MALE');
-  const [joinBirthYearOnly, setJoinBirthYearOnly] = useState(false);
-  const [joinBirthYear, setJoinBirthYear] = useState('');
-  const [joinDob, setJoinDob] = useState('');
-  const [joinJerseyNumber, setJoinJerseyNumber] = useState('');
-  const [joinNationalId, setJoinNationalId] = useState('');
-  // Section 2: Emergency & Health
-  const [joinEmergencyName, setJoinEmergencyName] = useState('');
-  const [joinEmergencyPhone, setJoinEmergencyPhone] = useState('');
-  const [joinMedicalNotes, setJoinMedicalNotes] = useState('');
-  // Section 3: Primary Guardian
-  const [joinGuardianName, setJoinGuardianName] = useState('');
-  const [joinGuardianRelationship, setJoinGuardianRelationship] = useState('FATHER');
-  const [joinPhone, setJoinPhone] = useState('');
+  // Sections 2-3: the shared player fields (same as the staff enrollment form)
+  const [profile, setProfile] = useState<PlayerProfileFieldValues>(EMPTY_PLAYER_PROFILE);
+  // GUARDIAN request: the guardian's own e-mail is the sign-in.
   const [joinEmail, setJoinEmail] = useState('');
-  // PLAYER request: the player's own e-mail is the sign-in; the guardian's e-mail is separate (optional).
+  // PLAYER request: the player's own e-mail is the sign-in.
   const [joinPlayerEmail, setJoinPlayerEmail] = useState('');
   // Section 5: new account (only when not signed in)
   const [joinPassword, setJoinPassword] = useState('');
@@ -144,22 +124,9 @@ export function PlayerJoinRequestModal({
   const handlePlayerJoinSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const values: PlayerJoinFormValues = {
+      ...profile,
       tenantId: joinTenantId,
       requesterType,
-      firstName: joinFirstName,
-      lastName: joinLastName,
-      gender: joinGender,
-      birthYearOnly: joinBirthYearOnly,
-      birthYear: joinBirthYear,
-      dateOfBirth: joinDob,
-      jerseyNumber: joinJerseyNumber,
-      nationalId: joinNationalId,
-      emergencyContactName: joinEmergencyName,
-      emergencyContactPhone: joinEmergencyPhone,
-      medicalNotes: joinMedicalNotes,
-      guardianName: joinGuardianName,
-      guardianRelationship: joinGuardianRelationship,
-      phone: joinPhone,
       email: joinEmail,
       playerEmail: joinPlayerEmail,
       password: joinPassword,
@@ -172,8 +139,8 @@ export function PlayerJoinRequestModal({
       return;
     }
 
-    // F17: `pendingBackendSupport` (gender, jersey, national ID, emergency contact name,
-    // medical notes, relationship) is intentionally not sent until the API supports it.
+    // F17: `pendingBackendSupport` (gender, jersey, national ID, medical notes) is intentionally not sent until the
+    // API supports it.
     const { payload } = buildPlayerJoinRequest(values, isSignedIn);
     if (!isSignedIn && !joinEmailProof) {
       setJoinError(emailNotConfirmedMessage(locale));
@@ -337,48 +304,25 @@ export function PlayerJoinRequestModal({
                   </div>
                 </div>
 
-                {/* Section 2: Athlete Personal Information */}
-                <div className="rounded-2xl border border-(--border-subtle) bg-(--bg-surface-subtle)/40 p-5 shadow-xs space-y-4">
-                  <div className="flex items-center gap-2 border-b border-(--border-subtle) pb-3 text-sm font-bold text-(--text-main)">
-                    <User className="h-4 w-4 text-[var(--accent-primary)]" />
-                    <span>
-                      {locale === 'ar'
-                        ? '2. البيانات الشخصية للاعب'
-                        : '2. Athlete Personal Information'}
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-(--text-muted) mb-1.5">
-                        {locale === 'ar' ? 'الاسم الأول *' : 'First Name *'}
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={joinFirstName}
-                        onChange={(e) => setJoinFirstName(e.target.value)}
-                        placeholder={locale === 'ar' ? 'الاسم الأول' : 'First name'}
-                        className="w-full rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-(--text-muted) mb-1.5">
-                        {locale === 'ar' ? 'اسم العائلة *' : 'Last Name *'}
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={joinLastName}
-                        onChange={(e) => setJoinLastName(e.target.value)}
-                        placeholder={locale === 'ar' ? 'اسم العائلة' : 'Last name'}
-                        className="w-full rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors"
-                      />
-                    </div>
-
-                    {requesterType === 'PLAYER' && (
-                      <div className="sm:col-span-2">
+                {/* Sections 2-3: the shared player fields (same component as the staff enrollment form) */}
+                <PlayerProfileFields
+                  values={profile}
+                  onChange={(patch) => setProfile((current) => ({ ...current, ...patch }))}
+                  locale={isAr ? 'ar' : 'en'}
+                  idPrefix="join"
+                  tone="modal"
+                  sectionNumbers={{ athlete: 2, guardian: 3 }}
+                  guardianTitle={
+                    requesterType === 'GUARDIAN'
+                      ? isAr
+                        ? 'بياناتك (ولي الأمر)'
+                        : 'Your Details (Guardian)'
+                      : undefined
+                  }
+                  disabled={isSubmittingJoin}
+                  athleteExtra={
+                    requesterType === 'PLAYER' ? (
+                      <div>
                         <label
                           htmlFor="join-player-email"
                           className="block text-xs font-semibold text-(--text-muted) mb-1.5"
@@ -407,265 +351,48 @@ export function PlayerJoinRequestModal({
                           />
                         )}
                       </div>
-                    )}
-
-                    <div>
-                      <label className="block text-xs font-semibold text-(--text-muted) mb-1.5">
-                        {locale === 'ar' ? 'الجنس *' : 'Gender *'}
-                      </label>
-                      <select
-                        value={joinGender}
-                        onChange={(e) => setJoinGender(e.target.value as 'MALE' | 'FEMALE')}
-                        className="w-full rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors"
-                      >
-                        <option value="MALE">{locale === 'ar' ? 'ذكر' : 'Male'}</option>
-                        <option value="FEMALE">{locale === 'ar' ? 'أنثى' : 'Female'}</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <label className="block text-xs font-semibold text-(--text-muted)">
-                          {joinBirthYearOnly
-                            ? locale === 'ar'
-                              ? 'سنة الميلاد *'
-                              : 'Birth Year *'
-                            : locale === 'ar'
-                              ? 'تاريخ الميلاد *'
-                              : 'Date of Birth *'}
-                        </label>
-                        <button
-                          type="button"
-                          onClick={() => setJoinBirthYearOnly(!joinBirthYearOnly)}
-                          className="text-[11px] text-[var(--accent-primary)] hover:underline font-medium cursor-pointer"
+                    ) : undefined
+                  }
+                  guardianExtra={
+                    requesterType === 'GUARDIAN' ? (
+                      <div>
+                        <label
+                          htmlFor="join-guardian-email"
+                          className="block text-xs font-semibold text-(--text-muted) mb-1.5"
                         >
-                          {joinBirthYearOnly
-                            ? locale === 'ar'
-                              ? 'استخدام تاريخ كامل'
-                              : 'Use Full Date'
-                            : locale === 'ar'
-                              ? 'سنة الميلاد فقط'
-                              : 'Year Only'}
-                        </button>
-                      </div>
-                      {joinBirthYearOnly ? (
-                        <input
-                          type="number"
-                          required
-                          min="1950"
-                          max={new Date().getFullYear()}
-                          value={joinBirthYear}
-                          onChange={(e) => setJoinBirthYear(e.target.value)}
-                          placeholder="YYYY"
-                          className="w-full rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors"
-                        />
-                      ) : (
-                        <input
-                          type="date"
-                          required
-                          value={joinDob}
-                          onChange={(e) => setJoinDob(e.target.value)}
-                          className="w-full rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors"
-                        />
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-(--text-muted) mb-1.5">
-                        {locale === 'ar'
-                          ? 'رقم القميص المفضل (اختياري)'
-                          : 'Jersey Number (Optional)'}
-                      </label>
-                      <input
-                        type="number"
-                        min="1"
-                        max="99"
-                        value={joinJerseyNumber}
-                        onChange={(e) => setJoinJerseyNumber(e.target.value)}
-                        placeholder="--"
-                        className="w-full rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-(--text-muted) mb-1.5">
-                        {locale === 'ar'
-                          ? 'الرقم القومي / جواز السفر (اختياري)'
-                          : 'National ID / Passport (Optional)'}
-                      </label>
-                      <input
-                        type="text"
-                        value={joinNationalId}
-                        onChange={(e) => setJoinNationalId(e.target.value)}
-                        placeholder={
-                          locale === 'ar' ? '14 رقم للرقم القومي' : 'National ID or Passport number'
-                        }
-                        className="w-full rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors font-mono"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Section 3: Emergency & Health */}
-                <div className="rounded-2xl border border-(--border-subtle) bg-(--bg-surface-subtle)/40 p-5 shadow-xs space-y-4">
-                  <div className="flex items-center gap-2 border-b border-(--border-subtle) pb-3 text-sm font-bold text-(--text-main)">
-                    <Heart className="h-4 w-4 text-red-500" />
-                    <span>
-                      {locale === 'ar'
-                        ? '3. بيانات الطوارئ والملاحظات الطبية'
-                        : '3. Emergency & Medical Information'}
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-(--text-muted) mb-1.5">
-                        {locale === 'ar' ? 'اسم جهة الاتصال للطوارئ' : 'Emergency Contact Name'}
-                      </label>
-                      <input
-                        type="text"
-                        value={joinEmergencyName}
-                        onChange={(e) => setJoinEmergencyName(e.target.value)}
-                        placeholder={locale === 'ar' ? 'الاسم بالكامل' : 'Full name'}
-                        className="w-full rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-(--text-muted) mb-1.5">
-                        {locale === 'ar' ? 'هاتف الطوارئ' : 'Emergency Phone'}
-                      </label>
-                      <input
-                        type="tel"
-                        value={joinEmergencyPhone}
-                        onChange={(e) => setJoinEmergencyPhone(e.target.value)}
-                        placeholder="01XXXXXXXXX"
-                        className="w-full rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors font-mono"
-                      />
-                    </div>
-
-                    <div className="sm:col-span-2">
-                      <label className="block text-xs font-semibold text-(--text-muted) mb-1.5">
-                        {locale === 'ar'
-                          ? 'ملاحظات طبية أو حساسية (اختياري)'
-                          : 'Medical Notes or Allergies (Optional)'}
-                      </label>
-                      <textarea
-                        rows={2}
-                        value={joinMedicalNotes}
-                        onChange={(e) => setJoinMedicalNotes(e.target.value)}
-                        placeholder={
-                          locale === 'ar'
-                            ? 'أي حساسيات أو حالات صحية ينبغي للمدربين مراعاتها...'
-                            : 'Any medical conditions, allergies, or notes for coaches...'
-                        }
-                        className="w-full rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Section 4: Primary Guardian Information */}
-                <div className="rounded-2xl border border-(--border-subtle) bg-(--bg-surface-subtle)/40 p-5 shadow-xs space-y-4">
-                  <div className="flex items-center gap-2 border-b border-(--border-subtle) pb-3 text-sm font-bold text-(--text-main)">
-                    <Users className="h-4 w-4 text-[var(--accent-primary)]" />
-                    <span>
-                      {requesterType === 'GUARDIAN'
-                        ? isAr
-                          ? '4. بياناتك (ولي الأمر)'
-                          : '4. Your Details (Guardian)'
-                        : isAr
-                          ? '4. بيانات ولي الأمر الأساسي'
-                          : '4. Primary Guardian Information'}
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-(--text-muted) mb-1.5">
-                        {locale === 'ar' ? 'الاسم الكامل لولي الأمر *' : 'Guardian Full Name *'}
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={joinGuardianName}
-                        onChange={(e) => setJoinGuardianName(e.target.value)}
-                        placeholder={
-                          locale === 'ar' ? 'الاسم الثلاثي لولي الأمر' : 'Guardian full name'
-                        }
-                        className="w-full rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-(--text-muted) mb-1.5">
-                        {locale === 'ar' ? 'صلة القرابة *' : 'Relationship *'}
-                      </label>
-                      <select
-                        value={joinGuardianRelationship}
-                        onChange={(e) => setJoinGuardianRelationship(e.target.value)}
-                        className="w-full rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors"
-                      >
-                        <option value="FATHER">{locale === 'ar' ? 'الأب' : 'Father'}</option>
-                        <option value="MOTHER">{locale === 'ar' ? 'الأم' : 'Mother'}</option>
-                        <option value="GUARDIAN">
-                          {locale === 'ar' ? 'وصي قانوني' : 'Legal Guardian'}
-                        </option>
-                        <option value="RELATIVE">{locale === 'ar' ? 'أقارب' : 'Relative'}</option>
-                        <option value="OTHER">{locale === 'ar' ? 'أخرى' : 'Other'}</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-(--text-muted) mb-1.5">
-                        {locale === 'ar' ? 'رقم الهاتف / الواتساب *' : 'Phone / WhatsApp *'}
-                      </label>
-                      <input
-                        type="tel"
-                        required
-                        value={joinPhone}
-                        onChange={(e) => setJoinPhone(e.target.value)}
-                        placeholder="01XXXXXXXXX"
-                        className="w-full rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors font-mono"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-(--text-muted) mb-1.5">
-                        {requesterType === 'GUARDIAN'
-                          ? isAr
+                          {isAr
                             ? 'بريدك الإلكتروني (للدخول إلى المنصة) *'
-                            : 'Your e-mail (your sign-in) *'
-                          : isAr
-                            ? 'البريد الإلكتروني لولي الأمر (اختياري)'
-                            : "Guardian's e-mail (optional)"}
-                      </label>
-                      <input
-                        type="email"
-                        required={requesterType === 'GUARDIAN'}
-                        value={joinEmail}
-                        onChange={(e) => setJoinEmail(e.target.value)}
-                        placeholder="name@example.com"
-                        className="w-full rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors font-mono"
-                      />
-                      {!isSignedIn && requesterType === 'GUARDIAN' && (
-                        <EmailCodeVerification
-                          email={joinEmail}
-                          locale={locale}
-                          onProofChange={setJoinEmailProof}
-                          disabled={isSubmittingJoin}
-                          idPrefix="join-guardian"
+                            : 'Your e-mail (your sign-in) *'}
+                        </label>
+                        <input
+                          id="join-guardian-email"
+                          type="email"
+                          required
+                          autoComplete="email"
+                          value={joinEmail}
+                          onChange={(e) => setJoinEmail(e.target.value)}
+                          placeholder="name@example.com"
+                          className="w-full rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] px-3.5 py-2.5 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors font-mono"
                         />
-                      )}
-                    </div>
-                  </div>
-                </div>
+                        {!isSignedIn && (
+                          <EmailCodeVerification
+                            email={joinEmail}
+                            locale={locale}
+                            onProofChange={setJoinEmailProof}
+                            disabled={isSubmittingJoin}
+                            idPrefix="join-guardian"
+                          />
+                        )}
+                      </div>
+                    ) : undefined
+                  }
+                />
 
                 {/* Section 5 (K6): the applicant's account */}
                 <div className="rounded-2xl border border-(--border-subtle) bg-(--bg-surface-subtle)/40 p-5 shadow-xs space-y-4">
                   <div className="flex items-center gap-2 border-b border-(--border-subtle) pb-3 text-sm font-bold text-(--text-main)">
                     <KeyRound className="h-4 w-4 text-[var(--accent-primary)]" />
-                    <span>{isAr ? '5. حسابك على المنصة' : '5. Your Account'}</span>
+                    <span>{isAr ? '4. حسابك على المنصة' : '4. Your Account'}</span>
                   </div>
 
                   {isSignedIn ? (

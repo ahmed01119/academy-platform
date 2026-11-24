@@ -795,6 +795,32 @@ already prove the address when accepted. Existing accounts keep their current `i
 
 Test data on Neon dev: one academy application (`QA Verify ...`) and two join requests from `qa.verify.*@gmail.com`.
 
+## 9o. Owner batch of 2026-11-24: stage 1, one player form (2026-11-24)
+
+The owner asked for seven changes, done in stages (memory: birth year form, e-mail theme, "request details" reply page,
+guardian linking, roles, fixed group schedules, skeletons). Stage 1:
+
+- **One set of player fields** for the landing join form and the staff "new player" form:
+  `features/players/components/PlayerProfileFields.tsx` + `features/players/player-profile-fields.ts` (values,
+  validation, `birthYearToDate`). A change to the fields now reaches both forms.
+- **Birth year only**: no full date and no toggle; stored as January 1st of the year (`date_of_birth` unchanged, no
+  migration). Valid range 1950 to the current year.
+- **No emergency section**: the guardian's name and phone are sent as the player's emergency contact (staff form); the
+  join request already used them on approval.
+- **Guardian = name + phone**: relationship is FATHER; the guardian e-mail field of a PLAYER request is gone (the API
+  still accepts `guardianEmail` for older clients). A GUARDIAN request still asks the guardian's sign-in e-mail.
+- Medical notes stay (optional) in the athlete section. Gender, jersey number, national ID and medical notes are still
+  not stored by a join request (F17 notice lists them).
+- API contract unchanged.
+
+Verification: web tests 410 passed; lint and Prettier clean. On ports 3100/3101 against Neon dev: both join dialogs
+(player, guardian) show the shared fields and no emergency section; the staff form created a player with
+`date_of_birth = 2014-01-01` and the father as emergency contact.
+
+Not changed yet: the player profile and "edit player" dialog still show the emergency contact fields.
+
+Test data on Neon dev: player "يوسف سنة 7325" in the owner demo academy.
+
 ## 10. Backend requirements (recorded by owner decisions)
 
 **Workflow (owner direction 2026-11-15):** frontend issues whose root cause is in the backend are now fixed across both
@@ -845,6 +871,7 @@ with e-mail verification, so invitees can accept invitations.
 | Date       | Change                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | Files                                                                                                                                                                                                                                                                                                                                                                                 |
 | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 2026-11-22 | E-mail confirmation by code before a new account is created (§9n): academy registration and join forms; domain check for the guardian e-mail.                                                                                                                                                                                                                                                                                                                                                              |
+| 2026-11-24 | One shared set of player fields for the landing and staff forms; birth year only; no emergency section; guardian name + phone (§9o).                                                                                                                                                                                                                                                                                                                                                                       |
 | 2026-11-22 | Owner test-list fixes (§9m): landing at `/`, join-request e-mails in the platform design, separate player/guardian e-mails and forms, placeholders, single password eye, remember me, no sudden sign-outs, scanner stop button and live counter.                                                                                                                                                                                                                                                           |
 | 2026-11-22 | Online payments phase B (§9l): academies renew the platform subscription online (definer function, paid invoice); payouts ledger with platform-console tab and academy card.                                                                                                                                                                                                                                                                                                                               |
 | 2026-11-22 | Online payments phase A (§9k): families pay subscriptions through Paymob into the platform account; a signed, idempotent webhook records the ledger entry and receipt; dues card and result page.                                                                                                                                                                                                                                                                                                          |

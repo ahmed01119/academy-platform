@@ -44,29 +44,23 @@ describe('UnsavedFieldsNotice (F17)', () => {
       firstName: 'A',
       lastName: 'B',
       gender: 'MALE',
-      birthYearOnly: false,
-      birthYear: '',
-      dateOfBirth: '2012-01-01',
+      birthYear: '2012',
       jerseyNumber: '',
       nationalId: '',
-      emergencyContactName: '',
-      emergencyContactPhone: '',
       medicalNotes: '',
       guardianName: 'G',
-      guardianRelationship: 'FATHER',
-      phone: '010',
+      guardianPhone: '010',
       email: 'g@x.co',
       playerEmail: 'e@x.co',
       password: 'Str0ng-Passw0rd!',
       confirmPassword: 'Str0ng-Passw0rd!',
     });
-    // academy, who is applying, player name, date of birth, guardian name and e-mail, account e-mail, phone, password
+    // academy, who is applying, player name, birth year, guardian name and phone, account e-mail, password
     expect(Object.keys(payload).sort()).toEqual(
       [
         'contactEmail',
         'contactPhone',
         'dateOfBirth',
-        'guardianEmail',
         'guardianName',
         'password',
         'playerName',
