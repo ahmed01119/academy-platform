@@ -1,5 +1,6 @@
 'use client';
 
+import { CardGridSkeleton } from '@/components/ui/skeleton';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useLocale } from '@/contexts/locale-context';
 import { useAuth } from '@/contexts/auth-context';
@@ -506,10 +507,7 @@ export function PlayerJoinRequestsTab() {
 
       {/* List */}
       {isLoading ? (
-        <div className="py-12 text-center text-sm text-(--text-muted) flex items-center justify-center gap-2">
-          <RefreshCw className="h-4 w-4 animate-spin text-[var(--accent-primary)]" />
-          <span>{ar ? 'جارٍ تحميل طلبات الانضمام...' : 'Loading applications...'}</span>
-        </div>
+        <CardGridSkeleton count={4} cols={2} />
       ) : filtered.length === 0 ? (
         <div className="rounded-xl border border-(--border-app) bg-[var(--bg-surface)] py-12 text-center">
           <UserPlus className="h-10 w-10 text-(--text-muted)/40 mx-auto mb-3" />

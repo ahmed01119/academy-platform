@@ -1,5 +1,6 @@
 'use client';
 
+import { Skeleton } from '@/components/ui/skeleton';
 import React, { useEffect, useRef, useState } from 'react';
 import { AlertCircle, Building2, CheckCircle2, KeyRound, Save, UserPlus, X } from 'lucide-react';
 import type { JoinRequesterType } from '@academy/shared';
@@ -276,11 +277,7 @@ export function PlayerJoinRequestModal({
                         : 'Select Target Academy *'}
                     </label>
                     {isLoadingAcademies ? (
-                      <div className="text-xs text-(--text-muted) py-2">
-                        {locale === 'ar'
-                          ? 'جارٍ تحميل الأكاديميات المتاحة...'
-                          : 'Loading academies...'}
-                      </div>
+                      <Skeleton className="h-10 w-full" />
                     ) : publicAcademies.length === 0 ? (
                       <div className="text-xs text-amber-500 py-1">
                         {locale === 'ar'

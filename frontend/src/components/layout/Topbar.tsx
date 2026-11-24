@@ -1,5 +1,6 @@
 'use client';
 
+import { NotificationListSkeleton } from '@/components/ui/skeleton';
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -339,9 +340,7 @@ export function Topbar({ onOpenMobile, breadcrumbs: customBreadcrumbs }: TopbarP
 
                 <div className="mt-2 space-y-1.5 max-h-[350px] overflow-y-auto">
                   {isLoadingNotifications ? (
-                    <div className="py-6 text-center text-xs text-(--text-muted)">
-                      {locale === 'ar' ? 'جاري تحميل الإشعارات...' : 'Loading notifications...'}
-                    </div>
+                    <NotificationListSkeleton count={4} />
                   ) : notifications.length === 0 ? (
                     <div className="py-8 text-center text-xs text-(--text-muted)">
                       {locale === 'ar' ? 'لا توجد إشعارات حالياً' : 'No notifications yet'}

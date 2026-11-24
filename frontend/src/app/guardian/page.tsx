@@ -131,7 +131,8 @@ export default function GuardianPortalPage() {
     }
   };
 
-  if (authLoading || isLoading) {
+  // Skeleton only until the first data arrives; reloads (e.g. after linking a child) keep the page on screen.
+  if (authLoading || (isLoading && !guardianData)) {
     return (
       <AppShell>
         <PageSkeleton variant="cards" />

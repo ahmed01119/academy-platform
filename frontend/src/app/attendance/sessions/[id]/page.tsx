@@ -1,5 +1,6 @@
 'use client';
 
+import { ListSkeleton, PageSkeleton } from '@/components/ui/skeleton';
 import { useAcademyCurrency } from '@/hooks/useAcademyCurrency';
 import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -566,19 +567,11 @@ export default function SessionAttendancePage() {
     }
   };
 
-  if (isLoading || isFetching) {
+  // Skeleton until the session is first loaded; later refreshes keep the roster on screen (no blank flash).
+  if (isLoading || (isFetching && !session)) {
     return (
       <AppShell>
-        <div className="flex h-[60vh] items-center justify-center">
-          <div className="flex flex-col items-center gap-3">
-            <RefreshCw className="h-8 w-8 animate-spin text-(--accent-primary)" />
-            <p className="text-sm font-medium text-(--text-muted)">
-              {locale === 'en'
-                ? 'Loading session attendance roster...'
-                : 'جارٍ تحميل كشف الحضور للحصة التدريبية...'}
-            </p>
-          </div>
-        </div>
+        <PageSkeleton variant="detail" />
       </AppShell>
     );
   }
@@ -1593,11 +1586,8 @@ export default function SessionAttendancePage() {
             </div>
 
             {isLoadingEvents ? (
-              <div className="p-8 text-center text-(--text-muted)">
-                <RefreshCw className="h-8 w-8 animate-spin mx-auto text-(--accent-primary) mb-2" />
-                <p className="text-xs">
-                  {locale === 'en' ? 'Loading events log...' : 'جارٍ جلب سجل الأحداث...'}
-                </p>
+              <div className="p-4">
+                <ListSkeleton rows={5} />
               </div>
             ) : events.length === 0 ? (
               <div className="p-8 text-center text-(--text-muted)">

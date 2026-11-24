@@ -1,7 +1,8 @@
 'use client';
 
+import { ListSkeleton } from '@/components/ui/skeleton';
 import React, { useCallback, useEffect, useState } from 'react';
-import { ClipboardList, PlusCircle, RefreshCw } from 'lucide-react';
+import { ClipboardList, PlusCircle } from 'lucide-react';
 import type { JoinRequesterType, PlayerJoinRequestItem } from '@academy/shared';
 import { portalApi } from '@/features/portal/api';
 import { getErrorMessage } from '@/lib/http/api-error';
@@ -84,10 +85,7 @@ export function MyJoinRequests({ ar, requesterType }: MyJoinRequestsProps) {
       </div>
 
       {isLoading ? (
-        <p className="flex items-center gap-2 text-xs text-(--text-muted)">
-          <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-          {ar ? 'جارٍ التحميل...' : 'Loading...'}
-        </p>
+        <ListSkeleton rows={2} />
       ) : error ? (
         <div className="flex items-center justify-between gap-3 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-600 dark:text-rose-300">
           <span>{error}</span>

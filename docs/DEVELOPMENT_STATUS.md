@@ -924,6 +924,21 @@ Monday and was restored. Test changes and their notifications were removed after
 Not done: guardians are not notified of timetable changes (the request named the coach and the player); notification
 texts are English like the rest of the platform.
 
+Stage 7, loading states (skeletons, no sudden jumps):
+
+- Loading text or spinners in content areas became skeletons shaped like the content: quick attendance roster,
+  scanner session list, session page and its event log, join requests (staff), notifications panel, platform admins,
+  the portal's own requests, the academy list of the join form.
+- Pages no longer blank into a full-page skeleton on every refresh: group page, attendance session page, player and
+  guardian portals keep their content on screen after the first load.
+- Dashboard cards show their skeleton from the first frame until the first data arrives (no "0" that then jumps).
+
+Verification: web tests 411, typecheck, lint clean. On 3100 with every API answer delayed 2-2.5 s: the dashboard and
+the player portal show skeletons from the first frame and replace them with the data; no loading texts; no page errors.
+
+Not done: button spinners while saving stay (they are feedback for an action, not loading data); some pages still
+replace their list with a skeleton while a filter reloads it.
+
 ## 10. Backend requirements (recorded by owner decisions)
 
 **Workflow (owner direction 2026-11-15):** frontend issues whose root cause is in the backend are now fixed across both

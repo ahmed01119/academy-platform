@@ -1,5 +1,6 @@
 'use client';
 
+import { AttendanceListSkeleton } from '@/components/ui/skeleton';
 import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -498,9 +499,7 @@ function QuickAttendanceContent() {
 
         {/* Rapid Roster Grid */}
         {isLoadingRoster ? (
-          <div className="py-20 text-center text-xs text-(--text-muted)">
-            {locale === 'ar' ? 'جارٍ تحميل كشف الحضور...' : 'Loading attendance roster...'}
-          </div>
+          <AttendanceListSkeleton rows={8} />
         ) : !sessionDetails ? (
           <div className="py-20 text-center text-xs text-(--text-muted)">
             {locale === 'ar'

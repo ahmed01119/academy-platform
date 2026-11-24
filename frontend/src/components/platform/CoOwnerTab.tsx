@@ -1,5 +1,6 @@
 'use client';
 
+import { TableSkeleton } from '@/components/ui/skeleton';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useLocale } from '@/contexts/locale-context';
 import { useAuth } from '@/contexts/auth-context';
@@ -311,9 +312,7 @@ export function CoOwnerTab() {
 
       {/* Admins List */}
       {isLoading ? (
-        <div className="py-12 text-center text-sm text-(--text-muted)">
-          {ar ? 'جارٍ التحميل...' : 'Loading...'}
-        </div>
+        <TableSkeleton rows={4} cols={4} />
       ) : filtered.length === 0 ? (
         <div className="py-12 text-center text-sm text-(--text-muted)">
           {ar ? 'لا يوجد مديرو منصة' : 'No platform admins found'}

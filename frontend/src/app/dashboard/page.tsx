@@ -77,6 +77,10 @@ export default function DashboardPage() {
   const [platformMetrics, setPlatformMetrics] =
     useState<DashboardCacheData['platformMetrics']>(null);
   const [isFetchingData, setIsFetchingData] = useState(false);
+  // Cards show their skeleton from the first frame until the first data arrives (no "0" that later jumps), but only
+  // when there is something to load: an account without an academy gets its page at once.
+  const willLoadData = Boolean(user && (activeTenant || user.isPlatformSuperAdmin));
+  const showFirstLoadSkeleton = !hasLoadedOnce && (isFetchingData || willLoadData);
 
   useAccessGuard('admin');
 
@@ -359,7 +363,7 @@ export default function DashboardPage() {
                   locale === 'ar' ? 'سجل الأكاديميات والمنشآت' : 'Registered platform academies'
                 }
                 icon={Building2}
-                loading={!hasLoadedOnce && isFetchingData}
+                loading={showFirstLoadSkeleton}
               />
             </Link>
 
@@ -375,7 +379,7 @@ export default function DashboardPage() {
                   locale === 'ar' ? 'طلبات بانتظار المراجعة' : 'Pending onboarding requests'
                 }
                 icon={Layers}
-                loading={!hasLoadedOnce && isFetchingData}
+                loading={showFirstLoadSkeleton}
               />
             </Link>
 
@@ -389,7 +393,7 @@ export default function DashboardPage() {
                 value={platformMetrics?.totalUsers ?? 0}
                 subtitle={locale === 'ar' ? 'إجمالي الحسابات المسجلة' : 'Active platform accounts'}
                 icon={Users}
-                loading={!hasLoadedOnce && isFetchingData}
+                loading={showFirstLoadSkeleton}
               />
             </Link>
 
@@ -403,7 +407,7 @@ export default function DashboardPage() {
                 value={3}
                 subtitle={locale === 'ar' ? 'باقات التشغيل والفوترة' : 'Commercial platform tiers'}
                 icon={Trophy}
-                loading={!hasLoadedOnce && isFetchingData}
+                loading={showFirstLoadSkeleton}
               />
             </Link>
 
@@ -419,7 +423,7 @@ export default function DashboardPage() {
                   locale === 'ar' ? 'مؤشرات الاشتراكات النشطة' : 'Active subscription revenue'
                 }
                 icon={BarChart3}
-                loading={!hasLoadedOnce && isFetchingData}
+                loading={showFirstLoadSkeleton}
               />
             </Link>
 
@@ -433,7 +437,7 @@ export default function DashboardPage() {
                 value={locale === 'ar' ? 'نشط ومحمي' : 'Active & Guarded'}
                 subtitle={locale === 'ar' ? 'سجلات الرقابة والحماية' : 'Platform audit and logs'}
                 icon={ShieldCheck}
-                loading={!hasLoadedOnce && isFetchingData}
+                loading={showFirstLoadSkeleton}
               />
             </Link>
           </div>
@@ -449,7 +453,7 @@ export default function DashboardPage() {
                 value={totalPlayers}
                 subtitle={locale === 'ar' ? 'عرض السجلات والملفات' : 'View roster records'}
                 icon={Users}
-                loading={!hasLoadedOnce && isFetchingData}
+                loading={showFirstLoadSkeleton}
               />
             </Link>
 
@@ -464,7 +468,7 @@ export default function DashboardPage() {
                   value={groupCount}
                   subtitle={locale === 'ar' ? 'إدارة الفرق والجدول' : 'Manage squads and rosters'}
                   icon={Layers}
-                  loading={!hasLoadedOnce && isFetchingData}
+                  loading={showFirstLoadSkeleton}
                 />
               </Link>
             )}
@@ -480,7 +484,7 @@ export default function DashboardPage() {
                   value={sessionCount}
                   subtitle={locale === 'ar' ? 'كشوف الحضور والتحضير' : 'Live attendance logs'}
                   icon={CalendarCheck}
-                  loading={!hasLoadedOnce && isFetchingData}
+                  loading={showFirstLoadSkeleton}
                 />
               </Link>
             )}
@@ -498,7 +502,7 @@ export default function DashboardPage() {
                     locale === 'ar' ? 'معدلات الانضباط والغياب' : 'Attendance rate analytics'
                   }
                   icon={BarChart3}
-                  loading={!hasLoadedOnce && isFetchingData}
+                  loading={showFirstLoadSkeleton}
                 />
               </Link>
             )}
@@ -513,7 +517,7 @@ export default function DashboardPage() {
                 value={branches.length}
                 subtitle={locale === 'ar' ? 'المقرات التشغيلية' : 'Operating pitch sites'}
                 icon={GitBranch}
-                loading={!hasLoadedOnce && isFetchingData}
+                loading={showFirstLoadSkeleton}
               />
             </Link>
 
@@ -527,7 +531,7 @@ export default function DashboardPage() {
                 value={staffCount}
                 subtitle={locale === 'ar' ? 'إدارة الطاقم والمدربين' : 'Manage coaches & staff'}
                 icon={Trophy}
-                loading={!hasLoadedOnce && isFetchingData}
+                loading={showFirstLoadSkeleton}
               />
             </Link>
           </div>
