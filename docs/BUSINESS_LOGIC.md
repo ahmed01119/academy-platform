@@ -253,6 +253,10 @@ Pre-2026-11-16 code:
      managers are notified and an audit entry is written;
   3. staff hand the guardian a one-time link code (7 days) from the guardian card of the player profile; the guardian
      enters it in the guardian portal (for children without an account).
+- **Group timetable (2026-11-24)**: a group trains on fixed weekly slots. The admin (groups.manage) may cancel or move
+  one session, add an extra session, or change a weekly slot (for every following week); past sessions cannot be
+  changed and each session can carry one change (undo it to change it again). The group's coaches and players are
+  notified of every change. Coaches and players see the timetable with its changes; they cannot change it.
 - **Review notes in every review e-mail (2026-11-24)**: approval, rejection and "more details" e-mails show the
   reviewer's notes.
 - **Join request e-mails (2026-11-22)**: the applicant gets an e-mail when the request is received and when the

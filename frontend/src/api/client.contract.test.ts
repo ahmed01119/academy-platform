@@ -21,7 +21,7 @@ const EXPECTED_API_SURFACE: Record<string, string[]> = {
     ),
   enrollments: 'list create transfer'.split(' '),
   groups:
-    'list get create update assignCoach removeCoach assignPlayer removePlayer createSchedule deleteSchedule'.split(
+    'list get create update assignCoach removeCoach assignPlayer removePlayer createSchedule deleteSchedule getCalendar updateSchedule createScheduleException deleteScheduleException'.split(
       ' ',
     ),
   attendance:

@@ -900,6 +900,30 @@ are turned away from finance and have no finance menu item; a coach sees 1 of 2 
 Known: an account without any academy (like the retired viewer) lands on an empty dashboard, as before for accounts
 without an academy. The demo credentials file still labels the converted accounts with their old roles.
 
+Stage 6, fixed weekly timetable and one-off changes:
+
+- **Model**: the weekly slots stay in `training_schedules`; one-off changes go to the new `schedule_exceptions`
+  (CANCELLED / MOVED one occurrence, EXTRA session; one change per occurrence; tenant RLS; portal read policies for
+  `training_schedules` and `schedule_exceptions`). Migration `20261124120000_group_schedule_exceptions` (additive,
+  applied to Neon dev).
+- **API** (`GroupScheduleService`, `group-calendar.ts`): `GET /groups/:id/calendar?from&weeks` (groups.read, coach scope),
+  `POST /groups/:id/schedule-exceptions` and `DELETE .../:exceptionId` (groups.manage), `PATCH /groups/:id/schedules/:id`
+  (changes the fixed slot; upcoming changes of that slot are removed). Dates are Cairo calendar days; past sessions
+  cannot be changed. Every change notifies the group's coaches (link to the group) and the accounts of its active
+  players (link to the player portal), in one statement per link target; a failed notification never undoes a change.
+- **Web**: the group's schedules tab shows the next 4 weeks with status (as usual / cancelled / moved / new time /
+  extra) and reason; the admin cancels, moves, adds an extra session, undoes, or changes the fixed time. Coaches see
+  it read-only. The player portal's upcoming sessions come from the timetable (14 days) with the status and reason,
+  plus sessions staff opened outside it. The group page no longer blanks into a skeleton on every refresh.
+
+Verification: API tests (calendar 6, service 6, all groups 20); web 411; typecheck, lint, Prettier clean. End to end on
+3100/3101 against Neon dev: admin cancels, moves and adds a session; coach and player notified; coach sees it
+read-only; player portal shows cancelled and extra; undo restores; changing the fixed Monday time shows on every
+Monday and was restored. Test changes and their notifications were removed afterwards.
+
+Not done: guardians are not notified of timetable changes (the request named the coach and the player); notification
+texts are English like the rest of the platform.
+
 ## 10. Backend requirements (recorded by owner decisions)
 
 **Workflow (owner direction 2026-11-15):** frontend issues whose root cause is in the backend are now fixed across both

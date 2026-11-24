@@ -11,6 +11,7 @@ import type {
   DecideGuardianLinkRequest,
   GuardianLinkRequestView,
   RequestGuardianLinkRequest,
+  GroupOccurrenceStatus,
 } from '@academy/shared';
 import { request } from '@/lib/http/request';
 
@@ -24,6 +25,10 @@ export const portalApi = {
       endTime: string;
       groupName: string;
       branchName?: string;
+      /** Weekly timetable status (owner request 2026-11-24); missing from older API versions. */
+      status?: GroupOccurrenceStatus;
+      /** The reason of a change, or where a moved session went. */
+      note?: string | null;
     }>;
     attendanceSummary: {
       totalEligible: number;

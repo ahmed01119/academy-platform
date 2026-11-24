@@ -4,8 +4,11 @@
 import type {
   AssignCoachRequest,
   AssignPlayerRequest,
+  CreateScheduleExceptionRequest,
   CreateScheduleRequest,
   CreateTrainingGroupRequest,
+  GroupCalendar,
+  UpdateScheduleRequest,
   GroupCoachSummary,
   GroupMemberSummary,
   GroupStatus,
@@ -102,5 +105,45 @@ export const groupsApi = {
     return request(`/groups/${groupId}/schedules/${scheduleId}`, {
       method: 'DELETE',
     });
+  },
+
+  /** Planned sessions: the weekly timetable with its one-off changes. */
+  async getCalendar(
+    groupId: string,
+    params?: { from?: string; weeks?: number },
+  ): Promise<GroupCalendar> {
+    const query = new URLSearchParams();
+    if (params?.from) query.set('from', params.from);
+    if (params?.weeks) query.set('weeks', String(params.weeks));
+    const suffix = query.toString() ? `?${query.toString()}` : '';
+    return request(`/groups/${groupId}/calendar${suffix}`, { skipCache: true });
+  },
+
+  /** Changes a weekly slot; the coaches and players are notified. */
+  async updateSchedule(
+    groupId: string,
+    scheduleId: string,
+    data: UpdateScheduleRequest,
+  ): Promise<TrainingScheduleSummary> {
+    return request(`/groups/${groupId}/schedules/${scheduleId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  },
+
+  /** Cancels or moves one session, or adds an extra one; the coaches and players are notified. */
+  async createScheduleException(
+    groupId: string,
+    data: CreateScheduleExceptionRequest,
+  ): Promise<{ id: string }> {
+    return request(`/groups/${groupId}/schedule-exceptions`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  /** Undoes a one-off change. */
+  async deleteScheduleException(groupId: string, exceptionId: string): Promise<{ success: true }> {
+    return request(`/groups/${groupId}/schedule-exceptions/${exceptionId}`, { method: 'DELETE' });
   },
 };

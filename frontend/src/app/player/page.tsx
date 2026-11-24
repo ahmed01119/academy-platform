@@ -7,6 +7,7 @@ import { MyJoinRequests } from '@/features/portal/components/MyJoinRequests';
 import { useAccessGuard } from '@/hooks/useAccessGuard';
 import { useLocale } from '@/contexts/locale-context';
 import { translateDataString } from '@/utils/data-translator';
+import { occurrenceStatusLabel } from '@/features/groups/components/GroupCalendarPanel';
 import { apiClient } from '@/api/client';
 import { AppShell } from '../../components/layout/AppShell';
 import { PageHeader } from '../../components/ui/PageHeader';
@@ -26,6 +27,7 @@ import type {
   PlayerPortalProfile,
   PlayerPortalEvaluation,
   PlayerQrCardResponse,
+  GroupOccurrenceStatus,
 } from '@academy/shared';
 
 type PlayerData = {
@@ -37,6 +39,8 @@ type PlayerData = {
     endTime: string;
     groupName: string;
     branchName?: string;
+    status?: GroupOccurrenceStatus;
+    note?: string | null;
   }>;
   attendanceSummary: {
     totalEligible: number;
@@ -413,6 +417,25 @@ export default function PlayerPortalPage() {
                           ⏰ {session.startTime} - {session.endTime}
                         </span>
                       </div>
+                      {session.status && session.status !== 'SCHEDULED' && (
+                        <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px]">
+                          <span
+                            className={`rounded-md border px-2 py-0.5 font-semibold ${
+                              session.status === 'CANCELLED' || session.status === 'MOVED'
+                                ? 'border-rose-500/30 bg-rose-500/10 text-rose-600 dark:text-rose-400'
+                                : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                            }`}
+                          >
+                            {occurrenceStatusLabel(session.status, ar ? 'ar' : 'en')}
+                          </span>
+                          {session.note && (
+                            <span className="text-(--text-muted)">
+                              {session.status === 'MOVED' ? (ar ? 'إلى ' : 'to ') : ''}
+                              {session.note}
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     <div className="text-end text-xs text-[var(--accent-primary)] font-semibold bg-(--badge-bg) px-3 py-1.5 rounded-lg border border-(--border-subtle)">

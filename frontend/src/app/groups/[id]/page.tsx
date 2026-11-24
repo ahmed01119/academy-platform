@@ -13,6 +13,9 @@ import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { api } from '@/api/client';
 import type { PlayerSummary, TrainingGroupDetails } from '@academy/shared';
 import { translateDataString } from '@/utils/data-translator';
+import { Permission } from '@academy/shared';
+import { can } from '@/lib/auth/permissions';
+import { GroupCalendarPanel } from '@/features/groups/components/GroupCalendarPanel';
 import {
   Users,
   CalendarCheck,
@@ -319,7 +322,9 @@ export default function GroupDetailsPage() {
     }
   };
 
-  if (isLoading || isFetching) {
+  // Skeleton only until the group is first loaded: later refreshes (after adding a player, changing the timetable...)
+  // keep the page on screen instead of blanking it, so nothing jumps and open panels keep their state.
+  if (isLoading || (isFetching && !group)) {
     return (
       <AppShell>
         <PageSkeleton variant="detail" />
@@ -771,6 +776,14 @@ export default function GroupDetailsPage() {
                 ))}
               </div>
             )}
+
+            <GroupCalendarPanel
+              groupId={groupId}
+              schedules={group.schedules}
+              locale={isAr ? 'ar' : 'en'}
+              canManage={can(user, activeTenant, Permission.GROUPS_MANAGE)}
+              onSlotsChanged={() => void loadGroupDetails()}
+            />
           </div>
         )}
       </div>
