@@ -31,39 +31,9 @@ export interface PlayerJoinFormValues extends PlayerProfileFieldValues {
   confirmPassword: string;
 }
 
-/**
- * Form fields the current API contract (`CreatePlayerJoinRequestSchema`) does not accept.
- *
- * F17 — owner decision 2026-11-14: these fields are KEPT in the form and will be supported by
- * the backend refactoring phase (schema + migration + DTO + access control for the sensitive
- * ones: `nationalId`, `medicalNotes`). Until then they are deliberately NOT sent: the API
- * would strip them (Zod object), so sending sensitive data only to have it dropped is avoided.
- */
-export const JOIN_FIELDS_PENDING_BACKEND_SUPPORT = [
-  'gender',
-  'jerseyNumber',
-  'nationalId',
-  'medicalNotes',
-] as const;
-
-export type PendingJoinField = (typeof JOIN_FIELDS_PENDING_BACKEND_SUPPORT)[number];
-
-/** Form labels of the pending fields (same wording as the form), used by the applicant notice. */
-export const PENDING_JOIN_FIELD_LABELS: Record<PendingJoinField, { ar: string; en: string }> = {
-  gender: { ar: 'الجنس', en: 'Gender' },
-  jerseyNumber: { ar: 'رقم القميص', en: 'Jersey number' },
-  nationalId: { ar: 'الرقم القومي / جواز السفر', en: 'National ID / Passport' },
-  medicalNotes: { ar: 'الملاحظات الطبية أو الحساسية', en: 'Medical notes / allergies' },
-};
-
-/** Sensitive fields that need protected storage and role-based access in the backend phase. */
-export const SENSITIVE_JOIN_FIELDS: readonly PendingJoinField[] = ['nationalId', 'medicalNotes'];
-
+/** What the form sends: exactly the API contract (`CreatePlayerJoinRequestSchema`). */
 export interface PlayerJoinRequestBuild {
-  /** Exactly what the current API contract accepts — this is what gets sent. */
   payload: CreatePlayerJoinRequest;
-  /** Collected values the API cannot store yet (explicit, never sent). */
-  pendingBackendSupport: Record<PendingJoinField, string>;
 }
 
 /**
@@ -110,8 +80,8 @@ function accountEmailOf(values: PlayerJoinFormValues): string {
 }
 
 /**
- * Maps the form to the API payload and the explicitly-held fields. The birth date is January 1st of the birth year;
- * the contact phone is the guardian's phone. The password is sent only when a new account is created (`isSignedIn`
+ * Maps the form to the API payload: every field of the shared player form is stored with the request (owner decision
+ * 2026-11-25). The birth date is January 1st of the birth year; the contact phone is the guardian's phone. The password is sent only when a new account is created (`isSignedIn`
  * false); a signed-in user's request is linked to their account by the API.
  */
 export function buildPlayerJoinRequest(
@@ -128,12 +98,12 @@ export function buildPlayerJoinRequest(
       contactPhone: values.guardianPhone.trim() || undefined,
       dateOfBirth: birthYearToDate(values.birthYear) || undefined,
       guardianName: values.guardianName.trim() || undefined,
-    },
-    pendingBackendSupport: {
       gender: values.gender,
-      jerseyNumber: values.jerseyNumber.trim(),
-      nationalId: values.nationalId.trim(),
-      medicalNotes: values.medicalNotes.trim(),
+      jerseyNumber: values.jerseyNumber.trim()
+        ? parseInt(values.jerseyNumber.trim(), 10)
+        : undefined,
+      nationalId: values.nationalId.trim() || undefined,
+      medicalNotes: values.medicalNotes.trim() || undefined,
     },
   };
 }

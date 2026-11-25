@@ -22,6 +22,8 @@ export interface PlayerProfileFieldsProps {
   /** Rendered at the end of the guardian section (e.g. the guardian's sign-in e-mail). */
   guardianExtra?: React.ReactNode;
   disabled?: boolean;
+  /** Hides national ID and medical notes (staff without players.sensitive.read). */
+  hideSensitive?: boolean;
 }
 
 /**
@@ -39,6 +41,7 @@ export function PlayerProfileFields({
   athleteExtra,
   guardianExtra,
   disabled = false,
+  hideSensitive = false,
 }: PlayerProfileFieldsProps) {
   const isAr = locale === 'ar';
   const t = (ar: string, en: string) => (isAr ? ar : en);
@@ -153,38 +156,42 @@ export function PlayerProfileFields({
             />
           </div>
 
-          <div>
-            <label htmlFor={id('national-id')} className={labelClass}>
-              {t('الرقم القومي / جواز السفر (اختياري)', 'National ID / Passport (Optional)')}
-            </label>
-            <input
-              id={id('national-id')}
-              type="text"
-              disabled={disabled}
-              value={values.nationalId}
-              onChange={(e) => onChange({ nationalId: e.target.value })}
-              placeholder={t('14 رقم للرقم القومي', 'National ID or Passport number')}
-              className={`${inputClass} font-mono`}
-            />
-          </div>
+          {!hideSensitive && (
+            <>
+              <div>
+                <label htmlFor={id('national-id')} className={labelClass}>
+                  {t('الرقم القومي / جواز السفر (اختياري)', 'National ID / Passport (Optional)')}
+                </label>
+                <input
+                  id={id('national-id')}
+                  type="text"
+                  disabled={disabled}
+                  value={values.nationalId}
+                  onChange={(e) => onChange({ nationalId: e.target.value })}
+                  placeholder={t('14 رقم للرقم القومي', 'National ID or Passport number')}
+                  className={`${inputClass} font-mono`}
+                />
+              </div>
 
-          <div className="sm:col-span-2">
-            <label htmlFor={id('medical-notes')} className={labelClass}>
-              {t('ملاحظات طبية أو حساسية (اختياري)', 'Medical Notes or Allergies (Optional)')}
-            </label>
-            <textarea
-              id={id('medical-notes')}
-              rows={2}
-              disabled={disabled}
-              value={values.medicalNotes}
-              onChange={(e) => onChange({ medicalNotes: e.target.value })}
-              placeholder={t(
-                'أي حساسيات أو حالات صحية ينبغي للمدربين مراعاتها...',
-                'Any medical conditions, allergies, or notes for coaches...',
-              )}
-              className={inputClass}
-            />
-          </div>
+              <div className="sm:col-span-2">
+                <label htmlFor={id('medical-notes')} className={labelClass}>
+                  {t('ملاحظات طبية أو حساسية (اختياري)', 'Medical Notes or Allergies (Optional)')}
+                </label>
+                <textarea
+                  id={id('medical-notes')}
+                  rows={2}
+                  disabled={disabled}
+                  value={values.medicalNotes}
+                  onChange={(e) => onChange({ medicalNotes: e.target.value })}
+                  placeholder={t(
+                    'أي حساسيات أو حالات صحية ينبغي للمدربين مراعاتها...',
+                    'Any medical conditions, allergies, or notes for coaches...',
+                  )}
+                  className={inputClass}
+                />
+              </div>
+            </>
+          )}
 
           {athleteExtra && <div className="sm:col-span-2">{athleteExtra}</div>}
         </div>

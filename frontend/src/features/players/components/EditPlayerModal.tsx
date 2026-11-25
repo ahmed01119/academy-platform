@@ -4,6 +4,7 @@ import React from 'react';
 import { Edit3, Save, X } from 'lucide-react';
 import type { PlayerStatus } from '@academy/shared';
 import type { PlayerProfileState } from '@/features/players/hooks/usePlayerProfile';
+import { PlayerProfileFields } from '@/features/players/components/PlayerProfileFields';
 
 const FIELD =
   'w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3.5 py-2 text-xs text-(--text-main) focus:border-(--accent-primary) focus:outline-none transition-colors';
@@ -11,12 +12,12 @@ const LABEL = 'block text-xs font-semibold text-(--text-muted) mb-1';
 
 export interface EditPlayerModalProps {
   edit: PlayerProfileState['edit'];
-  /** Only users with `players.sensitive.read` may see or change medical notes. */
+  /** Only users with `players.sensitive.read` may see or change the national ID and medical notes. */
   canViewSensitive: boolean;
   isAr: boolean;
 }
 
-/** Edits the athlete's core profile (`PATCH /players/:id`). */
+/** Edits the athlete with the same fields as every player form, plus the status (`PATCH /players/:id`). */
 export function EditPlayerModal({ edit, canViewSensitive, isAr }: EditPlayerModalProps) {
   if (!edit.isOpen) return null;
   const { form, setField } = edit;
@@ -27,7 +28,7 @@ export function EditPlayerModal({ edit, canViewSensitive, isAr }: EditPlayerModa
       aria-modal="true"
       aria-labelledby="edit-player-title"
     >
-      <div className="w-full max-w-lg rounded-2xl border border-(--border-subtle) bg-(--bg-surface) p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+      <div className="w-full max-w-2xl max-h-[92vh] overflow-y-auto rounded-2xl border border-(--border-subtle) bg-(--bg-surface) p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
         <div className="flex items-center justify-between border-b border-(--border-subtle) pb-3 mb-4">
           <h3
             id="edit-player-title"
@@ -47,63 +48,24 @@ export function EditPlayerModal({ edit, canViewSensitive, isAr }: EditPlayerModa
         </div>
 
         <form onSubmit={edit.submit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label htmlFor="edit-first-name" className={LABEL}>
-                {isAr ? 'الاسم الأول' : 'First Name'}
-              </label>
-              <input
-                id="edit-first-name"
-                type="text"
-                required
-                value={form.firstName}
-                onChange={(e) => setField('firstName', e.target.value)}
-                className={FIELD}
-              />
+          {edit.error && (
+            <div
+              role="alert"
+              className="rounded-xl border border-red-500/40 bg-red-500/10 p-3 text-xs text-red-500"
+            >
+              {edit.error}
             </div>
-            <div>
-              <label htmlFor="edit-last-name" className={LABEL}>
-                {isAr ? 'اسم العائلة' : 'Last Name'}
-              </label>
-              <input
-                id="edit-last-name"
-                type="text"
-                required
-                value={form.lastName}
-                onChange={(e) => setField('lastName', e.target.value)}
-                className={FIELD}
-              />
-            </div>
-          </div>
+          )}
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label htmlFor="edit-emergency-name" className={LABEL}>
-                {isAr ? 'جهة اتصال الطوارئ' : 'Emergency Contact'}
-              </label>
-              <input
-                id="edit-emergency-name"
-                type="text"
-                required
-                value={form.emergencyContactName}
-                onChange={(e) => setField('emergencyContactName', e.target.value)}
-                className={FIELD}
-              />
-            </div>
-            <div>
-              <label htmlFor="edit-emergency-phone" className={LABEL}>
-                {isAr ? 'هاتف الطوارئ' : 'Emergency Phone'}
-              </label>
-              <input
-                id="edit-emergency-phone"
-                type="tel"
-                required
-                value={form.emergencyContactPhone}
-                onChange={(e) => setField('emergencyContactPhone', e.target.value)}
-                className={`${FIELD} font-mono`}
-              />
-            </div>
-          </div>
+          <PlayerProfileFields
+            values={form}
+            onChange={edit.update}
+            locale={isAr ? 'ar' : 'en'}
+            idPrefix="edit"
+            tone="modal"
+            hideSensitive={!canViewSensitive}
+            disabled={edit.isSubmitting}
+          />
 
           <div>
             <label htmlFor="edit-player-status" className={LABEL}>
@@ -121,24 +83,11 @@ export function EditPlayerModal({ edit, canViewSensitive, isAr }: EditPlayerModa
             </select>
           </div>
 
-          {canViewSensitive ? (
-            <div>
-              <label htmlFor="edit-medical-notes" className={LABEL}>
-                {isAr ? 'الملاحظات الطبية' : 'Medical Notes'}
-              </label>
-              <textarea
-                id="edit-medical-notes"
-                rows={2}
-                value={form.medicalNotes}
-                onChange={(e) => setField('medicalNotes', e.target.value)}
-                className={FIELD}
-              />
-            </div>
-          ) : (
+          {!canViewSensitive && (
             <div className="rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) p-3 text-[11px] text-(--text-muted)">
               {isAr
-                ? 'الملاحظات الطبية محجوبة ولا يمكن تعديلها إلا من قِبل مديري الأكاديمية أو الفروع.'
-                : 'Medical notes are restricted and can only be updated by academy or branch managers.'}
+                ? 'الرقم القومي والملاحظات الطبية محجوبة ولا يعدّلها إلا المالك أو الإداري.'
+                : 'National ID and medical notes are restricted to the owner and the admin.'}
             </div>
           )}
 

@@ -29,11 +29,17 @@ const edit = {
   form: {
     firstName: 'Omar',
     lastName: 'Ali',
-    emergencyContactName: 'Uncle',
-    emergencyContactPhone: '0100',
+    gender: 'MALE',
+    birthYear: '2012',
+    jerseyNumber: '7',
+    nationalId: '29901011234567',
     medicalNotes: 'Asthma',
+    guardianName: 'Ali Hassan',
+    guardianPhone: '0100000001',
     status: 'ACTIVE',
   },
+  error: null,
+  update: noop,
   setField: noop,
   isSubmitting: false,
   submit: noop,
@@ -105,7 +111,7 @@ describe('TransferBranchModal', () => {
 });
 
 describe('EditPlayerModal', () => {
-  it('shows editable medical notes only with sensitive access', () => {
+  it('shows national ID and medical notes only with sensitive access', () => {
     const allowed = renderToStaticMarkup(
       <EditPlayerModal edit={edit} canViewSensitive isAr={false} />,
     );
@@ -116,8 +122,10 @@ describe('EditPlayerModal', () => {
       <EditPlayerModal edit={edit} canViewSensitive={false} isAr={false} />,
     );
     expect(restricted).not.toContain('id="edit-medical-notes"');
+    expect(restricted).not.toContain('id="edit-national-id"');
     expect(restricted).not.toContain('Asthma');
-    expect(restricted).toContain('Medical notes are restricted');
+    expect(restricted).not.toContain('29901011234567');
+    expect(restricted).toContain('National ID and medical notes are restricted');
   });
 
   it('labels every input and is localized in English', () => {
@@ -127,8 +135,11 @@ describe('EditPlayerModal', () => {
     for (const id of [
       'edit-first-name',
       'edit-last-name',
-      'edit-emergency-name',
-      'edit-emergency-phone',
+      'edit-gender',
+      'edit-birth-year',
+      'edit-jersey-number',
+      'edit-guardian-name',
+      'edit-guardian-phone',
       'edit-player-status',
     ]) {
       expect(html).toContain(`for="${id}"`);

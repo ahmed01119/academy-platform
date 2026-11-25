@@ -46,10 +46,18 @@ const player = {
   id: 'p1',
   firstName: 'Omar',
   lastName: 'Ali',
+  gender: 'MALE',
+  dateOfBirth: '2012-01-01',
+  jerseyNumber: 7,
+  nationalId: '29901011234567',
   emergencyContactName: 'Uncle',
   emergencyContactPhone: '0100',
   medicalNotes: null,
   status: 'ACTIVE',
+  guardians: [
+    { id: 'g2', firstName: 'Mona', lastName: 'Ali', phone: '0111', isPrimary: false },
+    { id: 'g1', firstName: 'Ali', lastName: 'Hassan', phone: '0100000001', isPrimary: true },
+  ],
   enrollments: [
     { id: 'en-active', status: 'ACTIVE', branchId: 'b1' },
     { id: 'en-old', status: 'TRANSFERRED', branchId: 'b0' },
@@ -81,36 +89,51 @@ describe('validateBranchTransfer', () => {
   });
 });
 
-describe('buildPlayerUpdatePayload', () => {
+describe('edit player (2026-11-25: the shared form fields only)', () => {
   const form = { ...editFormFromPlayer(player), firstName: ' Omar ', medicalNotes: ' Asthma ' };
 
-  it('pre-fills from the player (null notes → empty string)', () => {
-    expect(editFormFromPlayer(player).medicalNotes).toBe('');
+  it('pre-fills the shared fields from the player and its primary guardian', () => {
+    expect(editFormFromPlayer(player)).toEqual({
+      firstName: 'Omar',
+      lastName: 'Ali',
+      gender: 'MALE',
+      birthYear: '2012',
+      jerseyNumber: '7',
+      nationalId: '29901011234567',
+      medicalNotes: '',
+      guardianName: 'Ali Hassan',
+      guardianPhone: '0100000001',
+      status: 'ACTIVE',
+    });
   });
 
-  it('F24 contract: never sends nationalId, and medicalNotes only with sensitive access', () => {
-    // The API now rejects these fields (403) for roles without players.sensitive.read whenever
-    // they are present, so a restricted user's edit must not contain them at all.
-    for (const canViewSensitive of [true, false]) {
-      expect(buildPlayerUpdatePayload(form, canViewSensitive)).not.toHaveProperty('nationalId');
-    }
-    expect(Object.keys(buildPlayerUpdatePayload(form, false))).not.toContain('medicalNotes');
-  });
-
-  it('includes medical notes only for users with sensitive access', () => {
+  it('sends the shared fields; national ID and medical notes only with sensitive access', () => {
     expect(buildPlayerUpdatePayload(form, true)).toEqual({
       firstName: 'Omar',
       lastName: 'Ali',
-      emergencyContactName: 'Uncle',
-      emergencyContactPhone: '0100',
+      gender: 'MALE',
+      birthYear: 2012,
+      jerseyNumber: 7,
+      guardianName: 'Ali Hassan',
+      guardianPhone: '0100000001',
       status: 'ACTIVE',
+      nationalId: '29901011234567',
       medicalNotes: 'Asthma',
     });
-    expect(buildPlayerUpdatePayload(form, false)).not.toHaveProperty('medicalNotes');
+    const restricted = buildPlayerUpdatePayload(form, false);
+    expect(restricted).not.toHaveProperty('nationalId');
+    expect(restricted).not.toHaveProperty('medicalNotes');
+    expect(restricted).not.toHaveProperty('emergencyContactName');
   });
 
-  it('sends null to clear notes when emptied by an authorized user', () => {
-    expect(buildPlayerUpdatePayload({ ...form, medicalNotes: '  ' }, true).medicalNotes).toBeNull();
+  it('clears an emptied jersey number, national ID or notes with null', () => {
+    const cleared = buildPlayerUpdatePayload(
+      { ...form, jerseyNumber: '', nationalId: ' ', medicalNotes: '  ' },
+      true,
+    );
+    expect(cleared.jerseyNumber).toBeNull();
+    expect(cleared.nationalId).toBeNull();
+    expect(cleared.medicalNotes).toBeNull();
   });
 });
 

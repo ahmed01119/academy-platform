@@ -302,14 +302,10 @@ export function PlayerJoinRequestsTab() {
                 </div>
                 <div>
                   <span className="text-[10px] text-(--text-muted) block">
-                    {ar ? 'تاريخ الميلاد:' : 'Date of Birth:'}
+                    {ar ? 'سنة الميلاد:' : 'Birth year:'}
                   </span>
                   <span className="font-medium text-(--text-main)">
-                    {selectedRequest.dateOfBirth
-                      ? new Date(selectedRequest.dateOfBirth).toLocaleDateString(
-                          ar ? 'ar-EG' : 'en-US',
-                        )
-                      : '—'}
+                    {selectedRequest.dateOfBirth ? selectedRequest.dateOfBirth.slice(0, 4) : '—'}
                   </span>
                 </div>
                 <div>
@@ -320,6 +316,51 @@ export function PlayerJoinRequestsTab() {
                     {selectedRequest.guardianName || '—'}
                   </span>
                 </div>
+                <div>
+                  <span className="text-[10px] text-(--text-muted) block">
+                    {ar ? 'الجنس:' : 'Gender:'}
+                  </span>
+                  <span className="font-medium text-(--text-main)">
+                    {selectedRequest.gender
+                      ? selectedRequest.gender === 'FEMALE'
+                        ? ar
+                          ? 'أنثى'
+                          : 'Female'
+                        : ar
+                          ? 'ذكر'
+                          : 'Male'
+                      : '—'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-(--text-muted) block">
+                    {ar ? 'رقم القميص:' : 'Jersey number:'}
+                  </span>
+                  <span className="font-medium text-(--text-main)">
+                    {selectedRequest.jerseyNumber ?? '—'}
+                  </span>
+                </div>
+                {/* Sent by the API only to staff with players.sensitive.read. */}
+                {selectedRequest.nationalId !== undefined && (
+                  <div>
+                    <span className="text-[10px] text-(--text-muted) block">
+                      {ar ? 'الرقم القومي / جواز السفر:' : 'National ID / Passport:'}
+                    </span>
+                    <span className="font-medium text-(--text-main)">
+                      {selectedRequest.nationalId || '—'}
+                    </span>
+                  </div>
+                )}
+                {selectedRequest.medicalNotes !== undefined && (
+                  <div>
+                    <span className="text-[10px] text-(--text-muted) block">
+                      {ar ? 'ملاحظات طبية:' : 'Medical notes:'}
+                    </span>
+                    <span className="font-medium text-(--text-main)">
+                      {selectedRequest.medicalNotes || '—'}
+                    </span>
+                  </div>
+                )}
               </div>
               {selectedRequest.reviewNotes && (
                 <div className="pt-2 border-t border-(--border-subtle)">

@@ -23,17 +23,14 @@ import {
   validateBranchTransfer,
   type PlayerEditForm,
 } from '@/features/players/player-profile';
+import {
+  EMPTY_PLAYER_PROFILE,
+  validatePlayerProfileFields,
+} from '@/features/players/player-profile-fields';
 
 type Locale = 'ar' | 'en';
 
-const EMPTY_EDIT_FORM: PlayerEditForm = {
-  firstName: '',
-  lastName: '',
-  emergencyContactName: '',
-  emergencyContactPhone: '',
-  medicalNotes: '',
-  status: 'ACTIVE',
-};
+const EMPTY_EDIT_FORM: PlayerEditForm = { ...EMPTY_PLAYER_PROFILE, status: 'ACTIVE' };
 
 /**
  * Data, permissions and actions of the player profile page (`/players/[id]`).
@@ -64,6 +61,7 @@ export function usePlayerProfile(playerId: string, locale: Locale) {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editForm, setEditForm] = useState<PlayerEditForm>(EMPTY_EDIT_FORM);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
 
   // QR card
   const [qrCard, setQrCard] = useState<PlayerQrCardResponse | null>(null);
@@ -192,6 +190,9 @@ export function usePlayerProfile(playerId: string, locale: Locale) {
     e.preventDefault();
     setErrorMessage(null);
     setSuccessMessage(null);
+    const invalid = validatePlayerProfileFields(editForm, isAr ? 'ar' : 'en');
+    setEditError(invalid);
+    if (invalid) return;
 
     setIsUpdating(true);
     try {
@@ -202,7 +203,7 @@ export function usePlayerProfile(playerId: string, locale: Locale) {
       setIsEditModalOpen(false);
       await loadPlayerData();
     } catch (err: unknown) {
-      setErrorMessage(
+      setEditError(
         getErrorMessage(
           err,
           isAr ? 'فشل في تحديث بيانات اللاعب' : 'Failed to update athlete profile',
@@ -235,9 +236,15 @@ export function usePlayerProfile(playerId: string, locale: Locale) {
     },
     edit: {
       isOpen: isEditModalOpen,
-      open: () => setIsEditModalOpen(true),
+      open: () => {
+        if (player) setEditForm(editFormFromPlayer(player));
+        setEditError(null);
+        setIsEditModalOpen(true);
+      },
       close: () => setIsEditModalOpen(false),
       form: editForm,
+      error: editError,
+      update: (patch: Partial<PlayerEditForm>) => setEditForm((prev) => ({ ...prev, ...patch })),
       setField: <K extends keyof PlayerEditForm>(key: K, value: PlayerEditForm[K]) =>
         setEditForm((prev) => ({ ...prev, [key]: value })),
       isSubmitting: isUpdating,

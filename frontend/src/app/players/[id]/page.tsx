@@ -388,26 +388,16 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
               </ul>
             </section>
 
-            {/* Emergency & Health Card */}
+            {/* Health Card (the guardian above is also the emergency contact) */}
             <section className={`${CARD} space-y-4`}>
               <div className="flex items-center gap-2 border-b border-(--border-subtle) pb-3">
                 <Heart aria-hidden="true" className="h-5 w-5 text-red-500" />
                 <h2 className="text-base font-bold text-(--text-main)">
-                  {isAr ? 'الطوارئ والصحة' : 'Emergency & Health'}
+                  {isAr ? 'الصحة' : 'Health'}
                 </h2>
               </div>
 
               <div className="space-y-3 text-xs">
-                <div className="rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) p-3.5">
-                  <span className="text-[11px] text-(--text-muted) block mb-1">
-                    {isAr ? 'جهة اتصال الطوارئ:' : 'Emergency Contact:'}
-                  </span>
-                  <div className="font-bold text-(--text-main)">{player.emergencyContactName}</div>
-                  <div className="font-mono text-(--accent-primary) mt-0.5 flex items-center gap-1">
-                    <Phone aria-hidden="true" className="h-3 w-3" /> {player.emergencyContactPhone}
-                  </div>
-                </div>
-
                 <div className="rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) p-3.5">
                   <span className="text-[11px] text-(--text-muted) block mb-1">
                     {isAr ? 'الملاحظات الطبية:' : 'Medical Notes:'}

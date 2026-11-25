@@ -7,6 +7,7 @@ import { MyJoinRequests } from '@/features/portal/components/MyJoinRequests';
 import { useAccessGuard } from '@/hooks/useAccessGuard';
 import { useLocale } from '@/contexts/locale-context';
 import { GuardianLinkByEmail } from '@/features/portal/components/GuardianLinkByEmail';
+import { UpcomingSessionsList } from '@/features/portal/components/UpcomingSessionsList';
 import { translateDataString } from '@/utils/data-translator';
 import { apiClient } from '@/api/client';
 import { AppShell } from '../../components/layout/AppShell';
@@ -369,6 +370,11 @@ export default function GuardianPortalPage() {
             </div>
           </div>
         </div>
+
+        <UpcomingSessionsList
+          sessions={selectedChild.upcomingSessions ?? []}
+          locale={ar ? 'ar' : 'en'}
+        />
 
         {/* Coach Feedback Specifically Directed to Guardian */}
         <div className="space-y-4">

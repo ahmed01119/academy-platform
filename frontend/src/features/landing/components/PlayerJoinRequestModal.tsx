@@ -14,7 +14,6 @@ import {
   validatePlayerJoinForm,
   type PlayerJoinFormValues,
 } from '@/features/landing/player-join-request';
-import { UnsavedFieldsNotice } from './UnsavedFieldsNotice';
 import { EmailCodeVerification } from '@/features/auth/components/EmailCodeVerification';
 import { emailNotConfirmedMessage, signupEmailErrorMessage } from '@/features/auth/email-code';
 import { PlayerProfileFields } from '@/features/players/components/PlayerProfileFields';
@@ -39,9 +38,7 @@ export interface PlayerJoinRequestModalProps {
  * Public "join an academy" request form (landing page). Moved verbatim from app/landing/page.tsx.
  * Stays mounted while closed so typed values survive close/re-open, as before.
  *
- * F17 (owner decision 2026-11-14): all fields are kept. Fields the API does not accept yet
- * are listed in `JOIN_FIELDS_PENDING_BACKEND_SUPPORT` (features/landing/player-join-request.ts)
- * and will be supported in the backend phase; until then only the contract payload is sent.
+ * Every field of the shared player form is stored with the request (owner decision 2026-11-25).
  *
  * K6 (owner decision 2026-11-16) — who is applying:
  *  - PLAYER: the athlete for themself; after approval their account opens the player portal (/player).
@@ -140,8 +137,6 @@ export function PlayerJoinRequestModal({
       return;
     }
 
-    // F17: `pendingBackendSupport` (gender, jersey, national ID, medical notes) is intentionally not sent until the
-    // API supports it.
     const { payload } = buildPlayerJoinRequest(values, isSignedIn);
     if (!isSignedIn && !joinEmailProof) {
       setJoinError(emailNotConfirmedMessage(locale));
@@ -255,9 +250,6 @@ export function PlayerJoinRequestModal({
                     <span className="font-medium">{joinError}</span>
                   </div>
                 )}
-
-                {/* F17: fields that are not submitted/saved yet — shown before the applicant types */}
-                <UnsavedFieldsNotice locale={locale === 'ar' ? 'ar' : 'en'} />
 
                 {/* Section 1: Target Sports Academy */}
                 <div className="rounded-2xl border border-(--border-subtle) bg-(--bg-surface-subtle)/40 p-5 shadow-xs space-y-4">

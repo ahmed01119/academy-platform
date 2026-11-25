@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CreatePlayerJoinRequestSchema } from '@academy/shared';
 import {
-  JOIN_FIELDS_PENDING_BACKEND_SUPPORT,
-  SENSITIVE_JOIN_FIELDS,
   buildPlayerJoinRequest,
   validatePlayerJoinForm,
   type PlayerJoinFormValues,
@@ -37,6 +35,10 @@ describe('buildPlayerJoinRequest', () => {
       contactPhone: '0100000001', // the guardian's phone
       dateOfBirth: '2012-01-01', // the birth year only
       guardianName: 'Ali Hassan',
+      gender: 'MALE',
+      jerseyNumber: 10,
+      nationalId: '29901011234567',
+      medicalNotes: 'Asthma',
     });
     expect(CreatePlayerJoinRequestSchema.safeParse(payload).success).toBe(true);
   });
@@ -52,38 +54,19 @@ describe('buildPlayerJoinRequest', () => {
     expect(payload.dateOfBirth).toBe('2013-01-01');
   });
 
-  it('keeps every unsupported field explicitly instead of discarding it (F17)', () => {
-    const { pendingBackendSupport } = buildPlayerJoinRequest(form);
-    expect(pendingBackendSupport).toEqual({
-      gender: 'MALE',
-      jerseyNumber: '10',
-      nationalId: '29901011234567',
-      medicalNotes: 'Asthma',
+  it('2026-11-25: sends every field of the shared form, and leaves out the empty optional ones', () => {
+    const { payload } = buildPlayerJoinRequest({
+      ...form,
+      gender: 'FEMALE',
+      jerseyNumber: '',
+      nationalId: ' ',
+      medicalNotes: '',
     });
-    expect(Object.keys(pendingBackendSupport).sort()).toEqual(
-      [...JOIN_FIELDS_PENDING_BACKEND_SUPPORT].sort(),
-    );
-  });
-
-  it('never sends sensitive or unsupported fields in the request payload', () => {
-    const { payload } = buildPlayerJoinRequest(form);
-    const serialized = JSON.stringify(payload);
-    for (const field of JOIN_FIELDS_PENDING_BACKEND_SUPPORT) {
-      expect(payload).not.toHaveProperty(field);
-    }
-    expect(serialized).not.toContain('29901011234567');
-    expect(serialized).not.toContain('Asthma');
-  });
-
-  it('flags national ID and medical notes as sensitive for the backend phase', () => {
-    expect([...SENSITIVE_JOIN_FIELDS].sort()).toEqual(['medicalNotes', 'nationalId']);
-  });
-
-  it('pending list matches what the API contract really lacks (detects contract drift)', () => {
-    const contractKeys = Object.keys(CreatePlayerJoinRequestSchema.innerType().shape);
-    for (const field of JOIN_FIELDS_PENDING_BACKEND_SUPPORT) {
-      expect(contractKeys).not.toContain(field);
-    }
+    expect(payload.gender).toBe('FEMALE');
+    expect(payload).not.toHaveProperty('jerseyNumber', expect.anything());
+    expect(payload.nationalId).toBeUndefined();
+    expect(payload.medicalNotes).toBeUndefined();
+    expect(CreatePlayerJoinRequestSchema.safeParse(payload).success).toBe(true);
   });
 });
 

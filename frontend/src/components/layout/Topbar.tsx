@@ -1,6 +1,7 @@
 'use client';
 
 import { NotificationListSkeleton } from '@/components/ui/skeleton';
+import { localizeNotification } from '@/features/notifications/localize-notification';
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -361,14 +362,14 @@ export function Topbar({ onOpenMobile, breadcrumbs: customBreadcrumbs }: TopbarP
                         >
                           <span className="flex items-start justify-between gap-2">
                             <span className="font-bold text-[11px] text-(--text-main) leading-tight">
-                              {item.title}
+                              {localizeNotification(item, locale === 'ar' ? 'ar' : 'en').title}
                             </span>
                             {!isRead && (
                               <span className="h-1.5 w-1.5 rounded-full bg-(--accent-primary) shrink-0 mt-1" />
                             )}
                           </span>
                           <span className="block text-[10px] text-(--text-muted) leading-relaxed">
-                            {item.body}
+                            {localizeNotification(item, locale === 'ar' ? 'ar' : 'en').body}
                           </span>
                           <span className="block text-[9px] text-(--text-muted)/70 pt-0.5">
                             {new Date(item.createdAt).toLocaleDateString(
