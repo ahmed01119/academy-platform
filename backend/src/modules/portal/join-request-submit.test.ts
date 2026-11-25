@@ -82,6 +82,23 @@ describe('PortalService.submitPlayerJoinRequest (K6)', () => {
     );
   });
 
+  it('2026-11-25: stores the rest of the shared player form with the request', async () => {
+    await service.submitPlayerJoinRequest(
+      guardianDto({
+        password: 'Str0ng-Passw0rd!',
+        gender: 'FEMALE',
+        jerseyNumber: 7,
+        nationalId: '29901011234567',
+        medicalNotes: 'Asthma',
+      }),
+      undefined,
+      '203.0.113.7',
+    );
+    const submit = tx.$queryRaw.mock.calls[1];
+    expect(sqlOf(submit)).toContain('submit_player_join_request');
+    expect(submit?.slice(-4)).toEqual(['FEMALE', 7, '29901011234567', 'Asthma']);
+  });
+
   it('anonymous: creates the pending account and the request in one transaction', async () => {
     const result = await service.submitPlayerJoinRequest(
       guardianDto({ password: 'Str0ng-Passw0rd!' }),

@@ -339,6 +339,12 @@ export const CreatePlayerJoinRequestSchema = z
      */
     emailProof: EmailProofSchema.optional(),
     branchId: z.string().uuid().optional(),
+    // The rest of the shared player form (owner decision 2026-11-25), stored with the request and copied to the player
+    // on approval. National ID and medical notes are shown only to staff with players.sensitive.read.
+    gender: z.enum(['MALE', 'FEMALE']).optional(),
+    jerseyNumber: z.number().int().min(1).max(99).optional(),
+    nationalId: z.string().trim().max(30).optional(),
+    medicalNotes: z.string().trim().max(500).optional(),
   })
   .superRefine((value, ctx) => {
     if (value.requesterType === 'GUARDIAN' && (value.guardianName?.length ?? 0) < 2) {
@@ -373,6 +379,12 @@ export const PlayerJoinRequestItemSchema = z.object({
   dateOfBirth: z.string().nullable().optional(),
   guardianName: z.string().nullable().optional(),
   guardianEmail: z.string().nullable().optional(),
+  gender: z.enum(['MALE', 'FEMALE']).nullable().optional(),
+  jerseyNumber: z.number().nullable().optional(),
+  /** Only for staff with players.sensitive.read; otherwise left out. */
+  nationalId: z.string().nullable().optional(),
+  /** Only for staff with players.sensitive.read; otherwise left out. */
+  medicalNotes: z.string().nullable().optional(),
   status: ApplicationStatusSchema,
   reviewNotes: z.string().nullable().optional(),
   reviewedByUserId: z.string().uuid().nullable().optional(),

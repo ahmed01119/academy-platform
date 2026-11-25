@@ -32,7 +32,7 @@ const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frid
 
 /**
  * A group's fixed weekly timetable and its one-off changes (owner request 2026-11-24). The admin (groups.manage) cancels
- * or moves one occurrence, adds an extra session, or changes a weekly slot; the group's coaches and players (accounts
+ * or moves one occurrence, adds an extra session, or changes a weekly slot; the group's coaches, players and their guardians (accounts
  * linked to its active members) are notified of every change. Reading the calendar follows groups.read and the coach
  * scope (a coach sees only their own groups).
  */
@@ -367,7 +367,7 @@ export class GroupScheduleService {
       await this.prisma.withTenantTransaction(
         { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
         async (tx) => {
-          const [coaches, members] = await Promise.all([
+          const [coaches, members, guardians] = await Promise.all([
             tx.groupCoach.findMany({
               where: { tenantId: tenantContext.tenantId, groupId },
               select: { coachUserId: true },
@@ -381,10 +381,21 @@ export class GroupScheduleService {
               },
               select: { player: { select: { userId: true } } },
             }),
+            // Guardians with an account follow their children's sessions too (owner decision 2026-11-25).
+            tx.guardian.findMany({
+              where: {
+                tenantId: tenantContext.tenantId,
+                userId: { not: null },
+                player: { groupMemberships: { some: { groupId, status: 'ACTIVE' } } },
+              },
+              select: { userId: true },
+            }),
           ]);
           const recipients = new Map<string, string>();
           for (const c of coaches) recipients.set(c.coachUserId, `/groups/${groupId}`);
           for (const m of members) if (m.player.userId) recipients.set(m.player.userId, '/player');
+          for (const g of guardians)
+            if (g.userId && !recipients.has(g.userId)) recipients.set(g.userId, '/guardian');
           recipients.delete(tenantContext.actorUserId);
           // One statement per link target (coaches → the group page, players → the player portal), not one round trip
           // per person: a group can have dozens of players.

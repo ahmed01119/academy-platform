@@ -591,6 +591,7 @@ model Player {
   emergencyContactName  String       @map("emergency_contact_name")
   emergencyContactPhone String       @map("emergency_contact_phone")
   medicalNotes          String?      @map("medical_notes")
+  jerseyNumber          Int?         @map("jersey_number")
   status                PlayerStatus @default(ACTIVE)
   userId                String?      @unique(map: "players_user_id_key") @map("user_id") @db.Uuid
   claimToken            String?      @map("claim_token")
@@ -1157,6 +1158,11 @@ model PlayerRegistrationRequest {
   guardianName     String?           @map("guardian_name")
   /// The guardian's own e-mail (PLAYER requests); contactEmail is the applicant's account e-mail.
   guardianEmail    String?           @map("guardian_email")
+  /// Player fields of the shared form (2026-11-25); national ID and medical notes are sensitive (players.sensitive.read).
+  gender           PlayerGender?
+  jerseyNumber     Int?              @map("jersey_number")
+  nationalId       String?           @map("national_id")
+  medicalNotes     String?           @map("medical_notes")
   status           ApplicationStatus @default(PENDING_REVIEW)
   reviewNotes      String?           @map("review_notes")
   reviewedByUserId String?           @map("reviewed_by_user_id") @db.Uuid

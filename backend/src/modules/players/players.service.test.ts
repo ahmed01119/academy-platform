@@ -469,6 +469,57 @@ describe('PlayersService', () => {
         }),
       ).rejects.toThrow(ConflictException);
     });
+
+    it('2026-11-25: edits the shared form fields; the guardian is also the emergency contact', async () => {
+      mockPrisma.player.findUnique.mockResolvedValue({
+        id: 'player-1',
+        tenantId: mockTenantContext.tenantId,
+        nationalId: null,
+        enrollments: [],
+      });
+      const guardian = {
+        findFirst: vi.fn().mockResolvedValue({ id: 'g-1' }),
+        update: vi.fn().mockResolvedValue({}),
+        create: vi.fn(),
+      };
+      (mockPrisma as unknown as { guardian: typeof guardian }).guardian = guardian;
+      mockPrisma.player.update.mockResolvedValue({
+        id: 'player-1',
+        tenantId: mockTenantContext.tenantId,
+        firstName: 'Omar',
+        lastName: 'Ali',
+        gender: 'MALE',
+        dateOfBirth: new Date('2013-01-01'),
+        jerseyNumber: 9,
+        emergencyContactName: 'Ali Hassan Omar',
+        emergencyContactPhone: '01000000002',
+        status: 'ACTIVE',
+        guardians: [],
+        enrollments: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      const result = await service.updatePlayer(mockTenantContext, 'player-1', {
+        birthYear: 2013,
+        jerseyNumber: 9,
+        guardianName: 'Ali Hassan Omar',
+        guardianPhone: '01000000002',
+      });
+
+      expect(mockPrisma.player.update.mock.calls[0]?.[0].data).toMatchObject({
+        dateOfBirth: new Date('2013-01-01'),
+        jerseyNumber: 9,
+        emergencyContactName: 'Ali Hassan Omar',
+        emergencyContactPhone: '01000000002',
+      });
+      expect(guardian.update.mock.calls[0]?.[0].data).toEqual({
+        firstName: 'Ali',
+        lastName: 'Hassan Omar',
+        phone: '01000000002',
+      });
+      expect(result.jerseyNumber).toBe(9);
+    });
   });
 
   describe('Player QR Card Management', () => {

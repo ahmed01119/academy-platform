@@ -36,6 +36,7 @@ describe('GroupScheduleService', () => {
       deleteMany: MockFn;
     };
     groupCoach: { findMany: MockFn };
+    guardian: { findMany: MockFn };
     groupMember: { findMany: MockFn };
     $queryRaw: MockFn;
   };
@@ -45,14 +46,12 @@ describe('GroupScheduleService', () => {
   beforeEach(() => {
     tx = {
       trainingGroup: {
-        findUnique: vi
-          .fn()
-          .mockResolvedValue({
-            id: GROUP,
-            name: 'U12',
-            branchId: 'b1',
-            coaches: [{ coachUserId: 'coach-1' }],
-          }),
+        findUnique: vi.fn().mockResolvedValue({
+          id: GROUP,
+          name: 'U12',
+          branchId: 'b1',
+          coaches: [{ coachUserId: 'coach-1' }],
+        }),
       },
       trainingSchedule: {
         findFirst: vi
@@ -69,6 +68,7 @@ describe('GroupScheduleService', () => {
         deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
       },
       groupCoach: { findMany: vi.fn().mockResolvedValue([{ coachUserId: 'coach-1' }]) },
+      guardian: { findMany: vi.fn().mockResolvedValue([{ userId: 'parent-1' }]) },
       groupMember: {
         findMany: vi
           .fn()
@@ -90,7 +90,7 @@ describe('GroupScheduleService', () => {
   /** Every user id passed to the notification statements (one statement per link target). */
   const notifiedUsers = () => tx.$queryRaw.mock.calls.flatMap((c) => c[5] as string[]);
 
-  it('cancels one occurrence and tells the coach and every player', async () => {
+  it('cancels one occurrence and tells the coach, every player and their guardians', async () => {
     const date = next(0);
     await service.createException(admin, GROUP, {
       kind: 'CANCELLED',
@@ -105,9 +105,9 @@ describe('GroupScheduleService', () => {
       createdByUserId: 'admin-1',
     });
     expect(audit.logEvent.mock.calls[0]?.[0].action).toBe('GROUP_SCHEDULE_CANCELLED');
-    expect(notifiedUsers().sort()).toEqual(['coach-1', 'player-1', 'player-2']);
+    expect(notifiedUsers().sort()).toEqual(['coach-1', 'parent-1', 'player-1', 'player-2']);
     expect(tx.$queryRaw.mock.calls[0]?.[2]).toBe('Training cancelled');
-    expect(tx.$queryRaw).toHaveBeenCalledTimes(2); // coaches and players, not one call per person
+    expect(tx.$queryRaw).toHaveBeenCalledTimes(3); // coaches, players, guardians: not one call per person
   });
 
   it('refuses a date the slot does not train on, or a past date', async () => {

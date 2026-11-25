@@ -14,6 +14,7 @@ import { PrismaService } from '../database/prisma.service';
 import { databaseFunctionErrorCode } from '../../common/db-function-error';
 import { assertCoachCanSee, coachPlayerWhere, isCoachContext } from '../../common/coach-scope';
 import type { Prisma } from '@prisma/client';
+import type { TenantTransactionClient } from '@academy/database';
 import { AuditService } from '../audit/audit.service';
 import {
   assertMaySetSensitiveFieldsOnUpdate,
@@ -161,6 +162,7 @@ export class PlayersService {
             photoUrl: p.photoUrl,
             emergencyContactName: p.emergencyContactName,
             emergencyContactPhone: p.emergencyContactPhone,
+            jerseyNumber: p.jerseyNumber,
             status: p.status as PlayerStatus,
             currentBranch: activeEnrollment
               ? {
@@ -274,6 +276,7 @@ export class PlayersService {
           photoUrl: p.photoUrl,
           emergencyContactName: p.emergencyContactName,
           emergencyContactPhone: p.emergencyContactPhone,
+          jerseyNumber: p.jerseyNumber,
           medicalNotes: canViewSensitive ? p.medicalNotes : null,
           status: p.status as PlayerStatus,
           currentBranch: activeEnrollment
@@ -409,10 +412,8 @@ export class PlayersService {
             ? `${dto.birthYear}-01-01`
             : '2015-01-01';
 
-        const membershipNumber =
-          dto.jerseyNumber !== undefined && dto.jerseyNumber !== null
-            ? String(dto.jerseyNumber)
-            : dto.membershipNumber?.trim() || null;
+        // The jersey number has its own column (2026-11-25); it used to be stored as the membership number.
+        const membershipNumber = dto.membershipNumber?.trim() || null;
 
         // 1. Create player
         const player = await tx.player
@@ -429,6 +430,7 @@ export class PlayersService {
               emergencyContactName: dto.emergencyContactName.trim(),
               emergencyContactPhone: dto.emergencyContactPhone.trim(),
               medicalNotes: dto.medicalNotes?.trim() || null,
+              jerseyNumber: dto.jerseyNumber ?? null,
               status: 'ACTIVE',
             },
           })
@@ -527,6 +529,7 @@ export class PlayersService {
           photoUrl: player.photoUrl,
           emergencyContactName: player.emergencyContactName,
           emergencyContactPhone: player.emergencyContactPhone,
+          jerseyNumber: player.jerseyNumber,
           medicalNotes: hasSensitivePerm ? player.medicalNotes : null,
           status: player.status as PlayerStatus,
           currentBranch: {
@@ -579,7 +582,47 @@ export class PlayersService {
   }
 
   /**
-   * Updates player personal info, emergency contacts, or status.
+   * Sets the primary guardian's name and/or phone (creates the guardian record when the player has none). The name is
+   * split into first and last name as on the enrollment form.
+   */
+  private async updatePrimaryGuardian(
+    tx: TenantTransactionClient,
+    tenantId: string,
+    playerId: string,
+    dto: { guardianName?: string; guardianPhone?: string },
+  ): Promise<void> {
+    const name = dto.guardianName?.trim();
+    const parts = name ? name.split(/\s+/) : [];
+    const nameData = name
+      ? { firstName: parts[0] ?? name, lastName: parts.slice(1).join(' ') || '-' }
+      : {};
+    const phoneData = dto.guardianPhone ? { phone: dto.guardianPhone.trim() } : {};
+    const primary = await tx.guardian.findFirst({
+      where: { tenantId, playerId },
+      orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
+    });
+    if (primary) {
+      await tx.guardian.update({
+        where: { tenantId_id: { tenantId, id: primary.id } },
+        data: { ...nameData, ...phoneData },
+      });
+    } else if (name && dto.guardianPhone) {
+      await tx.guardian.create({
+        data: {
+          tenantId,
+          playerId,
+          firstName: nameData.firstName ?? name,
+          lastName: nameData.lastName ?? '-',
+          phone: dto.guardianPhone.trim(),
+          relationship: 'FATHER',
+          isPrimary: true,
+        },
+      });
+    }
+  }
+
+  /**
+   * Updates player personal info, the primary guardian (name and phone, also the emergency contact), or status.
    */
   async updatePlayer(
     tenantContext: TenantContext,
@@ -657,6 +700,18 @@ export class PlayersService {
           updateData.medicalNotes = dto.medicalNotes?.trim() || null;
         }
         if (dto.status !== undefined) updateData.status = dto.status;
+        if (dto.jerseyNumber !== undefined) updateData.jerseyNumber = dto.jerseyNumber;
+        if (dto.dateOfBirth === undefined && dto.birthYear) {
+          updateData.dateOfBirth = new Date(`${dto.birthYear}-01-01`);
+        }
+        // The primary guardian's name and phone are the player's emergency contact too (owner decision 2026-11-25).
+        if (dto.guardianName !== undefined)
+          updateData.emergencyContactName = dto.guardianName.trim();
+        if (dto.guardianPhone !== undefined)
+          updateData.emergencyContactPhone = dto.guardianPhone.trim();
+        if (dto.guardianName !== undefined || dto.guardianPhone !== undefined) {
+          await this.updatePrimaryGuardian(tx, tenantContext.tenantId, playerId, dto);
+        }
 
         const updated = await tx.player
           .update({
@@ -722,6 +777,7 @@ export class PlayersService {
           photoUrl: updated.photoUrl,
           emergencyContactName: updated.emergencyContactName,
           emergencyContactPhone: updated.emergencyContactPhone,
+          jerseyNumber: updated.jerseyNumber,
           status: updated.status as PlayerStatus,
           currentBranch: activeEnrollment
             ? {
@@ -1043,6 +1099,8 @@ export class PlayersService {
     tenantContext: TenantContext,
     status?: ApplicationStatus,
   ): Promise<PlayerJoinRequestItem[]> {
+    // National ID and medical notes of a request follow the same rule as on the player (players.sensitive.read).
+    const canViewSensitive = canViewSensitivePlayerData(tenantContext);
     return this.prisma.withTenantTransaction(tenantContext, async (tx) => {
       const items = await tx.playerRegistrationRequest.findMany({
         where: {
@@ -1062,6 +1120,9 @@ export class PlayersService {
         dateOfBirth: req.dateOfBirth ? req.dateOfBirth.toISOString().split('T')[0] : null,
         guardianName: req.guardianName,
         guardianEmail: req.guardianEmail,
+        gender: req.gender,
+        jerseyNumber: req.jerseyNumber,
+        ...(canViewSensitive ? { nationalId: req.nationalId, medicalNotes: req.medicalNotes } : {}),
         requesterType: req.requesterType,
         status: req.status as ApplicationStatus,
         reviewNotes: req.reviewNotes,
@@ -1215,8 +1276,12 @@ export class PlayersService {
               emergencyContactName: request.guardianName || 'Guardian',
               emergencyContactPhone: request.contactPhone || '-',
               dateOfBirth: request.dateOfBirth || new Date(2012, 0, 1),
-              gender: 'MALE',
+              // The rest of the shared form, as the applicant filled it (2026-11-25).
+              gender: request.gender ?? 'MALE',
+              nationalId: request.nationalId,
+              medicalNotes: request.medicalNotes,
               status: 'ACTIVE',
+              jerseyNumber: request.jerseyNumber,
               membershipNumber,
               qrCardCode,
               qrCardIssuedAt: new Date(),

@@ -88,6 +88,23 @@ export const GuardianChildSummarySchema = z.object({
   attendanceRate: z.number(),
   latestScore: z.number().optional(),
   upcomingSessionsCount: z.number(),
+  /**
+   * The child's next sessions from the group timetable (14 days), with cancelled / moved / extra marked (2026-11-25).
+   */
+  upcomingSessions: z
+    .array(
+      z.object({
+        id: z.string(),
+        sessionDate: z.string(),
+        startTime: z.string(),
+        endTime: z.string(),
+        groupName: z.string(),
+        branchName: z.string().optional(),
+        status: z.enum(['SCHEDULED', 'CANCELLED', 'MOVED', 'RESCHEDULED', 'EXTRA']),
+        note: z.string().nullable(),
+      }),
+    )
+    .optional(),
   /** Latest published evaluations (same fields as the player portal; private coach notes are never included). */
   recentEvaluations: z.array(PlayerPortalEvaluationSchema).optional(),
 });

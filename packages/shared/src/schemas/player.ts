@@ -94,6 +94,12 @@ export const UpdatePlayerSchema = z.object({
   emergencyContactPhone: z.string().trim().min(8).max(20).optional(),
   medicalNotes: z.string().trim().max(500).optional().nullable(),
   status: PlayerStatusSchema.optional(),
+  /**
+   * The primary guardian (owner decision 2026-11-25: the player form keeps the guardian's name and phone only). They
+   * are also the player's emergency contact, so both are updated together.
+   */
+  guardianName: z.string().trim().min(2).max(100).optional(),
+  guardianPhone: z.string().trim().min(8).max(20).optional(),
 });
 export type UpdatePlayerRequest = z.infer<typeof UpdatePlayerSchema>;
 
@@ -131,6 +137,8 @@ export interface PlayerSummary {
   photoUrl?: string | null;
   emergencyContactName: string;
   emergencyContactPhone: string;
+  /** 1-99, when chosen. */
+  jerseyNumber?: number | null;
   status: PlayerStatus;
   currentBranch?: {
     id: string;

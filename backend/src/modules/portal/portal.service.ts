@@ -323,6 +323,14 @@ export class PortalService {
         const attendanceRate =
           total > 0 ? Number((((present + late) / total) * 100).toFixed(1)) : 0;
         const primaryGroup = p.groupMemberships[0]?.group;
+        const upcomingSessions = await loadPortalUpcomingSessions(
+          tx,
+          p.groupMemberships.map((gm) => ({
+            id: gm.groupId,
+            name: gm.group?.name ?? '',
+            branchName: gm.group?.branch?.name,
+          })),
+        );
 
         children.push({
           playerId: p.id,
@@ -338,7 +346,10 @@ export class PortalService {
           dateOfBirth: p.dateOfBirth.toISOString().split('T')[0]!,
           attendanceRate,
           latestScore: p.evaluations[0]?.overallScore,
-          upcomingSessionsCount: 0,
+          upcomingSessionsCount: upcomingSessions.filter(
+            (u) => u.status !== 'CANCELLED' && u.status !== 'MOVED',
+          ).length,
+          upcomingSessions,
           recentEvaluations: p.evaluations.map(toPortalEvaluation),
         });
       }
@@ -705,7 +716,8 @@ export class PortalService {
        FROM public.submit_player_join_request(
          ${dto.tenantId}::uuid, ${dto.playerName}, ${dto.contactEmail}, ${dto.contactPhone ?? null},
          ${dto.dateOfBirth ?? null}::date, ${dto.guardianName ?? null}, ${dto.requesterType},
-         ${dto.guardianEmail ?? null}
+         ${dto.guardianEmail ?? null}, ${dto.gender ?? null}, ${dto.jerseyNumber ?? null}::integer,
+         ${dto.nationalId ?? null}, ${dto.medicalNotes ?? null}
        )`;
     return singleRow(rows);
   }
