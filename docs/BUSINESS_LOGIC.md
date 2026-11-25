@@ -21,7 +21,7 @@
 
 ### 1.2 Academy (tenant) roles — `TenantRole`
 
-**Academy roles since 2026-11-24 (owner decision):**
+**Academy roles since 2026-11-24 (owner decision).** Full plain-language guide: [ROLES_AND_PERMISSIONS.md](ROLES_AND_PERMISSIONS.md).
 
 - **OWNER**: responsible for everything in the academy, and the only role with money (payments, refunds, session
   expenses, cashier, finance page).
@@ -256,7 +256,8 @@ Pre-2026-11-16 code:
 - **Group timetable (2026-11-24)**: a group trains on fixed weekly slots. The admin (groups.manage) may cancel or move
   one session, add an extra session, or change a weekly slot (for every following week); past sessions cannot be
   changed and each session can carry one change (undo it to change it again). The group's coaches and players are
-  notified of every change. Coaches and players see the timetable with its changes; they cannot change it.
+  notified of every change, and so are the guardians of the group's players (2026-11-25). Coaches, players and
+  guardians see the timetable with its changes; they cannot change it.
 - **Review notes in every review e-mail (2026-11-24)**: approval, rejection and "more details" e-mails show the
   reviewer's notes.
 - **Join request e-mails (2026-11-22)**: the applicant gets an e-mail when the request is received and when the

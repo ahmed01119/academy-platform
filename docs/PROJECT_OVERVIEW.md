@@ -41,6 +41,8 @@ Academies typically run on paper, WhatsApp and spreadsheets. The platform replac
 | End user | **Player**                                                 | Account linked to a `Player` record (join request approval or claim token) |
 | End user | **Guardian** (parent)                                      | Account linked to a `Guardian` record via claim token                      |
 
+What each role can do, in plain language: [ROLES_AND_PERMISSIONS.md](ROLES_AND_PERMISSIONS.md).
+
 One user account can hold memberships in several academies and switch between them.
 
 ## 4. Main features (as implemented)

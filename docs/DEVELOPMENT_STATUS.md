@@ -939,6 +939,37 @@ the player portal show skeletons from the first frame and replace them with the 
 Not done: button spinners while saving stay (they are feedback for an action, not loading data); some pages still
 replace their list with a skeleton while a filter reloads it.
 
+## 9p. Owner follow-ups of 2026-11-25
+
+- **Guardians follow timetable changes**: a cancelled, moved or extra session, an undo and a changed weekly time now
+  also notify the accounts of the group's players' guardians (link to the guardian portal). The guardian portal
+  shows each child's upcoming sessions (14 days) with the status and reason; `GuardianChildSummary` gains
+  `upcomingSessions` and a real `upcomingSessionsCount`.
+- **Join requests store the whole shared form**: gender, jersey number, national ID and medical notes are saved with
+  the request (landing page and signed-in portal), shown to the reviewer (national ID and medical notes only with
+  players.sensitive.read) and copied to the player on approval. The "fields not saved" notice is gone.
+- **Jersey number column**: `players.jersey_number` (1-99). It used to be stored as the membership number; existing
+  rows are unchanged. Staff enrollment, edit and approval write it.
+- **Edit player** uses the shared fields (names, gender, birth year, jersey number, national ID and medical notes
+  for sensitive access only, guardian name and phone) plus the status. `PATCH /players/:id` accepts `guardianName`
+  and `guardianPhone`: they update the primary guardian and the player's emergency contact together. The profile's
+  card is now "Health" (the guardian card already shows the contact).
+- **Notifications in Arabic**: the bell translates known titles and texts (`localizeNotification`); unknown texts are
+  shown as stored.
+- **Roles guide**: `docs/ROLES_AND_PERMISSIONS.md` explains every role in plain language (what each sees and may do,
+  how one gets it, what notifies them, a task-by-role table).
+- **Migrations** (applied to Neon dev): `20261125090000_join_request_profile_fields` (request columns, jersey column,
+  new `submit_player_join_request` with four optional parameters, replacing the 8-parameter one) and
+  `20261125100000_players_jersey_number_grant` (the runtime role writes players column by column; the new column
+  was refused until granted). **Security SQL to review before main.**
+
+Verification: API 463 passed / 8 skipped, web 404, shared 56; typecheck, lint, Prettier clean. End to end on
+3100/3101 against Neon dev: a signed-in guardian's request saved all fields; the owner saw them and approval copied
+them to the player; the edit dialog saved birth year, jersey number and guardian (also the emergency contact); a
+cancelled session notified the coach and the child's guardian, showed in the guardian portal and in Arabic in the
+bell. Test request, player, change and notifications were removed afterwards; the test player "يوسف سنة 7325" keeps
+the edited values.
+
 ## 10. Backend requirements (recorded by owner decisions)
 
 **Workflow (owner direction 2026-11-15):** frontend issues whose root cause is in the backend are now fixed across both
