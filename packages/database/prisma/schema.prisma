@@ -105,6 +105,13 @@ enum ApplicationStatus {
   REJECTED
 }
 
+/// Who submitted a player join request (K6): the athlete (PLAYER) or the child's parent/guardian (GUARDIAN).
+/// Academy owners/coaches apply through AcademyApplication instead.
+enum JoinRequesterType {
+  PLAYER
+  GUARDIAN
+}
+
 enum NotificationType {
   ACADEMY_APPLICATION
   PLAYER_REGISTRATION
@@ -122,6 +129,17 @@ enum BranchStatus {
 
 enum SportCode {
   FOOTBALL
+  SWIMMING
+  TENNIS
+  PADEL
+  BASKETBALL
+  VOLLEYBALL
+  HANDBALL
+  MARTIAL_ARTS
+  GYMNASTICS
+  ATHLETICS
+  SQUASH
+  OTHER
 }
 
 enum TenantRole {
@@ -206,6 +224,13 @@ enum ScheduleStatus {
   INACTIVE
 }
 
+/// A one-off change to a group's weekly timetable (owner request 2026-11-24).
+enum ScheduleExceptionKind {
+  CANCELLED
+  MOVED
+  EXTRA
+}
+
 enum AttendanceEventSource {
   MANUAL
   QR_CHECKIN
@@ -225,6 +250,11 @@ model User {
   emailVerificationExpiresAt DateTime? @map("email_verification_expires_at") @db.Timestamptz(3)
   passwordResetToken         String?   @map("password_reset_token")
   passwordResetExpiresAt     DateTime? @map("password_reset_expires_at") @db.Timestamptz(3)
+  /// SHA-256 of the 256-bit reset link token (K1). Never stored or logged in plain text; single-use.
+  passwordResetLinkToken     String?   @map("password_reset_link_token")
+  /// Incremented on password change/reset, suspension and admin session revocation (K13b). Access and refresh
+  /// tokens carry the version they were issued with and are rejected once it no longer matches.
+  sessionVersion             Int       @default(0) @map("session_version")
   onboardingToken            String?   @map("onboarding_token")
   onboardingExpiresAt        DateTime? @map("onboarding_expires_at") @db.Timestamptz(3)
   redemptionChallenge        String?   @map("redemption_challenge")
@@ -243,6 +273,7 @@ model User {
   managedBranches      Branch[]                      @relation("BranchManagerUser")
   groupCoaches         GroupCoach[]
   coachedSessions      AttendanceSession[]           @relation("SessionCoachUser")
+  scheduleExceptions   ScheduleException[]           @relation("ScheduleExceptionCreator")
   playerProfile        Player?                       @relation("PlayerUser")
   guardianProfiles     Guardian[]                    @relation("GuardianUser")
   evaluationsGiven     PlayerEvaluation[]            @relation("EvaluatorUser")
@@ -256,20 +287,25 @@ model User {
   reviewedJoinRequests PlayerRegistrationRequest[]   @relation("PlayerJoinReviewer")
   notifications        AppNotification[]
 
+  onlinePayments  OnlinePayment[] @relation("OnlinePaymentPayer")
+  recordedPayouts AcademyPayout[] @relation("PayoutRecorder")
+
   @@map("users")
 }
 
 /// Refresh tokens supporting rotation, reuse detection, and device tracking.
 model RefreshToken {
-  id         String   @id @default(uuid()) @db.Uuid
-  userId     String   @map("user_id") @db.Uuid
-  tokenHash  String   @unique @map("token_hash")
-  familyId   String   @map("family_id") @db.Uuid
-  deviceInfo String?  @map("device_info")
-  ipAddress  String?  @map("ip_address")
-  isRevoked  Boolean  @default(false) @map("is_revoked")
-  expiresAt  DateTime @map("expires_at") @db.Timestamptz(3)
-  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  id             String   @id @default(uuid()) @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  tokenHash      String   @unique @map("token_hash")
+  familyId       String   @map("family_id") @db.Uuid
+  deviceInfo     String?  @map("device_info")
+  ipAddress      String?  @map("ip_address")
+  isRevoked      Boolean  @default(false) @map("is_revoked")
+  /// users.session_version at issuance (K13b); rotation is refused once it no longer matches.
+  sessionVersion Int      @default(0) @map("session_version")
+  expiresAt      DateTime @map("expires_at") @db.Timestamptz(3)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -280,25 +316,27 @@ model RefreshToken {
 
 /// Top-level tenant (academy organization / legal customer of the SaaS).
 model Tenant {
-  id        String       @id @default(uuid()) @db.Uuid
+  id                   String       @id @default(uuid()) @db.Uuid
   /// Lowercase slug enforced in application validation (unique per platform).
-  slug      String       @unique
-  name      String
-  status    TenantStatus @default(PROVISIONING)
+  slug                 String       @unique
+  name                 String
+  status               TenantStatus @default(PROVISIONING)
   /// ISO 4217; Egypt launch default is EGP.
-  currency  String       @default("EGP") @db.Char(3)
+  currency             String       @default("EGP") @db.Char(3)
   /// IANA timezone for operational defaults (e.g. Africa/Cairo).
-  timezone  String       @default("Africa/Cairo")
-  phone     String?
-  email     String?
-  address   String?
-  logoUrl   String?      @map("logo_url")
-  latenessGraceMinutes Int @default(15) @map("lateness_grace_minutes")
-  createdAt DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+  timezone             String       @default("Africa/Cairo")
+  phone                String?
+  email                String?
+  address              String?
+  logoUrl              String?      @map("logo_url")
+  latenessGraceMinutes Int          @default(15) @map("lateness_grace_minutes")
+  createdAt            DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt            DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   branches                Branch[]
   sports                  TenantSport[]
+  onlinePayments          OnlinePayment[]
+  payouts                 AcademyPayout[]
   auditLogs               AuditLog[]
   memberships             TenantMembership[]
   invitations             Invitation[]
@@ -325,15 +363,15 @@ model Tenant {
 
 /// Multi-tenant membership linking users to academies with granular roles.
 model TenantMembership {
-  id        String           @id @default(uuid()) @db.Uuid
-  tenantId  String           @map("tenant_id") @db.Uuid
-  userId    String           @map("user_id") @db.Uuid
-  role      TenantRole
-  status    MembershipStatus @default(ACTIVE)
+  id                    String           @id @default(uuid()) @db.Uuid
+  tenantId              String           @map("tenant_id") @db.Uuid
+  userId                String           @map("user_id") @db.Uuid
+  role                  TenantRole
+  status                MembershipStatus @default(ACTIVE)
   branchId              String?          @map("branch_id") @db.Uuid
   canReviewApplications Boolean          @default(false) @map("can_review_applications")
   createdAt             DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+  updatedAt             DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   tenant Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -369,11 +407,11 @@ model Invitation {
 }
 
 model Branch {
-  id        String       @id @default(uuid()) @db.Uuid
-  tenantId  String       @map("tenant_id") @db.Uuid
-  code      String
-  name      String
-  status    BranchStatus @default(ACTIVE)
+  id            String       @id @default(uuid()) @db.Uuid
+  tenantId      String       @map("tenant_id") @db.Uuid
+  code          String
+  name          String
+  status        BranchStatus @default(ACTIVE)
   /// Optional geographic metadata; keep PII out of this table.
   city          String?
   country       String       @default("EG") @db.Char(2)
@@ -440,34 +478,34 @@ model AuditLog {
 
 /// Attendance session model representing a training event in a branch.
 model AttendanceSession {
-  id             String        @id @default(uuid()) @db.Uuid
-  tenantId       String        @map("tenant_id") @db.Uuid
-  branchId       String        @map("branch_id") @db.Uuid
-  groupId        String?       @map("group_id") @db.Uuid
-  coachUserId    String?       @map("coach_user_id") @db.Uuid
-  sport          SportCode     @default(FOOTBALL)
-  groupName      String        @map("group_name")
-  sessionDate    DateTime      @map("session_date") @db.Date
-  startTime      String        @map("start_time")
-  endTime        String        @map("end_time")
-  status         SessionStatus @default(SCHEDULED)
-  qrCodeSecret   String?       @map("qr_code_secret")
-  qrCodeExpiresAt DateTime?    @map("qr_code_expires_at") @db.Timestamptz(3)
-  closedAt       DateTime?     @map("closed_at") @db.Timestamptz(3)
-  closedByUserId String?       @map("closed_by_user_id") @db.Uuid
-  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt      DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+  id              String        @id @default(uuid()) @db.Uuid
+  tenantId        String        @map("tenant_id") @db.Uuid
+  branchId        String        @map("branch_id") @db.Uuid
+  groupId         String?       @map("group_id") @db.Uuid
+  coachUserId     String?       @map("coach_user_id") @db.Uuid
+  sport           SportCode     @default(FOOTBALL)
+  groupName       String        @map("group_name")
+  sessionDate     DateTime      @map("session_date") @db.Date
+  startTime       String        @map("start_time")
+  endTime         String        @map("end_time")
+  status          SessionStatus @default(SCHEDULED)
+  qrCodeSecret    String?       @map("qr_code_secret")
+  qrCodeExpiresAt DateTime?     @map("qr_code_expires_at") @db.Timestamptz(3)
+  closedAt        DateTime?     @map("closed_at") @db.Timestamptz(3)
+  closedByUserId  String?       @map("closed_by_user_id") @db.Uuid
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  tenant                 Tenant                        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  branch                 Branch                        @relation(fields: [tenantId, branchId], references: [tenantId, id], onDelete: Cascade)
-  group                  TrainingGroup?                @relation(fields: [tenantId, groupId], references: [tenantId, id], onDelete: SetNull)
-  coachUser              User?                         @relation("SessionCoachUser", fields: [coachUserId], references: [id], onDelete: SetNull)
-  records                AttendanceRecord[]
-  idempotencyRecords     AttendanceIdempotency[]
-  events                 AttendanceEvent[]
-  evaluations            PlayerEvaluation[]
-  financialTransactions  AcademyFinancialTransaction[]
-  cashierClosing         SessionCashierClosing?
+  tenant                Tenant                        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch                Branch                        @relation(fields: [tenantId, branchId], references: [tenantId, id], onDelete: Cascade)
+  group                 TrainingGroup?                @relation(fields: [tenantId, groupId], references: [tenantId, id], onDelete: SetNull)
+  coachUser             User?                         @relation("SessionCoachUser", fields: [coachUserId], references: [id], onDelete: SetNull)
+  records               AttendanceRecord[]
+  idempotencyRecords    AttendanceIdempotency[]
+  events                AttendanceEvent[]
+  evaluations           PlayerEvaluation[]
+  financialTransactions AcademyFinancialTransaction[]
+  cashierClosing        SessionCashierClosing?
 
   @@unique([tenantId, id])
   @@index([tenantId, sessionDate])
@@ -479,20 +517,20 @@ model AttendanceSession {
 
 /// Individual player attendance record with optimistic concurrency.
 model AttendanceRecord {
-  id             String           @id @default(uuid()) @db.Uuid
-  tenantId       String           @map("tenant_id") @db.Uuid
-  sessionId      String           @map("session_id") @db.Uuid
-  playerId       String           @map("player_id") @db.Uuid
-  status         AttendanceStatus @default(UNMARKED)
-  checkInTime    DateTime?        @map("check_in_time") @db.Timestamptz(3)
-  deviceObservedTime DateTime?    @map("device_observed_time") @db.Timestamptz(3)
-  isOfflineSync  Boolean          @default(false) @map("is_offline_sync")
-  syncStatus     String           @default("CONFIRMED") @map("sync_status")
-  markedByUserId String?          @map("marked_by_user_id") @db.Uuid
-  remarks        String?
-  version        Int              @default(1)
-  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+  id                 String           @id @default(uuid()) @db.Uuid
+  tenantId           String           @map("tenant_id") @db.Uuid
+  sessionId          String           @map("session_id") @db.Uuid
+  playerId           String           @map("player_id") @db.Uuid
+  status             AttendanceStatus @default(UNMARKED)
+  checkInTime        DateTime?        @map("check_in_time") @db.Timestamptz(3)
+  deviceObservedTime DateTime?        @map("device_observed_time") @db.Timestamptz(3)
+  isOfflineSync      Boolean          @default(false) @map("is_offline_sync")
+  syncStatus         String           @default("CONFIRMED") @map("sync_status")
+  markedByUserId     String?          @map("marked_by_user_id") @db.Uuid
+  remarks            String?
+  version            Int              @default(1)
+  createdAt          DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   session     AttendanceSession      @relation(fields: [tenantId, sessionId], references: [tenantId, id], onDelete: Cascade)
   corrections AttendanceCorrection[]
@@ -506,14 +544,14 @@ model AttendanceRecord {
 
 /// Auditable attendance correction history.
 model AttendanceCorrection {
-  id                 String           @id @default(uuid()) @db.Uuid
-  tenantId           String           @map("tenant_id") @db.Uuid
-  recordId           String           @map("record_id") @db.Uuid
-  previousStatus     AttendanceStatus @map("previous_status")
-  newStatus          AttendanceStatus @map("new_status")
-  reason             String
+  id                String           @id @default(uuid()) @db.Uuid
+  tenantId          String           @map("tenant_id") @db.Uuid
+  recordId          String           @map("record_id") @db.Uuid
+  previousStatus    AttendanceStatus @map("previous_status")
+  newStatus         AttendanceStatus @map("new_status")
+  reason            String
   correctedByUserId String           @map("corrected_by_user_id") @db.Uuid
-  createdAt          DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  createdAt         DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
 
   record AttendanceRecord @relation(fields: [tenantId, recordId], references: [tenantId, id], onDelete: Cascade)
 
@@ -542,27 +580,28 @@ model AttendanceIdempotency {
 
 /// Player registered in an academy.
 model Player {
-  id                    String        @id @default(uuid()) @db.Uuid
-  tenantId              String        @map("tenant_id") @db.Uuid
-  firstName             String        @map("first_name")
-  lastName              String        @map("last_name")
-  gender                PlayerGender  @default(MALE)
-  dateOfBirth           DateTime      @map("date_of_birth") @db.Date
-  nationalId            String?       @map("national_id")
-  photoUrl              String?       @map("photo_url")
-  emergencyContactName  String        @map("emergency_contact_name")
-  emergencyContactPhone String        @map("emergency_contact_phone")
-  medicalNotes          String?       @map("medical_notes")
-  status                PlayerStatus  @default(ACTIVE)
-  userId                String?       @unique(map: "players_user_id_key") @map("user_id") @db.Uuid
-  claimToken            String?       @map("claim_token")
-  claimExpiresAt        DateTime?     @map("claim_expires_at") @db.Timestamptz(3)
-  membershipNumber      String?       @map("membership_number")
-  qrCardCode            String?       @unique @map("qr_card_code")
-  qrCardIssuedAt        DateTime?     @map("qr_card_issued_at") @db.Timestamptz(3)
-  qrCardRevokedAt       DateTime?     @map("qr_card_revoked_at") @db.Timestamptz(3)
-  createdAt             DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt             DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+  id                    String       @id @default(uuid()) @db.Uuid
+  tenantId              String       @map("tenant_id") @db.Uuid
+  firstName             String       @map("first_name")
+  lastName              String       @map("last_name")
+  gender                PlayerGender @default(MALE)
+  dateOfBirth           DateTime     @map("date_of_birth") @db.Date
+  nationalId            String?      @map("national_id")
+  photoUrl              String?      @map("photo_url")
+  emergencyContactName  String       @map("emergency_contact_name")
+  emergencyContactPhone String       @map("emergency_contact_phone")
+  medicalNotes          String?      @map("medical_notes")
+  jerseyNumber          Int?         @map("jersey_number")
+  status                PlayerStatus @default(ACTIVE)
+  userId                String?      @unique(map: "players_user_id_key") @map("user_id") @db.Uuid
+  claimToken            String?      @map("claim_token")
+  claimExpiresAt        DateTime?    @map("claim_expires_at") @db.Timestamptz(3)
+  membershipNumber      String?      @map("membership_number")
+  qrCardCode            String?      @unique @map("qr_card_code")
+  qrCardIssuedAt        DateTime?    @map("qr_card_issued_at") @db.Timestamptz(3)
+  qrCardRevokedAt       DateTime?    @map("qr_card_revoked_at") @db.Timestamptz(3)
+  createdAt             DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt             DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   tenant                Tenant                        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   user                  User?                         @relation("PlayerUser", fields: [userId], references: [id], onDelete: SetNull)
@@ -585,20 +624,20 @@ model Player {
 
 /// Guardian/parent responsible for a player.
 model Guardian {
-  id           String               @id @default(uuid()) @db.Uuid
-  tenantId     String               @map("tenant_id") @db.Uuid
-  playerId     String               @map("player_id") @db.Uuid
-  firstName    String               @map("first_name")
-  lastName     String               @map("last_name")
-  relationship GuardianRelationship @default(FATHER)
-  phone        String
-  email        String?
-  isPrimary    Boolean              @default(true) @map("is_primary")
-  userId       String?              @map("user_id") @db.Uuid
-  claimToken   String?              @map("claim_token")
-  claimExpiresAt DateTime?          @map("claim_expires_at") @db.Timestamptz(3)
-  createdAt    DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt    DateTime             @updatedAt @map("updated_at") @db.Timestamptz(3)
+  id             String               @id @default(uuid()) @db.Uuid
+  tenantId       String               @map("tenant_id") @db.Uuid
+  playerId       String               @map("player_id") @db.Uuid
+  firstName      String               @map("first_name")
+  lastName       String               @map("last_name")
+  relationship   GuardianRelationship @default(FATHER)
+  phone          String
+  email          String?
+  isPrimary      Boolean              @default(true) @map("is_primary")
+  userId         String?              @map("user_id") @db.Uuid
+  claimToken     String?              @map("claim_token")
+  claimExpiresAt DateTime?            @map("claim_expires_at") @db.Timestamptz(3)
+  createdAt      DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime             @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   player Player @relation(fields: [tenantId, playerId], references: [tenantId, id], onDelete: Cascade)
@@ -651,12 +690,13 @@ model TrainingGroup {
   createdAt   DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt   DateTime    @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  tenant    Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  branch    Branch              @relation(fields: [tenantId, branchId], references: [tenantId, id], onDelete: Restrict)
-  coaches   GroupCoach[]
-  members   GroupMember[]
-  schedules TrainingSchedule[]
-  sessions  AttendanceSession[]
+  tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch             Branch              @relation(fields: [tenantId, branchId], references: [tenantId, id], onDelete: Restrict)
+  coaches            GroupCoach[]
+  members            GroupMember[]
+  schedules          TrainingSchedule[]
+  scheduleExceptions ScheduleException[]
+  sessions           AttendanceSession[]
 
   @@unique([tenantId, id])
   @@index([tenantId])
@@ -720,12 +760,41 @@ model TrainingSchedule {
   createdAt DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  group TrainingGroup @relation(fields: [tenantId, groupId], references: [tenantId, id], onDelete: Cascade)
+  group      TrainingGroup       @relation(fields: [tenantId, groupId], references: [tenantId, id], onDelete: Cascade)
+  exceptions ScheduleException[]
 
   @@unique([tenantId, id])
   @@index([tenantId])
   @@index([groupId])
   @@map("training_schedules")
+}
+
+/// One-off change to a group's weekly timetable: a cancelled or moved occurrence, or an extra session.
+/// CANCELLED / MOVED name the occurrence (scheduleId + originalDate); MOVED / EXTRA give the new date and times.
+model ScheduleException {
+  id              String                @id @default(uuid()) @db.Uuid
+  tenantId        String                @map("tenant_id") @db.Uuid
+  groupId         String                @map("group_id") @db.Uuid
+  scheduleId      String?               @map("schedule_id") @db.Uuid
+  kind            ScheduleExceptionKind
+  originalDate    DateTime?             @map("original_date") @db.Date
+  sessionDate     DateTime?             @map("session_date") @db.Date
+  startTime       String?               @map("start_time")
+  endTime         String?               @map("end_time")
+  location        String?
+  reason          String?
+  createdByUserId String?               @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  group     TrainingGroup     @relation(fields: [tenantId, groupId], references: [tenantId, id], onDelete: Cascade)
+  schedule  TrainingSchedule? @relation(fields: [tenantId, scheduleId], references: [tenantId, id], onDelete: Cascade)
+  createdBy User?             @relation("ScheduleExceptionCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, id])
+  @@index([tenantId])
+  @@index([groupId, sessionDate])
+  @@index([groupId, originalDate])
+  @@map("schedule_exceptions")
 }
 
 /// Append-only immutable log of every attendance marking, QR scan, and status change.
@@ -780,28 +849,28 @@ model EvaluationTemplate {
 
 /// Professional Player Development & Performance Evaluation record.
 model PlayerEvaluation {
-  id                  String              @id @default(uuid()) @db.Uuid
-  tenantId            String              @map("tenant_id") @db.Uuid
-  playerId            String              @map("player_id") @db.Uuid
-  sessionId           String?             @map("session_id") @db.Uuid
-  evaluatorUserId     String              @map("evaluator_user_id") @db.Uuid
-  templateId          String?             @map("template_id") @db.Uuid
-  evaluationDate      DateTime            @default(now()) @map("evaluation_date") @db.Date
-  technicalScore      Float               @map("technical_score")
-  tacticalScore       Float               @map("tactical_score")
-  physicalScore       Float               @map("physical_score")
-  behavioralScore     Float               @map("behavioral_score")
-  overallScore        Float               @map("overall_score")
-  metrics             Json                @default("{}")
+  id                  String   @id @default(uuid()) @db.Uuid
+  tenantId            String   @map("tenant_id") @db.Uuid
+  playerId            String   @map("player_id") @db.Uuid
+  sessionId           String?  @map("session_id") @db.Uuid
+  evaluatorUserId     String   @map("evaluator_user_id") @db.Uuid
+  templateId          String?  @map("template_id") @db.Uuid
+  evaluationDate      DateTime @default(now()) @map("evaluation_date") @db.Date
+  technicalScore      Float    @map("technical_score")
+  tacticalScore       Float    @map("tactical_score")
+  physicalScore       Float    @map("physical_score")
+  behavioralScore     Float    @map("behavioral_score")
+  overallScore        Float    @map("overall_score")
+  metrics             Json     @default("{}")
   strengths           String?
-  areasForImprovement String?             @map("areas_for_improvement")
-  privateCoachNotes   String?             @map("private_coach_notes")
-  guardianFeedback    String?             @map("guardian_feedback")
-  suggestedGoals      String?             @map("suggested_goals")
-  isPublished         Boolean             @default(true) @map("is_published")
-  version             Int                 @default(1)
-  createdAt           DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt           DateTime            @updatedAt @map("updated_at") @db.Timestamptz(3)
+  areasForImprovement String?  @map("areas_for_improvement")
+  privateCoachNotes   String?  @map("private_coach_notes")
+  guardianFeedback    String?  @map("guardian_feedback")
+  suggestedGoals      String?  @map("suggested_goals")
+  isPublished         Boolean  @default(true) @map("is_published")
+  version             Int      @default(1)
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   tenant        Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   player        Player              @relation(fields: [tenantId, playerId], references: [tenantId, id], onDelete: Cascade, map: "player_evaluations_player_id_fkey")
@@ -825,8 +894,8 @@ model SaaSPlan {
   code         SaaSPlanCode @unique
   name         String
   description  String?
-  priceMonthly Float        @default(0) @map("price_monthly")
-  priceYearly  Float        @default(0) @map("price_yearly")
+  priceMonthly Decimal      @default(0) @map("price_monthly") @db.Decimal(12, 2)
+  priceYearly  Decimal      @default(0) @map("price_yearly") @db.Decimal(12, 2)
   currency     String       @default("EGP") @db.Char(3)
   maxBranches  Int          @default(1) @map("max_branches")
   maxPlayers   Int          @default(50) @map("max_players")
@@ -848,7 +917,7 @@ model TenantSubscription {
   planCode        SaaSPlanCode           @default(STARTER) @map("plan_code")
   status          SaaSSubscriptionStatus @default(ACTIVE)
   billingCycle    SaaSBillingCycle       @default(MONTHLY) @map("billing_cycle")
-  negotiatedPrice Float?                 @map("negotiated_price")
+  negotiatedPrice Decimal?               @map("negotiated_price") @db.Decimal(12, 2)
   currency        String                 @default("EGP") @db.Char(3)
   startDate       DateTime               @default(now()) @map("start_date") @db.Timestamptz(3)
   renewalDate     DateTime               @map("renewal_date") @db.Timestamptz(3)
@@ -871,7 +940,7 @@ model SaaSInvoice {
   tenantId       String            @map("tenant_id") @db.Uuid
   subscriptionId String?           @map("subscription_id") @db.Uuid
   invoiceNumber  String            @unique @map("invoice_number")
-  amount         Float
+  amount         Decimal           @db.Decimal(12, 2)
   currency       String            @default("EGP") @db.Char(3)
   status         SaaSInvoiceStatus @default(PENDING)
   dueDate        DateTime          @map("due_date") @db.Date
@@ -881,8 +950,9 @@ model SaaSInvoice {
   createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt      DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  tenant       Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  subscription TenantSubscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  tenant        Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  subscription  TenantSubscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  onlinePayment OnlinePayment?
 
   @@index([tenantId])
   @@map("saas_invoices")
@@ -897,7 +967,7 @@ model PlayerSubscriptionPlan {
   name          String
   description   String?
   billingPeriod PlayerBillingPeriod @default(MONTHLY) @map("billing_period")
-  feeAmount     Float               @map("fee_amount")
+  feeAmount     Decimal             @map("fee_amount") @db.Decimal(12, 2)
   currency      String              @default("EGP") @db.Char(3)
   isActive      Boolean             @default(true) @map("is_active")
   createdAt     DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
@@ -923,11 +993,11 @@ model PlayerSubscription {
   startDate          DateTime                 @default(now()) @map("start_date") @db.Date
   dueDate            DateTime                 @map("due_date") @db.Date
   renewalDate        DateTime?                @map("renewal_date") @db.Date
-  feeAmount          Float                    @map("fee_amount")
-  discountAmount     Float                    @default(0) @map("discount_amount")
+  feeAmount          Decimal                  @map("fee_amount") @db.Decimal(12, 2)
+  discountAmount     Decimal                  @default(0) @map("discount_amount") @db.Decimal(12, 2)
   discountReason     String?                  @map("discount_reason")
-  paidAmount         Float                    @default(0) @map("paid_amount")
-  outstandingBalance Float                    @default(0) @map("outstanding_balance")
+  paidAmount         Decimal                  @default(0) @map("paid_amount") @db.Decimal(12, 2)
+  outstandingBalance Decimal                  @default(0) @map("outstanding_balance") @db.Decimal(12, 2)
   lastPaymentDate    DateTime?                @map("last_payment_date") @db.Timestamptz(3)
   notes              String?
   createdAt          DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
@@ -947,30 +1017,30 @@ model PlayerSubscription {
 
 /// Immutable, auditable financial transaction ledger for Academy operations.
 model AcademyFinancialTransaction {
-  id                 String                     @id @default(uuid()) @db.Uuid
-  tenantId           String                     @map("tenant_id") @db.Uuid
-  branchId           String                     @map("branch_id") @db.Uuid
-  sessionId          String?                    @map("session_id") @db.Uuid
-  playerId           String?                    @map("player_id") @db.Uuid
-  subscriptionId     String?                    @map("subscription_id") @db.Uuid
-  recordedByUserId   String                     @map("recorded_by_user_id") @db.Uuid
-  type               FinancialTransactionType   @default(MEMBERSHIP_FEE)
-  amount             Float
-  currency           String                     @default("EGP") @db.Char(3)
-  paymentMethod      FinancialPaymentMethod     @default(CASH) @map("payment_method")
-  status             FinancialTransactionStatus @default(COMPLETED)
-  receiptNumber      String?                    @map("receipt_number")
-  referenceNumber    String?                    @map("reference_number")
-  notes              String?
-  reversalReason     String?                    @map("reversal_reason")
-  reversedAt         DateTime?                  @map("reversed_at") @db.Timestamptz(3)
-  reversedByUserId   String?                    @map("reversed_by_user_id") @db.Uuid
-  approvedByUserId   String?                    @map("approved_by_user_id") @db.Uuid
-  approvedAt         DateTime?                  @map("approved_at") @db.Timestamptz(3)
-  rejectionReason    String?                    @map("rejection_reason")
-  idempotencyKey     String?                    @map("idempotency_key")
-  createdAt          DateTime                   @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt          DateTime                   @updatedAt @map("updated_at") @db.Timestamptz(3)
+  id               String                     @id @default(uuid()) @db.Uuid
+  tenantId         String                     @map("tenant_id") @db.Uuid
+  branchId         String                     @map("branch_id") @db.Uuid
+  sessionId        String?                    @map("session_id") @db.Uuid
+  playerId         String?                    @map("player_id") @db.Uuid
+  subscriptionId   String?                    @map("subscription_id") @db.Uuid
+  recordedByUserId String                     @map("recorded_by_user_id") @db.Uuid
+  type             FinancialTransactionType   @default(MEMBERSHIP_FEE)
+  amount           Decimal                    @db.Decimal(12, 2)
+  currency         String                     @default("EGP") @db.Char(3)
+  paymentMethod    FinancialPaymentMethod     @default(CASH) @map("payment_method")
+  status           FinancialTransactionStatus @default(COMPLETED)
+  receiptNumber    String?                    @map("receipt_number")
+  referenceNumber  String?                    @map("reference_number")
+  notes            String?
+  reversalReason   String?                    @map("reversal_reason")
+  reversedAt       DateTime?                  @map("reversed_at") @db.Timestamptz(3)
+  reversedByUserId String?                    @map("reversed_by_user_id") @db.Uuid
+  approvedByUserId String?                    @map("approved_by_user_id") @db.Uuid
+  approvedAt       DateTime?                  @map("approved_at") @db.Timestamptz(3)
+  rejectionReason  String?                    @map("rejection_reason")
+  idempotencyKey   String?                    @map("idempotency_key")
+  createdAt        DateTime                   @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime                   @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   tenant         Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   branch         Branch              @relation(fields: [tenantId, branchId], references: [tenantId, id], onDelete: Restrict, map: "academy_financial_transactions_branch_fkey")
@@ -982,6 +1052,8 @@ model AcademyFinancialTransaction {
   approvedByUser User?               @relation("ExpenseApprovedByUser", fields: [approvedByUserId], references: [id], onDelete: SetNull)
 
   @@unique([tenantId, id])
+  /// K11: one receipt number per academy (NULLs never conflict).
+  @@unique([tenantId, receiptNumber], map: "academy_financial_transactions_tenant_receipt_number_key")
   @@index([tenantId], map: "academy_fin_tx_tenant_id_idx")
   @@index([branchId], map: "academy_fin_tx_branch_id_idx")
   @@index([sessionId], map: "academy_fin_tx_session_id_idx")
@@ -993,30 +1065,30 @@ model AcademyFinancialTransaction {
 
 /// Daily or session cashier closing reconciliation summary.
 model SessionCashierClosing {
-  id                         String    @id @default(uuid()) @db.Uuid
-  tenantId                   String    @map("tenant_id") @db.Uuid
-  branchId                   String    @map("branch_id") @db.Uuid
-  sessionId                  String    @unique @map("session_id") @db.Uuid
-  closedByUserId             String    @map("closed_by_user_id") @db.Uuid
-  totalAttendees             Int       @default(0) @map("total_attendees")
-  totalAbsent                Int       @default(0) @map("total_absent")
-  totalLate                  Int       @default(0) @map("total_late")
-  totalActiveSubscribers     Int       @default(0) @map("total_active_subscribers")
-  totalOverdueSubscribers    Int       @default(0) @map("total_overdue_subscribers")
-  totalCashCollected         Float     @default(0) @map("total_cash_collected")
-  totalElectronicCollected   Float     @default(0) @map("total_electronic_collected")
-  totalExpenses              Float     @default(0) @map("total_expenses")
-  netCashMovement            Float     @default(0) @map("net_cash_movement")
-  isReconciled               Boolean   @default(true) @map("is_reconciled")
-  reconciledAt               DateTime  @default(now()) @map("reconciled_at") @db.Timestamptz(3)
-  notes                      String?
-  createdAt                  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt                  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  id                       String   @id @default(uuid()) @db.Uuid
+  tenantId                 String   @map("tenant_id") @db.Uuid
+  branchId                 String   @map("branch_id") @db.Uuid
+  sessionId                String   @unique @map("session_id") @db.Uuid
+  closedByUserId           String   @map("closed_by_user_id") @db.Uuid
+  totalAttendees           Int      @default(0) @map("total_attendees")
+  totalAbsent              Int      @default(0) @map("total_absent")
+  totalLate                Int      @default(0) @map("total_late")
+  totalActiveSubscribers   Int      @default(0) @map("total_active_subscribers")
+  totalOverdueSubscribers  Int      @default(0) @map("total_overdue_subscribers")
+  totalCashCollected       Decimal  @default(0) @map("total_cash_collected") @db.Decimal(12, 2)
+  totalElectronicCollected Decimal  @default(0) @map("total_electronic_collected") @db.Decimal(12, 2)
+  totalExpenses            Decimal  @default(0) @map("total_expenses") @db.Decimal(12, 2)
+  netCashMovement          Decimal  @default(0) @map("net_cash_movement") @db.Decimal(12, 2)
+  isReconciled             Boolean  @default(true) @map("is_reconciled")
+  reconciledAt             DateTime @default(now()) @map("reconciled_at") @db.Timestamptz(3)
+  notes                    String?
+  createdAt                DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  tenant         Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  branch         Branch            @relation(fields: [tenantId, branchId], references: [tenantId, id], onDelete: Restrict, map: "session_cashier_closings_branch_fkey")
-  session        AttendanceSession @relation(fields: [tenantId, sessionId], references: [tenantId, id], onDelete: Cascade, map: "session_cashier_closings_session_fkey")
-  closedByUser   User              @relation("SessionClosedByUser", fields: [closedByUserId], references: [id], onDelete: Restrict)
+  tenant       Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch       Branch            @relation(fields: [tenantId, branchId], references: [tenantId, id], onDelete: Restrict, map: "session_cashier_closings_branch_fkey")
+  session      AttendanceSession @relation(fields: [tenantId, sessionId], references: [tenantId, id], onDelete: Cascade, map: "session_cashier_closings_session_fkey")
+  closedByUser User              @relation("SessionClosedByUser", fields: [closedByUserId], references: [id], onDelete: Restrict)
 
   @@unique([tenantId, id])
   @@unique([tenantId, sessionId])
@@ -1043,22 +1115,25 @@ model PlatformAnnouncement {
 
 /// Public academy applications. Must be approved before a tenant is provisioned.
 model AcademyApplication {
-  id                   String            @id @default(uuid()) @db.Uuid
-  applicantUserId      String            @map("applicant_user_id") @db.Uuid
-  academyName          String            @map("academy_name")
-  academySlug          String            @map("academy_slug")
-  sport                SportCode         @default(FOOTBALL)
-  city                 String?
-  contactPhone         String?           @map("contact_phone")
-  contactEmail         String            @map("contact_email")
-  notes                String?
-  status               ApplicationStatus @default(PENDING_REVIEW)
-  reviewNotes          String?           @map("review_notes")
-  reviewedByUserId     String?           @map("reviewed_by_user_id") @db.Uuid
-  reviewedAt           DateTime?         @map("reviewed_at") @db.Timestamptz(3)
-  provisionedTenantId  String?           @map("provisioned_tenant_id") @db.Uuid
-  createdAt            DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt            DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
+  id                  String            @id @default(uuid()) @db.Uuid
+  applicantUserId     String            @map("applicant_user_id") @db.Uuid
+  academyName         String            @map("academy_name")
+  academySlug         String            @map("academy_slug")
+  sport               SportCode         @default(FOOTBALL)
+  city                String?
+  contactPhone        String?           @map("contact_phone")
+  contactEmail        String            @map("contact_email")
+  notes               String?
+  status              ApplicationStatus @default(PENDING_REVIEW)
+  reviewNotes         String?           @map("review_notes")
+  reviewedByUserId    String?           @map("reviewed_by_user_id") @db.Uuid
+  reviewedAt          DateTime?         @map("reviewed_at") @db.Timestamptz(3)
+  provisionedTenantId String?           @map("provisioned_tenant_id") @db.Uuid
+  /// The applicant's latest answer to a MORE_INFO_REQUESTED review (written by submit_academy_application_reply).
+  applicantReply      String?           @map("applicant_reply")
+  applicantRepliedAt  DateTime?         @map("applicant_replied_at") @db.Timestamptz(3)
+  createdAt           DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   applicant  User  @relation("AcademyApplicant", fields: [applicantUserId], references: [id], onDelete: Cascade)
   reviewedBy User? @relation("AcademyApplicationReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
@@ -1074,11 +1149,20 @@ model PlayerRegistrationRequest {
   id               String            @id @default(uuid()) @db.Uuid
   tenantId         String            @map("tenant_id") @db.Uuid
   applicantUserId  String?           @map("applicant_user_id") @db.Uuid
+  /// PLAYER: the applicant is the athlete; GUARDIAN: the applicant is the child's guardian (K6).
+  requesterType    JoinRequesterType @default(PLAYER) @map("requester_type")
   playerName       String            @map("player_name")
   contactEmail     String            @map("contact_email")
   contactPhone     String?           @map("contact_phone")
   dateOfBirth      DateTime?         @map("date_of_birth") @db.Date
   guardianName     String?           @map("guardian_name")
+  /// The guardian's own e-mail (PLAYER requests); contactEmail is the applicant's account e-mail.
+  guardianEmail    String?           @map("guardian_email")
+  /// Player fields of the shared form (2026-11-25); national ID and medical notes are sensitive (players.sensitive.read).
+  gender           PlayerGender?
+  jerseyNumber     Int?              @map("jersey_number")
+  nationalId       String?           @map("national_id")
+  medicalNotes     String?           @map("medical_notes")
   status           ApplicationStatus @default(PENDING_REVIEW)
   reviewNotes      String?           @map("review_notes")
   reviewedByUserId String?           @map("reviewed_by_user_id") @db.Uuid
@@ -1091,6 +1175,7 @@ model PlayerRegistrationRequest {
   reviewedBy User?  @relation("PlayerJoinReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
 
   @@index([tenantId, status])
+  @@index([applicantUserId])
   @@map("player_registration_requests")
 }
 
@@ -1113,4 +1198,66 @@ model AppNotification {
   @@map("app_notifications")
 }
 
+enum OnlinePaymentPurpose {
+  PLAYER_SUBSCRIPTION
+  PLATFORM_SUBSCRIPTION
+}
 
+enum OnlinePaymentStatus {
+  PENDING
+  PAID
+  FAILED
+}
+
+/// A payment made online through a payment provider (Paymob). For PLAYER_SUBSCRIPTION the money reaches the
+/// platform's merchant account and is owed to the academy (see AcademyPayout).
+model OnlinePayment {
+  id                    String               @id @default(uuid()) @db.Uuid
+  tenantId              String               @map("tenant_id") @db.Uuid
+  purpose               OnlinePaymentPurpose
+  status                OnlinePaymentStatus  @default(PENDING)
+  payerUserId           String               @map("payer_user_id") @db.Uuid
+  playerSubscriptionId  String?              @map("player_subscription_id") @db.Uuid
+  amount                Decimal              @db.Decimal(12, 2)
+  currency              String               @db.Char(3)
+  provider              String               @default("PAYMOB")
+  providerOrderId       String?              @unique @map("provider_order_id")
+  providerIntentionId   String?              @map("provider_intention_id")
+  providerTransactionId String?              @map("provider_transaction_id")
+  failureReason         String?              @map("failure_reason")
+  transactionId         String?              @map("transaction_id") @db.Uuid
+  /// PLATFORM_SUBSCRIPTION only: how many months the payment buys, fixed when the checkout starts.
+  billingMonths         Int?                 @map("billing_months")
+  /// PLATFORM_SUBSCRIPTION only: the paid invoice created when the payment was confirmed.
+  saasInvoiceId         String?              @unique @map("saas_invoice_id") @db.Uuid
+  paidAt                DateTime?            @map("paid_at") @db.Timestamptz(3)
+  createdAt             DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt             DateTime             @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  payer       User         @relation("OnlinePaymentPayer", fields: [payerUserId], references: [id])
+  saasInvoice SaaSInvoice? @relation(fields: [saasInvoiceId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([payerUserId])
+  @@map("online_payments")
+}
+
+/// A transfer from the platform to an academy of the money collected online on its behalf.
+model AcademyPayout {
+  id               String   @id @default(uuid()) @db.Uuid
+  tenantId         String   @map("tenant_id") @db.Uuid
+  amount           Decimal  @db.Decimal(12, 2)
+  currency         String   @db.Char(3)
+  reference        String?
+  notes            String?
+  paidAt           DateTime @map("paid_at") @db.Timestamptz(3)
+  recordedByUserId String   @map("recorded_by_user_id") @db.Uuid
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  tenant     Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  recordedBy User   @relation("PayoutRecorder", fields: [recordedByUserId], references: [id])
+
+  @@index([tenantId])
+  @@map("academy_payouts")
+}

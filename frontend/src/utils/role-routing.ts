@@ -10,9 +10,9 @@ export function getRoleHomeRoute(
 ): string {
   if (!user) return '/login';
 
-  // 1. Platform Super Admin must land in Platform Operations Console
+  // 1. Platform Super Admin lands on Dashboard
   if (user.isPlatformSuperAdmin) {
-    return '/platform';
+    return '/dashboard';
   }
 
   // 2. Active Tenant Membership determines experience
@@ -20,14 +20,8 @@ export function getRoleHomeRoute(
     if (activeTenant.role === 'COACH') {
       return '/coach';
     }
-    // Academy Owner, Manager, Branch Manager, Accountant, Receptionist
-    if (
-      activeTenant.role === 'OWNER' ||
-      activeTenant.role === 'MANAGER' ||
-      activeTenant.role === 'BRANCH_MANAGER' ||
-      activeTenant.role === 'ACCOUNTANT' ||
-      activeTenant.role === 'RECEPTIONIST'
-    ) {
+    // Academy owner and admin (the retired roles no longer exist: owner decision 2026-11-24)
+    if (activeTenant.role === 'OWNER' || activeTenant.role === 'MANAGER') {
       return '/dashboard';
     }
   }
@@ -62,7 +56,8 @@ export function canAccessAdminRoutes(
     return false;
   }
 
-  const adminRoles = ['OWNER', 'MANAGER', 'BRANCH_MANAGER', 'ACCOUNTANT', 'RECEPTIONIST'];
+  // Academy staff with a dashboard: the owner and the admin.
+  const adminRoles = ['OWNER', 'MANAGER'];
   return adminRoles.includes(activeTenant.role);
 }
 
@@ -80,7 +75,7 @@ export function canAccessCoachRoutes(
     return false;
   }
 
-  const coachRoles = ['COACH', 'OWNER', 'MANAGER', 'BRANCH_MANAGER'];
+  const coachRoles = ['COACH', 'OWNER', 'MANAGER'];
   return coachRoles.includes(activeTenant.role);
 }
 

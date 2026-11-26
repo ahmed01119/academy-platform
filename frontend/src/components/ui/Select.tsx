@@ -151,15 +151,15 @@ export function Select<T extends string = string>({
         onClick={() => !disabled && setIsOpen(!isOpen)}
         onKeyDown={handleKeyDown}
         className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl border text-xs font-medium transition-all outline-none cursor-pointer
-          bg-[var(--bg-surface)] text-[var(--text-main)] border-[var(--border-app)]
-          hover:border-[var(--accent-primary)] focus:border-[var(--accent-primary)] focus:ring-1 focus:ring-[var(--accent-primary)]
+          bg-[var(--bg-surface)] text-(--text-main) border-(--border-app)
+          hover:border-[var(--accent-primary)] focus:border-(--accent-primary) focus:ring-1 focus:ring-(--accent-primary)
           ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
           ${isOpen ? 'ring-1 ring-[var(--accent-primary)] border-[var(--accent-primary)]' : ''}
         `}
       >
         <span className="truncate">{selectedOption ? selectedOption.label : placeholder}</span>
         <ChevronDown
-          className={`h-4 w-4 shrink-0 text-[var(--text-muted)] transition-transform duration-200 ${
+          className={`h-4 w-4 shrink-0 text-(--text-muted) transition-transform duration-200 ${
             isOpen ? 'rotate-180' : ''
           }`}
         />
@@ -174,7 +174,7 @@ export function Select<T extends string = string>({
           aria-activedescendant={
             highlightedIndex >= 0 ? `${selectId}-option-${highlightedIndex}` : undefined
           }
-          className="absolute z-50 mt-1.5 w-full max-h-60 overflow-y-auto rounded-xl border border-[var(--border-app)] bg-[var(--bg-surface-elevated)] p-1 shadow-2xl backdrop-blur-md focus:outline-none"
+          className="absolute z-50 mt-1.5 w-full max-h-60 overflow-y-auto rounded-xl border border-(--border-app) bg-[var(--bg-surface-elevated)] p-1 shadow-2xl backdrop-blur-md focus:outline-none"
         >
           {options.map((opt, idx) => {
             const isSelected = opt.value === value;
@@ -198,16 +198,16 @@ export function Select<T extends string = string>({
                   opt.disabled
                     ? 'opacity-40 cursor-not-allowed'
                     : isSelected
-                      ? 'bg-[var(--accent-primary)]/15 text-[var(--accent-primary)] font-semibold'
+                      ? 'bg-(--accent-primary)/15 text-[var(--accent-primary)] font-semibold'
                       : isHighlighted
-                        ? 'bg-[var(--bg-surface-subtle)] text-[var(--text-main)]'
-                        : 'text-[var(--text-main)] hover:bg-[var(--bg-surface-subtle)]'
+                        ? 'bg-(--bg-surface-subtle) text-(--text-main)'
+                        : 'text-(--text-main) hover:bg-(--bg-surface-subtle)'
                 }`}
               >
                 <div className="flex flex-col truncate">
                   <span className="truncate">{opt.label}</span>
                   {opt.description && (
-                    <span className="text-[11px] text-[var(--text-muted)] font-normal truncate mt-0.5">
+                    <span className="text-[11px] text-(--text-muted) font-normal truncate mt-0.5">
                       {opt.description}
                     </span>
                   )}

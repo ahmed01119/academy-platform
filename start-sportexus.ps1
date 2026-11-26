@@ -34,6 +34,16 @@ if (-not $pgRunning) {
     Write-Host '      [+] Database is already running.' -ForegroundColor Green
 }
 
+# The web app runs in production mode (next start), where its /v1 proxy refuses to work without these two settings
+# (S1, see frontend/.env.example). Both servers started below inherit them. Without a configured secret, this run
+# uses a fresh random one; it only decides whether the API trusts the client IP that the web proxy forwards.
+if (-not $env:INTERNAL_PROXY_SECRET) {
+    $env:INTERNAL_PROXY_SECRET = -join ((48..57) + (65..90) + (97..122) | Get-Random -Count 48 | ForEach-Object { [char]$_ })
+}
+if (-not $env:WEB_TRUSTED_PROXY_HOPS) {
+    $env:WEB_TRUSTED_PROXY_HOPS = '1' # the Cloudflare tunnel in front of the web app
+}
+
 # 2. Start or Verify API Backend (Port 3001)
 Write-Host '[2/4] Checking NestJS API server on port 3001...' -ForegroundColor Cyan
 $apiRunning = $false

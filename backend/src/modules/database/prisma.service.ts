@@ -5,17 +5,21 @@ import {
   withAuthLookupTransaction,
   withPlatformAdminTransaction,
   withPortalUserTransaction,
+  withPaymentWebhookTransaction,
   type TenantTransactionOptions,
   type TenantTransactionClient,
   type AuthLookupOptions,
   type PlatformAdminTransactionOptions,
   type PortalUserTransactionOptions,
 } from '@academy/database';
+import { assertRuntimeDatabaseRole } from './runtime-role-guard';
 
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
   async onModuleInit(): Promise<void> {
     await this.$connect();
+    // S3: refuse an RLS-bypassing database role in production (warning elsewhere).
+    await assertRuntimeDatabaseRole(this, process.env.NODE_ENV);
   }
 
   async onModuleDestroy(): Promise<void> {
@@ -51,6 +55,15 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     callback: (tx: TenantTransactionClient) => Promise<T>,
   ): Promise<T> {
     return withPlatformAdminTransaction(this, options, callback);
+  }
+
+  /**
+   * Runs the payment provider's webhook lookup (signature already verified). See withPaymentWebhookTransaction.
+   */
+  async withPaymentWebhookTransaction<T>(
+    callback: (tx: TenantTransactionClient) => Promise<T>,
+  ): Promise<T> {
+    return withPaymentWebhookTransaction(this, callback);
   }
 
   /**

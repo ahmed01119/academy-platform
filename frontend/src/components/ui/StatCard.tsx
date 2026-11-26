@@ -47,7 +47,7 @@ export function StatCard({
 
   if (loading) {
     return (
-      <div className="relative overflow-hidden rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-5 shadow-xs space-y-3">
+      <div className="relative overflow-hidden rounded-2xl border border-(--border-app) bg-[var(--bg-surface)] p-5 shadow-xs space-y-3">
         <div className="flex items-center justify-between">
           <div className="h-3 w-24 shimmer-bg rounded-md" />
           <div className="h-9 w-9 shimmer-bg rounded-xl" />
@@ -59,7 +59,7 @@ export function StatCard({
   }
 
   return (
-    <div className="group relative overflow-hidden rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-5 shadow-xs card-hover-interactive">
+    <div className="group relative overflow-hidden rounded-2xl border border-(--border-app) bg-[var(--bg-surface)] p-5 shadow-xs card-hover-interactive">
       {/* Top subtle highlight border glow */}
       <div
         className={`absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-transparent ${accentGradients} to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300`}
@@ -67,20 +67,20 @@ export function StatCard({
 
       <div className="flex items-center justify-between gap-3">
         <span
-          className="text-xs font-semibold text-[var(--text-muted)] tracking-wide uppercase line-clamp-1"
+          className="text-xs font-semibold text-(--text-muted) tracking-wide uppercase line-clamp-1"
           title={displayTitle}
         >
           {displayTitle}
         </span>
         {Icon && (
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--badge-bg)] border border-[var(--badge-border)]/40 text-[var(--accent-primary)] group-hover:scale-110 group-hover:shadow-sm transition-all duration-200">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-(--badge-bg) border border-(--badge-border)/40 text-[var(--accent-primary)] group-hover:scale-110 group-hover:shadow-sm transition-all duration-200">
             <Icon className="h-4 w-4" />
           </div>
         )}
       </div>
 
       <div className="mt-3.5 flex items-baseline gap-2.5 flex-wrap">
-        <span className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[var(--text-main)] break-words font-mono">
+        <span className="text-2xl sm:text-3xl font-extrabold tracking-tight text-(--text-main) break-words font-mono">
           {value}
         </span>
 
@@ -91,7 +91,7 @@ export function StatCard({
                 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
                 : trendDirection === 'down'
                   ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20'
-                  : 'bg-[var(--bg-surface-subtle)] text-[var(--text-muted)] border border-[var(--border-subtle)]'
+                  : 'bg-(--bg-surface-subtle) text-(--text-muted) border border-(--border-subtle)'
             }`}
           >
             {trendDirection === 'up' && <ArrowUpRight className="h-3 w-3" />}
@@ -103,7 +103,7 @@ export function StatCard({
       </div>
 
       {subtitle && (
-        <p className="mt-1.5 text-xs text-[var(--text-muted)] font-medium truncate">{subtitle}</p>
+        <p className="mt-1.5 text-xs text-(--text-muted) font-medium truncate">{subtitle}</p>
       )}
     </div>
   );

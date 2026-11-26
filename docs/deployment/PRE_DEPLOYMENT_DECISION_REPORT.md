@@ -164,8 +164,8 @@ graph LR
 To guarantee zero corruption of live user data:
 
 1. **Isolation Boundary:** Staging must use a dedicated PostgreSQL database instance (`sportexus_staging`) or separate schema namespace.
-2. **Synthetic Data Seeder:** Populate using `packages/database/scripts/seed-local-demo.js` which generates synthetic demo academies (e.g. "أكاديمية النجوم"), mock coaches, and demo players.
-3. **Production Guard:** `seed-local-demo.js` contains a hardcoded gate refusing execution in `NODE_ENV=production` unless `ALLOW_DEMO_SEED_IN_PRODUCTION=1` is explicitly provided.
+2. **Synthetic Data Seeder:** Populate using `packages/database/scripts/seed-demo.cjs` (replaced `seed-local-demo.js` on 2026-11-16) which generates synthetic demo academies (e.g. "أكاديمية النجوم"), mock coaches, and demo players.
+3. **Production Guard:** `seed-demo.cjs` refuses `NODE_ENV=production` and requires `SEED_CONFIRM_WIPE=<host>/<database>`; the old `seed-local-demo.js` had a gate refusing execution in `NODE_ENV=production` unless `ALLOW_DEMO_SEED_IN_PRODUCTION=1` is explicitly provided.
 
 ---
 

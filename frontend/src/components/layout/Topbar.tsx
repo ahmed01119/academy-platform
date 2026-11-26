@@ -1,6 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import { NotificationListSkeleton } from '@/components/ui/skeleton';
+import { localizeNotification } from '@/features/notifications/localize-notification';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
@@ -31,6 +33,9 @@ interface TopbarProps {
   breadcrumbs?: BreadcrumbItem[];
 }
 
+/** URL prefixes with no page of their own (e.g. /attendance/sessions/[id] lives under a non-page segment). */
+const NON_PAGE_PREFIXES = new Set(['/attendance/sessions', '/evaluations/player']);
+
 export function Topbar({ onOpenMobile, breadcrumbs: customBreadcrumbs }: TopbarProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -38,6 +43,24 @@ export function Topbar({ onOpenMobile, breadcrumbs: customBreadcrumbs }: TopbarP
   const { t, locale, isRtl } = useLocale();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const notificationsRef = useRef<HTMLDivElement>(null);
+
+  // The notifications panel closes on Escape and on a click outside it, like any popover.
+  useEffect(() => {
+    if (!isNotificationsOpen) return;
+    const onPointerDown = (e: MouseEvent) => {
+      if (!notificationsRef.current?.contains(e.target as Node)) setIsNotificationsOpen(false);
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsNotificationsOpen(false);
+    };
+    document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [isNotificationsOpen]);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [notifications, setNotifications] = useState<AppNotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState<number>(0);
@@ -118,8 +141,10 @@ export function Topbar({ onOpenMobile, breadcrumbs: customBreadcrumbs }: TopbarP
 
   // Generate breadcrumb items from pathname if no custom breadcrumbs provided
   const pathSegments = pathname.split('/').filter(Boolean);
-  const autoBreadcrumbs = pathSegments.map((segment, index) => {
+  const autoBreadcrumbs = pathSegments.flatMap((segment, index) => {
     const url = `/${pathSegments.slice(0, index + 1).join('/')}`;
+    // Path prefixes that are not pages themselves (only their [id] children are): no crumb, so no 404 link.
+    if (NON_PAGE_PREFIXES.has(url)) return [];
     let label = segment;
 
     // Friendly labels
@@ -130,14 +155,17 @@ export function Topbar({ onOpenMobile, breadcrumbs: customBreadcrumbs }: TopbarP
       evaluations: t('nav.evaluations', 'التقييمات'),
       sessions: t('nav.sessions', 'الحصص'),
       attendance: locale === 'ar' ? 'الحضور' : 'Attendance',
+      quick: locale === 'ar' ? 'تسجيل سريع' : 'Quick Attendance',
       scanner: t('nav.scanner', 'ماسح QR'),
       reports: t('nav.reports', 'تقارير الحضور'),
+      finance: locale === 'ar' ? 'المالية' : 'Finance',
       branches: t('nav.branches', 'الفروع'),
       settings: t('nav.settings', 'الإعدادات'),
       platform: t('nav.platformAdmin', 'إدارة المنصة'),
       player: t('nav.playerPortal', 'بوابة اللاعب'),
       guardian: t('nav.guardianPortal', 'بوابة ولي الأمر'),
       coach: t('nav.coachWorkspace', 'مساحة المدرب'),
+      account: locale === 'ar' ? 'حسابي' : 'Account',
       new: locale === 'ar' ? 'إضافة جديد' : 'New',
     };
 
@@ -147,12 +175,12 @@ export function Topbar({ onOpenMobile, breadcrumbs: customBreadcrumbs }: TopbarP
       label = locale === 'ar' ? 'تفاصيل السجل' : 'Details';
     }
 
-    return { url, label };
+    return [{ url, label }];
   });
 
   const roleLabels: Record<string, string> = {
     OWNER: locale === 'ar' ? 'مالك الأكاديمية' : 'Owner',
-    MANAGER: locale === 'ar' ? 'مدير عام' : 'Manager',
+    MANAGER: locale === 'ar' ? 'إداري' : 'Admin',
     BRANCH_MANAGER: locale === 'ar' ? 'مدير فرع' : 'Branch Manager',
     COACH: locale === 'ar' ? 'مدرب معتمد' : 'Coach',
     RECEPTIONIST: locale === 'ar' ? 'استقبال' : 'Receptionist',
@@ -161,6 +189,8 @@ export function Topbar({ onOpenMobile, breadcrumbs: customBreadcrumbs }: TopbarP
   };
 
   const isSuperAdmin = Boolean(user?.isPlatformSuperAdmin || user?.isPlatformOwner);
+  const dashboardLabel = t('nav.dashboard', 'لوحة التحكم');
+  const isDashboardPage = pathname === '/dashboard';
 
   const effectiveBreadcrumbs =
     customBreadcrumbs && customBreadcrumbs.length > 0
@@ -170,6 +200,24 @@ export function Topbar({ onOpenMobile, breadcrumbs: customBreadcrumbs }: TopbarP
         }))
       : autoBreadcrumbs;
 
+  // Filter out any redundant root breadcrumb (e.g. '/' or '/dashboard')
+  // since Dashboard is anchored as the root of the trail.
+  const cleanBreadcrumbs = effectiveBreadcrumbs.filter((crumb, idx) => {
+    if (
+      idx === 0 &&
+      (crumb.url === '/' ||
+        crumb.url === '/dashboard' ||
+        crumb.label.toLowerCase() === 'home' ||
+        crumb.label.toLowerCase() === 'dashboard' ||
+        crumb.label === 'الرئيسية' ||
+        crumb.label === 'لوحة التحكم' ||
+        crumb.label === dashboardLabel)
+    ) {
+      return false;
+    }
+    return true;
+  });
+
   return (
     <>
       <CommandPalette
@@ -177,53 +225,59 @@ export function Topbar({ onOpenMobile, breadcrumbs: customBreadcrumbs }: TopbarP
         onClose={() => setIsCommandPaletteOpen(false)}
       />
 
-      <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-[var(--border-app)] bg-[var(--bg-base)]/85 px-4 backdrop-blur-md sm:px-6 transition-colors">
+      <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-(--border-app) bg-[var(--bg-base)]/85 px-4 backdrop-blur-md sm:px-6 transition-colors">
         {/* Left / Start: Mobile Menu Toggle & Contextual Breadcrumbs */}
         <div className="flex items-center gap-3 min-w-0">
           <button
             type="button"
             onClick={onOpenMobile}
-            className="lg:hidden flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--border-app)] text-[var(--text-main)] hover:bg-[var(--bg-surface)] transition-colors"
+            className="lg:hidden flex h-9 w-9 items-center justify-center rounded-xl border border-(--border-app) text-(--text-main) hover:bg-[var(--bg-surface)] transition-colors"
             aria-label={t('common.menu', 'القائمة')}
           >
             <Menu className="h-5 w-5" />
           </button>
 
-          {/* Breadcrumb Path */}
+          {/* Breadcrumb Path: Anchored at Dashboard */}
           <nav
             aria-label="Breadcrumb"
-            className="hidden sm:flex items-center gap-1.5 text-xs text-[var(--text-muted)] truncate"
+            className="hidden sm:flex items-center gap-1.5 text-xs text-(--text-muted) truncate"
           >
-            <Link
-              href="/"
-              className="hover:text-[var(--text-main)] transition-colors font-medium flex items-center gap-1"
-            >
-              {t('common.home', 'الرئيسية')}
-            </Link>
-            {effectiveBreadcrumbs.map((crumb, idx) => {
-              const isLast = idx === effectiveBreadcrumbs.length - 1;
-              return (
-                <React.Fragment key={`${crumb.label}-${idx}`}>
-                  <ChevronRight
-                    className={`h-3 w-3 text-[var(--text-muted)] shrink-0 ${
-                      isRtl ? 'rotate-180' : ''
-                    }`}
-                  />
-                  {isLast || !crumb.url ? (
-                    <span className="font-semibold text-[var(--text-main)] truncate max-w-[150px]">
-                      {crumb.label}
-                    </span>
-                  ) : (
-                    <Link
-                      href={crumb.url}
-                      className="hover:text-[var(--text-main)] transition-colors truncate max-w-[120px]"
-                    >
-                      {crumb.label}
-                    </Link>
-                  )}
-                </React.Fragment>
-              );
-            })}
+            {isDashboardPage ? (
+              <span className="font-semibold text-(--text-main) truncate max-w-[180px]">
+                {dashboardLabel}
+              </span>
+            ) : (
+              <>
+                <Link
+                  href="/dashboard"
+                  className="hover:text-(--text-main) transition-colors font-medium flex items-center gap-1"
+                >
+                  {dashboardLabel}
+                </Link>
+                {cleanBreadcrumbs.map((crumb, idx) => {
+                  const isLast = idx === cleanBreadcrumbs.length - 1;
+                  return (
+                    <React.Fragment key={`${crumb.label}-${idx}`}>
+                      <ChevronRight
+                        className={`h-3 w-3 text-(--text-muted) shrink-0 ${isRtl ? 'rotate-180' : ''}`}
+                      />
+                      {isLast || !crumb.url ? (
+                        <span className="font-semibold text-(--text-main) truncate max-w-[150px]">
+                          {crumb.label}
+                        </span>
+                      ) : (
+                        <Link
+                          href={crumb.url}
+                          className="hover:text-(--text-main) transition-colors truncate max-w-[120px]"
+                        >
+                          {crumb.label}
+                        </Link>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </>
+            )}
           </nav>
         </div>
 
@@ -233,40 +287,42 @@ export function Topbar({ onOpenMobile, breadcrumbs: customBreadcrumbs }: TopbarP
           <button
             type="button"
             onClick={() => setIsCommandPaletteOpen(true)}
-            className="hidden md:flex items-center gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-1.5 text-xs text-[var(--text-muted)] hover:border-emerald-500/50 hover:text-[var(--text-main)] transition-all shadow-sm"
+            className="hidden md:flex items-center gap-2 rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] px-3 py-1.5 text-xs text-(--text-muted) hover:border-emerald-500/50 hover:text-(--text-main) transition-all shadow-sm"
           >
             <Search className="h-3.5 w-3.5" />
             <span className="text-[11px]">{t('common.searchPlaceholder', 'بحث سريع...')}</span>
-            <kbd className="hidden lg:inline-flex items-center rounded bg-[var(--bg-surface-subtle)] px-1.5 py-0.5 text-[9px] font-mono text-[var(--text-muted)] border border-[var(--border-subtle)]">
+            <kbd className="hidden lg:inline-flex items-center rounded bg-(--bg-surface-subtle) px-1.5 py-0.5 text-[9px] font-mono text-(--text-muted) border border-(--border-subtle)">
               Ctrl K
             </kbd>
           </button>
 
           {/* Notifications Icon with Real Badge */}
-          <div className="relative">
+          <div className="relative" ref={notificationsRef}>
             <button
               type="button"
               onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-              className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[var(--text-muted)] hover:border-emerald-500/50 hover:text-[var(--text-main)] transition-colors shadow-sm"
+              aria-expanded={isNotificationsOpen}
+              aria-haspopup="true"
+              className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] text-(--text-muted) hover:border-emerald-500/50 hover:text-(--text-main) transition-colors shadow-sm"
               aria-label={t('common.notifications', 'الإشعارات')}
             >
               <Bell className="h-4 w-4" />
               {unreadCount > 0 && (
-                <span className="absolute -top-1 -end-1 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-[var(--accent-primary)] text-[9px] font-bold text-[var(--accent-primary-fg)] shadow-xs">
+                <span className="absolute -top-1 -end-1 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-(--accent-primary) text-[9px] font-bold text-(--accent-primary-fg) shadow-xs">
                   {unreadCount > 99 ? '99+' : unreadCount}
                 </span>
               )}
             </button>
 
             {isNotificationsOpen && (
-              <div className="absolute end-0 mt-2 w-80 sm:w-96 rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-3 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150">
-                <div className="flex items-center justify-between pb-2 border-b border-[var(--border-subtle)]">
+              <div className="absolute end-0 mt-2 w-80 sm:w-96 rounded-2xl border border-(--border-app) bg-[var(--bg-surface)] p-3 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150">
+                <div className="flex items-center justify-between pb-2 border-b border-(--border-subtle)">
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-xs text-[var(--text-main)]">
+                    <span className="font-bold text-xs text-(--text-main)">
                       {t('common.notifications', 'الإشعارات')}
                     </span>
                     {unreadCount > 0 && (
-                      <span className="rounded-full bg-[var(--badge-bg)] px-2 py-0.5 text-[10px] font-bold text-[var(--badge-fg)] border border-[var(--badge-border)]">
+                      <span className="rounded-full bg-(--badge-bg) px-2 py-0.5 text-[10px] font-bold text-(--badge-fg) border border-(--badge-border)">
                         {unreadCount} {locale === 'ar' ? 'جديد' : 'New'}
                       </span>
                     )}
@@ -285,38 +341,37 @@ export function Topbar({ onOpenMobile, breadcrumbs: customBreadcrumbs }: TopbarP
 
                 <div className="mt-2 space-y-1.5 max-h-[350px] overflow-y-auto">
                   {isLoadingNotifications ? (
-                    <div className="py-6 text-center text-xs text-[var(--text-muted)]">
-                      {locale === 'ar' ? 'جاري تحميل الإشعارات...' : 'Loading notifications...'}
-                    </div>
+                    <NotificationListSkeleton count={4} />
                   ) : notifications.length === 0 ? (
-                    <div className="py-8 text-center text-xs text-[var(--text-muted)]">
+                    <div className="py-8 text-center text-xs text-(--text-muted)">
                       {locale === 'ar' ? 'لا توجد إشعارات حالياً' : 'No notifications yet'}
                     </div>
                   ) : (
                     notifications.map((item) => {
                       const isRead = Boolean(item.readAt);
                       return (
-                        <div
+                        <button
+                          type="button"
                           key={item.id}
-                          onClick={() => handleNotificationClick(item)}
-                          className={`rounded-xl p-2.5 text-xs space-y-1 cursor-pointer transition-colors ${
+                          onClick={() => void handleNotificationClick(item)}
+                          className={`block w-full text-start rounded-xl p-2.5 text-xs space-y-1 cursor-pointer transition-colors ${
                             !isRead
-                              ? 'bg-[var(--accent-primary)]/10 border border-[var(--accent-primary)]/20'
-                              : 'bg-[var(--bg-surface-subtle)] hover:bg-[var(--bg-surface-subtle)]/80'
+                              ? 'bg-(--accent-primary)/10 border border-[var(--accent-primary)]/20'
+                              : 'bg-(--bg-surface-subtle) hover:bg-(--bg-surface-subtle)/80'
                           }`}
                         >
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="font-bold text-[11px] text-[var(--text-main)] leading-tight">
-                              {item.title}
-                            </div>
+                          <span className="flex items-start justify-between gap-2">
+                            <span className="font-bold text-[11px] text-(--text-main) leading-tight">
+                              {localizeNotification(item, locale === 'ar' ? 'ar' : 'en').title}
+                            </span>
                             {!isRead && (
-                              <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent-primary)] shrink-0 mt-1" />
+                              <span className="h-1.5 w-1.5 rounded-full bg-(--accent-primary) shrink-0 mt-1" />
                             )}
-                          </div>
-                          <div className="text-[10px] text-[var(--text-muted)] leading-relaxed">
-                            {item.body}
-                          </div>
-                          <div className="text-[9px] text-[var(--text-muted)]/70 pt-0.5">
+                          </span>
+                          <span className="block text-[10px] text-(--text-muted) leading-relaxed">
+                            {localizeNotification(item, locale === 'ar' ? 'ar' : 'en').body}
+                          </span>
+                          <span className="block text-[9px] text-(--text-muted)/70 pt-0.5">
                             {new Date(item.createdAt).toLocaleDateString(
                               locale === 'ar' ? 'ar-EG' : 'en-US',
                               {
@@ -326,8 +381,8 @@ export function Topbar({ onOpenMobile, breadcrumbs: customBreadcrumbs }: TopbarP
                                 minute: '2-digit',
                               },
                             )}
-                          </div>
-                        </div>
+                          </span>
+                        </button>
                       );
                     })
                   )}
@@ -337,7 +392,7 @@ export function Topbar({ onOpenMobile, breadcrumbs: customBreadcrumbs }: TopbarP
           </div>
 
           {/* Language & Theme Controls */}
-          <div className="flex items-center gap-1 border-s border-e border-[var(--border-app)] px-2">
+          <div className="flex items-center gap-1 border-s border-e border-(--border-app) px-2">
             <LocaleToggle />
             <ThemeToggle />
           </div>
@@ -348,16 +403,16 @@ export function Topbar({ onOpenMobile, breadcrumbs: customBreadcrumbs }: TopbarP
               <button
                 type="button"
                 onClick={() => setIsProfileOpen(!isProfileOpen)}
-                className="flex items-center gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-1.5 ps-2 text-xs text-[var(--text-main)] hover:border-emerald-500/50 transition-all shadow-sm"
+                className="flex items-center gap-2 rounded-xl border border-(--border-subtle) bg-[var(--bg-surface)] p-1.5 ps-2 text-xs text-(--text-main) hover:border-emerald-500/50 transition-all shadow-sm"
               >
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-tr from-emerald-600 to-teal-600 text-[11px] font-bold text-white shadow-inner">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-linear-to-tr from-emerald-600 to-teal-600 text-[11px] font-bold text-white shadow-inner">
                   {user.name.slice(0, 2).toUpperCase()}
                 </div>
                 <div className="hidden sm:flex flex-col text-start">
-                  <span className="font-bold text-[11px] text-[var(--text-main)] max-w-[90px] truncate leading-tight">
+                  <span className="font-bold text-[11px] text-(--text-main) max-w-[90px] truncate leading-tight">
                     {user.name}
                   </span>
-                  <span className="text-[9px] text-[var(--text-muted)]">
+                  <span className="text-[9px] text-(--text-muted)">
                     {isSuperAdmin
                       ? locale === 'ar'
                         ? 'أدمن المنصة'
@@ -367,18 +422,14 @@ export function Topbar({ onOpenMobile, breadcrumbs: customBreadcrumbs }: TopbarP
                         : ''}
                   </span>
                 </div>
-                <ChevronDown className="h-3 w-3 text-[var(--text-muted)]" />
+                <ChevronDown className="h-3 w-3 text-(--text-muted)" />
               </button>
 
               {isProfileOpen && (
-                <div className="absolute end-0 mt-2 w-56 rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-2 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150">
-                  <div className="px-2.5 py-2 border-b border-[var(--border-subtle)]">
-                    <div className="font-bold text-xs text-[var(--text-main)] truncate">
-                      {user.name}
-                    </div>
-                    <div className="text-[10px] text-[var(--text-muted)] truncate">
-                      {user.email}
-                    </div>
+                <div className="absolute end-0 mt-2 w-56 rounded-2xl border border-(--border-app) bg-[var(--bg-surface)] p-2 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="px-2.5 py-2 border-b border-(--border-subtle)">
+                    <div className="font-bold text-xs text-(--text-main) truncate">{user.name}</div>
+                    <div className="text-[10px] text-(--text-muted) truncate">{user.email}</div>
                     {isSuperAdmin && (
                       <span className="mt-1 inline-flex items-center gap-1 rounded bg-amber-500/20 px-1.5 py-0.5 text-[9px] font-bold text-amber-500 border border-amber-500/30">
                         <ShieldAlert className="h-2.5 w-2.5" />
@@ -391,18 +442,18 @@ export function Topbar({ onOpenMobile, breadcrumbs: customBreadcrumbs }: TopbarP
                     <Link
                       href="/account"
                       onClick={() => setIsProfileOpen(false)}
-                      className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-xs text-[var(--text-main)] hover:bg-[var(--bg-surface-subtle)] transition-colors"
+                      className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-xs text-(--text-main) hover:bg-(--bg-surface-subtle) transition-colors"
                     >
-                      <User className="h-3.5 w-3.5 text-[var(--text-muted)]" />
+                      <User className="h-3.5 w-3.5 text-(--text-muted)" />
                       <span>{locale === 'ar' ? 'حسابي الشخصي' : 'My Account'}</span>
                     </Link>
 
                     <Link
                       href="/settings"
                       onClick={() => setIsProfileOpen(false)}
-                      className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-xs text-[var(--text-main)] hover:bg-[var(--bg-surface-subtle)] transition-colors"
+                      className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-xs text-(--text-main) hover:bg-(--bg-surface-subtle) transition-colors"
                     >
-                      <Settings className="h-3.5 w-3.5 text-[var(--text-muted)]" />
+                      <Settings className="h-3.5 w-3.5 text-(--text-muted)" />
                       <span>{t('nav.settings', 'الإعدادات')}</span>
                     </Link>
 
@@ -425,7 +476,7 @@ export function Topbar({ onOpenMobile, breadcrumbs: customBreadcrumbs }: TopbarP
             <div className="flex items-center gap-2">
               <Link
                 href="/login"
-                className="rounded-xl border border-[var(--border-app)] px-3 py-1.5 text-xs font-semibold text-[var(--text-main)] hover:border-[var(--accent-primary)] hover:text-[var(--accent-primary)] transition-all"
+                className="rounded-xl border border-(--border-app) px-3 py-1.5 text-xs font-semibold text-(--text-main) hover:border-[var(--accent-primary)] hover:text-(--accent-primary) transition-all"
               >
                 {t('common.login', 'تسجيل الدخول')}
               </Link>

@@ -66,6 +66,9 @@ services:
       REFRESH_TOKEN_EXPIRES_DAYS: ${REFRESH_TOKEN_EXPIRES_DAYS:-7}
       CORS_ORIGIN: ${CORS_ORIGIN:?set CORS_ORIGIN}
       COOKIE_SECURE: 'true'
+      # S1: shared secret authenticating the web proxy; Caddy is the one trusted hop in front of the API.
+      INTERNAL_PROXY_SECRET: ${INTERNAL_PROXY_SECRET:?set INTERNAL_PROXY_SECRET}
+      TRUST_PROXY_HOPS: '1'
     depends_on:
       postgres:
         condition: service_healthy
@@ -91,6 +94,10 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: production
+      INTERNAL_API_URL: http://api:3001
+      # S1: same secret as the API; Caddy is the one trusted hop in front of the web app.
+      INTERNAL_PROXY_SECRET: ${INTERNAL_PROXY_SECRET:?set INTERNAL_PROXY_SECRET}
+      WEB_TRUSTED_PROXY_HOPS: '1'
     depends_on:
       api:
         condition: service_healthy

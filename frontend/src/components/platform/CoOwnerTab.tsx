@@ -1,5 +1,6 @@
 'use client';
 
+import { TableSkeleton } from '@/components/ui/skeleton';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useLocale } from '@/contexts/locale-context';
 import { useAuth } from '@/contexts/auth-context';
@@ -131,11 +132,11 @@ export function CoOwnerTab() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-lg font-bold text-[var(--text-main)] flex items-center gap-2">
+          <h2 className="text-lg font-bold text-(--text-main) flex items-center gap-2">
             <Crown className="h-5 w-5 text-amber-400" />
             {ar ? 'إدارة مديري المنصة' : 'Platform Ownership Management'}
           </h2>
-          <p className="text-xs text-[var(--text-muted)] mt-1">
+          <p className="text-xs text-(--text-muted) mt-1">
             {ar
               ? 'تحكم كامل في مديري المنصة والأذونات العليا. محمي بصلاحيات المالك الأساسي فقط.'
               : 'Full control over platform administrators. Protected by Primary Owner permissions only.'}
@@ -144,7 +145,7 @@ export function CoOwnerTab() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => void load()}
-            className="h-9 w-9 flex items-center justify-center rounded-xl border border-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-surface)] transition-colors"
+            className="h-9 w-9 flex items-center justify-center rounded-xl border border-(--border-subtle) text-(--text-muted) hover:text-(--text-main) hover:bg-[var(--bg-surface)] transition-colors"
           >
             <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
           </button>
@@ -176,15 +177,15 @@ export function CoOwnerTab() {
       {/* Invite Form Modal */}
       {showInviteForm && isPlatformOwner && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-6 shadow-2xl">
+          <div className="w-full max-w-md rounded-2xl border border-(--border-app) bg-[var(--bg-surface)] p-6 shadow-2xl">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-sm text-[var(--text-main)] flex items-center gap-2">
+              <h3 className="font-bold text-sm text-(--text-main) flex items-center gap-2">
                 <UserPlus className="h-4 w-4 text-amber-400" />
                 {ar ? 'دعوة مدير منصة جديد' : 'Invite New Platform Admin'}
               </h3>
               <button
                 onClick={() => setShowInviteForm(false)}
-                className="h-7 w-7 flex items-center justify-center rounded-lg text-[var(--text-muted)] hover:bg-[var(--bg-surface-subtle)]"
+                className="h-7 w-7 flex items-center justify-center rounded-lg text-(--text-muted) hover:bg-(--bg-surface-subtle)"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -200,7 +201,7 @@ export function CoOwnerTab() {
 
             <form onSubmit={(e) => void handleInvite(e)} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">
+                <label className="block text-xs font-semibold text-(--text-muted) mb-1.5">
                   {ar ? 'الاسم الكامل' : 'Full Name'}
                 </label>
                 <input
@@ -209,11 +210,11 @@ export function CoOwnerTab() {
                   value={inviteName}
                   onChange={(e) => setInviteName(e.target.value)}
                   placeholder={ar ? 'أدخل الاسم الكامل' : 'Enter full name'}
-                  className="w-full rounded-xl border border-[var(--border-app)] bg-[var(--bg-base)] px-3 py-2.5 text-sm text-[var(--text-main)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-amber-500/60"
+                  className="w-full rounded-xl border border-(--border-app) bg-(--bg-base) px-3 py-2.5 text-sm text-(--text-main) placeholder:text-(--text-muted) focus:outline-none focus:border-amber-500/60"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">
+                <label className="block text-xs font-semibold text-(--text-muted) mb-1.5">
                   {ar ? 'البريد الإلكتروني' : 'Email Address'}
                 </label>
                 <input
@@ -221,13 +222,13 @@ export function CoOwnerTab() {
                   required
                   value={inviteEmail}
                   onChange={(e) => setInviteEmail(e.target.value)}
-                  placeholder={ar ? 'example@domain.com' : 'example@domain.com'}
-                  className="w-full rounded-xl border border-[var(--border-app)] bg-[var(--bg-base)] px-3 py-2.5 text-sm text-[var(--text-main)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-amber-500/60"
+                  placeholder="name@example.com"
+                  className="w-full rounded-xl border border-(--border-app) bg-(--bg-base) px-3 py-2.5 text-sm text-(--text-main) placeholder:text-(--text-muted) focus:outline-none focus:border-amber-500/60"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">
+                <label className="block text-xs font-semibold text-(--text-muted) mb-1.5">
                   {ar ? 'مستوى الصلاحية والملكية' : 'Role & Privileges'}
                 </label>
                 <div className="grid grid-cols-2 gap-2">
@@ -237,14 +238,14 @@ export function CoOwnerTab() {
                     className={`rounded-xl border p-3 text-start transition-all ${
                       inviteRole === 'PLATFORM_CO_OWNER'
                         ? 'border-amber-500 bg-amber-500/10 text-amber-300 ring-2 ring-amber-500/30'
-                        : 'border-[var(--border-app)] bg-[var(--bg-base)] text-[var(--text-muted)] hover:border-[var(--border-subtle)]'
+                        : 'border-(--border-app) bg-(--bg-base) text-(--text-muted) hover:border-(--border-subtle)'
                     }`}
                   >
                     <div className="flex items-center gap-1.5 font-bold text-xs">
                       <Crown className="h-3.5 w-3.5 text-amber-400" />
                       {ar ? 'مالك مشارك' : 'Co-Owner'}
                     </div>
-                    <div className="text-[10px] mt-1 text-[var(--text-muted)]">
+                    <div className="text-[10px] mt-1 text-(--text-muted)">
                       {ar ? 'صلاحيات سيادية كاملة' : 'Full sovereign access'}
                     </div>
                   </button>
@@ -255,14 +256,14 @@ export function CoOwnerTab() {
                     className={`rounded-xl border p-3 text-start transition-all ${
                       inviteRole === 'SUPER_ADMIN'
                         ? 'border-blue-500 bg-blue-500/10 text-blue-300 ring-2 ring-blue-500/30'
-                        : 'border-[var(--border-app)] bg-[var(--bg-base)] text-[var(--text-muted)] hover:border-[var(--border-subtle)]'
+                        : 'border-(--border-app) bg-(--bg-base) text-(--text-muted) hover:border-(--border-subtle)'
                     }`}
                   >
                     <div className="flex items-center gap-1.5 font-bold text-xs">
                       <Shield className="h-3.5 w-3.5 text-blue-400" />
                       {ar ? 'مدير منصة' : 'Super Admin'}
                     </div>
-                    <div className="text-[10px] mt-1 text-[var(--text-muted)]">
+                    <div className="text-[10px] mt-1 text-(--text-muted)">
                       {ar ? 'إدارة تشغيلية' : 'Operational control'}
                     </div>
                   </button>
@@ -273,7 +274,7 @@ export function CoOwnerTab() {
                 <button
                   type="button"
                   onClick={() => setShowInviteForm(false)}
-                  className="flex-1 rounded-xl border border-[var(--border-app)] py-2.5 text-xs font-semibold text-[var(--text-muted)] hover:bg-[var(--bg-surface-subtle)] transition-colors"
+                  className="flex-1 rounded-xl border border-(--border-app) py-2.5 text-xs font-semibold text-(--text-muted) hover:bg-(--bg-surface-subtle) transition-colors"
                 >
                   {ar ? 'إلغاء' : 'Cancel'}
                 </button>
@@ -298,23 +299,22 @@ export function CoOwnerTab() {
 
       {/* Search */}
       <div className="relative">
-        <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--text-muted)]" />
+        <Search className="absolute inset-s-3 top-1/2 -translate-y-1/2 h-4 w-4 text-(--text-muted)" />
         <input
           type="search"
           value={searchQuery}
+          aria-label={locale === 'ar' ? 'بحث في مديري المنصة' : 'Search platform admins'}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder={ar ? 'بحث في مديري المنصة...' : 'Search platform admins...'}
-          className="w-full rounded-xl border border-[var(--border-app)] bg-[var(--bg-surface)] ps-9 pe-4 py-2.5 text-sm text-[var(--text-main)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-primary)]/60"
+          className="w-full rounded-xl border border-(--border-app) bg-[var(--bg-surface)] ps-9 pe-4 py-2.5 text-sm text-(--text-main) placeholder:text-(--text-muted) focus:outline-none focus:border-(--accent-primary)/60"
         />
       </div>
 
       {/* Admins List */}
       {isLoading ? (
-        <div className="py-12 text-center text-sm text-[var(--text-muted)]">
-          {ar ? 'جارٍ التحميل...' : 'Loading...'}
-        </div>
+        <TableSkeleton rows={4} cols={4} />
       ) : filtered.length === 0 ? (
-        <div className="py-12 text-center text-sm text-[var(--text-muted)]">
+        <div className="py-12 text-center text-sm text-(--text-muted)">
           {ar ? 'لا يوجد مديرو منصة' : 'No platform admins found'}
         </div>
       ) : (
@@ -326,7 +326,7 @@ export function CoOwnerTab() {
             return (
               <div
                 key={admin.id}
-                className="rounded-xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                className="rounded-xl border border-(--border-app) bg-[var(--bg-surface)] p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
               >
                 <div className="flex items-center gap-3">
                   <div
@@ -336,9 +336,7 @@ export function CoOwnerTab() {
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold text-sm text-[var(--text-main)]">
-                        {admin.name}
-                      </span>
+                      <span className="font-semibold text-sm text-(--text-main)">{admin.name}</span>
                       {isOwner && (
                         <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-bold text-amber-400 border border-amber-500/30">
                           <Crown className="h-2.5 w-2.5" />
@@ -358,8 +356,8 @@ export function CoOwnerTab() {
                       )}
                     </div>
                     <div className="flex items-center gap-1 mt-0.5">
-                      <Mail className="h-3 w-3 text-[var(--text-muted)]" />
-                      <span className="text-xs text-[var(--text-muted)]">{admin.email}</span>
+                      <Mail className="h-3 w-3 text-(--text-muted)" />
+                      <span className="text-xs text-(--text-muted)">{admin.email}</span>
                     </div>
                     <div className="flex items-center gap-3 mt-1">
                       {admin.isSuspended ? (
@@ -440,7 +438,7 @@ export function CoOwnerTab() {
                             </button>
                             <button
                               onClick={() => setConfirmRevoke(null)}
-                              className="rounded-lg border border-[var(--border-subtle)] px-2 py-1 text-xs text-[var(--text-muted)] hover:bg-[var(--bg-surface-subtle)] transition-colors"
+                              className="rounded-lg border border-(--border-subtle) px-2 py-1 text-xs text-(--text-muted) hover:bg-(--bg-surface-subtle) transition-colors"
                             >
                               {ar ? 'إلغاء' : 'Cancel'}
                             </button>
@@ -448,7 +446,7 @@ export function CoOwnerTab() {
                         ) : (
                           <button
                             onClick={() => setConfirmRevoke(admin.id)}
-                            className="flex items-center gap-1 rounded-xl border border-[var(--border-subtle)] px-2.5 py-1.5 text-xs text-[var(--text-muted)] hover:bg-[var(--bg-surface-subtle)] transition-colors"
+                            className="flex items-center gap-1 rounded-xl border border-(--border-subtle) px-2.5 py-1.5 text-xs text-(--text-muted) hover:bg-(--bg-surface-subtle) transition-colors"
                           >
                             <KeyRound className="h-3 w-3" />
                             <span>{ar ? 'طرد من الجلسات' : 'Revoke Sessions'}</span>
@@ -488,14 +486,14 @@ export function CoOwnerTab() {
         ].map((stat) => (
           <div
             key={stat.label}
-            className="rounded-xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-4 flex items-center gap-3"
+            className="rounded-xl border border-(--border-app) bg-[var(--bg-surface)] p-4 flex items-center gap-3"
           >
             <div className={`h-9 w-9 rounded-xl flex items-center justify-center ${stat.color}`}>
               <stat.icon className="h-4 w-4" />
             </div>
             <div>
-              <div className="text-lg font-bold text-[var(--text-main)]">{stat.value}</div>
-              <div className="text-[10px] text-[var(--text-muted)]">{stat.label}</div>
+              <div className="text-lg font-bold text-(--text-main)">{stat.value}</div>
+              <div className="text-[10px] text-(--text-muted)">{stat.label}</div>
             </div>
           </div>
         ))}

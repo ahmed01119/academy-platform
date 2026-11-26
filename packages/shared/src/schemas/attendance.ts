@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { SportCodeSchema } from '../constants/sports';
 
 export const AttendanceStatus = {
   UNMARKED: 'UNMARKED',
@@ -64,6 +65,30 @@ export const AttendanceRosterItemSchema = z.object({
 
 export type AttendanceRosterItem = z.infer<typeof AttendanceRosterItemSchema>;
 
+/**
+ * Response of POST /attendance/records (I1: single contract for API and web). Replayed verbatim when an idempotency
+ * key repeats.
+ */
+export interface RecordAttendanceResult {
+  record: {
+    recordId: string;
+    playerId: string;
+    playerName: string;
+    photoUrl: string | null;
+    status: AttendanceStatus;
+    checkInTime: string | null;
+    remarks: string | null;
+    version: number;
+  };
+  previousStatus: AttendanceStatus;
+}
+
+/** Response of POST /attendance/records/bulk: the number of records written and the written records. */
+export interface BulkRecordAttendanceResult {
+  count: number;
+  records: Array<{ id: string; playerId: string; status: AttendanceStatus; version: number }>;
+}
+
 export const BulkMarkAttendanceRequestSchema = z.object({
   sessionId: z.string().uuid(),
   idempotencyKey: z.string().uuid(),
@@ -94,7 +119,7 @@ export type AttendanceCorrection = z.infer<typeof AttendanceCorrectionSchema>;
 export const CreateAttendanceSessionSchema = z.object({
   branchId: z.string().uuid(),
   groupId: z.string().uuid().optional().nullable(),
-  sport: z.enum(['FOOTBALL']).default('FOOTBALL'),
+  sport: SportCodeSchema.default('FOOTBALL'),
   groupName: z.string().min(2).max(100),
   sessionDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Must be YYYY-MM-DD format'),
   startTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Must be HH:MM format'),
@@ -133,7 +158,7 @@ export const SessionSummarySchema = z.object({
   groupName: z.string(),
   coachUserId: z.string().uuid().nullable().optional(),
   coachName: z.string().nullable().optional(),
-  sport: z.enum(['FOOTBALL']),
+  sport: SportCodeSchema,
   sessionDate: z.string(),
   startTime: z.string(),
   endTime: z.string(),

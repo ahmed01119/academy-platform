@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { FinanceService } from './finance.service';
+import { FinancePlansService } from './finance-plans.service';
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import type { PrismaService } from '../database/prisma.service';
 import type { AuditService } from '../audit/audit.service';
@@ -40,6 +41,7 @@ describe('FinanceService', () => {
   const tenantContext: TenantContext = {
     tenantId: '00000000-0000-4000-8000-000000000101',
     actorUserId: '00000000-0000-4000-8000-000000000001',
+    locale: 'ar',
     role: 'OWNER',
   };
 
@@ -100,6 +102,10 @@ describe('FinanceService', () => {
     service = new FinanceService(
       mockPrisma as unknown as PrismaService,
       mockAudit as unknown as AuditService,
+      new FinancePlansService(
+        mockPrisma as unknown as PrismaService,
+        mockAudit as unknown as AuditService,
+      ),
     );
   });
 
@@ -284,10 +290,11 @@ describe('FinanceService', () => {
     const coachContext: TenantContext = {
       tenantId: tenantContext.tenantId,
       actorUserId: coachUserId,
+      locale: 'ar',
       role: 'COACH',
     };
 
-    it('submits valid expense by assigned coach in PENDING status for separation of duties review', async () => {
+    it('2026-11-24: even an assigned coach can no longer claim session expenses (money is the owner)', async () => {
       mockTx.attendanceSession.findUnique.mockResolvedValue({
         id: sessionId,
         tenantId: tenantContext.tenantId,
@@ -296,51 +303,15 @@ describe('FinanceService', () => {
         group: { coaches: [] },
       });
 
-      mockTx.academyFinancialTransaction.create.mockResolvedValue({
-        id: 'exp-1',
-        tenantId: tenantContext.tenantId,
-        branchId,
-        sessionId,
-        recordedByUserId: coachUserId,
-        type: 'SESSION_EXPENSE',
-        amount: 85.5,
-        currency: 'SAR',
-        paymentMethod: 'CASH',
-        status: 'PENDING',
-        receiptNumber: 'EXP-2026-0001',
-        notes: 'Bottled water for squad',
-        approvedByUserId: null,
-        approvedAt: null,
-        rejectionReason: null,
-        idempotencyKey: null,
-        createdAt: new Date(),
-        branch: { name: 'Main Branch' },
-        recordedByUser: { name: 'Coach Tarek' },
-        approvedByUser: null,
-      });
-
-      const res = await service.recordSessionExpense(coachContext, sessionId, {
-        amount: 85.5,
-        paymentMethod: 'CASH',
-        notes: 'Bottled water for squad',
-      });
-
-      expect(res.status).toBe('PENDING');
-      expect(res.amount).toBe(85.5);
-      expect(mockTx.academyFinancialTransaction.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            status: 'PENDING',
-            approvedByUserId: null,
-            approvedAt: null,
-          }),
+      await expect(
+        service.recordSessionExpense(coachContext, sessionId, {
+          branchId,
+          amount: 85.5,
+          paymentMethod: 'CASH',
+          notes: 'Bottled water for squad',
         }),
-      );
-      expect(mockAudit.logEvent).toHaveBeenCalledWith(
-        expect.objectContaining({
-          action: 'SESSION_EXPENSE_SUBMITTED',
-        }),
-      );
+      ).rejects.toThrow(ForbiddenException);
+      expect(mockTx.academyFinancialTransaction.create).not.toHaveBeenCalled();
     });
 
     it('rejects expense submission by unassigned coach with ForbiddenException', async () => {
@@ -354,6 +325,7 @@ describe('FinanceService', () => {
 
       await expect(
         service.recordSessionExpense(coachContext, sessionId, {
+          branchId,
           amount: 50,
           paymentMethod: 'CASH',
           notes: 'Unassigned coach attempt',
@@ -394,6 +366,7 @@ describe('FinanceService', () => {
       });
 
       const res = await service.recordSessionExpense(tenantContext, sessionId, {
+        branchId,
         amount: 150,
         paymentMethod: 'CASH',
         notes: 'Emergency medical kit',
@@ -444,7 +417,8 @@ describe('FinanceService', () => {
         approvedByUser: null,
       });
 
-      const res = await service.recordSessionExpense(coachContext, sessionId, {
+      const res = await service.recordSessionExpense(tenantContext, sessionId, {
+        branchId,
         amount: 50,
         paymentMethod: 'CASH',
         notes: 'Hydration',
@@ -458,6 +432,7 @@ describe('FinanceService', () => {
     it('rejects invalid or non-positive amount with BadRequestException', async () => {
       await expect(
         service.recordSessionExpense(coachContext, sessionId, {
+          branchId,
           amount: -25,
           paymentMethod: 'CASH',
           notes: 'Negative value',
@@ -466,6 +441,7 @@ describe('FinanceService', () => {
 
       await expect(
         service.recordSessionExpense(coachContext, sessionId, {
+          branchId,
           amount: 0,
           paymentMethod: 'CASH',
           notes: 'Zero value',
@@ -479,6 +455,7 @@ describe('FinanceService', () => {
     const managerContext: TenantContext = {
       tenantId: tenantContext.tenantId,
       actorUserId: '00000000-0000-4000-8000-000000000003',
+      locale: 'ar',
       role: 'MANAGER',
     };
 
@@ -586,6 +563,7 @@ describe('FinanceService', () => {
     const managerContext: TenantContext = {
       tenantId: tenantContext.tenantId,
       actorUserId: '00000000-0000-4000-8000-000000000003',
+      locale: 'ar',
       role: 'MANAGER',
     };
 
@@ -770,6 +748,7 @@ describe('FinanceService', () => {
       const unassignedCoachContext: TenantContext = {
         tenantId: tenantContext.tenantId,
         actorUserId: 'unassigned-coach-id',
+        locale: 'ar',
         role: 'COACH',
       };
 
@@ -791,6 +770,26 @@ describe('FinanceService', () => {
       await expect(
         service.getSessionCashierSummary(unassignedCoachContext, sessionId),
       ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('player subscription plans (delegated to FinancePlansService)', () => {
+    it('lists the academy plans for a branch, including academy-wide plans', async () => {
+      const branchId = '33333333-3333-4333-8333-333333333333';
+      mockTx.playerSubscriptionPlan.findMany.mockResolvedValue([]);
+
+      await expect(service.listPlayerSubscriptionPlans(tenantContext, branchId)).resolves.toEqual(
+        [],
+      );
+
+      expect(mockTx.playerSubscriptionPlan.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            tenantId: tenantContext.tenantId,
+            OR: [{ branchId }, { branchId: null }],
+          },
+        }),
+      );
     });
   });
 });

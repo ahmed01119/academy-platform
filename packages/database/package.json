@@ -13,12 +13,14 @@
     }
   },
   "scripts": {
-    "build": "prisma generate && rimraf dist tsconfig.tsbuildinfo && tsc -p tsconfig.json",
-    "clean": "rimraf dist tsconfig.tsbuildinfo",
+    "build": "node scripts/check-prisma-client.cjs && rimraf dist tsconfig.build.tsbuildinfo && tsc -p tsconfig.build.json",
+    "clean": "rimraf dist tsconfig.tsbuildinfo tsconfig.build.tsbuildinfo",
     "generate": "prisma generate",
+    "generate:if-needed": "node scripts/generate-if-needed.cjs",
     "migrate:dev": "prisma migrate dev",
     "migrate:deploy": "prisma migrate deploy",
     "studio": "prisma studio",
+    "seed:demo": "node scripts/seed-demo.cjs",
     "lint": "eslint .",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run --passWithNoTests"
@@ -31,6 +33,7 @@
     "@academy/typescript-config": "workspace:*",
     "@embedded-postgres/windows-x64": "18.4.0-beta.17",
     "@types/node": "^22.15.29",
+    "dotenv": "16.6.1",
     "embedded-postgres": "18.4.0-beta.17",
     "eslint": "^9.28.0",
     "prisma": "^6.9.0",

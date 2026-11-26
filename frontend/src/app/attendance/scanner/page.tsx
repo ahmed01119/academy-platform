@@ -1,7 +1,8 @@
 'use client';
 
+import { Skeleton } from '@/components/ui/skeleton';
+import { useAcademyCurrency } from '@/hooks/useAcademyCurrency';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import jsQR from 'jsqr';
 import {
   Camera,
@@ -24,6 +25,9 @@ import {
   X,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
+import { useAccessGuard } from '@/hooks/useAccessGuard';
+import { Permission } from '@academy/shared';
+import type { AccessRule } from '@/lib/auth/access-rules';
 import { useLocale } from '@/contexts/locale-context';
 import { translateDataString } from '@/utils/data-translator';
 import { AppShell } from '../../../components/layout/AppShell';
@@ -33,6 +37,9 @@ import { apiClient } from '@/api/client';
 import { offlineStore } from '@/utils/offline-attendance-store';
 import { prepareForOfflineUse } from '@/utils/offline-engine';
 import type { ScanPlayerQrResponse, SessionSummary } from '@academy/shared';
+
+/** Who may open this page (permission matrix; the API enforces the same permissions). */
+const PAGE_ACCESS: AccessRule = { anyOf: [Permission.ATTENDANCE_MARK] };
 
 interface ScanFeedback {
   type: 'ON_TIME' | 'LATE' | 'DUPLICATE' | 'OFFLINE_QUEUED' | 'ERROR';
@@ -47,9 +54,9 @@ interface ScanFeedback {
 }
 
 export default function MobileAttendanceScannerPage() {
-  const router = useRouter();
-  const { user, activeTenant, isLoading: authLoading } = useAuth();
+  const { user, activeTenant } = useAuth();
   const { t, locale } = useLocale();
+  const { label: currencyLabel } = useAcademyCurrency();
   const { toast } = useToast();
 
   // Session State
@@ -60,6 +67,10 @@ export default function MobileAttendanceScannerPage() {
   // Camera State
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  // The live camera stream, and a counter that invalidates a start still waiting for permission when the camera is
+  // stopped (or the page left) in the meantime: such a late stream is closed at once instead of staying on.
+  const streamRef = useRef<MediaStream | null>(null);
+  const cameraRunRef = useRef(0);
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -136,12 +147,22 @@ export default function MobileAttendanceScannerPage() {
             outstandingBalance: 0,
             feeAmount: activeFeedback.paymentStatus?.feeAmount || 650,
           },
-          message: `${activeFeedback.message} • ${locale === 'en' ? `${paymentAmount} SAR collected successfully!` : `تم تحصيل ${paymentAmount} ر.س بنجاح!`}`,
+          message: `${activeFeedback.message} • ${locale === 'en' ? `${paymentAmount} ${currencyLabel} collected successfully!` : `تم تحصيل ${paymentAmount} ${currencyLabel} بنجاح!`}`,
         });
       }
-      toast.success(locale === 'en' ? `${paymentAmount} SAR collected and player status updated` : `تم تحصيل ${paymentAmount} ر.س بنجاح وتحديث حالة اللاعب`);
+      toast.success(
+        locale === 'en'
+          ? `${paymentAmount} ${currencyLabel} collected and player status updated`
+          : `تم تحصيل ${paymentAmount} ${currencyLabel} بنجاح وتحديث حالة اللاعب`,
+      );
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : (locale === 'en' ? 'Failed to record payment' : 'فشل تسجيل الدفعة'));
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : locale === 'en'
+            ? 'Failed to record payment'
+            : 'فشل تسجيل الدفعة',
+      );
     } finally {
       setIsSubmittingPayment(false);
     }
@@ -228,6 +249,26 @@ export default function MobileAttendanceScannerPage() {
     }
   }, []);
 
+  // Live attendance counter: reload the selected session's totals from the server.
+  const refreshSelectedSession = useCallback(async () => {
+    if (!selectedSessionId) return;
+    try {
+      const fresh = await apiClient.attendance.getSession(selectedSessionId, { fresh: true });
+      setSessions((prev) => prev.map((s) => (s.id === fresh.id ? { ...s, ...fresh } : s)));
+    } catch {
+      // Keep the last known totals; the next scan or poll tries again.
+    }
+  }, [selectedSessionId]);
+
+  // Other devices may scan the same session: keep the counter current while the page is visible.
+  useEffect(() => {
+    if (!selectedSessionId) return;
+    const timer = setInterval(() => {
+      if (document.visibilityState === 'visible' && navigator.onLine) void refreshSelectedSession();
+    }, 15_000);
+    return () => clearInterval(timer);
+  }, [selectedSessionId, refreshSelectedSession]);
+
   // Sync Pending Offline Scans
   const handleSyncPendingScans = useCallback(async () => {
     if (!selectedSessionId || isSyncingOffline) return;
@@ -243,12 +284,18 @@ export default function MobileAttendanceScannerPage() {
         );
       }
       await refreshPendingCount();
+      void refreshSelectedSession();
     } catch (err: unknown) {
-      setSyncStatusBanner((err as Error)?.message || (locale === 'en' ? 'Sync failed, please try again later' : 'فشلت المزامنة، يرجى المحاولة لاحقاً'));
+      setSyncStatusBanner(
+        (err as Error)?.message ||
+          (locale === 'en'
+            ? 'Sync failed, please try again later'
+            : 'فشلت المزامنة، يرجى المحاولة لاحقاً'),
+      );
     } finally {
       setIsSyncingOffline(false);
     }
-  }, [selectedSessionId, isSyncingOffline, refreshPendingCount, locale]);
+  }, [selectedSessionId, isSyncingOffline, refreshPendingCount, refreshSelectedSession, locale]);
 
   // Prepare for Offline Use (caches rosters & upcoming sessions into IndexedDB)
   const handlePrepareOffline = useCallback(async () => {
@@ -258,11 +305,19 @@ export default function MobileAttendanceScannerPage() {
     try {
       const currentSession = sessions.find((s) => s.id === selectedSessionId);
       const res = await prepareForOfflineUse(activeTenant.tenantId, currentSession?.branchId);
-      const msg = locale === 'en' ? `Ready for offline use: ${res.sessionsCached} sessions and ${res.playersCached} players cached locally` : `جاهز للعمل دون اتصال: تم تخزين ${res.sessionsCached} حصص و ${res.playersCached} لاعباً في الذاكرة المحلية بنجاح`;
+      const msg =
+        locale === 'en'
+          ? `Ready for offline use: ${res.sessionsCached} sessions and ${res.playersCached} players cached locally`
+          : `جاهز للعمل دون اتصال: تم تخزين ${res.sessionsCached} حصص و ${res.playersCached} لاعباً في الذاكرة المحلية بنجاح`;
       setOfflinePreparedBanner(msg);
       toast.success(msg);
     } catch (err: unknown) {
-      toast.error((err as Error)?.message || (locale === 'en' ? 'Failed to cache data for offline use' : 'فشل تجهيز البيانات للاستخدام دون إنترنت'));
+      toast.error(
+        (err as Error)?.message ||
+          (locale === 'en'
+            ? 'Failed to cache data for offline use'
+            : 'فشل تجهيز البيانات للاستخدام دون إنترنت'),
+      );
     } finally {
       setIsPreparingOffline(false);
     }
@@ -290,18 +345,14 @@ export default function MobileAttendanceScannerPage() {
   }, [handleSyncPendingScans, refreshPendingCount]);
 
   // Auth Guard
-  useEffect(() => {
-    if (!authLoading) {
-      if (!user) {
-        router.push('/login');
-        return;
-      }
-      if (activeTenant?.role === 'COACH') {
-        toast.error(locale === 'en' ? 'Coaches are not authorized to scan or record attendance per academy policy' : 'غير مصرح للمدربين بمسح أو تسجيل الحضور وفقاً للسياسات الإدارية المعتمدة');
-        router.push('/attendance');
-      }
-    }
-  }, [authLoading, user, activeTenant, router, toast, locale]);
+  useAccessGuard(PAGE_ACCESS, {
+    onForbidden: () =>
+      toast.error(
+        locale === 'en'
+          ? 'Your role does not include scanning attendance.'
+          : 'صلاحيات دورك لا تشمل مسح الحضور.',
+      ),
+  });
 
   // Load Sessions
   useEffect(() => {
@@ -352,9 +403,14 @@ export default function MobileAttendanceScannerPage() {
   // Start Camera Stream
   const startCamera = useCallback(async () => {
     setCameraError(null);
+    const run = ++cameraRunRef.current;
     try {
       if (!navigator.mediaDevices?.getUserMedia) {
-        throw new Error(locale === 'en' ? 'Your browser does not support camera access' : 'متصفحك لا يدعم الوصول للكاميرا');
+        throw new Error(
+          locale === 'en'
+            ? 'Your browser does not support camera access'
+            : 'متصفحك لا يدعم الوصول للكاميرا',
+        );
       }
 
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -366,15 +422,24 @@ export default function MobileAttendanceScannerPage() {
         audio: false,
       });
 
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.setAttribute('playsinline', 'true');
-        await videoRef.current.play();
-        setIsCameraActive(true);
+      if (run !== cameraRunRef.current || !videoRef.current) {
+        // Stopped while the browser was still opening the camera.
+        stream.getTracks().forEach((track) => track.stop());
+        return;
       }
+      streamRef.current?.getTracks().forEach((track) => track.stop());
+      streamRef.current = stream;
+      videoRef.current.srcObject = stream;
+      videoRef.current.setAttribute('playsinline', 'true');
+      await videoRef.current.play();
+      setIsCameraActive(true);
     } catch (err: unknown) {
+      if (run !== cameraRunRef.current) return;
       setCameraError(
-        (err as Error)?.message || (locale === 'en' ? 'Unable to access camera. Please make sure permissions are granted.' : 'تعذر تشغيل الكاميرا. يرجى التأكد من منح الإذن للمتصفح.'),
+        (err as Error)?.message ||
+          (locale === 'en'
+            ? 'Unable to access camera. Please make sure permissions are granted.'
+            : 'تعذر تشغيل الكاميرا. يرجى التأكد من منح الإذن للمتصفح.'),
       );
       setIsCameraActive(false);
     }
@@ -382,11 +447,10 @@ export default function MobileAttendanceScannerPage() {
 
   // Stop Camera Stream
   const stopCamera = useCallback(() => {
-    if (videoRef.current?.srcObject) {
-      const stream = videoRef.current.srcObject as MediaStream;
-      stream.getTracks().forEach((track) => track.stop());
-      videoRef.current.srcObject = null;
-    }
+    cameraRunRef.current += 1; // cancels a start that is still waiting for the camera
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
+    if (videoRef.current) videoRef.current.srcObject = null;
     setIsCameraActive(false);
   }, []);
 
@@ -443,7 +507,10 @@ export default function MobileAttendanceScannerPage() {
             title = locale === 'en' ? 'Already checked in' : 'مسجل مسبقاً (Already Checked In)';
           } else if (res.status === 'LATE') {
             feedbackType = 'LATE';
-            title = locale === 'en' ? `Late check-in (${res.latenessMinutes} min)` : `حضور متأخر (${res.latenessMinutes} دقيقة)`;
+            title =
+              locale === 'en'
+                ? `Late check-in (${res.latenessMinutes} min)`
+                : `حضور متأخر (${res.latenessMinutes} دقيقة)`;
           }
 
           const fb: ScanFeedback = {
@@ -466,8 +533,11 @@ export default function MobileAttendanceScannerPage() {
           setRecentScans((prev) => [fb, ...prev.slice(0, 19)]);
           playFeedbackSound(feedbackType);
           triggerHaptic(feedbackType);
+          if (!res.alreadyCheckedIn) void refreshSelectedSession();
         } catch (err: unknown) {
-          const errMsg = (err as Error)?.message || (locale === 'en' ? 'Invalid or unregistered card' : 'بطاقة غير صالحة أو غير مسجلة');
+          const errMsg =
+            (err as Error)?.message ||
+            (locale === 'en' ? 'Invalid or unregistered card' : 'بطاقة غير صالحة أو غير مسجلة');
           const fb: ScanFeedback = {
             type: 'ERROR',
             title: locale === 'en' ? 'Scan rejected' : 'خطأ في المسح (Scan Rejected)',
@@ -499,7 +569,10 @@ export default function MobileAttendanceScannerPage() {
           const fb: ScanFeedback = {
             type: 'OFFLINE_QUEUED',
             title: locale === 'en' ? 'Queued offline' : 'تم الحفظ محلياً (Queued Offline)',
-            message: locale === 'en' ? 'Attendance saved locally and will auto-sync when back online.' : 'تم تسجيل الحضور محلياً بنجاح وستتم المزامنة فور عودة الاتصال.',
+            message:
+              locale === 'en'
+                ? 'Attendance saved locally and will auto-sync when back online.'
+                : 'تم تسجيل الحضور محلياً بنجاح وستتم المزامنة فور عودة الاتصال.',
             timestamp: new Date().toLocaleTimeString('ar-EG', {
               hour: '2-digit',
               minute: '2-digit',
@@ -517,7 +590,14 @@ export default function MobileAttendanceScannerPage() {
         }
       }
     },
-    [selectedSessionId, playFeedbackSound, triggerHaptic, refreshPendingCount, locale],
+    [
+      selectedSessionId,
+      playFeedbackSound,
+      triggerHaptic,
+      refreshPendingCount,
+      refreshSelectedSession,
+      locale,
+    ],
   );
 
   // Continuous Camera Frame Scanner Loop
@@ -612,14 +692,25 @@ export default function MobileAttendanceScannerPage() {
     <AppShell
       breadcrumbs={[
         { label: t('nav.sessions'), href: '/sessions' },
-        { label: t('attendance.scanner') || (locale === 'en' ? 'QR Attendance Scanner' : 'ماسح الحضور السريع (QR Scanner)') },
+        {
+          label:
+            t('attendance.scanner') ||
+            (locale === 'en' ? 'QR Attendance Scanner' : 'ماسح الحضور السريع (QR Scanner)'),
+        },
       ]}
     >
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Header with Network Indicator */}
         <PageHeader
-          title={t('attendance.scanner') || (locale === 'en' ? 'QR Attendance Scanner' : 'ماسح الحضور السريع (QR Scanner)')}
-          description={locale === 'en' ? 'Instant attendance check-in via camera or manual entry with full offline support and auto-sync.' : 'تسجيل الحضور الفوري بالكاميرا أو يدوياً مع الدعم الكامل لوضع عدم الاتصال والمزامنة التلقائية.'}
+          title={
+            t('attendance.scanner') ||
+            (locale === 'en' ? 'QR Attendance Scanner' : 'ماسح الحضور السريع (QR Scanner)')
+          }
+          description={
+            locale === 'en'
+              ? 'Instant attendance check-in via camera or manual entry with full offline support and auto-sync.'
+              : 'تسجيل الحضور الفوري بالكاميرا أو يدوياً مع الدعم الكامل لوضع عدم الاتصال والمزامنة التلقائية.'
+          }
           icon={QrCode}
           actions={
             <div className="flex items-center gap-3">
@@ -633,7 +724,11 @@ export default function MobileAttendanceScannerPage() {
                   <UploadCloud
                     className={`h-3.5 w-3.5 ${isSyncingOffline ? 'animate-bounce' : ''}`}
                   />
-                  <span>{locale === 'en' ? `Sync (${pendingQueueCount})` : `مزامنة (${pendingQueueCount})`}</span>
+                  <span>
+                    {locale === 'en'
+                      ? `Sync (${pendingQueueCount})`
+                      : `مزامنة (${pendingQueueCount})`}
+                  </span>
                 </button>
               )}
 
@@ -641,11 +736,23 @@ export default function MobileAttendanceScannerPage() {
                 type="button"
                 onClick={handlePrepareOffline}
                 disabled={isPreparingOffline || !isOnline}
-                title={locale === 'en' ? 'Cache sessions and rosters locally for offline use' : 'تحميل الحصص وقوائم اللاعبين إلى التخزين المحلي للاستخدام عند انقطاع الإنترنت'}
-                className="flex items-center gap-1.5 rounded-full bg-[var(--accent-primary)]/10 border border-[var(--accent-primary)]/30 px-3 py-1 text-[11px] font-bold text-[var(--accent-primary)] hover:bg-[var(--accent-primary)]/20 transition-all cursor-pointer disabled:opacity-50"
+                title={
+                  locale === 'en'
+                    ? 'Cache sessions and rosters locally for offline use'
+                    : 'تحميل الحصص وقوائم اللاعبين إلى التخزين المحلي للاستخدام عند انقطاع الإنترنت'
+                }
+                className="flex items-center gap-1.5 rounded-full bg-(--accent-primary)/10 border border-[var(--accent-primary)]/30 px-3 py-1 text-[11px] font-bold text-[var(--accent-primary)] hover:bg-(--accent-primary)/20 transition-all cursor-pointer disabled:opacity-50"
               >
                 <Sparkles className={`h-3.5 w-3.5 ${isPreparingOffline ? 'animate-spin' : ''}`} />
-                <span>{isPreparingOffline ? (locale === 'en' ? 'Preparing...' : 'جارٍ التجهيز...') : (locale === 'en' ? 'Prepare Offline' : 'تجهيز لعدم الاتصال')}</span>
+                <span>
+                  {isPreparingOffline
+                    ? locale === 'en'
+                      ? 'Preparing...'
+                      : 'جارٍ التجهيز...'
+                    : locale === 'en'
+                      ? 'Prepare Offline'
+                      : 'تجهيز لعدم الاتصال'}
+                </span>
               </button>
 
               <span
@@ -678,13 +785,16 @@ export default function MobileAttendanceScannerPage() {
             <button
               type="button"
               onClick={() => setSyncStatusBanner(null)}
-              className="text-emerald-600 dark:text-emerald-400 hover:underline text-xs cursor-pointer">{locale === 'en' ? 'Close' : 'إغلاق'}</button>
+              className="text-emerald-600 dark:text-emerald-400 hover:underline text-xs cursor-pointer"
+            >
+              {locale === 'en' ? 'Close' : 'إغلاق'}
+            </button>
           </div>
         )}
 
         {/* Offline Readiness Banner */}
         {offlinePreparedBanner && (
-          <div className="rounded-xl border border-[var(--accent-primary)]/40 bg-[var(--accent-primary)]/10 p-3 text-xs text-[var(--accent-primary)] flex items-center justify-between shadow-sm">
+          <div className="rounded-xl border border-[var(--accent-primary)]/40 bg-(--accent-primary)/10 p-3 text-xs text-[var(--accent-primary)] flex items-center justify-between shadow-sm">
             <div className="flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4 shrink-0" />
               <span className="font-semibold">{offlinePreparedBanner}</span>
@@ -692,36 +802,40 @@ export default function MobileAttendanceScannerPage() {
             <button
               type="button"
               onClick={() => setOfflinePreparedBanner(null)}
-              className="text-[var(--accent-primary)] hover:underline text-xs cursor-pointer">{locale === 'en' ? 'Close' : 'إغلاق'}</button>
+              className="text-[var(--accent-primary)] hover:underline text-xs cursor-pointer"
+            >
+              {locale === 'en' ? 'Close' : 'إغلاق'}
+            </button>
           </div>
         )}
 
         {/* Session Selector Header */}
-        <div className="rounded-3xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-4 sm:p-5 shadow-xs">
+        <div className="rounded-3xl border border-(--border-app) bg-[var(--bg-surface)] p-4 sm:p-5 shadow-xs">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <label
                 htmlFor="session-selector"
-                className="block text-xs font-bold text-[var(--text-muted)] mb-1.5"
+                className="block text-xs font-bold text-(--text-muted) mb-1.5"
               >
-                {locale === 'en' ? 'Select training session for attendance check-in:' : 'اختر الحصة التدريبية المراد تسجيل الحضور لها:'}
+                {locale === 'en'
+                  ? 'Select training session for attendance check-in:'
+                  : 'اختر الحصة التدريبية المراد تسجيل الحضور لها:'}
               </label>
 
               {isLoadingSessions ? (
-                <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
-                  <RefreshCw className="h-3.5 w-3.5 animate-spin text-[var(--accent-primary)]" />
-                  <span>{locale === 'en' ? 'Loading available sessions...' : 'جارٍ تحميل الحصص المتاحة...'}</span>
-                </div>
+                <Skeleton className="h-10 w-full" />
               ) : sessions.length === 0 ? (
                 <div className="text-xs text-amber-500">
-                  {locale === 'en' ? 'No training sessions available at this time. Please create a session first.' : 'لا توجد حصص تدريبية متاحة حالياً. يرجى إنشاء حصة أولاً.'}
+                  {locale === 'en'
+                    ? 'No training sessions available at this time. Please create a session first.'
+                    : 'لا توجد حصص تدريبية متاحة حالياً. يرجى إنشاء حصة أولاً.'}
                 </div>
               ) : (
                 <select
                   id="session-selector"
                   value={selectedSessionId}
                   onChange={(e) => setSelectedSessionId(e.target.value)}
-                  className="w-full sm:w-80 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs font-semibold text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none cursor-pointer transition-colors"
+                  className="w-full sm:w-80 rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3.5 py-2.5 text-xs font-semibold text-(--text-main) focus:border-(--accent-primary) focus:outline-none cursor-pointer transition-colors"
                 >
                   {sessions.map((s) => (
                     <option key={s.id} value={s.id}>
@@ -734,14 +848,15 @@ export default function MobileAttendanceScannerPage() {
 
             {selectedSession && (
               <div className="flex flex-wrap items-center gap-2 text-xs">
-                <span className="rounded-lg bg-[var(--bg-surface-subtle)] px-3 py-1.5 text-[var(--accent-primary)] font-semibold border border-[var(--border-subtle)]">
+                <span className="rounded-lg bg-(--bg-surface-subtle) px-3 py-1.5 text-[var(--accent-primary)] font-semibold border border-(--border-subtle)">
                   📅 {selectedSession.sessionDate}
                 </span>
-                <span className="rounded-lg bg-[var(--bg-surface-subtle)] px-3 py-1.5 text-[var(--accent-primary)] font-semibold border border-[var(--border-subtle)]">
+                <span className="rounded-lg bg-(--bg-surface-subtle) px-3 py-1.5 text-[var(--accent-primary)] font-semibold border border-(--border-subtle)">
                   ⏰ {selectedSession.startTime} - {selectedSession.endTime}
                 </span>
-                <span className="rounded-lg bg-[var(--bg-surface-subtle)] px-3 py-1.5 text-[var(--text-main)] font-semibold border border-[var(--border-subtle)]">
-                  {locale === 'en' ? 'Attended: ' : 'حضور: '}{selectedSession.totalPresent + selectedSession.totalLate} /{' '}
+                <span className="rounded-lg bg-(--bg-surface-subtle) px-3 py-1.5 text-(--text-main) font-semibold border border-(--border-subtle)">
+                  {locale === 'en' ? 'Attended: ' : 'حضور: '}
+                  {selectedSession.totalPresent + selectedSession.totalLate} /{' '}
                   {selectedSession.totalExpected}
                 </span>
               </div>
@@ -784,7 +899,7 @@ export default function MobileAttendanceScannerPage() {
             {/* Camera Controls Overlay */}
             <div className="absolute top-3 right-3 left-3 flex items-center justify-between z-20">
               <span className="flex items-center gap-1.5 rounded-full bg-black/60 px-3 py-1 text-[11px] font-bold text-white backdrop-blur-md border border-white/10">
-                <span className="h-2 w-2 rounded-full bg-[var(--accent-primary)] animate-pulse-live" />
+                <span className="h-2 w-2 rounded-full bg-(--accent-primary) animate-pulse-live" />
                 {locale === 'en' ? 'Live Continuous Scanner' : 'ماسح مستمر (Live Continuous)'}
               </span>
 
@@ -802,11 +917,27 @@ export default function MobileAttendanceScannerPage() {
                   )}
                 </button>
 
+                {isCameraActive && (
+                  <button
+                    type="button"
+                    onClick={stopCamera}
+                    className="flex h-8 items-center gap-1.5 rounded-full bg-red-600/90 px-3 text-[11px] font-bold text-white backdrop-blur-md border border-white/10 hover:bg-red-600 cursor-pointer"
+                    title={locale === 'en' ? 'Stop camera' : 'إيقاف الكاميرا'}
+                  >
+                    <CameraOff className="h-4 w-4" />
+                    <span>{locale === 'en' ? 'Stop' : 'إيقاف'}</span>
+                  </button>
+                )}
+
                 <button
                   type="button"
                   onClick={handleToggleFacingMode}
                   className="flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-md border border-white/10 hover:bg-black/90 cursor-pointer"
-                  title={locale === 'en' ? 'Switch front / rear camera' : 'تبديل الكاميرا الأمامية / الخلفية'}
+                  title={
+                    locale === 'en'
+                      ? 'Switch front / rear camera'
+                      : 'تبديل الكاميرا الأمامية / الخلفية'
+                  }
                 >
                   <SwitchCamera className="h-4 w-4 text-emerald-400" />
                 </button>
@@ -815,16 +946,21 @@ export default function MobileAttendanceScannerPage() {
 
             {/* Camera Inactive / Error Fallback */}
             {!isCameraActive && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-[var(--bg-surface)] p-6 text-center text-[var(--text-muted)] z-10">
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-[var(--bg-surface)] p-6 text-center text-(--text-muted) z-10">
                 <CameraOff className="h-12 w-12 text-red-500 mb-3 opacity-60" />
-                <p className="text-sm font-bold text-[var(--text-main)]">{locale === 'en' ? 'Camera is inactive' : 'الكاميرا غير مفعلة'}</p>
-                <p className="text-xs text-[var(--text-muted)] mt-1 max-w-xs">
-                  {cameraError || (locale === 'en' ? 'Click below to activate camera and scan player QR cards.' : 'انقر لتفعيل الكاميرا والبدء في مسح بطاقات اللاعبين.')}
+                <p className="text-sm font-bold text-(--text-main)">
+                  {locale === 'en' ? 'Camera is off' : 'الكاميرا متوقفة'}
+                </p>
+                <p className="text-xs text-(--text-muted) mt-1 max-w-xs">
+                  {cameraError ||
+                    (locale === 'en'
+                      ? 'Click below to activate camera and scan player QR cards.'
+                      : 'انقر لتفعيل الكاميرا والبدء في مسح بطاقات اللاعبين.')}
                 </p>
                 <button
                   type="button"
                   onClick={startCamera}
-                  className="mt-4 flex items-center gap-2 rounded-xl bg-[var(--accent-primary)] text-white px-5 py-2.5 text-xs font-bold shadow-lg hover:brightness-110 cursor-pointer"
+                  className="mt-4 flex items-center gap-2 rounded-xl bg-(--accent-primary) text-white px-5 py-2.5 text-xs font-bold shadow-lg hover:brightness-110 cursor-pointer"
                 >
                   <Camera className="h-4 w-4" />
                   <span>{locale === 'en' ? 'Start Camera Now' : 'تشغيل الكاميرا الآن'}</span>
@@ -867,14 +1003,14 @@ export default function MobileAttendanceScannerPage() {
                   )}
 
                   <div>
-                    <h3 className="text-sm font-extrabold text-[var(--text-main)]">
+                    <h3 className="text-sm font-extrabold text-(--text-main)">
                       {activeFeedback.playerName
                         ? `${activeFeedback.playerName} • ${activeFeedback.title}`
                         : activeFeedback.title}
                     </h3>
                     <p className="text-xs mt-0.5 opacity-90">{activeFeedback.message}</p>
                     {activeFeedback.membershipNumber && (
-                      <span className="inline-block mt-1.5 font-mono text-[10px] font-bold bg-[var(--bg-surface-subtle)] px-2 py-0.5 rounded border border-[var(--border-subtle)] text-[var(--text-main)]">
+                      <span className="inline-block mt-1.5 font-mono text-[10px] font-bold bg-(--bg-surface-subtle) px-2 py-0.5 rounded border border-(--border-subtle) text-(--text-main)">
                         {activeFeedback.membershipNumber}
                       </span>
                     )}
@@ -885,11 +1021,17 @@ export default function MobileAttendanceScannerPage() {
                         <div className="flex items-center gap-1.5 font-bold">
                           <CreditCard className="h-4 w-4 shrink-0" />
                           {activeFeedback.paymentStatus.status === 'ACTIVE' && (
-                            <span className="text-emerald-400">{locale === 'en' ? '✓ Subscription active & fully paid' : '✓ اشتراك ساري ومسدد بالكامل'}</span>
+                            <span className="text-emerald-400">
+                              {locale === 'en'
+                                ? '✓ Subscription active & fully paid'
+                                : '✓ اشتراك ساري ومسدد بالكامل'}
+                            </span>
                           )}
                           {activeFeedback.paymentStatus.status === 'PARTIAL' && (
                             <span className="text-amber-300">
-                              {locale === 'en' ? `⚠ Remaining: ${activeFeedback.paymentStatus.outstandingBalance} SAR` : `⚠ متبقي: ${activeFeedback.paymentStatus.outstandingBalance} ر.س`}
+                              {locale === 'en'
+                                ? `⚠ Remaining: ${activeFeedback.paymentStatus.outstandingBalance} ${currencyLabel}`
+                                : `⚠ متبقي: ${activeFeedback.paymentStatus.outstandingBalance} ${currencyLabel}`}
                             </span>
                           )}
                           {activeFeedback.paymentStatus.status === 'OVERDUE' && (
@@ -897,7 +1039,7 @@ export default function MobileAttendanceScannerPage() {
                               {locale === 'en' ? '✕ Overdue: ' : '✕ متأخر: '}
                               {activeFeedback.paymentStatus.outstandingBalance ||
                                 activeFeedback.paymentStatus.feeAmount}{' '}
-                              {locale === 'en' ? 'SAR' : 'ر.س'}
+                              {currencyLabel}
                             </span>
                           )}
                           {(activeFeedback.paymentStatus.status === 'EXEMPT' ||
@@ -905,7 +1047,16 @@ export default function MobileAttendanceScannerPage() {
                             activeFeedback.paymentStatus.status === 'EXPIRED') && (
                             <span className="text-slate-300">
                               {activeFeedback.paymentStatus.status === 'EXEMPT'
-                                ? (locale === 'en' ? 'Fee Exempt' : 'معفى من الرسوم') : activeFeedback.paymentStatus.status === 'PAUSED' ? (locale === 'en' ? 'Paused' : 'اشتراك موقوف مؤقتاً') : (locale === 'en' ? 'Expired' : 'اشتراك منتهي الصلاحية')}
+                                ? locale === 'en'
+                                  ? 'Fee Exempt'
+                                  : 'معفى من الرسوم'
+                                : activeFeedback.paymentStatus.status === 'PAUSED'
+                                  ? locale === 'en'
+                                    ? 'Paused'
+                                    : 'اشتراك موقوف مؤقتاً'
+                                  : locale === 'en'
+                                    ? 'Expired'
+                                    : 'اشتراك منتهي الصلاحية'}
                             </span>
                           )}
                         </div>
@@ -919,7 +1070,9 @@ export default function MobileAttendanceScannerPage() {
                               className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1 text-xs font-bold shadow transition-all cursor-pointer"
                             >
                               <CreditCard className="h-3.5 w-3.5" />
-                              <span>{locale === 'en' ? 'Collect Fee Now' : 'تحصيل الرسوم فوراً'}</span>
+                              <span>
+                                {locale === 'en' ? 'Collect Fee Now' : 'تحصيل الرسوم فوراً'}
+                              </span>
                             </button>
                           )}
                       </div>
@@ -934,28 +1087,38 @@ export default function MobileAttendanceScannerPage() {
         </div>
 
         {/* Manual Input Fallback */}
-        <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 sm:p-5 shadow-sm">
+        <div className="rounded-2xl border border-(--border-subtle) bg-[var(--bg-surface)] p-4 sm:p-5 shadow-sm">
           <form onSubmit={handleManualSubmit} className="space-y-3">
-            <div className="flex items-center gap-2 text-xs font-bold text-[var(--text-main)]">
+            <div className="flex items-center gap-2 text-xs font-bold text-(--text-main)">
               <Search className="h-4 w-4 text-[var(--accent-primary)]" />
-              <span>{locale === 'en' ? 'Manual Entry Fallback' : 'تسجيل يدوي كبديل (Manual Entry Fallback)'}</span>
+              <span>
+                {locale === 'en'
+                  ? 'Manual Entry Fallback'
+                  : 'تسجيل يدوي كبديل (Manual Entry Fallback)'}
+              </span>
             </div>
-            <p className="text-[11px] text-[var(--text-muted)]">
-              {locale === 'en' ? 'If the camera is dirty or card is damaged, enter the player code manually:' : 'إذا كانت عدسة الكاميرا متسخة أو البطاقة تالفة، أدخل رمز بطاقة اللاعب يدوياً:'}
+            <p className="text-[11px] text-(--text-muted)">
+              {locale === 'en'
+                ? 'If the camera is dirty or card is damaged, enter the player code manually:'
+                : 'إذا كانت عدسة الكاميرا متسخة أو البطاقة تالفة، أدخل رمز بطاقة اللاعب يدوياً:'}
             </p>
 
             <div className="flex gap-2">
               <input
                 type="text"
-                placeholder={locale === 'en' ? 'Enter player card code (e.g. a1b2c3d4e5...)' : 'أدخل رمز بطاقة اللاعب (مثال: a1b2c3d4e5...)'}
+                placeholder={
+                  locale === 'en'
+                    ? 'Enter player card code (e.g. a1b2c3d4e5...)'
+                    : 'أدخل رمز بطاقة اللاعب (مثال: a1b2c3d4e5...)'
+                }
                 value={manualCode}
                 onChange={(e) => setManualCode(e.target.value)}
-                className="flex-1 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:outline-none transition-colors"
+                className="flex-1 rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3.5 py-2.5 text-xs text-(--text-main) placeholder-(--text-muted) focus:border-(--accent-primary) focus:outline-none transition-colors"
               />
               <button
                 type="submit"
                 disabled={isSubmittingManual || !manualCode.trim()}
-                className="flex items-center gap-1.5 rounded-xl bg-[var(--accent-primary)] text-white px-4 py-2.5 text-xs font-bold hover:brightness-110 disabled:opacity-50 transition-all cursor-pointer"
+                className="flex items-center gap-1.5 rounded-xl bg-(--accent-primary) text-white px-4 py-2.5 text-xs font-bold hover:brightness-110 disabled:opacity-50 transition-all cursor-pointer"
               >
                 {isSubmittingManual ? (
                   <RefreshCw className="h-4 w-4 animate-spin" />
@@ -969,24 +1132,33 @@ export default function MobileAttendanceScannerPage() {
         </div>
 
         {/* Live Scanned Activity Feed */}
-        <div className="rounded-3xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-5 space-y-4 shadow-xs">
-          <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
-            <h2 className="text-sm font-bold text-[var(--text-main)] flex items-center gap-2">
+        <div className="rounded-3xl border border-(--border-app) bg-[var(--bg-surface)] p-5 space-y-4 shadow-xs">
+          <div className="flex items-center justify-between border-b border-(--border-subtle) pb-3">
+            <h2 className="text-sm font-bold text-(--text-main) flex items-center gap-2">
               <RotateCcw className="h-4 w-4 text-[var(--accent-primary)]" />
-              <span>{locale === 'en' ? `Recent Scans in this Session (${recentScans.length})` : `سجل عمليات المسح الأخيرة في هذه الحصة (${recentScans.length})`}</span>
+              <span>
+                {locale === 'en'
+                  ? `Recent Scans in this Session (${recentScans.length})`
+                  : `سجل عمليات المسح الأخيرة في هذه الحصة (${recentScans.length})`}
+              </span>
             </h2>
 
             {recentScans.length > 0 && (
               <button
                 type="button"
                 onClick={() => setRecentScans([])}
-                className="text-[11px] text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer">{locale === 'en' ? 'Clear Log' : 'مسح السجل'}</button>
+                className="text-[11px] text-(--text-muted) hover:text-(--text-main) transition-colors cursor-pointer"
+              >
+                {locale === 'en' ? 'Clear Log' : 'مسح السجل'}
+              </button>
             )}
           </div>
 
           {recentScans.length === 0 ? (
-            <div className="py-8 text-center text-xs text-[var(--text-muted)]">
-              {locale === 'en' ? 'No cards scanned yet in this session. Aim the camera at a player QR card to begin.' : 'لم يتم مسح أي بطاقة حتى الآن في هذه الجلسة. وجّه الكاميرا نحو بطاقة اللاعب للبدء.'}
+            <div className="py-8 text-center text-xs text-(--text-muted)">
+              {locale === 'en'
+                ? 'No cards scanned yet in this session. Aim the camera at a player QR card to begin.'
+                : 'لم يتم مسح أي بطاقة حتى الآن في هذه الجلسة. وجّه الكاميرا نحو بطاقة اللاعب للبدء.'}
             </div>
           ) : (
             <div className="divide-y divide-[var(--border-subtle)] max-h-80 overflow-y-auto">
@@ -1007,14 +1179,15 @@ export default function MobileAttendanceScannerPage() {
                       }`}
                     />
                     <div>
-                      <span className="font-bold text-[var(--text-main)]">
-                        {translateDataString(scan.playerName, locale) || (locale === 'en' ? 'Unidentified Card' : 'بطاقة غير محددة')}
+                      <span className="font-bold text-(--text-main)">
+                        {translateDataString(scan.playerName, locale) ||
+                          (locale === 'en' ? 'Unidentified Card' : 'بطاقة غير محددة')}
                       </span>
-                      <p className="text-[11px] text-[var(--text-muted)]">{scan.title}</p>
+                      <p className="text-[11px] text-(--text-muted)">{scan.title}</p>
                     </div>
                   </div>
 
-                  <span className="font-mono text-[10px] text-[var(--text-muted)]">
+                  <span className="font-mono text-[10px] text-(--text-muted)">
                     {scan.timestamp}
                   </span>
                 </div>
@@ -1027,37 +1200,43 @@ export default function MobileAttendanceScannerPage() {
       {/* QUICK PAYMENT MODAL INSIDE SCANNER */}
       {isPaymentModalOpen && paymentPlayer && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="w-full max-w-md rounded-3xl border border-[var(--border-app)] bg-[var(--bg-surface)] p-6 shadow-float relative space-y-4 animate-scale-up">
-            <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
+          <div className="w-full max-w-md rounded-3xl border border-(--border-app) bg-[var(--bg-surface)] p-6 shadow-float relative space-y-4 animate-scale-up">
+            <div className="flex items-center justify-between border-b border-(--border-subtle) pb-3">
               <div className="flex items-center gap-2">
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
                   <CreditCard className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-[var(--text-main)]">{locale === 'en' ? 'Quick Fee Collection' : 'تحصيل فوري للاعب'}</h3>
-                  <p className="text-xs text-[var(--text-muted)]">{paymentPlayer.name}</p>
+                  <h3 className="text-base font-bold text-(--text-main)">
+                    {locale === 'en' ? 'Quick Fee Collection' : 'تحصيل فوري للاعب'}
+                  </h3>
+                  <p className="text-xs text-(--text-muted)">{paymentPlayer.name}</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setIsPaymentModalOpen(false)}
-                className="p-1 text-[var(--text-muted)] hover:text-[var(--text-main)]"
+                className="p-1 text-(--text-muted) hover:text-(--text-main)"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
             <form onSubmit={handleSubmitQuickPayment} className="space-y-4">
-              <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] p-3 text-xs flex justify-between items-center">
-                <span className="text-[var(--text-muted)]">{locale === 'en' ? 'Outstanding Balance:' : 'الرصيد المستحق:'}</span>
+              <div className="rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) p-3 text-xs flex justify-between items-center">
+                <span className="text-(--text-muted)">
+                  {locale === 'en' ? 'Outstanding Balance:' : 'الرصيد المستحق:'}
+                </span>
                 <span className="font-extrabold text-[var(--accent-primary)]">
-                  {paymentPlayer.outstandingBalance} {locale === 'en' ? 'SAR' : 'ر.س'}
+                  {paymentPlayer.outstandingBalance} {currencyLabel}
                 </span>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-main)] mb-1">
-                  {locale === 'en' ? 'Amount Collected (SAR) *' : 'المبلغ المحصل (ر.س) *'}
+                <label className="block text-xs font-semibold text-(--text-main) mb-1">
+                  {locale === 'en'
+                    ? `Amount Collected (${currencyLabel}) *`
+                    : `المبلغ المحصل (${currencyLabel}) *`}
                 </label>
                 <input
                   type="number"
@@ -1066,12 +1245,12 @@ export default function MobileAttendanceScannerPage() {
                   required
                   value={paymentAmount}
                   onChange={(e) => setPaymentAmount(parseFloat(e.target.value) || 0)}
-                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-sm font-bold text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none"
+                  className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3.5 py-2.5 text-sm font-bold text-(--text-main) focus:border-(--accent-primary) focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-main)] mb-1">
+                <label className="block text-xs font-semibold text-(--text-main) mb-1">
                   {locale === 'en' ? 'Payment Method *' : 'طريقة الدفع *'}
                 </label>
                 <select
@@ -1079,33 +1258,48 @@ export default function MobileAttendanceScannerPage() {
                   onChange={(e) =>
                     setPaymentMethod(e.target.value as 'CASH' | 'CARD' | 'POS' | 'BANK_TRANSFER')
                   }
-                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2.5 text-xs font-semibold text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:outline-none cursor-pointer"
+                  className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3.5 py-2.5 text-xs font-semibold text-(--text-main) focus:border-(--accent-primary) focus:outline-none cursor-pointer"
                 >
-                  <option value="CASH">{locale === 'en' ? 'Cash (On-pitch)' : 'نقدي (كاش بالملعب)'}</option>
-                  <option value="POS">{locale === 'en' ? 'POS Terminal / Network' : 'جهاز نقاط البيع (POS / شبكة)'}</option>
-                  <option value="CARD">{locale === 'en' ? 'Mada / Credit Card' : 'بطاقة مدى / ائتمانية'}</option>
-                  <option value="BANK_TRANSFER">{locale === 'en' ? 'Direct Bank Transfer' : 'تحويل بنكي'}</option>
+                  <option value="CASH">
+                    {locale === 'en' ? 'Cash (On-pitch)' : 'نقدي (كاش بالملعب)'}
+                  </option>
+                  <option value="POS">
+                    {locale === 'en' ? 'POS Terminal / Network' : 'جهاز نقاط البيع (POS / شبكة)'}
+                  </option>
+                  <option value="CARD">
+                    {locale === 'en' ? 'Mada / Credit Card' : 'بطاقة مدى / ائتمانية'}
+                  </option>
+                  <option value="BANK_TRANSFER">
+                    {locale === 'en' ? 'Direct Bank Transfer' : 'تحويل بنكي'}
+                  </option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-main)] mb-1">
+                <label className="block text-xs font-semibold text-(--text-main) mb-1">
                   {locale === 'en' ? 'Payment Notes (Optional)' : 'ملاحظات الدفعة (اختياري)'}
                 </label>
                 <input
                   type="text"
-                  placeholder={locale === 'en' ? 'Additional documentation notes...' : 'ملاحظات توثيقية إضافية...'}
+                  placeholder={
+                    locale === 'en'
+                      ? 'Additional documentation notes...'
+                      : 'ملاحظات توثيقية إضافية...'
+                  }
                   value={paymentNotes}
                   onChange={(e) => setPaymentNotes(e.target.value)}
-                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3.5 py-2 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:outline-none"
+                  className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3.5 py-2 text-xs text-(--text-main) placeholder-(--text-muted) focus:border-(--accent-primary) focus:outline-none"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-[var(--border-subtle)]">
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-(--border-subtle)">
                 <button
                   type="button"
                   onClick={() => setIsPaymentModalOpen(false)}
-                  className="rounded-xl border border-[var(--border-subtle)] px-4 py-2 text-xs font-semibold text-[var(--text-muted)] hover:bg-[var(--bg-surface-subtle)] transition-colors cursor-pointer">{locale === 'en' ? 'Cancel' : 'إلغاء'}</button>
+                  className="rounded-xl border border-(--border-subtle) px-4 py-2 text-xs font-semibold text-(--text-muted) hover:bg-(--bg-surface-subtle) transition-colors cursor-pointer"
+                >
+                  {locale === 'en' ? 'Cancel' : 'إلغاء'}
+                </button>
                 <button
                   type="submit"
                   disabled={isSubmittingPayment || paymentAmount <= 0}

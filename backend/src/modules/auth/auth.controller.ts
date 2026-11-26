@@ -14,20 +14,26 @@ import {
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
+import { EmailCodeService } from './email-code.service';
 import { AppConfigService } from '../../config/app-config.service';
 import { Public } from './guards/public.decorator';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CsrfGuard } from './guards/csrf.guard';
 import { CurrentUser } from './decorators/auth-user.decorator';
+import { AllowWhilePasswordChangeRequired } from './guards/password-change-required.decorator';
 import {
   ErrorCode,
   ForgotPasswordRequestSchema,
   LoginRequestSchema,
   RegisterRequestSchema,
+  SendEmailCodeRequestSchema,
+  VerifyEmailCodeRequestSchema,
   ResetPasswordRequestSchema,
   ChangePasswordRequestSchema,
   UpdateUserProfileRequestSchema,
   type AuthResponse,
+  type EmailCodeProofResponse,
+  type SendEmailCodeResponse,
   type ForgotPasswordRequest,
   type LoginRequest,
   type RegisterRequest,
@@ -46,14 +52,22 @@ const ResendVerificationSchema = z.object({
   email: z.string().email(),
 });
 
+/** Marks a session the user asked to remember; read on refresh to keep the refresh cookie persistent. */
+const REMEMBER_ME_COOKIE = 'remember_me';
+
 @Controller('auth')
 export class AuthController {
   constructor(
     @Inject(AuthService) private readonly authService: AuthService,
+    @Inject(EmailCodeService) private readonly emailCodeService: EmailCodeService,
     @Inject(AppConfigService) private readonly config: AppConfigService,
   ) {}
 
-  private setAuthCookies(res: Response, tokens: { accessToken: string; refreshToken: string }) {
+  private setAuthCookies(
+    res: Response,
+    tokens: { accessToken: string; refreshToken: string },
+    rememberMe = false,
+  ) {
     const isProduction = this.config.cookieSecure;
 
     res.cookie('access_token', tokens.accessToken, {
@@ -64,13 +78,38 @@ export class AuthController {
       maxAge: 15 * 60 * 1000, // 15 mins
     });
 
-    res.cookie('refresh_token', tokens.refreshToken, {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: 'lax',
-      path: '/v1/auth',
-      maxAge: this.config.refreshTokenExpiresDays * 24 * 60 * 60 * 1000,
-    });
+    if (rememberMe) {
+      const maxAge = this.config.refreshTokenExpiresDays * 24 * 60 * 60 * 1000;
+      res.cookie('refresh_token', tokens.refreshToken, {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: 'lax',
+        path: '/v1/auth',
+        maxAge,
+      });
+      // Remembers the choice for later rotations: without it the first refresh (every 15 minutes) turned the
+      // persistent session into a browser-session cookie and "remember me" stopped working.
+      res.cookie(REMEMBER_ME_COOKIE, '1', {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: 'lax',
+        path: '/v1/auth',
+        maxAge,
+      });
+    } else {
+      res.clearCookie(REMEMBER_ME_COOKIE, {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: 'lax',
+        path: '/v1/auth',
+      });
+      res.cookie('refresh_token', tokens.refreshToken, {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: 'lax',
+        path: '/v1/auth',
+      });
+    }
   }
 
   private clearAuthCookies(res: Response) {
@@ -89,6 +128,35 @@ export class AuthController {
       sameSite: 'lax',
       path: '/v1/auth',
     });
+    res.clearCookie(REMEMBER_ME_COOKIE, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: 'lax',
+      path: '/v1/auth',
+    });
+  }
+
+  /**
+   * Step 1 of confirming an applicant's e-mail before an account is created: sends a 6-digit code.
+   * 400 EMAIL_DOMAIN_INVALID, 409 EMAIL_ALREADY_EXISTS, 429 while a recent code is still fresh, 503 when sending failed.
+   */
+  @Public()
+  @UseGuards(CsrfGuard)
+  @Post('email-code')
+  @HttpCode(HttpStatus.OK)
+  async sendEmailCode(@Body() body: unknown, @Req() req: Request): Promise<SendEmailCodeResponse> {
+    const dto = SendEmailCodeRequestSchema.parse(body);
+    return this.emailCodeService.sendCode(dto.email, req.clientIp);
+  }
+
+  /** Step 2: checks the code and returns the proof that the registration / join form sends as `emailProof`. */
+  @Public()
+  @UseGuards(CsrfGuard)
+  @Post('email-code/verify')
+  @HttpCode(HttpStatus.OK)
+  async verifyEmailCode(@Body() body: unknown): Promise<EmailCodeProofResponse> {
+    const dto = VerifyEmailCodeRequestSchema.parse(body);
+    return this.emailCodeService.verifyCode(dto.email, dto.code);
   }
 
   @Public()
@@ -97,7 +165,7 @@ export class AuthController {
   @HttpCode(HttpStatus.CREATED)
   async register(@Body() body: unknown, @Req() req: Request): Promise<RegisterResponse> {
     const dto: RegisterRequest = RegisterRequestSchema.parse(body);
-    const ipAddress = req.ip || req.socket.remoteAddress;
+    const ipAddress = req.clientIp;
     const userAgent = req.headers['user-agent'];
 
     const { response } = await this.authService.register(dto, ipAddress, userAgent);
@@ -114,7 +182,7 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ): Promise<AuthResponse> {
     const dto: LoginRequest = LoginRequestSchema.parse(body);
-    const ipAddress = req.ip || req.socket.remoteAddress;
+    const ipAddress = req.clientIp;
     const userAgent = req.headers['user-agent'];
     const activeTenantId = (req.headers['x-tenant-id'] as string) || req.cookies?.tenant_id;
 
@@ -124,7 +192,7 @@ export class AuthController {
       userAgent,
       activeTenantId,
     );
-    this.setAuthCookies(res, rawTokens);
+    this.setAuthCookies(res, rawTokens, Boolean(dto.rememberMe));
 
     return response;
   }
@@ -139,7 +207,7 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ): Promise<AuthResponse> {
     const token = req.cookies?.refresh_token || body?.refreshToken;
-    const ipAddress = req.ip || req.socket.remoteAddress;
+    const ipAddress = req.clientIp;
     const userAgent = req.headers['user-agent'];
     const activeTenantId = (req.headers['x-tenant-id'] as string) || req.cookies?.tenant_id;
 
@@ -156,7 +224,8 @@ export class AuthController {
       userAgent,
       activeTenantId,
     );
-    this.setAuthCookies(res, rawTokens);
+    // Keep the session as persistent as the user chose at sign-in.
+    this.setAuthCookies(res, rawTokens, req.cookies?.[REMEMBER_ME_COOKIE] === '1');
 
     return response;
   }
@@ -185,7 +254,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async forgotPassword(@Body() body: unknown, @Req() req: Request): Promise<{ message: string }> {
     const dto: ForgotPasswordRequest = ForgotPasswordRequestSchema.parse(body);
-    const ipAddress = req.ip || req.socket.remoteAddress;
+    const ipAddress = req.clientIp;
     const userAgent = req.headers['user-agent'];
 
     return this.authService.forgotPassword(dto, ipAddress, userAgent);
@@ -197,7 +266,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async resetPassword(@Body() body: unknown, @Req() req: Request): Promise<{ message: string }> {
     const dto: ResetPasswordRequest = ResetPasswordRequestSchema.parse(body);
-    const ipAddress = req.ip || req.socket.remoteAddress;
+    const ipAddress = req.clientIp;
     const userAgent = req.headers['user-agent'];
 
     return this.authService.resetPassword(dto, ipAddress, userAgent);
@@ -209,7 +278,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async verifyEmail(@Body() body: unknown, @Req() req: Request): Promise<{ message: string }> {
     const dto = VerifyEmailSchema.parse(body);
-    const ipAddress = req.ip || req.socket.remoteAddress;
+    const ipAddress = req.clientIp;
     const userAgent = req.headers['user-agent'];
 
     return this.authService.verifyEmail(dto.token, ipAddress, userAgent);
@@ -224,13 +293,14 @@ export class AuthController {
     @Req() req: Request,
   ): Promise<{ message: string }> {
     const dto = ResendVerificationSchema.parse(body);
-    const ipAddress = req.ip || req.socket.remoteAddress;
+    const ipAddress = req.clientIp;
     const userAgent = req.headers['user-agent'];
 
     return this.authService.resendVerificationEmail(dto.email, ipAddress, userAgent);
   }
 
   @UseGuards(JwtAuthGuard)
+  @AllowWhilePasswordChangeRequired()
   @Get('me')
   async getMe(@CurrentUser('id') userId: string, @Req() req: Request) {
     const activeTenantId = (req.headers['x-tenant-id'] as string) || req.cookies?.tenant_id;
@@ -238,18 +308,29 @@ export class AuthController {
   }
 
   @UseGuards(JwtAuthGuard, CsrfGuard)
+  @AllowWhilePasswordChangeRequired()
   @Post('change-password')
   @HttpCode(HttpStatus.OK)
   async changePassword(
     @CurrentUser('id') userId: string,
     @Body() body: unknown,
     @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
   ): Promise<{ message: string }> {
     const dto: ChangePasswordRequest = ChangePasswordRequestSchema.parse(body);
-    const ipAddress = req.ip || req.socket.remoteAddress;
+    const ipAddress = req.clientIp;
     const userAgent = req.headers['user-agent'];
 
-    return this.authService.changePassword(userId, dto, ipAddress, userAgent);
+    // K13: every other session is invalidated; this device keeps working with freshly issued tokens.
+    const { message, rawTokens } = await this.authService.changePassword(
+      userId,
+      dto,
+      ipAddress,
+      userAgent,
+    );
+    // Keep the session as persistent as the user chose at sign-in.
+    this.setAuthCookies(res, rawTokens, req.cookies?.[REMEMBER_ME_COOKIE] === '1');
+    return { message };
   }
 
   @UseGuards(JwtAuthGuard, CsrfGuard)

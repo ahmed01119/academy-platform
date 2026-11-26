@@ -76,6 +76,12 @@ jobs:
       - name: Validate Prisma schema
         run: pnpm --filter @academy/database exec prisma validate
 
+      # The runtime role must exist before the migrations: they own every object privilege it receives (M3 baseline).
+      - name: Create restricted CI runtime database role
+        env:
+          PGPASSWORD: academy
+        run: psql -v ON_ERROR_STOP=1 -h localhost -U academy -d academy -f packages/database/tests/runtime-role-create.sql
+
       - name: Deploy Prisma migrations
         run: pnpm --filter @academy/database exec prisma migrate deploy
 
@@ -89,11 +95,6 @@ jobs:
         env:
           PGPASSWORD: academy
         run: psql -v ON_ERROR_STOP=1 -h localhost -U academy -d academy -f packages/database/tests/audit-append-only.sql
-
-      - name: Provision restricted CI runtime database role
-        env:
-          PGPASSWORD: academy
-        run: psql -v ON_ERROR_STOP=1 -h localhost -U academy -d academy -f packages/database/tests/runtime-role-setup.sql
 
       - name: Test runtime database privilege boundaries
         env:
@@ -110,6 +111,100 @@ jobs:
           PGPASSWORD: academy
         run: psql -v ON_ERROR_STOP=1 -h localhost -U academy -d academy -f packages/database/tests/onboarding-and-invitations.sql
 
+      # Phase 3A.2: catalog-level security state (policies, grants, definer functions, triggers, RLS flags), then the
+      # access boundaries of M2/M3 exercised as the runtime role on synthetic fixtures.
+      - name: Verify security catalog
+        env:
+          PGPASSWORD: academy
+        run: psql -v ON_ERROR_STOP=1 -h localhost -U academy -d academy -f packages/database/tests/security-catalog.sql
+
+      - name: Test Phase 3A.2, K6 and account-link access boundaries
+        env:
+          PGPASSWORD: academy
+        run: >-
+          psql -v ON_ERROR_STOP=1 -v runtime_role=academy_runtime_ci -h localhost -U academy -d academy
+          -f packages/database/tests/phase3a2-fixtures.sql -f packages/database/tests/phase3a2-boundaries.sql
+          -f packages/database/tests/k6-join-request-boundaries.sql
+          -f packages/database/tests/account-links-boundaries.sql
+
+      - name: Format check
+        run: pnpm format:check
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      # Real-PostgreSQL integration tests (K1 reset functions, K13b session-version concurrency). They create and
+      # delete their own synthetic rows in the CI service database, which has all migrations deployed above.
+      - name: Integration tests (PostgreSQL)
+        env:
+          INTEGRATION_DATABASE_URL: ${{ env.DATABASE_URL }}
+        run: pnpm --filter @academy/api exec vitest run int.test
+
+      - name: Build applications
+        run: pnpm build
+
+      - name: Validate production Compose file
+        run: docker compose -f docker-compose.prod.yml config
+        env:
+          POSTGRES_PASSWORD: ci-placeholder
+          POSTGRES_RUNTIME_PASSWORD: ci-placeholder-runtime
+          DATABASE_URL: postgresql://academy_runtime:ci@postgres:5432/academy?schema=public
+          DATABASE_ADMIN_URL: postgresql://academy:ci@postgres:5432/academy?schema=public
+          JWT_SECRET: ci-placeholder-jwt-secret-32chars
+          INTERNAL_PROXY_SECRET: ci-placeholder-proxy-secret-0123456789abcdef
+          CORS_ORIGIN: https://app.example.test
+          NEXT_PUBLIC_API_BASE_URL: https://api.example.test/v1
+
+      - name: Verify Backend Docker Build
+        run: docker build -f Dockerfile -t sportexus-api:ci .
+
+      - name: Verify Frontend Docker Build
+        run: docker build -f Dockerfile.web -t sportexus-web:ci .
+
+  # Cross-platform check: the team develops on Windows, so formatting, lint, typecheck, unit tests
+  # and production builds must also pass there (line endings, path separators, shell differences).
+  # Database SQL tests and Docker builds need Linux service containers and stay in `quality`.
+  quality-windows:
+    name: Windows — format, lint, typecheck, unit tests & build
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    env:
+      # Unit tests mock Prisma and Redis; no database server is contacted.
+      DATABASE_URL: postgresql://academy:academy@localhost:5432/academy?schema=public
+      NEXT_TELEMETRY_DISABLED: '1'
+      NODE_ENV: test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate version metadata
+        run: node scripts/generate-version.js
+
+      - name: Generate Prisma client
+        run: pnpm db:generate
+
       - name: Format check
         run: pnpm format:check
 
@@ -124,20 +219,3 @@ jobs:
 
       - name: Build applications
         run: pnpm build
-
-      - name: Validate production Compose file
-        run: docker compose -f docker-compose.prod.yml config
-        env:
-          POSTGRES_PASSWORD: ci-placeholder
-          POSTGRES_RUNTIME_PASSWORD: ci-placeholder-runtime
-          DATABASE_URL: postgresql://academy_runtime:ci@postgres:5432/academy?schema=public
-          DATABASE_ADMIN_URL: postgresql://academy:ci@postgres:5432/academy?schema=public
-          JWT_SECRET: ci-placeholder-jwt-secret-32chars
-          CORS_ORIGIN: https://app.example.test
-          NEXT_PUBLIC_API_BASE_URL: https://api.example.test/v1
-
-      - name: Verify Backend Docker Build
-        run: docker build -f Dockerfile -t sportexus-api:ci .
-
-      - name: Verify Frontend Docker Build
-        run: docker build -f Dockerfile.web -t sportexus-web:ci .

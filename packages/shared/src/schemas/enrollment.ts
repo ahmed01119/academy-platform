@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { SportCodeSchema } from '../constants/sports';
 
 export const EnrollmentStatus = {
   ACTIVE: 'ACTIVE',
@@ -13,7 +14,7 @@ export const EnrollmentStatusSchema = z.nativeEnum(EnrollmentStatus);
 export const CreateEnrollmentSchema = z.object({
   playerId: z.string().uuid('Player ID is required'),
   branchId: z.string().uuid('Branch ID is required'),
-  sport: z.enum(['FOOTBALL']).default('FOOTBALL'),
+  sport: SportCodeSchema.default('FOOTBALL'),
   startDate: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'Start date must be YYYY-MM-DD')

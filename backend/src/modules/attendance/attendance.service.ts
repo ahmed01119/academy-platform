@@ -1,3 +1,4 @@
+import { money } from '../../common/money';
 import {
   BadRequestException,
   ConflictException,
@@ -8,6 +9,7 @@ import {
 } from '@nestjs/common';
 import crypto from 'node:crypto';
 import { PrismaService } from '../database/prisma.service';
+import { assertCoachCanSee, coachSessionWhere, isCoachContext } from '../../common/coach-scope';
 import { AuditService } from '../audit/audit.service';
 import {
   ErrorCode,
@@ -27,15 +29,18 @@ import {
   type OfflineAttendanceBatchSyncResponse,
   type SessionDetails,
   type SessionQuery,
-  type SessionSummary,
   type TenantContext,
+  type RecordAttendanceResult,
+  type BulkRecordAttendanceResult,
 } from '@academy/shared';
+import { AttendanceRosterService } from './attendance-roster.service';
 
 @Injectable()
 export class AttendanceService {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(AuditService) private readonly auditService: AuditService,
+    @Inject(AttendanceRosterService) private readonly rosterService: AttendanceRosterService,
   ) {}
 
   /**
@@ -189,6 +194,16 @@ export class AttendanceService {
             message: 'Attendance session not found',
           });
         }
+        if (isCoachContext(tenantContext)) {
+          const visible = await tx.attendanceSession.count({
+            where: {
+              tenantId: tenantContext.tenantId,
+              id: sessionId,
+              ...coachSessionWhere(tenantContext.actorUserId),
+            },
+          });
+          assertCoachCanSee(tenantContext, visible > 0, 'Session');
+        }
 
         if (tenantContext.branchId && session.branchId !== tenantContext.branchId) {
           throw new ForbiddenException({
@@ -250,7 +265,7 @@ export class AttendanceService {
             remarks: r.remarks,
             version: r.version,
             subscriptionStatus: (s?.status as any) ?? 'OVERDUE',
-            outstandingBalance: s?.outstandingBalance ?? 0,
+            outstandingBalance: money(s?.outstandingBalance),
             amountDue: s?.outstandingBalance ?? 0,
             nextPaymentDate: s?.dueDate ? s.dueDate.toISOString().slice(0, 10) : null,
             lastPaymentDate: s?.lastPaymentDate ? s.lastPaymentDate.toISOString() : null,
@@ -295,103 +310,10 @@ export class AttendanceService {
 
   /**
    * Lists sessions in the academy with summary metrics.
+   * Delegates to AttendanceRosterService.
    */
   async listSessions(tenantContext: TenantContext, query?: SessionQuery) {
-    const effectiveBranchId = tenantContext.branchId || query?.branchId;
-
-    return this.prisma.withTenantTransaction(
-      { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
-      async (tx) => {
-        const whereClause = {
-          tenantId: tenantContext.tenantId,
-          ...(effectiveBranchId ? { branchId: effectiveBranchId } : {}),
-          ...(query?.groupId ? { groupId: query.groupId } : {}),
-          ...(query?.coachUserId ? { coachUserId: query.coachUserId } : {}),
-          ...(query?.status ? { status: query.status } : {}),
-          ...(query?.dateFrom || query?.dateTo
-            ? {
-                sessionDate: {
-                  ...(query?.dateFrom ? { gte: new Date(`${query.dateFrom}T00:00:00.000Z`) } : {}),
-                  ...(query?.dateTo ? { lte: new Date(`${query.dateTo}T23:59:59.999Z`) } : {}),
-                },
-              }
-            : {}),
-        };
-
-        const page = query?.page || 1;
-        const limit = query?.limit || 20;
-        const skip = (page - 1) * limit;
-
-        const total = await tx.attendanceSession.count({ where: whereClause });
-
-        const sessions = await tx.attendanceSession.findMany({
-          where: whereClause,
-          skip,
-          take: limit,
-          orderBy: [{ sessionDate: 'desc' }, { startTime: 'asc' }],
-          include: {
-            branch: { select: { id: true, name: true, code: true } },
-            coachUser: { select: { id: true, name: true } },
-            records: {
-              select: { status: true },
-            },
-          },
-        });
-
-        const items: SessionSummary[] = sessions.map((s) => {
-          let present = 0;
-          let late = 0;
-          let absent = 0;
-          let excused = 0;
-          let unmarked = 0;
-
-          for (const r of s.records) {
-            if (r.status === 'PRESENT') present++;
-            else if (r.status === 'LATE') late++;
-            else if (r.status === 'ABSENT') absent++;
-            else if (r.status === 'EXCUSED') excused++;
-            else unmarked++;
-          }
-
-          const hasActiveQr = Boolean(
-            s.qrCodeSecret && s.qrCodeExpiresAt && new Date(s.qrCodeExpiresAt) > new Date(),
-          );
-
-          return {
-            id: s.id,
-            tenantId: s.tenantId,
-            branchId: s.branchId,
-            branchName: s.branch.name,
-            groupId: s.groupId,
-            groupName: s.groupName,
-            coachUserId: s.coachUserId,
-            coachName: s.coachUser?.name || null,
-            sport: s.sport,
-            sessionDate: s.sessionDate.toISOString().slice(0, 10),
-            startTime: s.startTime,
-            endTime: s.endTime,
-            status: s.status,
-            totalExpected: s.records.length,
-            totalPresent: present,
-            totalLate: late,
-            totalAbsent: absent,
-            totalExcused: excused,
-            totalUnmarked: unmarked,
-            hasActiveQr,
-            closedAt: s.closedAt ? s.closedAt.toISOString() : null,
-            createdAt: s.createdAt.toISOString(),
-          };
-        });
-
-        return {
-          items,
-          total,
-          page,
-          limit,
-          totalPages: Math.ceil(total / limit) || 1,
-        };
-      },
-    );
+    return this.rosterService.listSessions(tenantContext, query);
   }
 
   /**
@@ -473,13 +395,29 @@ export class AttendanceService {
     },
     _targetPlayerIds: string[],
   ): Promise<void> {
-    // 1. Strict Coach Attendance Prohibition (Product requirement: Coaches must NOT be allowed to record player attendance)
+    // 1. Coaches mark attendance only for sessions they are assigned to: the session's coach or a coach of its group
+    //    (permission matrix, owner decision 2026-11-16; before that coaches could not mark attendance at all).
     if (tenantContext.role === 'COACH') {
-      throw new ForbiddenException({
-        code: ErrorCode.FORBIDDEN,
-        message:
-          'Coaches are not permitted to record player attendance through QR or manual entry.',
-      });
+      const isSessionCoach = session.coachUserId === tenantContext.actorUserId;
+      const isGroupCoach =
+        !isSessionCoach &&
+        Boolean(session.groupId) &&
+        Boolean(
+          await tx.groupCoach.findFirst({
+            where: {
+              tenantId: tenantContext.tenantId,
+              groupId: session.groupId,
+              coachUserId: tenantContext.actorUserId,
+            },
+            select: { id: true },
+          }),
+        );
+      if (!isSessionCoach && !isGroupCoach) {
+        throw new ForbiddenException({
+          code: ErrorCode.FORBIDDEN,
+          message: 'Coaches can only record attendance for sessions they are assigned to.',
+        });
+      }
     }
 
     // 3. Enforce valid session window (prevent marking attendance more than 24h into the future)
@@ -499,7 +437,10 @@ export class AttendanceService {
    * Records attendance for a single player with idempotency and optimistic concurrency.
    * Writes append-only AttendanceEvent for audit stream.
    */
-  async recordAttendance(tenantContext: TenantContext, dto: AttendanceMutation) {
+  async recordAttendance(
+    tenantContext: TenantContext,
+    dto: AttendanceMutation,
+  ): Promise<RecordAttendanceResult> {
     return this.prisma.withTenantTransaction(
       { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
       async (tx) => {
@@ -514,7 +455,7 @@ export class AttendanceService {
         });
 
         if (existingIdempotency?.response) {
-          return existingIdempotency.response;
+          return existingIdempotency.response as unknown as RecordAttendanceResult;
         }
 
         const session = await tx.attendanceSession.findUnique({
@@ -684,7 +625,10 @@ export class AttendanceService {
   /**
    * Bulk records attendance for multiple players in a session with idempotency.
    */
-  async bulkRecordAttendance(tenantContext: TenantContext, dto: BulkAttendanceSubmission) {
+  async bulkRecordAttendance(
+    tenantContext: TenantContext,
+    dto: BulkAttendanceSubmission,
+  ): Promise<BulkRecordAttendanceResult> {
     return this.prisma.withTenantTransaction(
       { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
       async (tx) => {
@@ -699,7 +643,7 @@ export class AttendanceService {
         });
 
         if (existingIdempotency?.response) {
-          return existingIdempotency.response;
+          return existingIdempotency.response as unknown as BulkRecordAttendanceResult;
         }
 
         const session = await tx.attendanceSession.findUnique({
@@ -1592,8 +1536,8 @@ export class AttendanceService {
         const paymentStatusPayload = playerSub
           ? {
               status: playerSub.status as any,
-              outstandingBalance: playerSub.outstandingBalance,
-              feeAmount: playerSub.feeAmount,
+              outstandingBalance: money(playerSub.outstandingBalance),
+              feeAmount: money(playerSub.feeAmount),
               dueDate: playerSub.dueDate.toISOString().slice(0, 10),
               lastPaymentDate: playerSub.lastPaymentDate
                 ? playerSub.lastPaymentDate.toISOString()

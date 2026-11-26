@@ -19,6 +19,9 @@ try {
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   transpilePackages: ['@academy/shared'],
+  // `next build` type-checks app code only; test files are type-checked by `pnpm typecheck`
+  // (tsconfig.json includes them, tsconfig.build.json excludes them).
+  typescript: { tsconfigPath: 'tsconfig.build.json' },
   output: process.env.BUILD_STANDALONE === 'true' ? 'standalone' : undefined,
   env: {
     NEXT_PUBLIC_BUILD_ID: initialBuildId,
@@ -63,9 +66,8 @@ const nextConfig: NextConfig = {
   async rewrites() {
     return [];
   },
-  async redirects() {
-    return [];
-  },
+  // No redirect for "/": the site opens on the landing page (src/app/page.tsx), which offers signed-in visitors a link
+  // to their dashboard. Redirecting "/" to /dashboard sent every new visitor to the login page instead.
 };
 
 export default nextConfig;

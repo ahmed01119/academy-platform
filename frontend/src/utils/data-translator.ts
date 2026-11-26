@@ -107,7 +107,7 @@ export const ROLE_TRANSLATIONS: Record<SupportedLocale, Record<string, string>> 
     PLATFORM_OWNER: 'مالك المنصة',
     PLATFORM_CO_OWNER: 'شريك إدارة المنصة',
     OWNER: 'مالك الأكاديمية',
-    MANAGER: 'مدير عام',
+    MANAGER: 'إداري',
     BRANCH_MANAGER: 'مدير فرع',
     HEAD_COACH: 'كبير المدربين',
     COACH: 'مدرب معتمد',
@@ -123,7 +123,7 @@ export const ROLE_TRANSLATIONS: Record<SupportedLocale, Record<string, string>> 
     PLATFORM_OWNER: 'Platform Owner',
     PLATFORM_CO_OWNER: 'Platform Co-Owner',
     OWNER: 'Academy Owner',
-    MANAGER: 'General Manager',
+    MANAGER: 'Admin',
     BRANCH_MANAGER: 'Branch Manager',
     HEAD_COACH: 'Head Coach',
     COACH: 'Certified Coach',
@@ -139,30 +139,48 @@ export const ROLE_TRANSLATIONS: Record<SupportedLocale, Record<string, string>> 
 export const SPORT_TRANSLATIONS: Record<SupportedLocale, Record<string, string>> = {
   ar: {
     FOOTBALL: 'كرة القدم',
-    BASKETBALL: 'كرة السلة',
     SWIMMING: 'السباحة',
-    TENNIS: 'التنس الأرضي',
+    TENNIS: 'التنس',
     PADEL: 'البادل',
-    MARTIAL_ARTS: 'فنون قتالية',
-    GYMNASTICS: 'الجمباز',
-    VOLLEYBALL: 'كرة الطائرة',
+    BASKETBALL: 'كرة السلة',
+    VOLLEYBALL: 'الكرة الطائرة',
     HANDBALL: 'كرة اليد',
-    FITNESS: 'اللياقة والبدنية',
-    OTHER: 'رياضات أخرى',
+    MARTIAL_ARTS: 'الفنون القتالية',
+    GYMNASTICS: 'الجمباز',
+    ATHLETICS: 'ألعاب القوى',
+    SQUASH: 'الإسكواش',
+    OTHER: 'رياضة أخرى',
   },
   en: {
-    FOOTBALL: 'Football (Soccer)',
-    BASKETBALL: 'Basketball',
+    FOOTBALL: 'Football',
     SWIMMING: 'Swimming',
     TENNIS: 'Tennis',
     PADEL: 'Padel',
-    MARTIAL_ARTS: 'Martial Arts',
-    GYMNASTICS: 'Gymnastics',
+    BASKETBALL: 'Basketball',
     VOLLEYBALL: 'Volleyball',
     HANDBALL: 'Handball',
-    FITNESS: 'Fitness & Conditioning',
-    OTHER: 'Other Sports',
+    MARTIAL_ARTS: 'Martial arts',
+    GYMNASTICS: 'Gymnastics',
+    ATHLETICS: 'Athletics',
+    SQUASH: 'Squash',
+    OTHER: 'Other sport',
   },
+};
+
+/** One icon per sport, for pickers and labels. */
+export const SPORT_ICONS: Record<string, string> = {
+  FOOTBALL: '⚽',
+  SWIMMING: '🏊',
+  TENNIS: '🎾',
+  PADEL: '🎾',
+  BASKETBALL: '🏀',
+  VOLLEYBALL: '🏐',
+  HANDBALL: '🤾',
+  MARTIAL_ARTS: '🥋',
+  GYMNASTICS: '🤸',
+  ATHLETICS: '🏃',
+  SQUASH: '🎾',
+  OTHER: '🏅',
 };
 
 export const PAYMENT_METHOD_TRANSLATIONS: Record<SupportedLocale, Record<string, string>> = {
@@ -264,71 +282,71 @@ export const ARABIC_DATA_FALLBACKS: Record<string, string> = {
   'مجموعة الأمل': 'Hope Squad',
   'مجموعة الناشئين': 'Youth Squad',
   'كرة القدم': 'Football',
-  'السباحة': 'Swimming',
+  السباحة: 'Swimming',
   'كرة السلة': 'Basketball',
-  'التنس': 'Tennis',
-  'البادل': 'Padel',
-  'نشط': 'Active',
+  التنس: 'Tennis',
+  البادل: 'Padel',
+  نشط: 'Active',
   'غير نشط': 'Inactive',
-  'معلق': 'Suspended',
-  'حاضر': 'Present',
-  'غائب': 'Absent',
-  'متأخر': 'Late',
-  'معذور': 'Excused',
-  'مجدول': 'Scheduled',
+  معلق: 'Suspended',
+  حاضر: 'Present',
+  غائب: 'Absent',
+  متأخر: 'Late',
+  معذور: 'Excused',
+  مجدول: 'Scheduled',
   'جارية الآن': 'In Progress',
-  'مكتمل': 'Completed',
+  مكتمل: 'Completed',
   'معتمد / مكتمل': 'Completed',
-  'معتمد': 'Approved',
-  'ملغاة': 'Cancelled',
-  'ملغي': 'Cancelled',
-  'مرفوض': 'Rejected',
-  'معكوس': 'Reversed',
+  معتمد: 'Approved',
+  ملغاة: 'Cancelled',
+  ملغي: 'Cancelled',
+  مرفوض: 'Rejected',
+  معكوس: 'Reversed',
   'متأخر سداده': 'Overdue',
   'سداد جزئي': 'Partial',
-  'مدفوع': 'Paid',
+  مدفوع: 'Paid',
   'غير مدفوع': 'Unpaid',
   'قيد المراجعة': 'Pending Review',
   'قيد الاعتماد': 'Pending Approval',
   'قيد الانتظار': 'Pending',
-  'مؤكد': 'Confirmed',
-  'مقبول': 'Accepted',
-  'مغلقة': 'Closed',
-  'مغلق': 'Closed',
-  'ذكور': 'Male',
-  'إناث': 'Female',
+  مؤكد: 'Confirmed',
+  مقبول: 'Accepted',
+  مغلقة: 'Closed',
+  مغلق: 'Closed',
+  ذكور: 'Male',
+  إناث: 'Female',
   'ذكور (بنين)': 'Male',
   'إناث (بنات)': 'Female',
-  'شهري': 'Monthly',
-  'شهرياً': 'Monthly',
-  'سنوي': 'Annual',
-  'سنوياً': 'Annual',
-  'نقدي': 'Cash',
-  'نقداً': 'Cash',
+  شهري: 'Monthly',
+  شهرياً: 'Monthly',
+  سنوي: 'Annual',
+  سنوياً: 'Annual',
+  نقدي: 'Cash',
+  نقداً: 'Cash',
   'نقداً (كاش)': 'Cash',
   'تحويل بنكي': 'Bank Transfer',
-  'بطاقة': 'Card',
-  'الأكاديمية': 'Academy',
+  بطاقة: 'Card',
+  الأكاديمية: 'Academy',
   'الأكاديمية الرياضية': 'Sports Academy',
   'الملعب الرئيسي': 'Main Ground',
   'الملعب الرئيسي A': 'Main Ground A',
   'الملعب الرئيسي B': 'Main Ground B',
   'مصروف تشغيلي': 'Operational Expense',
   'مصروف تشغيلي للحصة': 'Session Operational Expense',
-  'النظام': 'System',
+  النظام: 'System',
   'باقة مخصصة': 'Custom Plan',
   'باقة تدريب رسمية': 'Official Training Package',
-  'الوالد': 'Father',
-  'الوالدة': 'Mother',
-  'الأب': 'Father',
-  'الأم': 'Mother',
+  الوالد: 'Father',
+  الوالدة: 'Mother',
+  الأب: 'Father',
+  الأم: 'Mother',
   'ولي أمر': 'Guardian',
   'ولي الأمر': 'Guardian',
   'وصي قانوني': 'Legal Guardian',
-  'أقارب': 'Relative',
-  'أخرى': 'Other',
-  'ذكر': 'Male',
-  'أنثى': 'Female',
+  أقارب: 'Relative',
+  أخرى: 'Other',
+  ذكر: 'Male',
+  أنثى: 'Female',
   'باقة النخبة': 'Elite Package',
   'باقة التأسيس': 'Foundational Package',
   'حصة تدريبية': 'Training Session',
@@ -337,11 +355,14 @@ export const ARABIC_DATA_FALLBACKS: Record<string, string> = {
   'غير محدد': 'Unassigned',
   'لا توجد': 'None',
   'لا يوجد': 'None',
-  'مواليد': 'DOB',
-  'هوية': 'ID',
+  مواليد: 'DOB',
+  هوية: 'ID',
 };
 
-export function translateStatus(status: string | undefined | null, locale: SupportedLocale): string {
+export function translateStatus(
+  status: string | undefined | null,
+  locale: SupportedLocale,
+): string {
   if (!status) return '';
   const key = status.toUpperCase().trim();
   const direct = STATUS_TRANSLATIONS[locale]?.[key];
@@ -397,7 +418,10 @@ export function translateSport(sport: string | undefined | null, locale: Support
   return sport;
 }
 
-export function translatePaymentMethod(method: string | undefined | null, locale: SupportedLocale): string {
+export function translatePaymentMethod(
+  method: string | undefined | null,
+  locale: SupportedLocale,
+): string {
   if (!method) return '';
   const key = method.toUpperCase().trim();
   const direct = PAYMENT_METHOD_TRANSLATIONS[locale]?.[key];
@@ -410,7 +434,24 @@ export function translatePaymentMethod(method: string | undefined | null, locale
   return method;
 }
 
-export function translateBillingCycle(cycle: string | undefined | null, locale: SupportedLocale): string {
+/** Finance ledger transaction type (MEMBERSHIP_FEE, SESSION_EXPENSE, ...). Unknown types are shown as they are. */
+export function translateTransactionType(
+  type: string | undefined | null,
+  locale: SupportedLocale,
+): string {
+  if (!type) return '';
+  const labels: Record<string, [ar: string, en: string]> = {
+    MEMBERSHIP_FEE: ['سداد اشتراك', 'Subscription'],
+    SESSION_EXPENSE: ['مصروف حصة', 'Expense'],
+  };
+  const label = labels[type];
+  return label ? (locale === 'ar' ? label[0] : label[1]) : type;
+}
+
+export function translateBillingCycle(
+  cycle: string | undefined | null,
+  locale: SupportedLocale,
+): string {
   if (!cycle) return '';
   const key = cycle.toUpperCase().trim();
   const direct = BILLING_CYCLE_TRANSLATIONS[locale]?.[key];
@@ -423,7 +464,10 @@ export function translateBillingCycle(cycle: string | undefined | null, locale: 
   return cycle;
 }
 
-export function translateGender(gender: string | undefined | null, locale: SupportedLocale): string {
+export function translateGender(
+  gender: string | undefined | null,
+  locale: SupportedLocale,
+): string {
   if (!gender) return '';
   const key = gender.toUpperCase().trim();
   const direct = GENDER_TRANSLATIONS[locale]?.[key];
@@ -436,7 +480,10 @@ export function translateGender(gender: string | undefined | null, locale: Suppo
   return gender;
 }
 
-export function translateDataString(value: string | undefined | null, locale: SupportedLocale): string {
+export function translateDataString(
+  value: string | undefined | null,
+  locale: SupportedLocale,
+): string {
   if (!value) return '';
   if (locale === 'ar') return value;
 
@@ -456,12 +503,7 @@ export function translateDataString(value: string | undefined | null, locale: Su
   if (EVALUATION_CATEGORY_TRANSLATIONS.en[upper]) return EVALUATION_CATEGORY_TRANSLATIONS.en[upper];
   if (PLAN_CODE_TRANSLATIONS.en[upper]) return PLAN_CODE_TRANSLATIONS.en[upper];
 
-  // If the string starts with Arabic characters but has known partial replacements:
-  for (const [arKey, enVal] of Object.entries(ARABIC_DATA_FALLBACKS)) {
-    if (value.includes(arKey)) {
-      return value.replaceAll(arKey, enVal);
-    }
-  }
-
+  // Anything else is user data (names of academies, people, branches...): shown exactly as entered. Replacing known
+  // fragments inside it produced mixed text such as "أكاديمية النجوم لFootball".
   return value;
 }

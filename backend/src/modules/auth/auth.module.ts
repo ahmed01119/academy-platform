@@ -5,6 +5,7 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { PasswordService } from './password.service';
 import { TokenService } from './token.service';
+import { EmailCodeService } from './email-code.service';
 import { JwtStrategy } from './guards/jwt.strategy';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { TenantGuard } from './guards/tenant.guard';
@@ -18,6 +19,7 @@ import { CsrfGuard } from './guards/csrf.guard';
     AuthService,
     PasswordService,
     TokenService,
+    EmailCodeService,
     JwtStrategy,
     JwtAuthGuard,
     TenantGuard,
@@ -28,6 +30,7 @@ import { CsrfGuard } from './guards/csrf.guard';
     AuthService,
     PasswordService,
     TokenService,
+    EmailCodeService,
     JwtAuthGuard,
     TenantGuard,
     PermissionsGuard,

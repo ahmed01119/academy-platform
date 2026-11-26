@@ -45,6 +45,11 @@ packages/database/prisma/*.db-journal
 packages/database/data
 .local-pg-data
 backups
+# Data dumps never belong in git (K2): they hold password hashes and personal data.
+**/backup_*.json
+*.dump
+# Local MySQL schema/seed export kept by the owner (not part of the PostgreSQL stack).
+/academy_platform_mysql.sql
 tools
 sportexus-live-url.txt
 sportexus-runtime-status.json
@@ -56,3 +61,4 @@ backend/.env
 frontend/.env
 
 demo-credentials.local.txt
+/database-backups/

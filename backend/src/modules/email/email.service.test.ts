@@ -74,8 +74,8 @@ describe('EmailService', () => {
 
       const sent = emailService.getSentEmails();
       expect(sent).toHaveLength(1);
-      expect(sent[0].to).toBe('coach@example.com');
-      expect(sent[0].subject).toBe('Test Subject');
+      expect(sent[0]?.to).toBe('coach@example.com');
+      expect(sent[0]?.subject).toBe('Test Subject');
     });
 
     it('honors max queue length circular buffer', async () => {
@@ -93,7 +93,7 @@ describe('EmailService', () => {
 
       const queue = emailService.getSentEmails();
       expect(queue.length).toBe(100);
-      expect(queue[0].to).toBe('user109@example.com');
+      expect(queue[0]?.to).toBe('user109@example.com');
     });
   });
 
@@ -310,9 +310,9 @@ describe('EmailService', () => {
         'ar',
       );
       let sent = emailService.getSentEmails();
-      expect(sent[0].subject).toContain('أكاديمية النجوم');
-      expect(sent[0].html).toContain('dir="rtl"');
-      expect(sent[0].html).toContain('أكاديمية النجوم');
+      expect(sent[0]?.subject).toContain('أكاديمية النجوم');
+      expect(sent[0]?.html).toContain('dir="rtl"');
+      expect(sent[0]?.html).toContain('أكاديمية النجوم');
 
       await emailService.sendAcademyApplicationReceived(
         'owner@academy.com',
@@ -321,9 +321,9 @@ describe('EmailService', () => {
         'en',
       );
       sent = emailService.getSentEmails();
-      expect(sent[0].subject).toContain('Stars Academy');
-      expect(sent[0].html).toContain('dir="ltr"');
-      expect(sent[0].html).toContain('Application Received');
+      expect(sent[0]?.subject).toContain('Stars Academy');
+      expect(sent[0]?.html).toContain('dir="ltr"');
+      expect(sent[0]?.html).toContain('Application Received');
     });
 
     it('2. sendAcademyApproved renders activation URL and dashboard button', async () => {
@@ -335,9 +335,53 @@ describe('EmailService', () => {
         'ar',
       );
       const sent = emailService.getSentEmails();
-      expect(sent[0].subject).toContain('تهانينا!');
-      expect(sent[0].html).toContain('https://sportexus.com/dashboard');
-      expect(sent[0].html).toContain('الدخول إلى لوحة التحكم');
+      expect(sent[0]?.subject).toContain('تهانينا!');
+      expect(sent[0]?.html).toContain('https://sportexus.com/dashboard');
+      expect(sent[0]?.html).toContain('الدخول إلى لوحة التحكم');
+      expect(sent[0]?.html).not.toContain('ملاحظات المراجعة');
+    });
+
+    it("2b. sendAcademyApproved shows the reviewer's notes, escaped, in the e-mail and its text", async () => {
+      await emailService.sendAcademyApproved(
+        'owner@academy.com',
+        'Ahmed',
+        'Knights Academy',
+        'https://sportexus.com/login',
+        'en',
+        'Welcome! Upload your <b>logo</b> first.',
+      );
+      const sent = emailService.getSentEmails();
+      expect(sent[0]?.html).toContain('Review notes');
+      expect(sent[0]?.html).toContain('Upload your &lt;b&gt;logo&lt;/b&gt; first.');
+      expect(sent[0]?.text).toContain('Review notes: Welcome! Upload your <b>logo</b> first.');
+    });
+
+    it('4b. sendAcademyMoreInfoRequested has a button to the reply page when a link is given', async () => {
+      await emailService.sendAcademyMoreInfoRequested(
+        'owner@academy.com',
+        'Ahmed',
+        'Knights Academy',
+        'Send the commercial register',
+        'en',
+        'https://sportexus.example/application-reply?token=abc',
+      );
+      const [mail] = emailService.getSentEmails();
+      expect(mail?.html).toContain('Answer the request');
+      expect(mail?.html).toContain('https://sportexus.example/application-reply?token=abc');
+      expect(mail?.html).not.toContain('reply to this email');
+      expect(mail?.text).toContain('https://sportexus.example/application-reply?token=abc');
+    });
+
+    it("follows the reader's device theme: light and dark colour schemes", async () => {
+      await emailService.sendAcademyApproved('o@a.com', 'A', 'B', 'https://x.test/login', 'en');
+      const html = emailService.getSentEmails()[0]?.html ?? '';
+      expect(html).toContain('<meta name="color-scheme" content="light dark">');
+      expect(html).not.toContain('light only');
+      expect(html).toContain('@media (prefers-color-scheme: dark)');
+      // the shell carries the classes the dark rules target
+      for (const cls of ['sx-page', 'sx-card', 'sx-text', 'sx-foot', 'sx-strong']) {
+        expect(html).toContain(`class="${cls}"`);
+      }
     });
 
     it('3. sendAcademyRejected renders constructive review feedback', async () => {
@@ -349,8 +393,8 @@ describe('EmailService', () => {
         'ar',
       );
       const sent = emailService.getSentEmails();
-      expect(sent[0].subject).toContain('تحديث بخصوص طلب تسجيل أكاديمية');
-      expect(sent[0].html).toContain('يرجى إرفاق السجل التجاري ورخصة الاتحاد');
+      expect(sent[0]?.subject).toContain('تحديث بخصوص طلب تسجيل أكاديمية');
+      expect(sent[0]?.html).toContain('يرجى إرفاق السجل التجاري ورخصة الاتحاد');
     });
 
     it('4. sendAcademyMoreInfoRequested renders clarification request', async () => {
@@ -362,8 +406,8 @@ describe('EmailService', () => {
         'ar',
       );
       const sent = emailService.getSentEmails();
-      expect(sent[0].subject).toContain('مطلوب معلومات إضافية');
-      expect(sent[0].html).toContain('يرجى توضيح بيانات الفروع والملاعب');
+      expect(sent[0]?.subject).toContain('مطلوب معلومات إضافية');
+      expect(sent[0]?.html).toContain('يرجى توضيح بيانات الفروع والملاعب');
     });
 
     it('5. sendPasswordReset renders 5-minute OTP expiration notice and action link', async () => {
@@ -375,9 +419,9 @@ describe('EmailService', () => {
         '123456',
       );
       const sent = emailService.getSentEmails();
-      expect(sent[0].subject).toContain('إعادة تعيين كلمة المرور');
-      expect(sent[0].html).toContain('5 دقائق');
-      expect(sent[0].html).toContain('https://sportexus.com/reset-password?token=secret123');
+      expect(sent[0]?.subject).toContain('إعادة تعيين كلمة المرور');
+      expect(sent[0]?.html).toContain('5 دقائق');
+      expect(sent[0]?.html).toContain('https://sportexus.com/reset-password?token=secret123');
     });
 
     it('6. sendPasswordChangedNotification delivers security alert with IP & timestamp', async () => {
@@ -392,9 +436,9 @@ describe('EmailService', () => {
         'ar',
       );
       const sent = emailService.getSentEmails();
-      expect(sent[0].subject).toContain('تنبيه أمان: تم تغيير كلمة مرور حسابك');
-      expect(sent[0].html).toContain('197.35.12.88');
-      expect(sent[0].html).toContain('تنبيه أمان الحساب');
+      expect(sent[0]?.subject).toContain('تنبيه أمان: تم تغيير كلمة مرور حسابك');
+      expect(sent[0]?.html).toContain('197.35.12.88');
+      expect(sent[0]?.html).toContain('تنبيه أمان الحساب');
     });
 
     it('7. sendEmailVerification renders activation link', async () => {
@@ -405,8 +449,8 @@ describe('EmailService', () => {
         'ar',
       );
       const sent = emailService.getSentEmails();
-      expect(sent[0].subject).toContain('تأكيد البريد الإلكتروني');
-      expect(sent[0].html).toContain('https://sportexus.com/verify?token=verify999');
+      expect(sent[0]?.subject).toContain('تأكيد البريد الإلكتروني');
+      expect(sent[0]?.html).toContain('https://sportexus.com/verify?token=verify999');
     });
 
     it('8. sendPlatformAdminInvite renders correct platform roles', async () => {
@@ -419,8 +463,8 @@ describe('EmailService', () => {
         'ar',
       );
       const sent = emailService.getSentEmails();
-      expect(sent[0].subject).toContain('مالك مشارك للمنصة');
-      expect(sent[0].html).toContain('تفعيل الحساب وتعيين كلمة المرور');
+      expect(sent[0]?.subject).toContain('مالك مشارك للمنصة');
+      expect(sent[0]?.html).toContain('تفعيل الحساب وتعيين كلمة المرور');
     });
 
     it('9. sendStaffInvite renders role and branch information', async () => {
@@ -435,10 +479,10 @@ describe('EmailService', () => {
         locale: 'ar',
       });
       const sent = emailService.getSentEmails();
-      expect(sent[0].subject).toContain('دعوة للانضمام إلى فريق عمل');
-      expect(sent[0].html).toContain('فرع المروج');
-      expect(sent[0].html).toContain('مدرب رياضي (Coach)');
-      expect(sent[0].html).toContain('7 أيام');
+      expect(sent[0]?.subject).toContain('دعوة للانضمام إلى فريق عمل');
+      expect(sent[0]?.html).toContain('فرع المروج');
+      expect(sent[0]?.html).toContain('مدرب رياضي (Coach)');
+      expect(sent[0]?.html).toContain('7 أيام');
     });
 
     it('10. sendPlayerEnrollmentWelcome renders player and branch enrollment details', async () => {
@@ -452,10 +496,10 @@ describe('EmailService', () => {
         locale: 'ar',
       });
       const sent = emailService.getSentEmails();
-      expect(sent[0].subject).toContain('فهد العتيبي');
-      expect(sent[0].html).toContain('فرع الروضة');
-      expect(sent[0].html).toContain('FOOTBALL');
-      expect(sent[0].html).toContain('بوابة ولي الأمر');
+      expect(sent[0]?.subject).toContain('فهد العتيبي');
+      expect(sent[0]?.html).toContain('فرع الروضة');
+      expect(sent[0]?.html).toContain('FOOTBALL');
+      expect(sent[0]?.html).toContain('بوابة ولي الأمر');
     });
 
     it('11. sendPaymentReceipt renders formal financial receipt', async () => {
@@ -472,10 +516,10 @@ describe('EmailService', () => {
         locale: 'ar',
       });
       const sent = emailService.getSentEmails();
-      expect(sent[0].subject).toContain('REC-2026-4481');
-      expect(sent[0].html).toContain('850.00 SAR');
-      expect(sent[0].html).toContain('CREDIT_CARD');
-      expect(sent[0].html).toContain('إيصال سداد إلكتروني');
+      expect(sent[0]?.subject).toContain('REC-2026-4481');
+      expect(sent[0]?.html).toContain('850.00 SAR');
+      expect(sent[0]?.html).toContain('CREDIT_CARD');
+      expect(sent[0]?.html).toContain('إيصال سداد إلكتروني');
     });
 
     it('12. sendSubscriptionAlert renders subscription expiration or past-due warning', async () => {
@@ -490,9 +534,9 @@ describe('EmailService', () => {
         locale: 'ar',
       });
       const sent = emailService.getSentEmails();
-      expect(sent[0].subject).toContain('تذكير بتجديد اشتراك باقة');
-      expect(sent[0].html).toContain('الباقة المتقدمة (Pro)');
-      expect(sent[0].html).toContain('تجديد الاشتراك الآن');
+      expect(sent[0]?.subject).toContain('تذكير بتجديد اشتراك باقة');
+      expect(sent[0]?.html).toContain('الباقة المتقدمة (Pro)');
+      expect(sent[0]?.html).toContain('تجديد الاشتراك الآن');
     });
   });
 
@@ -514,6 +558,82 @@ describe('EmailService', () => {
 
       emailService.clearSentEmails();
       expect(emailService.getSentEmails()).toHaveLength(0);
+    });
+  });
+
+  describe('URL masking in logs (K1)', () => {
+    const mask = (url: string) =>
+      (
+        new EmailService(configService) as unknown as { maskSensitiveUrl(u: string): string }
+      ).maskSensitiveUrl(url);
+
+    it('never logs reset tokens, whether in the query string or the URL fragment', () => {
+      const link = 'a'.repeat(64);
+      expect(mask(`https://app.test/reset-password#token=${link}&email=u%40x.com`)).toBe(
+        'https://app.test/reset-password#token=***&email=u%40x.com',
+      );
+      expect(mask(`https://app.test/reset-password?token=${link}`)).toBe(
+        'https://app.test/reset-password?token=***',
+      );
+      expect(mask('https://app.test/x?code=123456&otp=654321#secret=s')).not.toMatch(
+        /123456|654321|=s$/,
+      );
+    });
+  });
+
+  describe('Join request e-mails (owner request 2026-11-22)', () => {
+    it('confirms a received request to the applicant, in the platform design', async () => {
+      emailService = new EmailService(configService);
+      await emailService.sendJoinRequestReceived({
+        to: 'parent@example.com',
+        applicantName: 'Guardian <b>X</b>',
+        playerName: 'Child',
+        academyName: 'Academy A',
+        requesterType: 'GUARDIAN',
+      });
+      const [mail] = emailService.getSentEmails();
+      expect(mail?.subject).toBe('Join request received: Academy A — Sportexus');
+      expect(mail?.html).toContain('>Sport</span><span style="color:#16A34A;">exus<');
+      expect(mail?.html).toContain('dir="ltr"');
+      expect(mail?.html).toContain('Guardian &lt;b&gt;X&lt;/b&gt;'); // escaped
+      // The light design is inline (mail clients may drop <style>); the only <style> block is the optional dark mode.
+      const styleBlocks = mail?.html.match(/<style>[\s\S]*?<\/style>/g) ?? [];
+      expect(styleBlocks).toHaveLength(1);
+      expect(styleBlocks[0]).toContain('@media (prefers-color-scheme: dark)');
+    });
+
+    it.each([
+      ['APPROVED', 'approved your join request', true],
+      ['REJECTED', 'did not approve', false],
+      ['MORE_INFO_REQUESTED', 'needs more information', false],
+    ] as const)('%s decision e-mail', async (status, phrase, hasLoginButton) => {
+      emailService = new EmailService(configService);
+      await emailService.sendJoinRequestDecision({
+        to: 'player@example.com',
+        playerName: 'Player One',
+        academyName: 'Academy A',
+        status,
+        requesterType: 'PLAYER',
+        notes: 'Bring a medical form',
+      });
+      const [mail] = emailService.getSentEmails();
+      expect(mail?.html).toContain(phrase);
+      expect(mail?.html.includes('https://sportexus.com/login')).toBe(hasLoginButton);
+      expect(mail?.text).toContain('Academy A');
+    });
+  });
+
+  describe('E-mail language (owner decision 2026-11-22: English)', () => {
+    it('is English by default and Arabic only when MAIL_LOCALE=ar', async () => {
+      emailService = new EmailService(configService);
+      await emailService.sendAcademyRejected('owner@example.com', 'Owner', 'Academy A');
+      expect(emailService.getSentEmails()[0]?.subject).toContain('Update on Academy Application');
+
+      const arabic = new EmailService({
+        get: (key: string) => (key === 'MAIL_LOCALE' ? 'ar' : mockConfigValues[key]),
+      } as unknown as ConfigService);
+      await arabic.sendAcademyRejected('owner@example.com', 'Owner', 'Academy A');
+      expect(arabic.getSentEmails()[0]?.subject).toContain('تحديث بخصوص طلب تسجيل أكاديمية');
     });
   });
 });

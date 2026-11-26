@@ -11,12 +11,20 @@ import {
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
+import { databaseFunctionErrorCode } from '../../common/db-function-error';
+import { assertCoachCanSee, coachPlayerWhere, isCoachContext } from '../../common/coach-scope';
 import type { Prisma } from '@prisma/client';
+import type { TenantTransactionClient } from '@academy/database';
 import { AuditService } from '../audit/audit.service';
 import {
+  assertMaySetSensitiveFieldsOnUpdate,
+  buildPlayerSearchConditions,
+  canViewSensitivePlayerData,
+  duplicateNationalIdError,
+  isNationalIdUniqueViolation,
+} from './player-sensitive-data';
+import {
   ErrorCode,
-  Permission,
-  hasPermission,
   type CreatePlayerRequest,
   type PlayerDetails,
   type PlayerSummary,
@@ -35,6 +43,16 @@ import {
   type PlayerDeletionResponse,
 } from '@academy/shared';
 import { NotificationsService } from '../notifications/notifications.service';
+
+/** Error codes of link_join_request_account that the review maps to HTTP errors. */
+const ACCOUNT_LINK_ERRORS = [
+  'LINK_CONTEXT_REQUIRED',
+  'LINK_NOT_PERMITTED',
+  'REQUEST_NOT_LINKABLE',
+  'RECORD_NOT_FOUND',
+  'RECORD_ALREADY_LINKED',
+  'PLAYER_PROFILE_EXISTS',
+] as const;
 
 @Injectable()
 export class PlayersService {
@@ -70,12 +88,15 @@ export class PlayersService {
     const skip = (page - 1) * limit;
 
     const effectiveBranchId = tenantContext.branchId || options?.branchId;
+    // F22: national ID is neither returned nor searchable without players.sensitive.read
+    const canViewSensitive = canViewSensitivePlayerData(tenantContext);
 
     return this.prisma.withTenantTransaction(
       { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
       async (tx) => {
         const whereClause: Prisma.PlayerWhereInput = {
           tenantId: tenantContext.tenantId,
+          ...(isCoachContext(tenantContext) ? coachPlayerWhere(tenantContext.actorUserId) : {}),
         };
 
         if (options?.status) {
@@ -93,23 +114,7 @@ export class PlayersService {
 
         if (options?.search) {
           const term = options.search.trim();
-          whereClause.OR = [
-            { firstName: { contains: term, mode: 'insensitive' } },
-            { lastName: { contains: term, mode: 'insensitive' } },
-            { nationalId: { contains: term } },
-            { emergencyContactPhone: { contains: term } },
-            {
-              guardians: {
-                some: {
-                  OR: [
-                    { firstName: { contains: term, mode: 'insensitive' } },
-                    { lastName: { contains: term, mode: 'insensitive' } },
-                    { phone: { contains: term } },
-                  ],
-                },
-              },
-            },
-          ];
+          whereClause.OR = buildPlayerSearchConditions(term, canViewSensitive);
         }
 
         const [total, players] = await Promise.all([
@@ -153,10 +158,11 @@ export class PlayersService {
             lastName: p.lastName,
             gender: p.gender as PlayerGender,
             dateOfBirth: p.dateOfBirth.toISOString().slice(0, 10),
-            nationalId: p.nationalId,
+            nationalId: canViewSensitive ? p.nationalId : null,
             photoUrl: p.photoUrl,
             emergencyContactName: p.emergencyContactName,
             emergencyContactPhone: p.emergencyContactPhone,
+            jerseyNumber: p.jerseyNumber,
             status: p.status as PlayerStatus,
             currentBranch: activeEnrollment
               ? {
@@ -231,6 +237,16 @@ export class PlayersService {
             message: 'Player not found',
           });
         }
+        if (isCoachContext(tenantContext)) {
+          const visible = await tx.player.count({
+            where: {
+              tenantId: tenantContext.tenantId,
+              id: playerId,
+              ...coachPlayerWhere(tenantContext.actorUserId),
+            },
+          });
+          assertCoachCanSee(tenantContext, visible > 0, 'Player');
+        }
 
         if (tenantContext.branchId) {
           const hasActiveBranchEnrollment = p.enrollments.some(
@@ -244,11 +260,7 @@ export class PlayersService {
           }
         }
 
-        const canViewSensitive = Boolean(
-          tenantContext.permissions?.includes(Permission.PLAYERS_SENSITIVE_READ) ||
-          (tenantContext.role &&
-            hasPermission(tenantContext.role, Permission.PLAYERS_SENSITIVE_READ)),
-        );
+        const canViewSensitive = canViewSensitivePlayerData(tenantContext);
 
         const primaryGuardian = p.guardians.find((g) => g.isPrimary) || p.guardians[0] || null;
         const activeEnrollment = p.enrollments.find((e) => e.status === 'ACTIVE') || null;
@@ -264,6 +276,7 @@ export class PlayersService {
           photoUrl: p.photoUrl,
           emergencyContactName: p.emergencyContactName,
           emergencyContactPhone: p.emergencyContactPhone,
+          jerseyNumber: p.jerseyNumber,
           medicalNotes: canViewSensitive ? p.medicalNotes : null,
           status: p.status as PlayerStatus,
           currentBranch: activeEnrollment
@@ -292,6 +305,7 @@ export class PlayersService {
             phone: g.phone,
             email: g.email,
             isPrimary: g.isPrimary,
+            hasAccount: g.userId !== null,
           })),
           enrollments: p.enrollments.map((e) => ({
             id: e.id,
@@ -367,11 +381,7 @@ export class PlayersService {
         }
 
         // Sensitive data check
-        const hasSensitivePerm = Boolean(
-          tenantContext.permissions?.includes(Permission.PLAYERS_SENSITIVE_READ) ||
-          (tenantContext.role &&
-            hasPermission(tenantContext.role, Permission.PLAYERS_SENSITIVE_READ)),
-        );
+        const hasSensitivePerm = canViewSensitivePlayerData(tenantContext);
         if (dto.medicalNotes && !hasSensitivePerm) {
           throw new ForbiddenException({
             code: ErrorCode.FORBIDDEN,
@@ -388,10 +398,8 @@ export class PlayersService {
             },
           });
           if (existingNationalId) {
-            throw new ConflictException({
-              code: ErrorCode.CONFLICT,
-              message: 'A player with this National ID is already registered in this academy',
-            });
+            // F23: specific message only for actors allowed to read national IDs
+            throw duplicateNationalIdError(hasSensitivePerm);
           }
         }
 
@@ -404,28 +412,33 @@ export class PlayersService {
             ? `${dto.birthYear}-01-01`
             : '2015-01-01';
 
-        const membershipNumber =
-          dto.jerseyNumber !== undefined && dto.jerseyNumber !== null
-            ? String(dto.jerseyNumber)
-            : dto.membershipNumber?.trim() || null;
+        // The jersey number has its own column (2026-11-25); it used to be stored as the membership number.
+        const membershipNumber = dto.membershipNumber?.trim() || null;
 
         // 1. Create player
-        const player = await tx.player.create({
-          data: {
-            tenantId: tenantContext.tenantId,
-            firstName: dto.firstName.trim(),
-            lastName: dto.lastName.trim(),
-            gender: dto.gender,
-            dateOfBirth: new Date(birthDateStr),
-            membershipNumber,
-            nationalId: dto.nationalId?.trim() || null,
-            photoUrl: dto.photoUrl?.trim() || null,
-            emergencyContactName: dto.emergencyContactName.trim(),
-            emergencyContactPhone: dto.emergencyContactPhone.trim(),
-            medicalNotes: dto.medicalNotes?.trim() || null,
-            status: 'ACTIVE',
-          },
-        });
+        const player = await tx.player
+          .create({
+            data: {
+              tenantId: tenantContext.tenantId,
+              firstName: dto.firstName.trim(),
+              lastName: dto.lastName.trim(),
+              gender: dto.gender,
+              dateOfBirth: new Date(birthDateStr),
+              membershipNumber,
+              nationalId: dto.nationalId?.trim() || null,
+              photoUrl: dto.photoUrl?.trim() || null,
+              emergencyContactName: dto.emergencyContactName.trim(),
+              emergencyContactPhone: dto.emergencyContactPhone.trim(),
+              medicalNotes: dto.medicalNotes?.trim() || null,
+              jerseyNumber: dto.jerseyNumber ?? null,
+              status: 'ACTIVE',
+            },
+          })
+          .catch((err: unknown) => {
+            // F23: a concurrent insert can pass the pre-check; never leak the constraint.
+            if (isNationalIdUniqueViolation(err)) throw duplicateNationalIdError(hasSensitivePerm);
+            throw err;
+          });
 
         // 2. Create primary guardian
         const guardian = await tx.guardian.create({
@@ -449,7 +462,10 @@ export class PlayersService {
             branchId: branch.id,
             sport: dto.sport,
             status: 'ACTIVE',
-            startDate: new Date(),
+            // F21: honour the requested start date (validated YYYY-MM-DD); default today as before
+            startDate: dto.initialEnrollmentStartDate
+              ? new Date(dto.initialEnrollmentStartDate)
+              : new Date(),
           },
           include: {
             branch: {
@@ -494,7 +510,6 @@ export class PlayersService {
               academyName: tenant?.name || 'Sportexus Academy',
               branchName: branch.name,
               sport: dto.sport,
-              locale: 'ar',
             });
           } catch (mailErr: unknown) {
             this.logger.warn(
@@ -510,11 +525,12 @@ export class PlayersService {
           lastName: player.lastName,
           gender: player.gender as PlayerGender,
           dateOfBirth: player.dateOfBirth.toISOString().slice(0, 10),
-          nationalId: player.nationalId,
+          nationalId: hasSensitivePerm ? player.nationalId : null,
           photoUrl: player.photoUrl,
           emergencyContactName: player.emergencyContactName,
           emergencyContactPhone: player.emergencyContactPhone,
-          medicalNotes: player.medicalNotes,
+          jerseyNumber: player.jerseyNumber,
+          medicalNotes: hasSensitivePerm ? player.medicalNotes : null,
           status: player.status as PlayerStatus,
           currentBranch: {
             id: branch.id,
@@ -566,7 +582,47 @@ export class PlayersService {
   }
 
   /**
-   * Updates player personal info, emergency contacts, or status.
+   * Sets the primary guardian's name and/or phone (creates the guardian record when the player has none). The name is
+   * split into first and last name as on the enrollment form.
+   */
+  private async updatePrimaryGuardian(
+    tx: TenantTransactionClient,
+    tenantId: string,
+    playerId: string,
+    dto: { guardianName?: string; guardianPhone?: string },
+  ): Promise<void> {
+    const name = dto.guardianName?.trim();
+    const parts = name ? name.split(/\s+/) : [];
+    const nameData = name
+      ? { firstName: parts[0] ?? name, lastName: parts.slice(1).join(' ') || '-' }
+      : {};
+    const phoneData = dto.guardianPhone ? { phone: dto.guardianPhone.trim() } : {};
+    const primary = await tx.guardian.findFirst({
+      where: { tenantId, playerId },
+      orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
+    });
+    if (primary) {
+      await tx.guardian.update({
+        where: { tenantId_id: { tenantId, id: primary.id } },
+        data: { ...nameData, ...phoneData },
+      });
+    } else if (name && dto.guardianPhone) {
+      await tx.guardian.create({
+        data: {
+          tenantId,
+          playerId,
+          firstName: nameData.firstName ?? name,
+          lastName: nameData.lastName ?? '-',
+          phone: dto.guardianPhone.trim(),
+          relationship: 'FATHER',
+          isPrimary: true,
+        },
+      });
+    }
+  }
+
+  /**
+   * Updates player personal info, the primary guardian (name and phone, also the emergency contact), or status.
    */
   async updatePlayer(
     tenantContext: TenantContext,
@@ -608,22 +664,11 @@ export class PlayersService {
           }
         }
 
-        const hasSensitivePerm = Boolean(
-          tenantContext.permissions?.includes(Permission.PLAYERS_SENSITIVE_READ) ||
-          (tenantContext.role &&
-            hasPermission(tenantContext.role, Permission.PLAYERS_SENSITIVE_READ)),
-        );
+        const hasSensitivePerm = canViewSensitivePlayerData(tenantContext);
 
-        if (
-          dto.medicalNotes !== undefined &&
-          dto.medicalNotes !== existing.medicalNotes &&
-          !hasSensitivePerm
-        ) {
-          throw new ForbiddenException({
-            code: ErrorCode.FORBIDDEN,
-            message: 'You do not have permission to modify sensitive medical notes',
-          });
-        }
+        // F24: actors without players.sensitive.read may not change national ID or medical notes.
+        // Checked before any lookup so neither the stored value nor a duplicate can be probed.
+        assertMaySetSensitiveFieldsOnUpdate(dto, hasSensitivePerm);
 
         if (dto.nationalId && dto.nationalId.trim() !== (existing.nationalId || '')) {
           const collision = await tx.player.findFirst({
@@ -634,10 +679,7 @@ export class PlayersService {
             },
           });
           if (collision) {
-            throw new ConflictException({
-              code: ErrorCode.CONFLICT,
-              message: 'A player with this National ID is already registered in this academy',
-            });
+            throw duplicateNationalIdError(hasSensitivePerm);
           }
         }
 
@@ -658,35 +700,53 @@ export class PlayersService {
           updateData.medicalNotes = dto.medicalNotes?.trim() || null;
         }
         if (dto.status !== undefined) updateData.status = dto.status;
+        if (dto.jerseyNumber !== undefined) updateData.jerseyNumber = dto.jerseyNumber;
+        if (dto.dateOfBirth === undefined && dto.birthYear) {
+          updateData.dateOfBirth = new Date(`${dto.birthYear}-01-01`);
+        }
+        // The primary guardian's name and phone are the player's emergency contact too (owner decision 2026-11-25).
+        if (dto.guardianName !== undefined)
+          updateData.emergencyContactName = dto.guardianName.trim();
+        if (dto.guardianPhone !== undefined)
+          updateData.emergencyContactPhone = dto.guardianPhone.trim();
+        if (dto.guardianName !== undefined || dto.guardianPhone !== undefined) {
+          await this.updatePrimaryGuardian(tx, tenantContext.tenantId, playerId, dto);
+        }
 
-        const updated = await tx.player.update({
-          where: {
-            tenantId_id: {
-              tenantId: tenantContext.tenantId,
-              id: playerId,
+        const updated = await tx.player
+          .update({
+            where: {
+              tenantId_id: {
+                tenantId: tenantContext.tenantId,
+                id: playerId,
+              },
             },
-          },
-          data: updateData,
-          include: {
-            guardians: {
-              where: { isPrimary: true },
-              take: 1,
-            },
-            enrollments: {
-              where: { status: 'ACTIVE' },
-              include: {
-                branch: {
-                  select: {
-                    id: true,
-                    name: true,
-                    code: true,
+            data: updateData,
+            include: {
+              guardians: {
+                where: { isPrimary: true },
+                take: 1,
+              },
+              enrollments: {
+                where: { status: 'ACTIVE' },
+                include: {
+                  branch: {
+                    select: {
+                      id: true,
+                      name: true,
+                      code: true,
+                    },
                   },
                 },
+                take: 1,
               },
-              take: 1,
             },
-          },
-        });
+          })
+          .catch((err: unknown) => {
+            // F23: concurrent duplicate — same response as the pre-check, never the raw constraint.
+            if (isNationalIdUniqueViolation(err)) throw duplicateNationalIdError(hasSensitivePerm);
+            throw err;
+          });
 
         await this.auditService.logEvent(
           {
@@ -702,11 +762,7 @@ export class PlayersService {
           tx,
         );
 
-        const canViewSensitive = Boolean(
-          tenantContext.permissions?.includes(Permission.PLAYERS_SENSITIVE_READ) ||
-          (tenantContext.role &&
-            hasPermission(tenantContext.role, Permission.PLAYERS_SENSITIVE_READ)),
-        );
+        const canViewSensitive = canViewSensitivePlayerData(tenantContext);
         const primaryGuardian = updated.guardians[0] || null;
         const activeEnrollment = updated.enrollments[0] || null;
 
@@ -721,6 +777,7 @@ export class PlayersService {
           photoUrl: updated.photoUrl,
           emergencyContactName: updated.emergencyContactName,
           emergencyContactPhone: updated.emergencyContactPhone,
+          jerseyNumber: updated.jerseyNumber,
           status: updated.status as PlayerStatus,
           currentBranch: activeEnrollment
             ? {
@@ -1042,6 +1099,8 @@ export class PlayersService {
     tenantContext: TenantContext,
     status?: ApplicationStatus,
   ): Promise<PlayerJoinRequestItem[]> {
+    // National ID and medical notes of a request follow the same rule as on the player (players.sensitive.read).
+    const canViewSensitive = canViewSensitivePlayerData(tenantContext);
     return this.prisma.withTenantTransaction(tenantContext, async (tx) => {
       const items = await tx.playerRegistrationRequest.findMany({
         where: {
@@ -1060,6 +1119,11 @@ export class PlayersService {
         contactPhone: req.contactPhone,
         dateOfBirth: req.dateOfBirth ? req.dateOfBirth.toISOString().split('T')[0] : null,
         guardianName: req.guardianName,
+        guardianEmail: req.guardianEmail,
+        gender: req.gender,
+        jerseyNumber: req.jerseyNumber,
+        ...(canViewSensitive ? { nationalId: req.nationalId, medicalNotes: req.medicalNotes } : {}),
+        requesterType: req.requesterType,
         status: req.status as ApplicationStatus,
         reviewNotes: req.reviewNotes,
         reviewedByUserId: req.reviewedByUserId,
@@ -1126,6 +1190,9 @@ export class PlayersService {
         });
       }
 
+      // The record (player or guardian) the applicant's account is linked to once the request is APPROVED.
+      let accountLinkRecordId: string | null = null;
+
       if (dto.status === 'APPROVED') {
         // Enforce SaaS plan player capacity limit
         const sub = await tx.tenantSubscription.findUnique({
@@ -1157,16 +1224,45 @@ export class PlayersService {
           effectiveBranchId = mainBranch?.id;
         }
 
-        // Prevent duplicate player records for applicant / name
-        let player = await tx.player.findFirst({
-          where: {
-            tenantId: tenantContext.tenantId,
-            OR: [
-              request.applicantUserId ? { userId: request.applicantUserId } : undefined,
-              { firstName, lastName },
-            ].filter(Boolean) as any,
-          },
-        });
+        // K6: who the approval links to the applicant's account depends on who asked.
+        //  - PLAYER: the applicant IS the athlete -> players.user_id = applicant (player portal, /player).
+        //  - GUARDIAN: the applicant is the child's guardian -> a guardian record with user_id = applicant
+        //    (guardian portal, /guardian). The child's player record has no account.
+        //  - no applicant (requests made before K6): nothing is linked, as before.
+        const applicantId = request.applicantUserId;
+        const linksPlayer = Boolean(applicantId) && request.requesterType === 'PLAYER';
+        const linksGuardian = Boolean(applicantId) && request.requesterType === 'GUARDIAN';
+
+        // Re-use an existing player record only when it is certainly the same person: the applicant's own player
+        // profile (PLAYER), or a child of the same name this guardian is already linked to (GUARDIAN). K9: a name alone
+        // is never enough - two different children can share a name - so any other request creates a new player.
+        let player = linksPlayer
+          ? await tx.player.findFirst({
+              where: { tenantId: tenantContext.tenantId, userId: applicantId },
+            })
+          : linksGuardian
+            ? await tx.player.findFirst({
+                where: {
+                  tenantId: tenantContext.tenantId,
+                  firstName,
+                  lastName,
+                  guardians: { some: { userId: applicantId } },
+                },
+              })
+            : null;
+
+        if (!player && linksPlayer) {
+          // (checked again, atomically, by link_join_request_account)
+          // players.user_id is unique: one account holds at most one player profile (in any academy).
+          const otherProfile = await this.applicantHasPlayerProfile(applicantId as string);
+          if (otherProfile) {
+            throw new ConflictException({
+              code: ErrorCode.CONFLICT,
+              message:
+                'The applicant account already has a player profile; it cannot be linked to a second one',
+            });
+          }
+        }
 
         if (!player) {
           const membershipNumber = `MEM-${new Date().getFullYear()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
@@ -1175,14 +1271,17 @@ export class PlayersService {
           player = await tx.player.create({
             data: {
               tenantId: tenantContext.tenantId,
-              userId: request.applicantUserId,
               firstName,
               lastName,
               emergencyContactName: request.guardianName || 'Guardian',
               emergencyContactPhone: request.contactPhone || '-',
               dateOfBirth: request.dateOfBirth || new Date(2012, 0, 1),
-              gender: 'MALE',
+              // The rest of the shared form, as the applicant filled it (2026-11-25).
+              gender: request.gender ?? 'MALE',
+              nationalId: request.nationalId,
+              medicalNotes: request.medicalNotes,
               status: 'ACTIVE',
+              jerseyNumber: request.jerseyNumber,
               membershipNumber,
               qrCardCode,
               qrCardIssuedAt: new Date(),
@@ -1190,8 +1289,37 @@ export class PlayersService {
           });
         }
 
-        // Handle minor guardian linkage safely
-        if (request.guardianName && request.contactPhone) {
+        if (linksPlayer && player.userId !== applicantId) {
+          accountLinkRecordId = player.id;
+        }
+
+        if (linksGuardian) {
+          // GUARDIAN: the applicant's own guardian record for this child, linked to the account. An existing
+          // guardian record already linked to this account (same child, earlier request) is reused.
+          const linkedGuardian = await tx.guardian.findFirst({
+            where: { tenantId: tenantContext.tenantId, playerId: player.id, userId: applicantId },
+          });
+          if (!linkedGuardian) {
+            const guardianName = (request.guardianName ?? '').trim();
+            const hasPrimary = await tx.guardian.count({
+              where: { tenantId: tenantContext.tenantId, playerId: player.id, isPrimary: true },
+            });
+            const guardian = await tx.guardian.create({
+              data: {
+                tenantId: tenantContext.tenantId,
+                playerId: player.id,
+                firstName: guardianName.split(' ')[0] || guardianName,
+                lastName: guardianName.split(' ').slice(1).join(' ') || '-',
+                phone: request.contactPhone || '-',
+                email: request.contactEmail,
+                relationship: 'GUARDIAN',
+                isPrimary: hasPrimary === 0,
+              },
+            });
+            accountLinkRecordId = guardian.id;
+          }
+        } else if (request.guardianName && request.contactPhone) {
+          // PLAYER (or anonymous) request that names a guardian: contact-only guardian record, no account.
           const existingGuardian = await tx.guardian.findFirst({
             where: {
               tenantId: tenantContext.tenantId,
@@ -1206,7 +1334,8 @@ export class PlayersService {
                 firstName: request.guardianName.split(' ')[0] || request.guardianName,
                 lastName: request.guardianName.split(' ').slice(1).join(' ') || '-',
                 phone: request.contactPhone,
-                email: request.contactEmail,
+                // A PLAYER request's contactEmail is the player's own sign-in; the guardian's is stored apart.
+                email: request.guardianEmail ?? null,
                 relationship: 'GUARDIAN',
                 isPrimary: true,
               },
@@ -1254,35 +1383,6 @@ export class PlayersService {
             });
           }
         }
-
-        if (request.applicantUserId) {
-          await this.notificationsService.createNotification({
-            userId: request.applicantUserId,
-            tenantId: tenantContext.tenantId,
-            type: 'PLAYER_REGISTRATION',
-            title: 'Academy Registration Approved',
-            body: `Your request to join the academy for "${request.playerName}" has been approved!`,
-            href: '/player',
-          });
-        }
-      } else if (dto.status === 'REJECTED' && request.applicantUserId) {
-        await this.notificationsService.createNotification({
-          userId: request.applicantUserId,
-          tenantId: tenantContext.tenantId,
-          type: 'PLAYER_REGISTRATION',
-          title: 'Registration Request Update',
-          body: `Your registration request for "${request.playerName}" was rejected: ${dto.reviewNotes ?? 'Not accepted at this time.'}`,
-          href: '/',
-        });
-      } else if (dto.status === 'MORE_INFO_REQUESTED' && request.applicantUserId) {
-        await this.notificationsService.createNotification({
-          userId: request.applicantUserId,
-          tenantId: tenantContext.tenantId,
-          type: 'PLAYER_REGISTRATION',
-          title: 'Additional Information Required',
-          body: `Additional details required for "${request.playerName}": ${dto.reviewNotes ?? 'Please check your application.'}`,
-          href: '/player',
-        });
       }
 
       const updated = await tx.playerRegistrationRequest.update({
@@ -1294,6 +1394,30 @@ export class PlayersService {
           reviewedAt: new Date(),
         },
       });
+
+      // Item 5 (owner decision 2026-11-16): the runtime role cannot write players.user_id / guardians.user_id, so the
+      // applicant's account is linked by link_join_request_account (definer). It re-checks that the caller reviews
+      // join requests in this academy and that the request is APPROVED, so staff cannot link arbitrary accounts.
+      if (accountLinkRecordId) {
+        try {
+          await tx.$executeRaw`SELECT public.link_join_request_account(${requestId}::uuid, ${accountLinkRecordId}::uuid)`;
+        } catch (err) {
+          const code = databaseFunctionErrorCode(err, ACCOUNT_LINK_ERRORS);
+          if (code === 'PLAYER_PROFILE_EXISTS' || code === 'RECORD_ALREADY_LINKED') {
+            throw new ConflictException({
+              code: ErrorCode.CONFLICT,
+              message: 'The applicant account is already linked to another player profile',
+            });
+          }
+          if (code === 'LINK_NOT_PERMITTED') {
+            throw new ForbiddenException({
+              code: ErrorCode.INSUFFICIENT_PERMISSIONS,
+              message: 'You are not allowed to review join requests in this academy',
+            });
+          }
+          throw err;
+        }
+      }
 
       await this.auditService.logEvent(
         {
@@ -1319,28 +1443,62 @@ export class PlayersService {
         contactPhone: updated.contactPhone,
         dateOfBirth: updated.dateOfBirth ? updated.dateOfBirth.toISOString().split('T')[0] : null,
         guardianName: updated.guardianName,
+        guardianEmail: updated.guardianEmail,
+        requesterType: updated.requesterType,
         status: updated.status as ApplicationStatus,
         reviewNotes: updated.reviewNotes,
         reviewedByUserId: updated.reviewedByUserId,
         reviewedAt: updated.reviewedAt?.toISOString() || null,
         createdAt: updated.createdAt.toISOString(),
-        _meta: { email: updated.contactEmail, tenantId: updated.tenantId, playerName: updated.playerName, status: dto.status, reviewNotes: dto.reviewNotes },
+        _meta: {
+          email: updated.contactEmail,
+          applicantUserId: updated.applicantUserId,
+          requesterType: updated.requesterType,
+          tenantId: updated.tenantId,
+          playerName: updated.playerName,
+          // The person who applied: the guardian for a GUARDIAN request, the player otherwise.
+          applicantName:
+            updated.requesterType === 'GUARDIAN' ? updated.guardianName : updated.playerName,
+          status: dto.status,
+          reviewNotes: dto.reviewNotes,
+        },
       };
     });
 
+    // In-app notification for the applicant, after the commit (a failure never undoes the review).
+    if (result._meta.applicantUserId) {
+      await this.notifyJoinRequestApplicant(tenantContext, {
+        applicantUserId: result._meta.applicantUserId,
+        requesterType: result._meta.requesterType,
+        playerName: result._meta.playerName,
+        status: result._meta.status,
+        reviewNotes: result._meta.reviewNotes ?? null,
+      });
+    }
+
     // Dispatch email outside transaction (fire-and-forget)
-    if (result._meta.email && (result._meta.status === 'APPROVED' || result._meta.status === 'REJECTED')) {
-      const tenant = await this.prisma.withTenantTransaction(
-        { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
-        (tx) => tx.tenant.findUnique({ where: { id: tenantContext.tenantId }, select: { name: true } }),
-      ).catch(() => ({ name: 'Academy' }));
-      void this.dispatchPlayerReviewEmail(
-        result._meta.email,
-        result._meta.playerName,
-        result._meta.status,
-        tenant?.name ?? 'Academy',
-        result._meta.reviewNotes ?? null,
-      );
+    if (
+      result._meta.email &&
+      (result._meta.status === 'APPROVED' ||
+        result._meta.status === 'REJECTED' ||
+        result._meta.status === 'MORE_INFO_REQUESTED')
+    ) {
+      const tenant = await this.prisma
+        .withTenantTransaction(
+          { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
+          (tx) =>
+            tx.tenant.findUnique({ where: { id: tenantContext.tenantId }, select: { name: true } }),
+        )
+        .catch(() => ({ name: 'Academy' }));
+      void this.dispatchPlayerReviewEmail({
+        email: result._meta.email,
+        playerName: result._meta.playerName,
+        status: result._meta.status,
+        academyName: tenant?.name ?? 'Academy',
+        requesterType: result._meta.requesterType,
+        applicantName: result._meta.applicantName,
+        reviewNotes: result._meta.reviewNotes ?? null,
+      });
     }
 
     // Strip internal _meta before returning
@@ -1349,46 +1507,91 @@ export class PlayersService {
   }
 
   /**
-   * Dispatch approval/rejection email to the player applicant (outside the transaction for safety).
+   * Whether an account already holds a player profile in any academy. Read under the account's own actor context
+   * (RLS players_portal_user), because the reviewing staff member cannot see other academies' players.
    */
-  private async dispatchPlayerReviewEmail(
-    email: string,
-    playerName: string,
-    status: string,
-    academyName: string,
-    reviewNotes?: string | null,
+  private async applicantHasPlayerProfile(applicantUserId: string): Promise<boolean> {
+    const count = await this.prisma.withAuthLookupTransaction(
+      { actorUserId: applicantUserId },
+      (tx) => tx.player.count({ where: { userId: applicantUserId } }),
+    );
+    return count > 0;
+  }
+
+  /**
+   * In-app notification for a reviewed join request. The link opens the portal that matches the requester:
+   * /player for a PLAYER, /guardian for a GUARDIAN. Failures are logged, never thrown (the review is committed).
+   */
+  private async notifyJoinRequestApplicant(
+    tenantContext: TenantContext,
+    review: {
+      applicantUserId: string;
+      requesterType: 'PLAYER' | 'GUARDIAN';
+      playerName: string;
+      status: string;
+      reviewNotes: string | null;
+    },
   ): Promise<void> {
+    const portalHref = review.requesterType === 'GUARDIAN' ? '/guardian' : '/player';
+    const content =
+      review.status === 'APPROVED'
+        ? {
+            title: 'Join Request Approved',
+            body: `Your request to join the academy for "${review.playerName}" has been approved!`,
+            href: portalHref,
+          }
+        : review.status === 'REJECTED'
+          ? {
+              title: 'Join Request Update',
+              body: `Your join request for "${review.playerName}" was rejected: ${review.reviewNotes ?? 'Not accepted at this time.'}`,
+              href: '/',
+            }
+          : review.status === 'MORE_INFO_REQUESTED'
+            ? {
+                title: 'Additional Information Required',
+                body: `Additional details required for "${review.playerName}": ${review.reviewNotes ?? 'Please contact the academy.'}`,
+                href: portalHref,
+              }
+            : null;
+    if (!content) return;
+    try {
+      await this.notificationsService.createNotification({
+        userId: review.applicantUserId,
+        senderUserId: tenantContext.actorUserId,
+        tenantId: tenantContext.tenantId,
+        type: 'PLAYER_REGISTRATION',
+        ...content,
+      });
+    } catch (err) {
+      this.logger.warn(`Failed to notify join request applicant: ${(err as Error)?.message}`);
+    }
+  }
+
+  /**
+   * Review e-mail to the join request's contact address (outside the transaction). For an applicant whose account is
+   * still pending this is the only channel: they cannot sign in to read in-app notifications until approval.
+   * Every user-supplied value is HTML-escaped.
+   */
+  private async dispatchPlayerReviewEmail(review: {
+    email: string;
+    playerName: string;
+    status: 'APPROVED' | 'REJECTED' | 'MORE_INFO_REQUESTED';
+    academyName: string;
+    requesterType: 'PLAYER' | 'GUARDIAN';
+    applicantName: string | null;
+    reviewNotes: string | null;
+  }): Promise<void> {
     if (!this.emailService) return;
     try {
-      if (status === 'APPROVED') {
-        // Reuse sendPlayerEnrollmentWelcome or similar — here we send a generic approval note
-        await this.emailService.sendEmailDetailed({
-          to: email,
-          subject: `تمت الموافقة على طلب الانضمام — ${academyName} | Join Request Approved`,
-          html: `<div dir='rtl' style='font-family:Arial;padding:20px;'>
-            <h2 style='color:#0A3BFF;'>تمت الموافقة على طلب الانضمام 🎉</h2>
-            <p>مرحباً، تمت الموافقة على طلب الانضمام لـ <strong>${playerName}</strong> في أكاديمية <strong>${academyName}</strong>.</p>
-            <p>يمكنك الآن تسجيل الدخول لمتابعة تفاصيل الاشتراك والحصص التدريبية.</p>
-            <hr style='border-color:#334155;margin:20px 0;'/>
-            <p dir='ltr' style='color:#64748b;'>Your join request for <strong>${playerName}</strong> at <strong>${academyName}</strong> has been <strong>approved</strong>. You can now log in to access training details.</p>
-          </div>`,
-          text: `تمت الموافقة على طلب انضمام ${playerName} في ${academyName}. | Join request for ${playerName} at ${academyName} has been approved.`,
-        });
-      } else if (status === 'REJECTED') {
-        await this.emailService.sendEmailDetailed({
-          to: email,
-          subject: `تحديث طلب الانضمام — ${academyName} | Join Request Update`,
-          html: `<div dir='rtl' style='font-family:Arial;padding:20px;'>
-            <h2 style='color:#ef4444;'>تحديث طلب الانضمام</h2>
-            <p>نأسف لإبلاغك بأنه تم رفض طلب الانضمام لـ <strong>${playerName}</strong> في أكاديمية <strong>${academyName}</strong>.</p>
-            ${reviewNotes ? `<p><strong>السبب:</strong> ${reviewNotes}</p>` : ''}
-            <p>للمزيد من التفاصيل، يرجى التواصل مع إدارة الأكاديمية.</p>
-            <hr style='border-color:#334155;margin:20px 0;'/>
-            <p dir='ltr' style='color:#64748b;'>The join request for <strong>${playerName}</strong> at <strong>${academyName}</strong> was <strong>not accepted</strong>. ${reviewNotes ? 'Reason: ' + reviewNotes : ''}</p>
-          </div>`,
-          text: `تم رفض طلب انضمام ${playerName} في ${academyName}. | Join request for ${playerName} at ${academyName} was rejected.`,
-        });
-      }
+      await this.emailService.sendJoinRequestDecision({
+        to: review.email,
+        applicantName: review.applicantName,
+        playerName: review.playerName,
+        academyName: review.academyName,
+        status: review.status,
+        requesterType: review.requesterType,
+        notes: review.reviewNotes,
+      });
     } catch (err: any) {
       this.logger.warn(`Failed to dispatch player review email: ${err?.message}`);
     }

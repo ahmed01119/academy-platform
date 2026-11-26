@@ -1,11 +1,12 @@
+import { money, moneyOrNull } from '../../common/money';
 import {
   Inject,
   Injectable,
   Logger,
   NotFoundException,
   BadRequestException,
-  ForbiddenException,
   ConflictException,
+  ForbiddenException,
   ServiceUnavailableException,
   Optional,
 } from '@nestjs/common';
@@ -32,7 +33,6 @@ import {
   type UpdateTenantSubscriptionRequest,
   type PlatformAnnouncementItem,
   type CreatePlatformAnnouncementRequest,
-  type CreateAcademyApplicationRequest,
   type ReviewAcademyApplicationRequest,
   type AcademyApplicationItem,
   type StorageMetrics,
@@ -42,11 +42,34 @@ import {
   type UpdatePlatformAdminRoleRequest,
   type PlatformInviteUserRequest,
   type ApplicationStatus,
+  isSportCode,
 } from '@academy/shared';
 import { HealthService } from '../health/health.service';
+import { databaseFunctionErrorCode, singleRow } from '../../common/db-function-error';
 import { NotificationsService } from '../notifications/notifications.service';
 import { EmailService } from '../email/email.service';
 import { RedisService } from '../redis/redis.service';
+import { PlatformMetricsService } from './platform-metrics.service';
+import { ApplicationReplyService } from './application-reply.service';
+
+const PLATFORM_FUNCTION_MESSAGES = {
+  PLATFORM_ADMIN_REQUIRED: 'Platform administrator privileges are required',
+  PLATFORM_OWNER_REQUIRED: 'Only a Platform Owner can perform this action',
+  LAST_PLATFORM_OWNER: 'Cannot remove or suspend the last active platform owner',
+  USER_NOT_FOUND: 'Target user not found',
+  APPLICATION_NOT_FOUND: 'Academy application not found',
+  ACADEMY_NOT_FOUND: 'Academy not found',
+  APPLICATION_ALREADY_APPROVED: 'Application has already been approved and provisioned',
+  APPLICATION_NOT_REVIEWABLE: 'A rejected application cannot be approved',
+  CONFIRMATION_SLUG_MISMATCH: 'Confirmation slug does not match the academy',
+  ACADEMY_HAS_HISTORY:
+    'Academies with players, attendance or financial history can only be archived',
+  PLATFORM_ROLE_INVALID: 'Unknown platform role',
+  EMAIL_INVALID: 'A valid e-mail address is required',
+  NAME_INVALID: 'A name of at most 120 characters is required',
+} as const;
+type PlatformFunctionError = keyof typeof PLATFORM_FUNCTION_MESSAGES;
+const PLATFORM_FUNCTION_ERRORS = Object.keys(PLATFORM_FUNCTION_MESSAGES) as PlatformFunctionError[];
 
 @Injectable()
 export class PlatformService {
@@ -58,105 +81,61 @@ export class PlatformService {
     @Inject(HealthService) private readonly healthService: HealthService,
     @Inject(NotificationsService) private readonly notificationsService: NotificationsService,
     @Inject(EmailService) private readonly emailService: EmailService,
+    @Inject(PlatformMetricsService) private readonly metricsService: PlatformMetricsService,
     @Optional() @Inject(RedisService) private readonly redisService?: RedisService,
+    @Optional()
+    @Inject(ApplicationReplyService)
+    private readonly applicationReplies?: ApplicationReplyService,
   ) {}
 
   /**
+   * Runs a Phase 3A.2 platform definer function and maps the codes it raises (it re-checks the platform rules in the
+   * database) to the API's usual HTTP errors. Unknown errors are re-thrown unchanged.
+   */
+  private async callPlatformFunction<T>(call: () => Promise<T>): Promise<T> {
+    try {
+      return await call();
+    } catch (err) {
+      const code = databaseFunctionErrorCode(err, PLATFORM_FUNCTION_ERRORS);
+      if (code === 'PLATFORM_ADMIN_REQUIRED' || code === 'PLATFORM_OWNER_REQUIRED') {
+        throw new ForbiddenException({
+          code: ErrorCode.FORBIDDEN,
+          message: PLATFORM_FUNCTION_MESSAGES[code],
+        });
+      }
+      if (
+        code === 'USER_NOT_FOUND' ||
+        code === 'APPLICATION_NOT_FOUND' ||
+        code === 'ACADEMY_NOT_FOUND'
+      ) {
+        throw new NotFoundException({
+          code: ErrorCode.NOT_FOUND,
+          message: PLATFORM_FUNCTION_MESSAGES[code],
+        });
+      }
+      if (code) {
+        throw new BadRequestException({
+          code: ErrorCode.VALIDATION_FAILED,
+          message: PLATFORM_FUNCTION_MESSAGES[code],
+        });
+      }
+      const message = String((err as { message?: unknown })?.message ?? '');
+      if (/duplicate key|23505/.test(message)) {
+        throw new ConflictException({
+          code: ErrorCode.CONFLICT,
+          message: 'A record with the same unique value (e-mail or academy slug) already exists',
+        });
+      }
+      throw err;
+    }
+  }
+
+  /**
    * Retrieves high-level SaaS platform metrics for Super Administrators.
-   * Real database aggregations across tenants, subscriptions, users, and financials.
+   * Delegates to PlatformMetricsService (which owns the short-lived metrics cache).
    */
   async getOverviewMetrics(actorUserId: string): Promise<PlatformOverviewMetrics> {
-    return this.prisma.withPlatformAdminTransaction({ actorUserId }, async (tx) => {
-      const now = new Date();
-      const in14Days = new Date(Date.now() + 14 * 86400000);
-
-      const [
-        totalAcademies,
-        activeAcademies,
-        suspendedAcademies,
-        provisioningAcademies,
-        totalPlayers,
-        totalUsers,
-        totalBranches,
-        totalSessionsCompleted,
-        totalCoaches,
-        totalGuardians,
-        trialAcademies,
-        expiredAcademies,
-        activeSubscriptions,
-        upcomingRenewals,
-        expiredSubscriptions,
-        activeSubs,
-        paidInvoicesSum,
-        pendingInvoicesCount,
-        overdueInvoicesCount,
-      ] = await Promise.all([
-        tx.tenant.count(),
-        tx.tenant.count({ where: { status: 'ACTIVE' } }),
-        tx.tenant.count({ where: { status: 'SUSPENDED' } }),
-        tx.tenant.count({ where: { status: 'PROVISIONING' } }),
-        tx.player.count(),
-        tx.user.count(),
-        tx.branch.count(),
-        tx.attendanceSession.count({ where: { status: 'CLOSED' } }),
-        tx.tenantMembership.count({ where: { role: 'COACH', status: 'ACTIVE' } }),
-        tx.guardian.count(),
-        tx.tenantSubscription.count({ where: { status: 'TRIAL' } }),
-        tx.tenantSubscription.count({ where: { status: 'EXPIRED' } }),
-        tx.tenantSubscription.count({ where: { status: 'ACTIVE' } }),
-        tx.tenantSubscription.count({
-          where: {
-            status: 'ACTIVE',
-            renewalDate: { lte: in14Days, gte: now },
-          },
-        }),
-        tx.tenantSubscription.count({ where: { status: 'EXPIRED' } }),
-        tx.tenantSubscription.findMany({
-          where: { status: 'ACTIVE' },
-          include: { plan: true },
-        }),
-        tx.saaSInvoice.aggregate({
-          where: { status: 'PAID' },
-          _sum: { amount: true },
-        }),
-        tx.saaSInvoice.count({ where: { status: 'PENDING' } }),
-        tx.saaSInvoice.count({ where: { status: 'OVERDUE' } }),
-      ]);
-
-      // Calculate Monthly Recurring Revenue (MRR) based on active subscription prices
-      const mrr = (
-        activeSubs as Array<{
-          negotiatedPrice: number | null;
-          plan: { priceMonthly: number | null };
-        }>
-      ).reduce((acc: number, sub) => {
-        const monthly = sub.negotiatedPrice ?? sub.plan.priceMonthly ?? 0;
-        return acc + monthly;
-      }, 0);
-
-      return {
-        totalAcademies,
-        activeAcademies,
-        suspendedAcademies,
-        provisioningAcademies,
-        trialAcademies,
-        expiredAcademies,
-        totalPlayers,
-        totalCoaches,
-        totalUsers,
-        totalBranches,
-        totalGuardians,
-        totalSessionsCompleted,
-        activeSubscriptions,
-        upcomingRenewals,
-        expiredSubscriptions,
-        mrr,
-        collectedRevenue: paidInvoicesSum._sum.amount ?? 0,
-        outstandingInvoices: pendingInvoicesCount,
-        failedPayments: overdueInvoicesCount,
-        systemHealth: await this.healthService.getPlatformHealth(),
-      };
-    });
+    return this.metricsService.getOverviewMetrics(actorUserId);
   }
 
   /**
@@ -438,7 +417,10 @@ export class PlatformService {
         tenant._count.players > 0;
 
       if (dto.permanent && !hasHistory) {
-        await tx.tenant.delete({ where: { id: academyId } });
+        await this.callPlatformFunction(
+          () =>
+            tx.$queryRaw`SELECT public.platform_delete_academy(${academyId}::uuid, ${dto.confirmationSlug})`,
+        );
 
         await this.auditService.logEvent({
           actorUserId,
@@ -604,10 +586,14 @@ export class PlatformService {
         }
       }
 
-      const res = await tx.refreshToken.updateMany({
-        where: { userId: targetUserId, isRevoked: false },
-        data: { isRevoked: true },
+      // K13b in the database: platform_revoke_user_sessions bumps the session version first (row lock), then revokes
+      // the refresh tokens, and re-checks the platform rules (admin; another owner's sessions need an owner).
+      const revokedCount = await this.callPlatformFunction(async () => {
+        const rows = await tx.$queryRaw<Array<{ count: number }>>`
+          SELECT public.platform_revoke_user_sessions(${targetUserId}::uuid) AS count`;
+        return Number(singleRow(rows).count);
       });
+      const res = { count: revokedCount };
 
       await this.auditService.logEvent({
         actorUserId,
@@ -668,33 +654,21 @@ export class PlatformService {
         }
       }
 
-      const dataToUpdate: {
-        mustResetPassword?: boolean;
-        isSuspended?: boolean;
-        suspendedReason?: string | null;
-      } = {};
+      // platform_update_user_security writes the flags (the runtime role has no UPDATE on them, S6) and re-checks the
+      // rules above in the database. K13b: suspension bumps the session version (row lock first), then revokes the
+      // refresh tokens, so every access token of the suspended user is rejected on its next request.
+      const mustResetPassword =
+        typeof dto.mustResetPassword === 'boolean' ? dto.mustResetPassword : null;
+      const isSuspended = typeof dto.isSuspended === 'boolean' ? dto.isSuspended : null;
+      await this.callPlatformFunction(
+        () => tx.$queryRaw`
+          SELECT * FROM public.platform_update_user_security(
+            ${targetUserId}::uuid, ${mustResetPassword}::boolean, ${isSuspended}::boolean, ${dto.reason ?? null}
+          )`,
+      );
 
-      if (typeof dto.mustResetPassword === 'boolean') {
-        dataToUpdate.mustResetPassword = dto.mustResetPassword;
-      }
-      if (typeof dto.isSuspended === 'boolean') {
-        dataToUpdate.isSuspended = dto.isSuspended;
-        dataToUpdate.suspendedReason = dto.isSuspended
-          ? (dto.reason ?? 'Suspended by Super Admin')
-          : null;
-
-        // If suspending account, immediately revoke all active sessions!
-        if (dto.isSuspended) {
-          await tx.refreshToken.updateMany({
-            where: { userId: targetUserId, isRevoked: false },
-            data: { isRevoked: true },
-          });
-        }
-      }
-
-      const updated = await tx.user.update({
+      const updated = await tx.user.findUniqueOrThrow({
         where: { id: targetUserId },
-        data: dataToUpdate,
         include: {
           memberships: {
             include: { tenant: { select: { name: true } } },
@@ -760,8 +734,8 @@ export class PlatformService {
         code: p.code as SaaSPlanItem['code'],
         name: p.name,
         description: p.description,
-        priceMonthly: p.priceMonthly,
-        priceYearly: p.priceYearly,
+        priceMonthly: money(p.priceMonthly),
+        priceYearly: money(p.priceYearly),
         currency: p.currency,
         maxBranches: p.maxBranches,
         maxPlayers: p.maxPlayers,
@@ -797,8 +771,8 @@ export class PlatformService {
         data: {
           name: dto.name,
           description: dto.description,
-          priceMonthly: dto.priceMonthly,
-          priceYearly: dto.priceYearly,
+          priceMonthly: money(dto.priceMonthly),
+          priceYearly: money(dto.priceYearly),
           maxBranches: dto.maxBranches,
           maxPlayers: dto.maxPlayers,
           maxCoaches: dto.maxCoaches,
@@ -820,8 +794,8 @@ export class PlatformService {
         code: updated.code as SaaSPlanItem['code'],
         name: updated.name,
         description: updated.description,
-        priceMonthly: updated.priceMonthly,
-        priceYearly: updated.priceYearly,
+        priceMonthly: money(updated.priceMonthly),
+        priceYearly: money(updated.priceYearly),
         currency: updated.currency,
         maxBranches: updated.maxBranches,
         maxPlayers: updated.maxPlayers,
@@ -874,7 +848,7 @@ export class PlatformService {
           planCode: (dto.planCode as any) ?? 'STARTER',
           status: (dto.status as any) ?? 'ACTIVE',
           billingCycle: (dto.billingCycle as any) ?? 'MONTHLY',
-          negotiatedPrice: dto.negotiatedPrice,
+          negotiatedPrice: moneyOrNull(dto.negotiatedPrice),
           renewalDate: dto.renewalDate
             ? new Date(dto.renewalDate)
             : new Date(Date.now() + 30 * 86400000),
@@ -893,7 +867,7 @@ export class PlatformService {
         metadata: { updates: dto },
       });
 
-      const currentPrice = updated.negotiatedPrice ?? updated.plan.priceMonthly;
+      const currentPrice = money(updated.negotiatedPrice ?? updated.plan.priceMonthly);
 
       return {
         id: updated.id,
@@ -903,7 +877,7 @@ export class PlatformService {
         planName: updated.plan.name,
         status: updated.status as any,
         billingCycle: updated.billingCycle as any,
-        negotiatedPrice: updated.negotiatedPrice,
+        negotiatedPrice: moneyOrNull(updated.negotiatedPrice),
         currentPrice,
         currency: updated.currency,
         startDate: updated.startDate.toISOString(),
@@ -943,19 +917,19 @@ export class PlatformService {
       const grantedAt = new Date();
       const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour session
 
-      const auditEvent = await tx.auditLog.create({
-        data: {
-          tenantId: academyId,
-          actorUserId,
-          action: 'PLATFORM_SUPPORT_SESSION_STARTED',
-          resourceType: 'Tenant',
-          resourceId: academyId,
-          metadata: {
-            reason: dto.reason,
-            grantedAt: grantedAt.toISOString(),
-            expiresAt: expiresAt.toISOString(),
-            scope: 'READ_ONLY_SUPPORT',
-          },
+      // The audit entry is the grant itself: written through append_audit_log for the academy (platform admins may be
+      // recorded for any tenant) and the request fails if it cannot be written.
+      const auditLogId = await this.auditService.recordEvent({
+        tenantId: academyId,
+        actorUserId,
+        action: 'PLATFORM_SUPPORT_SESSION_STARTED',
+        resourceType: 'Tenant',
+        resourceId: academyId,
+        metadata: {
+          reason: dto.reason,
+          grantedAt: grantedAt.toISOString(),
+          expiresAt: expiresAt.toISOString(),
+          scope: 'READ_ONLY_SUPPORT',
         },
       });
 
@@ -966,7 +940,7 @@ export class PlatformService {
         reason: dto.reason,
         grantedAt: grantedAt.toISOString(),
         expiresAt: expiresAt.toISOString(),
-        auditLogId: auditEvent.id,
+        auditLogId,
       };
     });
   }
@@ -1178,29 +1152,28 @@ export class PlatformService {
         });
       }
 
-      let user = await tx.user.findUnique({ where: { email } });
-
-      if (user) {
-        user = await tx.user.update({
-          where: { id: user.id },
-          data: {
-            isPlatformSuperAdmin: true,
-            isPlatformOwner: isCoOwner ? true : user.isPlatformOwner,
-          },
-        });
+      // Privileged flags are written only by the definer functions (S6); both require a platform owner.
+      const existing = await tx.user.findUnique({
+        where: { email },
+        select: { id: true, isPlatformOwner: true },
+      });
+      let userId: string;
+      if (existing) {
+        const role = isCoOwner || existing.isPlatformOwner ? 'PLATFORM_OWNER' : 'SUPER_ADMIN';
+        await this.callPlatformFunction(
+          () =>
+            tx.$queryRaw`SELECT * FROM public.platform_set_user_platform_role(${existing.id}::uuid, ${role})`,
+        );
+        userId = existing.id;
       } else {
         isNewUser = true;
-        user = await tx.user.create({
-          data: {
-            email,
-            name: dto.name.trim(),
-            passwordHash: 'INVITED_PENDING_ACTIVATION',
-            isPlatformSuperAdmin: true,
-            isPlatformOwner: isCoOwner,
-            mustResetPassword: true,
-          },
+        userId = await this.callPlatformFunction(async () => {
+          const rows = await tx.$queryRaw<Array<{ id: string }>>`
+            SELECT public.platform_create_user(${email}, ${dto.name.trim()}, NULL, true, ${isCoOwner})::text AS id`;
+          return singleRow(rows).id;
         });
       }
+      const user = await tx.user.findUniqueOrThrow({ where: { id: userId } });
 
       return {
         userId: user.id,
@@ -1243,6 +1216,7 @@ export class PlatformService {
 
     await this.notificationsService.createNotification({
       userId: result.userId,
+      senderUserId: actorUserId,
       type: 'SECURITY',
       title: isCoOwner ? 'Platform Co-Owner Access Granted' : 'Platform Super Admin Access Granted',
       body: isCoOwner
@@ -1258,7 +1232,6 @@ export class PlatformService {
         dto.role ?? 'SUPER_ADMIN',
         actionUrl,
         isNewUser,
-        'ar',
       );
     } catch (e) {
       this.logger.warn(
@@ -1327,31 +1300,12 @@ export class PlatformService {
         }
       }
 
-      let isPlatformSuperAdmin = true;
-      let isPlatformOwner = false;
-
-      if (dto.role === 'PLATFORM_OWNER') {
-        isPlatformSuperAdmin = true;
-        isPlatformOwner = true;
-      } else if (dto.role === 'SUPER_ADMIN') {
-        isPlatformSuperAdmin = true;
-        isPlatformOwner = false;
-      } else if (dto.role === 'REVOKE') {
-        isPlatformSuperAdmin = false;
-        isPlatformOwner = false;
-      }
-
-      await tx.user.update({
-        where: { id: targetUserId },
-        data: { isPlatformSuperAdmin, isPlatformOwner },
-      });
-
-      if (dto.role === 'REVOKE') {
-        await tx.refreshToken.updateMany({
-          where: { userId: targetUserId, isRevoked: false },
-          data: { isRevoked: true },
-        });
-      }
+      // platform_set_user_platform_role writes the flags (S6), re-checks owner-only and last-owner protection in the
+      // database, and ends the user's sessions on any demotion (K13b), including REVOKE as before.
+      await this.callPlatformFunction(
+        () =>
+          tx.$queryRaw`SELECT * FROM public.platform_set_user_platform_role(${targetUserId}::uuid, ${dto.role})`,
+      );
 
       await this.auditService.logEvent({
         actorUserId,
@@ -1392,7 +1346,7 @@ export class PlatformService {
 
     const tenantId = dto.tenantId;
 
-    return this.prisma.withPlatformAdminTransaction({ actorUserId }, async (tx) => {
+    const invited = await this.prisma.withPlatformAdminTransaction({ actorUserId }, async (tx) => {
       const tenant = await tx.tenant.findUnique({ where: { id: tenantId } });
       if (!tenant) {
         throw new NotFoundException({
@@ -1405,16 +1359,16 @@ export class PlatformService {
       let user = await tx.user.findUnique({ where: { email } });
 
       if (!user) {
-        user = await tx.user.create({
-          data: {
-            email,
-            name: dto.name.trim(),
-            phone: dto.phone ?? null,
-            passwordHash: 'INVITED_PENDING_ACTIVATION',
-            mustResetPassword: true,
-          },
+        const newUserId = await this.callPlatformFunction(async () => {
+          const rows = await tx.$queryRaw<Array<{ id: string }>>`
+            SELECT public.platform_create_user(${email}, ${dto.name.trim()}, ${dto.phone ?? null}, false, false)::text AS id`;
+          return singleRow(rows).id;
         });
+        user = await tx.user.findUniqueOrThrow({ where: { id: newUserId } });
       }
+
+      // Memberships are tenant rows: RLS accepts their insert/update only under that tenant's context.
+      await tx.$executeRaw`SELECT set_config('app.tenant_id', ${tenantId}, true)`;
 
       const existingMembership = await tx.tenantMembership.findFirst({
         where: { tenantId, userId: user.id },
@@ -1447,126 +1401,29 @@ export class PlatformService {
         metadata: { email, role: dto.role, tenantId },
       });
 
+      return { tenantName: tenant.name, userId: user.id };
+    });
+
+    // After commit: the notification function verifies that the recipient is a member of the academy, which only
+    // the committed membership proves. A notification failure never undoes the invitation.
+    try {
       await this.notificationsService.createNotification({
-        userId: user.id,
+        userId: invited.userId,
+        senderUserId: actorUserId,
         tenantId,
         type: 'SYSTEM',
-        title: `Invited to ${tenant.name}`,
-        body: `You have been added to ${tenant.name} with the role of ${dto.role}.`,
+        title: `Invited to ${invited.tenantName}`,
+        body: `You have been added to ${invited.tenantName} with the role of ${dto.role}.`,
         href: '/dashboard',
       });
-
-      return {
-        success: true,
-        message: `User invited to ${tenant.name} successfully`,
-        userId: user.id,
-      };
-    });
-  }
-
-  /**
-   * Submits a public academy registration application.
-   */
-  async submitAcademyApplication(
-    applicantUserId: string,
-    dto: CreateAcademyApplicationRequest,
-  ): Promise<AcademyApplicationItem> {
-    const slug = dto.academySlug.trim().toLowerCase();
-
-    // Check slug uniqueness across active tenants and pending applications
-    const existingTenant = await this.prisma.tenant.findUnique({ where: { slug } });
-    if (existingTenant) {
-      throw new ConflictException({
-        code: ErrorCode.CONFLICT,
-        message: 'An academy with this slug already exists. Please choose a different identifier.',
-      });
-    }
-
-    const existingApp = await this.prisma.academyApplication.findFirst({
-      where: {
-        academySlug: slug,
-        status: { in: ['PENDING_REVIEW', 'APPROVED'] },
-      },
-    });
-    if (existingApp) {
-      throw new ConflictException({
-        code: ErrorCode.CONFLICT,
-        message: 'An application with this slug is already registered or under review.',
-      });
-    }
-
-    let resolvedApplicantId = applicantUserId?.trim();
-    if (!resolvedApplicantId) {
-      const email = dto.contactEmail.trim().toLowerCase();
-      let user = await this.prisma.user.findUnique({ where: { email } });
-      if (!user) {
-        user = await this.prisma.user.create({
-          data: {
-            email,
-            name: `${dto.academyName.trim()} Applicant`,
-            phone: dto.contactPhone?.trim() ?? null,
-            passwordHash: 'INVITED_PENDING_ACTIVATION',
-            mustResetPassword: true,
-          },
-        });
-      }
-      resolvedApplicantId = user.id;
-    }
-
-    const application = await this.prisma.academyApplication.create({
-      data: {
-        applicantUserId: resolvedApplicantId,
-        academyName: dto.academyName.trim(),
-        academySlug: slug,
-        sport: dto.sport as any,
-        city: dto.city?.trim() ?? null,
-        contactPhone: dto.contactPhone?.trim() ?? null,
-        contactEmail: dto.contactEmail.trim().toLowerCase(),
-        notes: dto.notes?.trim() ?? null,
-        status: 'PENDING_REVIEW',
-      },
-      include: {
-        applicant: { select: { name: true } },
-      },
-    });
-
-    // Notify Super Admins and Platform Owners
-    const platformStaff = await this.prisma.user.findMany({
-      where: {
-        OR: [{ isPlatformSuperAdmin: true }, { isPlatformOwner: true }],
-        isSuspended: false,
-      },
-      select: { id: true },
-    });
-
-    for (const admin of platformStaff) {
-      await this.notificationsService.createNotification({
-        userId: admin.id,
-        type: 'ACADEMY_APPLICATION',
-        title: 'New Academy Application',
-        body: `"${dto.academyName}" submitted a registration application for review.`,
-        href: '/platform',
-      });
+    } catch (e) {
+      this.logger.warn(`Failed to notify the invited user: ${(e as Error)?.message}`);
     }
 
     return {
-      id: application.id,
-      applicantUserId: application.applicantUserId,
-      applicantName: application.applicant.name,
-      academyName: application.academyName,
-      academySlug: application.academySlug,
-      sport: application.sport,
-      city: application.city,
-      contactPhone: application.contactPhone,
-      contactEmail: application.contactEmail,
-      notes: application.notes,
-      status: application.status as ApplicationStatus,
-      reviewNotes: application.reviewNotes,
-      reviewedByUserId: application.reviewedByUserId,
-      reviewedAt: application.reviewedAt?.toISOString() ?? null,
-      provisionedTenantId: application.provisionedTenantId,
-      createdAt: application.createdAt.toISOString(),
-      updatedAt: application.updatedAt.toISOString(),
+      success: true,
+      message: `User invited to ${invited.tenantName} successfully`,
+      userId: invited.userId,
     };
   }
 
@@ -1602,6 +1459,8 @@ export class PlatformService {
         reviewedByUserId: app.reviewedByUserId,
         reviewedAt: app.reviewedAt?.toISOString() ?? null,
         provisionedTenantId: app.provisionedTenantId,
+        applicantReply: app.applicantReply,
+        applicantRepliedAt: app.applicantRepliedAt?.toISOString() ?? null,
         createdAt: app.createdAt.toISOString(),
         updatedAt: app.updatedAt.toISOString(),
       }));
@@ -1636,67 +1495,44 @@ export class PlatformService {
         });
       }
 
-      let provisionedTenantId: string | null = application.provisionedTenantId;
-
-      if (dto.status === 'APPROVED') {
-        const tenant = await tx.tenant.create({
-          data: {
-            name: application.academyName,
-            slug: application.academySlug,
-            currency: 'EGP',
-            timezone: 'Africa/Cairo',
-            status: 'ACTIVE',
-            branches: {
-              create: {
-                name: 'الفرع الرئيسي',
-                code: 'MAIN',
-                status: 'ACTIVE',
-              },
-            },
-            memberships: {
-              create: {
-                userId: application.applicantUserId,
-                role: 'OWNER',
-                status: 'ACTIVE',
-              },
-            },
-          },
-        });
-
-        provisionedTenantId = tenant.id;
-
-        const plan = await tx.saaSPlan.findFirst({
-          where: { code: dto.initialPlanCode as any, isActive: true },
-        });
-
-        const renewalDate = new Date();
-        renewalDate.setMonth(renewalDate.getMonth() + 1);
-
-        await tx.tenantSubscription.create({
-          data: {
-            tenantId: tenant.id,
-            planCode: (plan?.code ?? 'STARTER') as any,
-            status: 'ACTIVE',
-            billingCycle: 'MONTHLY',
-            negotiatedPrice: plan?.priceMonthly ?? null,
-            currency: 'EGP',
-            renewalDate,
-            autoRenew: true,
-          },
+      // Owner decision B7: only PENDING_REVIEW or MORE_INFO_REQUESTED applications can be approved.
+      if (dto.status === 'APPROVED' && application.status === 'REJECTED') {
+        throw new BadRequestException({
+          code: ErrorCode.VALIDATION_FAILED,
+          message: 'A rejected application cannot be approved',
         });
       }
 
-      const updated = await tx.academyApplication.update({
-        where: { id: applicationId },
-        data: {
-          status: dto.status as any,
-          reviewNotes: dto.reviewNotes?.trim() ?? null,
-          reviewedByUserId: actorUserId,
-          reviewedAt: new Date(),
-          provisionedTenantId,
-        },
-        include: { applicant: { select: { name: true } } },
-      });
+      let provisionedTenantId: string | null = application.provisionedTenantId;
+
+      if (dto.status === 'APPROVED') {
+        // One definer function provisions the academy atomically (tenant, main branch, OWNER membership, subscription)
+        // and marks the application APPROVED; the runtime role has no INSERT on tenants.
+        provisionedTenantId = await this.callPlatformFunction(async () => {
+          const rows = await tx.$queryRaw<Array<{ id: string }>>`
+            SELECT public.platform_approve_academy_application(
+              ${applicationId}::uuid, ${dto.initialPlanCode ?? null}, ${dto.reviewNotes ?? null}
+            )::text AS id`;
+          return singleRow(rows).id;
+        });
+      }
+
+      const updated =
+        dto.status === 'APPROVED'
+          ? await tx.academyApplication.findUniqueOrThrow({
+              where: { id: applicationId },
+              include: { applicant: { select: { name: true } } },
+            })
+          : await tx.academyApplication.update({
+              where: { id: applicationId },
+              data: {
+                status: dto.status as any,
+                reviewNotes: dto.reviewNotes?.trim() ?? null,
+                reviewedByUserId: actorUserId,
+                reviewedAt: new Date(),
+              },
+              include: { applicant: { select: { name: true } } },
+            });
 
       await this.auditService.logEvent({
         actorUserId,
@@ -1727,6 +1563,8 @@ export class PlatformService {
           reviewedByUserId: updated.reviewedByUserId,
           reviewedAt: updated.reviewedAt?.toISOString() ?? null,
           provisionedTenantId: updated.provisionedTenantId,
+          applicantReply: updated.applicantReply,
+          applicantRepliedAt: updated.applicantRepliedAt?.toISOString() ?? null,
           createdAt: updated.createdAt.toISOString(),
           updatedAt: updated.updatedAt.toISOString(),
         },
@@ -1736,11 +1574,33 @@ export class PlatformService {
       };
     });
 
+    // The academy's sport, chosen at registration, becomes its main sport. The provisioning function does not record it,
+    // so it is written here, in the new academy's own context (tenant_sports is tenant-scoped). If this ever fails the
+    // academy is shown as football and its owner can set the sport in the settings, so approval is not undone for it.
+    if (dto.status === 'APPROVED' && result.provisionedTenantId && isSportCode(result.item.sport)) {
+      const tenantId = result.provisionedTenantId;
+      const sport = result.item.sport;
+      try {
+        await this.prisma.withTenantTransaction({ tenantId, actorUserId }, (tx) =>
+          tx.tenantSport.upsert({
+            where: { tenantId_sport: { tenantId, sport } },
+            create: { tenantId, sport, isPrimary: true },
+            update: { isPrimary: true },
+          }),
+        );
+      } catch (err) {
+        this.logger.warn(
+          `Could not record the sport of academy ${tenantId}: ${(err as Error)?.message ?? err}`,
+        );
+      }
+    }
+
     // Dispatch notifications safely after tenant and application transactions commit
     try {
       if (dto.status === 'APPROVED') {
         await this.notificationsService.createNotification({
           userId: result.applicantUserId,
+          senderUserId: actorUserId,
           tenantId: result.provisionedTenantId ?? undefined,
           type: 'ACADEMY_APPLICATION',
           title: 'Academy Approved & Ready',
@@ -1756,7 +1616,8 @@ export class PlatformService {
             result.item.applicantName || 'Academy Owner',
             result.academyName,
             `${appUrl}/login`,
-            'ar',
+            undefined,
+            dto.reviewNotes,
           );
         } catch (mailErr: any) {
           this.logger.warn(
@@ -1766,6 +1627,7 @@ export class PlatformService {
       } else if (dto.status === 'REJECTED') {
         await this.notificationsService.createNotification({
           userId: result.applicantUserId,
+          senderUserId: actorUserId,
           type: 'ACADEMY_APPLICATION',
           title: 'Academy Application Update',
           body: `Your application for "${result.academyName}" was reviewed: ${dto.reviewNotes ?? 'Application not approved.'}`,
@@ -1779,7 +1641,6 @@ export class PlatformService {
             result.item.applicantName || '',
             result.academyName,
             dto.reviewNotes,
-            'ar',
           );
         } catch (mailErr: any) {
           this.logger.warn(
@@ -1789,6 +1650,7 @@ export class PlatformService {
       } else if (dto.status === 'MORE_INFO_REQUESTED') {
         await this.notificationsService.createNotification({
           userId: result.applicantUserId,
+          senderUserId: actorUserId,
           type: 'ACADEMY_APPLICATION',
           title: 'Additional Information Required',
           body: `Additional details required for "${result.academyName}": ${dto.reviewNotes ?? ''}`,
@@ -1797,12 +1659,22 @@ export class PlatformService {
 
         // Dispatch branded more info requested email
         try {
+          // The e-mail's button opens the reply page; the link is signed for this request only.
+          const reviewedAt = result.item.reviewedAt ? new Date(result.item.reviewedAt) : null;
+          const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+          const replyUrl =
+            this.applicationReplies && reviewedAt
+              ? `${appUrl}/application-reply?token=${encodeURIComponent(
+                  this.applicationReplies.createToken(applicationId, reviewedAt),
+                )}`
+              : undefined;
           await this.emailService.sendAcademyMoreInfoRequested(
             result.item.contactEmail,
             result.item.applicantName || '',
             result.academyName,
             dto.reviewNotes,
-            'ar',
+            undefined,
+            replyUrl,
           );
         } catch (mailErr: any) {
           this.logger.warn(
@@ -2002,12 +1874,16 @@ export class PlatformService {
         tx.playerSubscription.count({ where: { status: 'ACTIVE' } }),
       ]);
 
-      const estimatedReclaimableBytes = expiredTokensCount * 256 + purgeableAuditLogsCount * 350;
+      // K5: audit logs are append-only (trigger, and no DELETE privilege for the runtime role); maintenance never deletes
+      // them, so none are purgeable and only expired tokens count towards reclaimable space. Aged operational logs are
+      // still counted for information.
+      const estimatedReclaimableBytes = expiredTokensCount * 256;
 
       return {
         expiredSessionsCount: expiredTokensCount,
         expiredTokensCount,
-        purgeableAuditLogsCount,
+        purgeableAuditLogsCount: 0,
+        agedOperationalLogsCount: purgeableAuditLogsCount,
         estimatedReclaimableBytes,
         formattedReclaimableSize: this.formatBytes(estimatedReclaimableBytes),
         protectedRecordsSummary: {
@@ -2034,7 +1910,8 @@ export class PlatformService {
     return this.prisma.withPlatformAdminTransaction({ actorUserId }, async (tx) => {
       const now = new Date();
       let purgedTokensCount = 0;
-      let purgedLogsCount = 0;
+      const purgedLogsCount = 0;
+      let retainedLogsCount = 0;
 
       if (dto.purgeExpiredTokens) {
         const tokenRes = await tx.refreshToken.deleteMany({
@@ -2050,8 +1927,10 @@ export class PlatformService {
           Date.now() - dto.archiveOperationalLogsOlderThanDays * 86400000,
         );
 
-        // Strict fail-safe: NEVER delete financial audit logs!
-        const logRes = await tx.auditLog.deleteMany({
+        // K5: audit logs are append-only (database trigger; the runtime role has no DELETE privilege). Deleting them
+        // aborted the whole maintenance transaction, including the token purge. Until a retention policy is decided
+        // (open question 13) aged operational logs are retained and only counted.
+        retainedLogsCount = await tx.auditLog.count({
           where: {
             createdAt: { lt: cutoffDate },
             NOT: {
@@ -2064,7 +1943,6 @@ export class PlatformService {
             },
           },
         });
-        purgedLogsCount = logRes.count;
       }
 
       await this.auditService.logEvent({
@@ -2074,6 +1952,7 @@ export class PlatformService {
         metadata: {
           purgedTokensCount,
           purgedLogsCount,
+          retainedLogsCount,
         },
       });
 
@@ -2081,7 +1960,7 @@ export class PlatformService {
         success: true,
         purgedTokensCount,
         purgedLogsCount,
-        message: `Maintenance completed successfully. Purged ${purgedTokensCount} expired tokens and ${purgedLogsCount} operational logs.`,
+        message: `Maintenance completed successfully. Purged ${purgedTokensCount} expired tokens. ${retainedLogsCount} aged operational logs were retained (audit logs are append-only).`,
       };
     });
   }

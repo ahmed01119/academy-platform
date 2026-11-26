@@ -16,8 +16,10 @@ describe('TenantGuard & PermissionsGuard', () => {
     let currentRequest: Record<string, unknown> | null = null;
     const findUnique = vi.fn().mockImplementation(({ where }) => {
       const request = currentRequest as Record<string, unknown> | null;
-      const user = request?.user as { memberships?: Array<{ tenantId: string }> } | undefined;
-      return user?.memberships?.find((m) => m.tenantId === where.tenantId_userId.tenantId) ?? null;
+      const user = request?.user as
+        { memberships?: Array<{ tenantId: string; tenantStatus?: string }> } | undefined;
+      const m = user?.memberships?.find((x) => x.tenantId === where.tenantId_userId.tenantId);
+      return m ? { ...m, tenant: { status: m.tenantStatus ?? 'ACTIVE' } } : null;
     });
     const withAuthLookupTransaction = vi
       .fn()
@@ -103,6 +105,28 @@ describe('TenantGuard & PermissionsGuard', () => {
         params: {},
       });
       await expect(guard.canActivate(ctx)).rejects.toThrow(ForbiddenException);
+    });
+
+    it('K3: refuses every member of a suspended academy, on every request', async () => {
+      const ctx = createMockContext({
+        user: {
+          id: 'u1',
+          memberships: [
+            {
+              tenantId: TENANT_A,
+              status: 'ACTIVE',
+              role: TenantRole.OWNER,
+              tenantStatus: 'SUSPENDED',
+            },
+          ],
+        },
+        headers: { 'x-tenant-id': TENANT_A },
+        query: {},
+        params: {},
+      });
+      await expect(guard.canActivate(ctx)).rejects.toMatchObject({
+        response: { code: 'ACADEMY_SUSPENDED' },
+      });
     });
 
     it('activates and attaches tenantContext when membership and branch match', async () => {
@@ -209,6 +233,7 @@ describe('TenantGuard & PermissionsGuard', () => {
       await expect(dbGuard.canActivate(ctx)).rejects.toThrow(ForbiddenException);
       expect(findUnique).toHaveBeenCalledWith({
         where: { tenantId_userId: { tenantId: TENANT_A, userId: 'u1' } },
+        include: { tenant: { select: { status: true } } },
       });
     });
 
@@ -220,6 +245,7 @@ describe('TenantGuard & PermissionsGuard', () => {
         role: 'OWNER',
         status: 'ACTIVE',
         branchId: null,
+        tenant: { status: 'ACTIVE' },
       });
       const withAuthLookupTransaction = vi
         .fn()
@@ -244,6 +270,7 @@ describe('TenantGuard & PermissionsGuard', () => {
       );
       expect(findUnique).toHaveBeenCalledWith({
         where: { tenantId_userId: { tenantId: TENANT_A, userId: 'u1' } },
+        include: { tenant: { select: { status: true } } },
       });
     });
   });

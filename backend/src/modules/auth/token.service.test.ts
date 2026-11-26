@@ -4,15 +4,19 @@ import type { JwtService } from '@nestjs/jwt';
 import type { PrismaService } from '../database/prisma.service';
 import type { AppConfigService } from '../../config/app-config.service';
 import { UnauthorizedException } from '@nestjs/common';
-import { TenantRole } from '@academy/shared';
+import type { TenantRole } from '@academy/shared';
 
 type MockFn = ReturnType<typeof vi.fn>;
 
 interface MockPrisma {
   $transaction: MockFn;
+  $queryRaw: MockFn;
+  user: { findUniqueOrThrow: MockFn; update: MockFn };
   refreshToken: {
     create: MockFn;
     findUnique: MockFn;
+    findUniqueOrThrow: MockFn;
+    findFirst: MockFn;
     update: MockFn;
     updateMany: MockFn;
   };
@@ -21,6 +25,18 @@ interface MockPrisma {
 interface MockJwt {
   signAsync: MockFn;
 }
+
+/** The user row as returned by the FOR SHARE query in rotateRefreshToken. */
+const lockedUser = (overrides: Partial<Record<string, unknown>> = {}) => [
+  {
+    email: 'coach@example.com',
+    is_platform_super_admin: false,
+    is_platform_owner: false,
+    is_suspended: false,
+    session_version: 3,
+    ...overrides,
+  },
+];
 
 describe('TokenService', () => {
   let tokenService: TokenService;
@@ -41,9 +57,17 @@ describe('TokenService', () => {
 
     mockPrisma = {
       $transaction: vi.fn(async (cb: (tx: unknown) => Promise<unknown>) => cb(mockPrisma)),
+      $queryRaw: vi.fn().mockResolvedValue(lockedUser()),
+      user: {
+        findUniqueOrThrow: vi.fn().mockResolvedValue({ sessionVersion: 3 }),
+        update: vi.fn().mockResolvedValue({ sessionVersion: 4 }),
+      },
       refreshToken: {
         create: vi.fn().mockResolvedValue({}),
         findUnique: vi.fn(),
+        findUniqueOrThrow: vi.fn().mockResolvedValue({ isRevoked: false, sessionVersion: 3 }),
+        // No token issued in the family within the reuse grace window (the default).
+        findFirst: vi.fn().mockResolvedValue(null),
         update: vi.fn().mockResolvedValue({}),
         updateMany: vi.fn().mockResolvedValue({ count: 1 }),
       },
@@ -56,177 +80,211 @@ describe('TokenService', () => {
     );
   });
 
-  it('hashes token with SHA-256 deterministically', () => {
-    const raw = 'random-token-string';
-    const hash1 = tokenService.hashToken(raw);
-    const hash2 = tokenService.hashToken(raw);
+  const activeToken = () => ({
+    id: 'token-id-1',
+    userId: 'user-123',
+    familyId: 'family-1',
+    expiresAt: new Date(Date.now() + 86_400_000),
+  });
 
-    expect(hash1).toBe(hash2);
+  it('hashes token with SHA-256 deterministically', () => {
+    const hash1 = tokenService.hashToken('random-token-string');
+    expect(hash1).toBe(tokenService.hashToken('random-token-string'));
     expect(hash1).toHaveLength(64);
   });
 
-  it('generates access and refresh tokens pair', async () => {
+  it('issues an access/refresh pair stamped with the user session version', async () => {
     const result = await tokenService.generateTokens('user-123', 'coach@example.com', {
       tenantId: 'tenant-456',
-      role: TenantRole.COACH,
-      branchId: 'branch-789',
+      role: 'COACH' as TenantRole,
     });
 
-    expect(result.accessToken).toBe('mock.jwt.token');
-    expect(result.refreshToken).toBeDefined();
-    expect(result.expiresIn).toBe(900);
+    expect(result).toMatchObject({ accessToken: 'mock.jwt.token', expiresIn: 900 });
     expect(mockJwt.signAsync).toHaveBeenCalledWith(
-      expect.objectContaining({
-        sub: 'user-123',
-        email: 'coach@example.com',
-        tenantId: 'tenant-456',
-        role: TenantRole.COACH,
-        branchId: 'branch-789',
-      }),
-      expect.objectContaining({
-        secret: mockConfig.jwtSecret,
-        expiresIn: '15m',
-      }),
+      expect.objectContaining({ sub: 'user-123', tenantId: 'tenant-456', sv: 3 }),
+      expect.any(Object),
     );
+    const created = mockPrisma.refreshToken.create.mock.calls[0]?.[0]?.data;
+    expect(created).toMatchObject({ userId: 'user-123', sessionVersion: 3 });
+    expect(created.tokenHash).toHaveLength(64);
+    // The plain refresh token is never stored.
+    expect(created.tokenHash).not.toBe(result.refreshToken);
   });
 
-  it('rotates refresh token and replaces old token with new one in same family', async () => {
-    const rawOldToken = 'old-raw-token';
-    const oldHash = tokenService.hashToken(rawOldToken);
-
-    const existingSession = {
-      id: 'session-1',
-      tokenHash: oldHash,
-      familyId: 'family-abc',
-      userId: 'user-123',
-      isRevoked: false,
-      expiresAt: new Date(Date.now() + 1000000),
-      user: {
-        email: 'coach@example.com',
-      },
+  it('uses an explicit session version and transaction client without an extra lookup', async () => {
+    const tx = {
+      user: { findUniqueOrThrow: vi.fn() },
+      refreshToken: { create: vi.fn().mockResolvedValue({}) },
     };
+    await tokenService.generateTokens(
+      'user-123',
+      'coach@example.com',
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      false,
+      false,
+      7,
+      tx as never,
+    );
+    expect(tx.user.findUniqueOrThrow).not.toHaveBeenCalled();
+    expect(tx.refreshToken.create.mock.calls[0]?.[0]?.data.sessionVersion).toBe(7);
+    expect(mockJwt.signAsync.mock.calls[0]?.[0]?.sv).toBe(7);
+  });
 
-    mockPrisma.refreshToken.findUnique.mockResolvedValue(existingSession);
-    mockPrisma.refreshToken.updateMany.mockResolvedValue({ count: 1 });
+  it('rotates a refresh token within its family, under a row lock, carrying the current version', async () => {
+    mockPrisma.refreshToken.findUnique.mockResolvedValue(activeToken());
 
-    const result = await tokenService.rotateRefreshToken(rawOldToken);
+    const result = await tokenService.rotateRefreshToken('raw-old-token');
 
     expect(result.userId).toBe('user-123');
-    expect(result.email).toBe('coach@example.com');
-    expect(result.tokens.accessToken).toBe('mock.jwt.token');
+    // FOR SHARE on the user row serialises against password changes.
+    const sql = (mockPrisma.$queryRaw.mock.calls[0]?.[0] as TemplateStringsArray).join('?');
+    expect(sql).toMatch(/FOR SHARE/);
+    // Consumed with a conditional update that also pins the session version.
     expect(mockPrisma.refreshToken.updateMany).toHaveBeenCalledWith({
-      where: { id: 'session-1', isRevoked: false },
+      where: { id: 'token-id-1', isRevoked: false, sessionVersion: 3 },
       data: { isRevoked: true },
     });
-    expect(mockPrisma.refreshToken.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          familyId: 'family-abc',
-          userId: 'user-123',
-        }),
-      }),
-    );
+    expect(mockPrisma.refreshToken.create.mock.calls[0]?.[0]?.data).toMatchObject({
+      familyId: 'family-1',
+      sessionVersion: 3,
+    });
+    expect(mockJwt.signAsync.mock.calls[0]?.[0]?.sv).toBe(3);
   });
 
-  it('detects refresh token reuse and revokes entire family', async () => {
-    const rawReusedToken = 'already-revoked-token';
-    const reusedHash = tokenService.hashToken(rawReusedToken);
+  it('detects refresh token reuse and revokes the entire family', async () => {
+    mockPrisma.refreshToken.findUnique.mockResolvedValue(activeToken());
+    mockPrisma.refreshToken.findUniqueOrThrow.mockResolvedValue({
+      isRevoked: true,
+      sessionVersion: 3,
+    });
 
-    const revokedSession = {
-      id: 'session-compromised',
-      tokenHash: reusedHash,
-      familyId: 'family-compromised',
-      userId: 'user-victim',
-      isRevoked: true, // ALREADY REVOKED! Token reuse detected
-      expiresAt: new Date(Date.now() + 1000000),
-      user: {
-        email: 'victim@example.com',
-      },
-    };
+    await expect(tokenService.rotateRefreshToken('raw-reused-token')).rejects.toThrow(
+      'Refresh token reuse detected',
+    );
+    expect(mockPrisma.refreshToken.updateMany).toHaveBeenCalledWith({
+      where: { familyId: 'family-1' },
+      data: { isRevoked: true },
+    });
+    expect(mockPrisma.refreshToken.create).not.toHaveBeenCalled();
+  });
 
-    mockPrisma.refreshToken.findUnique.mockResolvedValue(revokedSession);
-    mockPrisma.refreshToken.updateMany.mockResolvedValue({ count: 5 });
+  it('refuses a token from an older session version (password changed) without issuing anything', async () => {
+    mockPrisma.refreshToken.findUnique.mockResolvedValue(activeToken());
+    mockPrisma.$queryRaw.mockResolvedValue(lockedUser({ session_version: 4 }));
+    mockPrisma.refreshToken.findUniqueOrThrow.mockResolvedValue({
+      isRevoked: false,
+      sessionVersion: 3,
+    });
 
-    await expect(tokenService.rotateRefreshToken(rawReusedToken)).rejects.toThrow(
+    await expect(tokenService.rotateRefreshToken('raw-stale-token')).rejects.toThrow(
+      'Session is no longer valid',
+    );
+    expect(mockPrisma.refreshToken.create).not.toHaveBeenCalled();
+    expect(mockJwt.signAsync).not.toHaveBeenCalled();
+  });
+
+  it('treats a token revoked by a password change as a revoked session, not as reuse', async () => {
+    mockPrisma.refreshToken.findUnique.mockResolvedValue(activeToken());
+    mockPrisma.$queryRaw.mockResolvedValue(lockedUser({ session_version: 4 }));
+    mockPrisma.refreshToken.findUniqueOrThrow.mockResolvedValue({
+      isRevoked: true,
+      sessionVersion: 3,
+    });
+
+    await expect(tokenService.rotateRefreshToken('raw-token')).rejects.toThrow(
+      'Session is no longer valid',
+    );
+    expect(mockPrisma.refreshToken.create).not.toHaveBeenCalled();
+  });
+
+  it('refuses to rotate for a suspended user', async () => {
+    mockPrisma.refreshToken.findUnique.mockResolvedValue(activeToken());
+    mockPrisma.$queryRaw.mockResolvedValue(lockedUser({ is_suspended: true }));
+
+    await expect(tokenService.rotateRefreshToken('raw-token')).rejects.toThrow(
+      'Session is no longer valid',
+    );
+    expect(mockPrisma.refreshToken.create).not.toHaveBeenCalled();
+  });
+
+  it('detects a concurrent rotation race (conditional update loses) and revokes the family', async () => {
+    mockPrisma.refreshToken.findUnique.mockResolvedValue(activeToken());
+    mockPrisma.refreshToken.updateMany
+      .mockResolvedValueOnce({ count: 0 })
+      .mockResolvedValue({ count: 2 });
+
+    await expect(tokenService.rotateRefreshToken('raw-racing-token')).rejects.toThrow(
       UnauthorizedException,
     );
-
-    // Verify all tokens in the compromised family were invalidated
-    expect(mockPrisma.refreshToken.updateMany).toHaveBeenCalledWith({
-      where: { familyId: 'family-compromised' },
+    expect(mockPrisma.refreshToken.updateMany).toHaveBeenLastCalledWith({
+      where: { familyId: 'family-1' },
       data: { isRevoked: true },
     });
+    expect(mockPrisma.refreshToken.create).not.toHaveBeenCalled();
   });
 
-  it('detects concurrent rotation race condition and invalidates family', async () => {
-    const rawToken = 'racing-token';
-    const tokenHash = tokenService.hashToken(rawToken);
+  it('grace window: a just-rotated token whose answer was lost gets a fresh token instead of a logout', async () => {
+    mockPrisma.refreshToken.findUnique.mockResolvedValue(activeToken());
+    mockPrisma.refreshToken.findUniqueOrThrow.mockResolvedValue({
+      isRevoked: true,
+      sessionVersion: 3,
+    });
+    mockPrisma.refreshToken.findFirst.mockResolvedValue({ id: 'successor-1' });
 
-    const session = {
-      id: 'session-racing',
-      tokenHash,
-      familyId: 'family-racing',
-      userId: 'user-race',
-      isRevoked: false,
-      expiresAt: new Date(Date.now() + 1000000),
-      user: {
-        email: 'race@example.com',
-      },
-    };
+    const result = await tokenService.rotateRefreshToken('raw-lost-answer-token');
 
-    mockPrisma.refreshToken.findUnique.mockResolvedValue(session);
-    // Simulate losing the race: updateMany conditional update returned count 0
-    mockPrisma.refreshToken.updateMany.mockResolvedValueOnce({ count: 0 });
-
-    await expect(tokenService.rotateRefreshToken(rawToken)).rejects.toThrow(UnauthorizedException);
-
-    // Verify family was revoked due to race condition / suspected replay
+    expect(result.tokens.refreshToken).toBeTruthy();
+    expect(mockPrisma.refreshToken.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ familyId: 'family-1', isRevoked: false }),
+      }),
+    );
+    // Only the unused successor is revoked, never the whole family; one new token is issued.
     expect(mockPrisma.refreshToken.updateMany).toHaveBeenCalledWith({
-      where: { familyId: 'family-racing' },
+      where: { id: 'successor-1', isRevoked: false },
       data: { isRevoked: true },
     });
+    expect(mockPrisma.refreshToken.updateMany).not.toHaveBeenCalledWith({
+      where: { familyId: 'family-1' },
+      data: { isRevoked: true },
+    });
+    expect(mockPrisma.refreshToken.create).toHaveBeenCalledTimes(1);
   });
 
-  it('rejects expired refresh token', async () => {
-    const rawToken = 'expired-token';
-    const tokenHash = tokenService.hashToken(rawToken);
+  it('grace window: two parallel refreshes with the same token both keep the user signed in', async () => {
+    mockPrisma.refreshToken.findUnique.mockResolvedValue(activeToken());
+    mockPrisma.refreshToken.updateMany.mockResolvedValueOnce({ count: 0 }).mockResolvedValue({
+      count: 1,
+    });
+    mockPrisma.refreshToken.findFirst.mockResolvedValue({ id: 'winner-token' });
 
-    const expiredSession = {
-      id: 'session-expired',
-      tokenHash,
-      familyId: 'family-expired',
-      userId: 'user-expired',
-      isRevoked: false,
-      expiresAt: new Date(Date.now() - 10000), // in the past
-      user: { email: 'expired@example.com' },
-    };
-
-    mockPrisma.refreshToken.findUnique.mockResolvedValue(expiredSession);
-
-    await expect(tokenService.rotateRefreshToken(rawToken)).rejects.toThrow(UnauthorizedException);
+    await expect(tokenService.rotateRefreshToken('raw-racing-token')).resolves.toBeTruthy();
+    expect(mockPrisma.refreshToken.create).toHaveBeenCalledTimes(1);
   });
 
-  it('revokes entire family on logout when token is found', async () => {
-    const rawToken = 'logout-token';
-    const tokenHash = tokenService.hashToken(rawToken);
-
+  it('rejects an expired refresh token', async () => {
     mockPrisma.refreshToken.findUnique.mockResolvedValue({
-      id: 'session-logout',
-      tokenHash,
-      familyId: 'family-logout',
+      ...activeToken(),
+      expiresAt: new Date(Date.now() - 1000),
     });
-
-    await tokenService.revokeRefreshToken(rawToken);
-
-    expect(mockPrisma.refreshToken.updateMany).toHaveBeenCalledWith({
-      where: { familyId: 'family-logout' },
-      data: { isRevoked: true },
-    });
+    await expect(tokenService.rotateRefreshToken('raw-expired')).rejects.toThrow(
+      UnauthorizedException,
+    );
+    expect(mockPrisma.refreshToken.create).not.toHaveBeenCalled();
   });
 
-  it('revokes all sessions on password reset', async () => {
-    await tokenService.revokeAllUserTokens('user-reset-id');
+  it('rejects an unknown refresh token', async () => {
+    mockPrisma.refreshToken.findUnique.mockResolvedValue(null);
+    await expect(tokenService.rotateRefreshToken('raw-unknown')).rejects.toThrow(
+      UnauthorizedException,
+    );
+  });
 
+  it('revokes all user tokens', async () => {
+    await tokenService.revokeAllUserTokens('user-reset-id');
     expect(mockPrisma.refreshToken.updateMany).toHaveBeenCalledWith({
       where: { userId: 'user-reset-id' },
       data: { isRevoked: true },

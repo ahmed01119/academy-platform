@@ -1,9 +1,11 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { notFound } from 'next/navigation';
 import { Navbar } from '../../components/Navbar';
 import { useAuth } from '@/contexts/auth-context';
 import { api, ApiError } from '@/api/client';
+import { EmailCodeVerification } from '@/features/auth/components/EmailCodeVerification';
 import {
   ShieldCheck,
   ShieldAlert,
@@ -39,6 +41,10 @@ interface TestLog {
 }
 
 export default function AuthTestPage() {
+  if (process.env.NODE_ENV === 'production') {
+    notFound();
+  }
+
   const {
     user,
     activeTenant,
@@ -61,6 +67,7 @@ export default function AuthTestPage() {
   const [regSport, setRegSport] = useState('FOOTBALL');
   const [regOwnerName, setRegOwnerName] = useState('الكابتن عبد الرحمن');
   const [regEmail, setRegEmail] = useState('');
+  const [regEmailProof, setRegEmailProof] = useState<string | null>(null);
   const [regPhone, setRegPhone] = useState('+201012345678');
   const [regPassword, setRegPassword] = useState('P@ssword123!');
   const [isRegistering, setIsRegistering] = useState(false);
@@ -150,6 +157,7 @@ export default function AuthTestPage() {
         email: regEmail.trim().toLowerCase(),
         phone: regPhone.trim() || undefined,
         password: regPassword,
+        emailProof: regEmailProof ?? '',
       });
 
       addLog(
@@ -864,6 +872,12 @@ export default function AuthTestPage() {
                         dir="ltr"
                         className="w-full rounded-xl border border-[#2b4c3e] bg-[#0f1c18] py-2 px-3 text-xs text-white placeholder-[#5a7a6c] focus:border-[#2f9e6b] outline-none font-mono"
                       />
+                      <EmailCodeVerification
+                        email={regEmail}
+                        locale="ar"
+                        onProofChange={setRegEmailProof}
+                        idPrefix="auth-test-reg"
+                      />
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-[#9bb5a8] mb-1">
@@ -1005,7 +1019,7 @@ export default function AuthTestPage() {
                         required
                         value={verifyEmailAddress}
                         onChange={(e) => setVerifyEmailAddress(e.target.value)}
-                        placeholder="email@example.com"
+                        placeholder="name@example.com"
                         dir="ltr"
                         className="flex-1 rounded-xl border border-[#2b4c3e] bg-[#0f1c18] py-2 px-3 text-xs text-white placeholder-[#5a7a6c] focus:border-[#2f9e6b] outline-none font-mono"
                       />
@@ -1104,7 +1118,7 @@ export default function AuthTestPage() {
                         required
                         value={forgotEmail}
                         onChange={(e) => setForgotEmail(e.target.value)}
-                        placeholder="email@example.com"
+                        placeholder="name@example.com"
                         dir="ltr"
                         className="flex-1 rounded-xl border border-[#2b4c3e] bg-[#0f1c18] py-2 px-3 text-xs text-white placeholder-[#5a7a6c] focus:border-[#2f9e6b] outline-none font-mono"
                       />
@@ -1173,7 +1187,7 @@ export default function AuthTestPage() {
                         required
                         value={resetNewPassword}
                         onChange={(e) => setResetNewPassword(e.target.value)}
-                        placeholder="كلمة المرور الجديدة (مثال: NewP@ssword456!)"
+                        placeholder="كلمة المرور الجديدة"
                         dir="ltr"
                         className="w-full rounded-xl border border-[#2b4c3e] bg-[#0f1c18] py-2 px-3 text-xs text-white placeholder-[#5a7a6c] focus:border-[#2f9e6b] outline-none"
                       />

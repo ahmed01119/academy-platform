@@ -82,11 +82,7 @@ export function ThemeToggle({ compact = false }: ThemeToggleProps) {
         aria-expanded={isOpen}
       >
         {currentIcon}
-        {!compact && (
-          <span className="hidden sm:inline-block font-medium">
-            {currentLabel}
-          </span>
-        )}
+        {!compact && <span className="hidden sm:inline-block font-medium">{currentLabel}</span>}
         <ChevronDown className="h-3 w-3 opacity-60" />
       </button>
 

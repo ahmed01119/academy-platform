@@ -1,4 +1,7 @@
+import * as crypto from 'node:crypto';
+import { money, moneyOrNull } from '../../common/money';
 import { EmailService } from '../email/email.service';
+import { FinancePlansService } from './finance-plans.service';
 import {
   Inject,
   Injectable,
@@ -6,13 +9,18 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  ConflictException,
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
+import type { TenantTransactionClient } from '@academy/database';
 import { AuditService } from '../audit/audit.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import {
   ErrorCode,
+  Permission,
+  hasPermission,
+  type TenantRole,
   type TenantContext,
   type TenantSubscriptionItem,
   type PlayerSubscriptionPlanItem,
@@ -30,12 +38,15 @@ import {
   type AcademyFinancialDashboardMetrics,
 } from '@academy/shared';
 
+type PaymentReceiptEmail = Parameters<EmailService['sendPaymentReceipt']>[0];
+
 @Injectable()
 export class FinanceService {
   private readonly logger = new Logger(FinanceService.name);
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(AuditService) private readonly auditService: AuditService,
+    @Inject(FinancePlansService) private readonly plansService: FinancePlansService,
     @Optional()
     @Inject(NotificationsService)
     private readonly notificationsService?: NotificationsService,
@@ -80,7 +91,7 @@ export class FinanceService {
           });
         }
 
-        const currentPrice = sub.negotiatedPrice ?? sub.plan.priceMonthly;
+        const currentPrice = money(sub.negotiatedPrice ?? sub.plan.priceMonthly);
 
         return {
           id: sub.id,
@@ -90,7 +101,7 @@ export class FinanceService {
           planName: sub.plan.name,
           status: sub.status as any,
           billingCycle: sub.billingCycle as any,
-          negotiatedPrice: sub.negotiatedPrice,
+          negotiatedPrice: moneyOrNull(sub.negotiatedPrice),
           currentPrice,
           currency: sub.currency,
           startDate: sub.startDate.toISOString(),
@@ -109,92 +120,24 @@ export class FinanceService {
 
   /**
    * Lists player membership plans defined by this Academy.
+   * Delegates to FinancePlansService.
    */
   async listPlayerSubscriptionPlans(
     tenantContext: TenantContext,
     branchId?: string,
   ): Promise<PlayerSubscriptionPlanItem[]> {
-    return this.prisma.withTenantTransaction(
-      { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
-      async (tx) => {
-        const where: Record<string, any> = { tenantId: tenantContext.tenantId };
-        if (branchId) {
-          where.OR = [{ branchId }, { branchId: null }];
-        }
-
-        const plans = await tx.playerSubscriptionPlan.findMany({
-          where,
-          orderBy: { createdAt: 'desc' },
-          include: { branch: { select: { name: true } } },
-        });
-
-        return plans.map((p) => ({
-          id: p.id,
-          tenantId: p.tenantId,
-          branchId: p.branchId,
-          branchName: p.branch?.name ?? null,
-          sport: p.sport as any,
-          name: p.name,
-          description: p.description,
-          billingPeriod: p.billingPeriod as any,
-          feeAmount: p.feeAmount,
-          currency: p.currency,
-          isActive: p.isActive,
-          createdAt: p.createdAt.toISOString(),
-        }));
-      },
-    );
+    return this.plansService.listPlayerSubscriptionPlans(tenantContext, branchId);
   }
 
   /**
    * Creates a new player membership plan for the Academy.
+   * Delegates to FinancePlansService.
    */
   async createPlayerSubscriptionPlan(
     tenantContext: TenantContext,
     dto: CreatePlayerSubscriptionPlanRequest,
   ): Promise<PlayerSubscriptionPlanItem> {
-    return this.prisma.withTenantTransaction(
-      { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
-      async (tx) => {
-        const plan = await tx.playerSubscriptionPlan.create({
-          data: {
-            tenantId: tenantContext.tenantId,
-            branchId: dto.branchId,
-            sport: dto.sport as any,
-            name: dto.name,
-            description: dto.description,
-            billingPeriod: dto.billingPeriod as any,
-            feeAmount: dto.feeAmount,
-            currency: dto.currency || 'EGP',
-          },
-          include: { branch: { select: { name: true } } },
-        });
-
-        await this.auditService.logEvent({
-          tenantId: tenantContext.tenantId,
-          actorUserId: tenantContext.actorUserId,
-          action: 'PLAYER_SUBSCRIPTION_PLAN_CREATED',
-          resourceType: 'PlayerSubscriptionPlan',
-          resourceId: plan.id,
-          metadata: { name: plan.name, feeAmount: plan.feeAmount },
-        });
-
-        return {
-          id: plan.id,
-          tenantId: plan.tenantId,
-          branchId: plan.branchId,
-          branchName: plan.branch?.name ?? null,
-          sport: plan.sport as any,
-          name: plan.name,
-          description: plan.description,
-          billingPeriod: plan.billingPeriod as any,
-          feeAmount: plan.feeAmount,
-          currency: plan.currency,
-          isActive: plan.isActive,
-          createdAt: plan.createdAt.toISOString(),
-        };
-      },
-    );
+    return this.plansService.createPlayerSubscriptionPlan(tenantContext, dto);
   }
 
   /**
@@ -255,11 +198,11 @@ export class FinanceService {
           startDate: s.startDate.toISOString().slice(0, 10),
           dueDate: s.dueDate.toISOString().slice(0, 10),
           renewalDate: s.renewalDate ? s.renewalDate.toISOString().slice(0, 10) : null,
-          feeAmount: s.feeAmount,
-          discountAmount: s.discountAmount,
+          feeAmount: money(s.feeAmount),
+          discountAmount: money(s.discountAmount),
           discountReason: s.discountReason,
-          paidAmount: s.paidAmount,
-          outstandingBalance: s.outstandingBalance,
+          paidAmount: money(s.paidAmount),
+          outstandingBalance: money(s.outstandingBalance),
           lastPaymentDate: s.lastPaymentDate ? s.lastPaymentDate.toISOString() : null,
           notes: s.notes,
         }));
@@ -299,11 +242,11 @@ export class FinanceService {
           startDate: sub.startDate.toISOString().slice(0, 10),
           dueDate: sub.dueDate.toISOString().slice(0, 10),
           renewalDate: sub.renewalDate ? sub.renewalDate.toISOString().slice(0, 10) : null,
-          feeAmount: sub.feeAmount,
-          discountAmount: sub.discountAmount,
+          feeAmount: money(sub.feeAmount),
+          discountAmount: money(sub.discountAmount),
           discountReason: sub.discountReason,
-          paidAmount: sub.paidAmount,
-          outstandingBalance: sub.outstandingBalance,
+          paidAmount: money(sub.paidAmount),
+          outstandingBalance: money(sub.outstandingBalance),
           lastPaymentDate: sub.lastPaymentDate ? sub.lastPaymentDate.toISOString() : null,
           notes: sub.notes,
         };
@@ -343,7 +286,7 @@ export class FinanceService {
             startDate: dto.startDate ? new Date(dto.startDate) : new Date(),
             dueDate: new Date(dto.dueDate),
             renewalDate: new Date(dto.dueDate),
-            feeAmount: dto.feeAmount,
+            feeAmount: money(dto.feeAmount),
             discountAmount: dto.discountAmount || 0,
             discountReason: dto.discountReason,
             paidAmount: 0,
@@ -376,11 +319,11 @@ export class FinanceService {
           startDate: sub.startDate.toISOString().slice(0, 10),
           dueDate: sub.dueDate.toISOString().slice(0, 10),
           renewalDate: sub.renewalDate ? sub.renewalDate.toISOString().slice(0, 10) : null,
-          feeAmount: sub.feeAmount,
-          discountAmount: sub.discountAmount,
+          feeAmount: money(sub.feeAmount),
+          discountAmount: money(sub.discountAmount),
           discountReason: sub.discountReason,
-          paidAmount: sub.paidAmount,
-          outstandingBalance: sub.outstandingBalance,
+          paidAmount: money(sub.paidAmount),
+          outstandingBalance: money(sub.outstandingBalance),
           lastPaymentDate: null,
           notes: sub.notes,
         };
@@ -396,147 +339,168 @@ export class FinanceService {
     tenantContext: TenantContext,
     dto: RecordPlayerPaymentRequest,
   ): Promise<FinancialTransactionItem> {
-    return this.prisma.withTenantTransaction(
+    const { item, receipt } = await this.prisma.withTenantTransaction(
       { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
-      async (tx) => {
-        const player = await tx.player.findUnique({
-          where: { tenantId_id: { tenantId: tenantContext.tenantId, id: dto.playerId } },
-        });
-
-        if (!player) {
-          throw new NotFoundException({
-            code: ErrorCode.NOT_FOUND,
-            message: 'Player not found in this academy',
-          });
-        }
-
-        const now = new Date();
-        const year = now.getFullYear();
-        const rand = Math.floor(1000 + Math.random() * 9000);
-        const receiptNumber = dto.receiptNumber || `REC-${year}-${rand}`;
-
-        // 1. Create financial transaction in ledger
-        const transaction = await tx.academyFinancialTransaction.create({
-          data: {
-            tenantId: tenantContext.tenantId,
-            branchId: dto.branchId,
-            sessionId: dto.sessionId,
-            playerId: dto.playerId,
-            subscriptionId: dto.subscriptionId,
-            recordedByUserId: tenantContext.actorUserId,
-            type: 'MEMBERSHIP_FEE',
-            amount: dto.amount,
-            currency: 'SAR',
-            paymentMethod: dto.paymentMethod as any,
-            status: 'COMPLETED',
-            receiptNumber,
-            referenceNumber: dto.referenceNumber,
-            notes: dto.notes,
-          },
-          include: {
-            branch: { select: { name: true } },
-            player: { select: { firstName: true, lastName: true } },
-            recordedByUser: { select: { name: true } },
-          },
-        });
-
-        // 2. Synchronize PlayerSubscription balance if subscription exists
-        const sub = dto.subscriptionId
-          ? await tx.playerSubscription.findUnique({ where: { id: dto.subscriptionId } })
-          : await tx.playerSubscription.findFirst({
-              where: { tenantId: tenantContext.tenantId, playerId: dto.playerId },
-              orderBy: { createdAt: 'desc' },
-            });
-
-        if (sub) {
-          const newPaidAmount = sub.paidAmount + dto.amount;
-          const newOutstanding = Math.max(0, sub.outstandingBalance - dto.amount);
-          const newStatus = newOutstanding <= 0 ? 'ACTIVE' : 'PARTIAL';
-
-          await tx.playerSubscription.update({
-            where: { id: sub.id },
-            data: {
-              paidAmount: newPaidAmount,
-              outstandingBalance: newOutstanding,
-              status: newStatus,
-              lastPaymentDate: now,
-            },
-          });
-        }
-
-        await this.auditService.logEvent({
-          tenantId: tenantContext.tenantId,
-          actorUserId: tenantContext.actorUserId,
-          action: 'FINANCIAL_PAYMENT_COLLECTED',
-          resourceType: 'AcademyFinancialTransaction',
-          resourceId: transaction.id,
-          metadata: {
-            playerId: dto.playerId,
-            amount: dto.amount,
-            paymentMethod: dto.paymentMethod,
-            receiptNumber,
-          },
-        });
-
-        // Dispatch official payment receipt email to guardian if email exists
-        if (this.emailService) {
-          try {
-            const guardian = await tx.guardian.findFirst({
-              where: { playerId: dto.playerId, email: { not: null } },
-              orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
-            });
-
-            if (guardian?.email) {
-              const academy = await tx.tenant.findUnique({
-                where: { id: tenantContext.tenantId },
-                select: { name: true },
-              });
-
-              await this.emailService.sendPaymentReceipt({
-                to: guardian.email,
-                recipientName: `${guardian.firstName} ${guardian.lastName}`.trim(),
-                academyName: academy?.name || 'Sportexus Academy',
-                receiptNumber,
-                amount: dto.amount,
-                currency: 'SAR',
-                paymentMethod: dto.paymentMethod,
-                description: dto.notes || 'سداد رسوم اشتراك تدريبي',
-                date: now,
-                locale: 'ar',
-              });
-            }
-          } catch (mailErr: unknown) {
-            this.logger.warn(
-              `Failed to dispatch payment receipt email: ${(mailErr as Error)?.message}`,
-            );
-          }
-        }
-
-        return {
-          id: transaction.id,
-          tenantId: transaction.tenantId,
-          branchId: transaction.branchId,
-          branchName: transaction.branch.name,
-          sessionId: transaction.sessionId,
-          playerId: transaction.playerId,
-          playerName: `${transaction.player?.firstName} ${transaction.player?.lastName}`,
-          subscriptionId: transaction.subscriptionId,
-          recordedByUserId: transaction.recordedByUserId,
-          recordedByName: transaction.recordedByUser.name,
-          type: transaction.type as any,
-          amount: transaction.amount,
-          currency: transaction.currency,
-          paymentMethod: transaction.paymentMethod as any,
-          status: transaction.status as any,
-          receiptNumber: transaction.receiptNumber,
-          referenceNumber: transaction.referenceNumber,
-          notes: transaction.notes,
-          reversalReason: null,
-          reversedAt: null,
-          createdAt: transaction.createdAt.toISOString(),
-        };
-      },
+      (tx) => this.recordPaymentInTx(tx, tenantContext, dto),
     );
+    this.dispatchReceipt(receipt);
+    return item;
+  }
+
+  /**
+   * Records a player payment inside a transaction the caller owns (desk collection above, or an online payment that
+   * must be marked paid in the same transaction). Returns the receipt e-mail to send after the commit (K12).
+   */
+  async recordPaymentInTx(
+    tx: TenantTransactionClient,
+    tenantContext: TenantContext,
+    dto: RecordPlayerPaymentRequest,
+  ): Promise<{ item: FinancialTransactionItem; receipt: PaymentReceiptEmail | null }> {
+    let pendingReceipt: PaymentReceiptEmail | null = null;
+    const player = await tx.player.findUnique({
+      where: { tenantId_id: { tenantId: tenantContext.tenantId, id: dto.playerId } },
+    });
+
+    if (!player) {
+      throw new NotFoundException({
+        code: ErrorCode.NOT_FOUND,
+        message: 'Player not found in this academy',
+      });
+    }
+
+    const now = new Date();
+    const receiptNumber = dto.receiptNumber || generateReceiptNumber('REC', now);
+
+    // 1. Create financial transaction in ledger, in the academy's own currency (K4)
+    const currency = await academyCurrency(tx, tenantContext.tenantId);
+    const transaction = await tx.academyFinancialTransaction.create({
+      data: {
+        tenantId: tenantContext.tenantId,
+        branchId: dto.branchId,
+        sessionId: dto.sessionId,
+        playerId: dto.playerId,
+        subscriptionId: dto.subscriptionId,
+        recordedByUserId: tenantContext.actorUserId,
+        type: 'MEMBERSHIP_FEE',
+        amount: money(dto.amount),
+        currency,
+        paymentMethod: dto.paymentMethod as any,
+        status: 'COMPLETED',
+        receiptNumber,
+        referenceNumber: dto.referenceNumber,
+        notes: dto.notes,
+      },
+      include: {
+        branch: { select: { name: true } },
+        player: { select: { firstName: true, lastName: true } },
+        recordedByUser: { select: { name: true } },
+      },
+    });
+
+    // 2. Synchronize PlayerSubscription balance if subscription exists
+    const sub = dto.subscriptionId
+      ? await tx.playerSubscription.findUnique({ where: { id: dto.subscriptionId } })
+      : await tx.playerSubscription.findFirst({
+          where: { tenantId: tenantContext.tenantId, playerId: dto.playerId },
+          orderBy: { createdAt: 'desc' },
+        });
+
+    if (sub) {
+      const newPaidAmount = money(sub.paidAmount) + dto.amount;
+      const newOutstanding = Math.max(0, money(sub.outstandingBalance) - dto.amount);
+      const newStatus = newOutstanding <= 0 ? 'ACTIVE' : 'PARTIAL';
+
+      await tx.playerSubscription.update({
+        where: { id: sub.id },
+        data: {
+          paidAmount: newPaidAmount,
+          outstandingBalance: newOutstanding,
+          status: newStatus,
+          lastPaymentDate: now,
+        },
+      });
+    }
+
+    await this.auditService.logEvent({
+      tenantId: tenantContext.tenantId,
+      actorUserId: tenantContext.actorUserId,
+      action: 'FINANCIAL_PAYMENT_COLLECTED',
+      resourceType: 'AcademyFinancialTransaction',
+      resourceId: transaction.id,
+      metadata: {
+        playerId: dto.playerId,
+        amount: money(dto.amount),
+        paymentMethod: dto.paymentMethod,
+        receiptNumber,
+      },
+    });
+
+    // Official payment receipt for the guardian (sent after the commit, see pendingReceipt)
+    if (this.emailService) {
+      try {
+        const guardian = await tx.guardian.findFirst({
+          where: { playerId: dto.playerId, email: { not: null } },
+          orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
+        });
+
+        if (guardian?.email) {
+          const academy = await tx.tenant.findUnique({
+            where: { id: tenantContext.tenantId },
+            select: { name: true },
+          });
+
+          pendingReceipt = {
+            to: guardian.email,
+            recipientName: `${guardian.firstName} ${guardian.lastName}`.trim(),
+            academyName: academy?.name || 'Sportexus Academy',
+            receiptNumber,
+            amount: money(dto.amount),
+            currency: transaction.currency,
+            paymentMethod: dto.paymentMethod,
+            description: dto.notes || 'Training subscription payment',
+            date: now,
+          };
+        }
+      } catch (mailErr: unknown) {
+        this.logger.warn(`Failed to prepare payment receipt email: ${(mailErr as Error)?.message}`);
+      }
+    }
+
+    const item: FinancialTransactionItem = {
+      id: transaction.id,
+      tenantId: transaction.tenantId,
+      branchId: transaction.branchId,
+      branchName: transaction.branch.name,
+      sessionId: transaction.sessionId,
+      playerId: transaction.playerId,
+      playerName: `${transaction.player?.firstName} ${transaction.player?.lastName}`,
+      subscriptionId: transaction.subscriptionId,
+      recordedByUserId: transaction.recordedByUserId,
+      recordedByName: transaction.recordedByUser.name,
+      type: transaction.type as any,
+      amount: money(transaction.amount),
+      currency: transaction.currency,
+      paymentMethod: transaction.paymentMethod as any,
+      status: transaction.status as any,
+      receiptNumber: transaction.receiptNumber,
+      referenceNumber: transaction.referenceNumber,
+      notes: transaction.notes,
+      reversalReason: null,
+      reversedAt: null,
+      createdAt: transaction.createdAt.toISOString(),
+    };
+    return { item, receipt: pendingReceipt };
+  }
+
+  /** Sends a payment receipt prepared by recordPaymentInTx; a slow or failing mail provider never affects the payment. */
+  dispatchReceipt(receipt: PaymentReceiptEmail | null): void {
+    if (receipt && this.emailService) {
+      void this.emailService.sendPaymentReceipt(receipt).catch((mailErr: unknown) => {
+        this.logger.warn(
+          `Failed to dispatch payment receipt email: ${(mailErr as Error)?.message}`,
+        );
+      });
+    }
   }
 
   /**
@@ -596,8 +560,8 @@ export class FinanceService {
           });
 
           if (sub) {
-            const reOutstanding = sub.outstandingBalance + transaction.amount;
-            const rePaid = Math.max(0, sub.paidAmount - transaction.amount);
+            const reOutstanding = money(sub.outstandingBalance) + money(transaction.amount);
+            const rePaid = Math.max(0, money(sub.paidAmount) - money(transaction.amount));
             const reStatus = reOutstanding > 0 ? (rePaid > 0 ? 'PARTIAL' : 'OVERDUE') : 'ACTIVE';
 
             await tx.playerSubscription.update({
@@ -617,7 +581,7 @@ export class FinanceService {
           action: 'FINANCIAL_TRANSACTION_REVERSED',
           resourceType: 'AcademyFinancialTransaction',
           resourceId: transactionId,
-          metadata: { reason: dto.reason, amount: transaction.amount },
+          metadata: { reason: dto.reason, amount: money(transaction.amount) },
         });
 
         return {
@@ -634,7 +598,7 @@ export class FinanceService {
           recordedByUserId: updated.recordedByUserId,
           recordedByName: updated.recordedByUser.name,
           type: updated.type as any,
-          amount: updated.amount,
+          amount: money(updated.amount),
           currency: updated.currency,
           paymentMethod: updated.paymentMethod as any,
           status: updated.status as any,
@@ -662,7 +626,7 @@ export class FinanceService {
       recordedByUserId: t.recordedByUserId,
       recordedByName: t.recordedByUser?.name ?? null,
       type: t.type as any,
-      amount: t.amount,
+      amount: money(t.amount),
       currency: t.currency,
       paymentMethod: t.paymentMethod as any,
       status: t.status as any,
@@ -745,24 +709,12 @@ export class FinanceService {
           });
         }
 
-        // 4. Verify coach assignment for COACH role
-        const isOwnerOrManager =
-          tenantContext.role === 'OWNER' ||
-          tenantContext.role === 'MANAGER' ||
-          tenantContext.role === 'ACCOUNTANT';
-
-        if (!isOwnerOrManager) {
-          const isAssigned =
-            session.coachUserId === tenantContext.actorUserId ||
-            session.group?.coaches.some((c) => c.coachUserId === tenantContext.actorUserId);
-
-          if (!isAssigned) {
-            throw new ForbiddenException({
-              code: ErrorCode.FORBIDDEN,
-              message: 'You are only permitted to submit expenses for sessions you are assigned to',
-            });
-          }
-        }
+        // 4. Who may claim an expense for this session (see assertSessionMoneyAccess)
+        assertSessionMoneyAccess(
+          tenantContext,
+          session,
+          'You are only permitted to submit expenses for sessions you are assigned to',
+        );
 
         // 5. Check Idempotency Key
         if (dto.idempotencyKey) {
@@ -805,12 +757,13 @@ export class FinanceService {
           return this.mapFinancialTransaction(duplicateExpense);
         }
 
-        // 7. Determine status: COACH expenses are PENDING review; OWNER/MANAGER/ACCOUNTANT are auto-approved (COMPLETED)
+        // 7. Determine status: claims by someone who may approve expenses (session_expenses.approve: owner, manager,
+        //    accountant) are auto-approved (COMPLETED); everyone else's (branch manager, coach) wait for review (PENDING).
         const now = new Date();
-        const receiptNumber =
-          dto.receiptNumber ||
-          `EXP-${now.getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
-        const isAutoApproved = isOwnerOrManager;
+        const receiptNumber = dto.receiptNumber || generateReceiptNumber('EXP', now);
+        const isAutoApproved =
+          Boolean(tenantContext.role) &&
+          hasPermission(tenantContext.role as TenantRole, Permission.SESSION_EXPENSES_APPROVE);
 
         const transaction = await tx.academyFinancialTransaction.create({
           data: {
@@ -820,7 +773,7 @@ export class FinanceService {
             recordedByUserId: tenantContext.actorUserId,
             type: 'SESSION_EXPENSE',
             amount: sanitizedAmount,
-            currency: 'SAR',
+            currency: await academyCurrency(tx, tenantContext.tenantId),
             paymentMethod: dto.paymentMethod as any,
             status: isAutoApproved ? 'COMPLETED' : 'PENDING',
             approvedByUserId: isAutoApproved ? tenantContext.actorUserId : null,
@@ -859,18 +812,24 @@ export class FinanceService {
     if (result.status === 'PENDING' && this.notificationsService) {
       try {
         const notifService = this.notificationsService;
-        const managers = await this.prisma.tenantMembership.findMany({
-          where: {
-            tenantId: tenantContext.tenantId,
-            role: { in: ['OWNER', 'MANAGER', 'ACCOUNTANT'] },
-            status: 'ACTIVE',
-          },
-          select: { userId: true },
-        });
+        const managers = await this.prisma.withTenantTransaction(
+          { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
+          (tx) =>
+            tx.tenantMembership.findMany({
+              where: {
+                tenantId: tenantContext.tenantId,
+                // Money is the owner's (owner decision 2026-11-24).
+                role: 'OWNER',
+                status: 'ACTIVE',
+              },
+              select: { userId: true },
+            }),
+        );
 
         for (const m of managers) {
           await notifService.createNotification({
             userId: m.userId,
+            senderUserId: tenantContext.actorUserId,
             tenantId: tenantContext.tenantId,
             type: 'EXPENSE_APPROVAL',
             title: 'طلب اعتماد مصروف تدريبي جديد',
@@ -962,7 +921,7 @@ export class FinanceService {
           resourceType: 'AcademyFinancialTransaction',
           resourceId: transactionId,
           metadata: {
-            amount: transaction.amount,
+            amount: money(transaction.amount),
             sessionId: transaction.sessionId,
             submitterUserId: transaction.recordedByUserId,
             approvedByUserId: tenantContext.actorUserId,
@@ -979,6 +938,7 @@ export class FinanceService {
         const notifService = this.notificationsService;
         await notifService.createNotification({
           userId: result.recordedByUserId,
+          senderUserId: tenantContext.actorUserId,
           tenantId: tenantContext.tenantId,
           type: 'EXPENSE_APPROVAL',
           title: 'تم اعتماد المصروف التدريبي',
@@ -1053,7 +1013,7 @@ export class FinanceService {
           resourceType: 'AcademyFinancialTransaction',
           resourceId: transactionId,
           metadata: {
-            amount: transaction.amount,
+            amount: money(transaction.amount),
             sessionId: transaction.sessionId,
             rejectionReason: dto.reason,
             rejectedByUserId: tenantContext.actorUserId,
@@ -1070,6 +1030,7 @@ export class FinanceService {
         const notifService = this.notificationsService;
         await notifService.createNotification({
           userId: result.recordedByUserId,
+          senderUserId: tenantContext.actorUserId,
           tenantId: tenantContext.tenantId,
           type: 'EXPENSE_APPROVAL',
           title: 'تم رفض طلب المصروف التدريبي',
@@ -1115,25 +1076,12 @@ export class FinanceService {
           });
         }
 
-        // Verify coach authorization to view session cashier
-        const isOwnerOrManager =
-          tenantContext.role === 'OWNER' ||
-          tenantContext.role === 'MANAGER' ||
-          tenantContext.role === 'ACCOUNTANT';
-
-        if (!isOwnerOrManager) {
-          const isAssigned =
-            session.coachUserId === tenantContext.actorUserId ||
-            session.group?.coaches.some((c) => c.coachUserId === tenantContext.actorUserId);
-
-          if (!isAssigned) {
-            throw new ForbiddenException({
-              code: ErrorCode.FORBIDDEN,
-              message:
-                'You are only permitted to view cashier summary for sessions you are assigned to',
-            });
-          }
-        }
+        // Who may see this session's cashier (see assertSessionMoneyAccess)
+        assertSessionMoneyAccess(
+          tenantContext,
+          session,
+          'You are only permitted to view cashier summary for sessions you are assigned to',
+        );
 
         // Transactions recorded for this session (all statuses for visibility)
         const transactions = await tx.academyFinancialTransaction.findMany({
@@ -1179,12 +1127,12 @@ export class FinanceService {
           if (t.status === 'COMPLETED') {
             if (t.type === 'MEMBERSHIP_FEE' || t.type === 'REGISTRATION_FEE') {
               if (t.paymentMethod === 'CASH') {
-                totalCashCollected += t.amount;
+                totalCashCollected += money(t.amount);
               } else {
-                totalElectronicCollected += t.amount;
+                totalElectronicCollected += money(t.amount);
               }
             } else if (t.type === 'SESSION_EXPENSE') {
-              totalExpenses += t.amount;
+              totalExpenses += money(t.amount);
             }
           }
         }
@@ -1230,12 +1178,20 @@ export class FinanceService {
   ): Promise<SessionCashierSummary> {
     const summary = await this.getSessionCashierSummary(tenantContext, sessionId);
 
+    // K8: a closed cashier is final. Closing again used to overwrite the reconciled totals and the closer.
+    if (summary.isReconciled) {
+      throw new ConflictException({
+        code: ErrorCode.CONFLICT,
+        message: 'This session cashier is already closed',
+      });
+    }
+
     return this.prisma.withTenantTransaction(
       { tenantId: tenantContext.tenantId, actorUserId: tenantContext.actorUserId },
       async (tx) => {
-        await tx.sessionCashierClosing.upsert({
-          where: { sessionId },
-          create: {
+        // create (not upsert): the unique session_id also refuses a concurrent second close.
+        await tx.sessionCashierClosing.create({
+          data: {
             tenantId: tenantContext.tenantId,
             branchId: summary.branchId,
             sessionId,
@@ -1245,27 +1201,12 @@ export class FinanceService {
             totalLate: summary.totalLate,
             totalActiveSubscribers: summary.totalActiveSubscribers,
             totalOverdueSubscribers: summary.totalOverdueSubscribers,
-            totalCashCollected: summary.totalCashCollected,
-            totalElectronicCollected: summary.totalElectronicCollected,
-            totalExpenses: summary.totalExpenses,
-            netCashMovement: summary.netCashMovement,
+            totalCashCollected: money(summary.totalCashCollected),
+            totalElectronicCollected: money(summary.totalElectronicCollected),
+            totalExpenses: money(summary.totalExpenses),
+            netCashMovement: money(summary.netCashMovement),
             isReconciled: true,
             notes: dto.notes,
-          },
-          update: {
-            closedByUserId: tenantContext.actorUserId,
-            totalAttendees: summary.totalAttendees,
-            totalAbsent: summary.totalAbsent,
-            totalLate: summary.totalLate,
-            totalActiveSubscribers: summary.totalActiveSubscribers,
-            totalOverdueSubscribers: summary.totalOverdueSubscribers,
-            totalCashCollected: summary.totalCashCollected,
-            totalElectronicCollected: summary.totalElectronicCollected,
-            totalExpenses: summary.totalExpenses,
-            netCashMovement: summary.netCashMovement,
-            isReconciled: true,
-            notes: dto.notes,
-            reconciledAt: new Date(),
           },
         });
 
@@ -1277,9 +1218,9 @@ export class FinanceService {
           resourceId: sessionId,
           metadata: {
             sessionId,
-            netCashMovement: summary.netCashMovement,
-            totalExpenses: summary.totalExpenses,
-            totalCashCollected: summary.totalCashCollected,
+            netCashMovement: money(summary.netCashMovement),
+            totalExpenses: money(summary.totalExpenses),
+            totalCashCollected: money(summary.totalCashCollected),
           },
         });
 
@@ -1338,24 +1279,24 @@ export class FinanceService {
 
           if (isRevenue) {
             paymentMethodBreakdown[t.paymentMethod] =
-              (paymentMethodBreakdown[t.paymentMethod] || 0) + t.amount;
+              (paymentMethodBreakdown[t.paymentMethod] || 0) + money(t.amount);
 
             const bName = t.branch.name;
-            branchRevenue[bName] = (branchRevenue[bName] || 0) + t.amount;
+            branchRevenue[bName] = (branchRevenue[bName] || 0) + money(t.amount);
 
             if (t.createdAt >= startOfDay) {
-              todayCollections += t.amount;
+              todayCollections += money(t.amount);
             }
             if (t.sessionId) {
-              sessionCollections += t.amount;
+              sessionCollections += money(t.amount);
             }
             if (t.createdAt >= startOfMonth) {
-              monthlyRevenue += t.amount;
+              monthlyRevenue += money(t.amount);
             }
           } else if (isExpense) {
-            totalExpenses += t.amount;
+            totalExpenses += money(t.amount);
             const category = 'تشغيل وتدريب';
-            expensesByCategory[category] = (expensesByCategory[category] || 0) + t.amount;
+            expensesByCategory[category] = (expensesByCategory[category] || 0) + money(t.amount);
           }
         }
 
@@ -1364,7 +1305,7 @@ export class FinanceService {
         });
 
         const outstandingPlayerBalances = playerSubs.reduce(
-          (acc, s) => acc + s.outstandingBalance,
+          (acc, s) => acc + money(s.outstandingBalance),
           0,
         );
         const overdueSubscriptionsCount = playerSubs.filter(
@@ -1395,7 +1336,7 @@ export class FinanceService {
             recordedByUserId: t.recordedByUserId,
             recordedByName: t.recordedByUser.name,
             type: t.type as any,
-            amount: t.amount,
+            amount: money(t.amount),
             currency: t.currency,
             paymentMethod: t.paymentMethod as any,
             status: t.status as any,
@@ -1410,4 +1351,58 @@ export class FinanceService {
       },
     );
   }
+}
+
+/**
+ * Who may see or claim money for a training session (cashier summary, expense claims): the OWNER, for any session of
+ * the academy (owner decision 2026-11-24: money is the owner's; the admin and coaches no longer hold these permissions).
+ * The permission itself (session_expenses.read / .create) is checked by PermissionsGuard before this.
+ */
+function assertSessionMoneyAccess(
+  tenantContext: TenantContext,
+  _session: {
+    branchId: string;
+    coachUserId: string | null;
+    group?: { coaches: Array<{ coachUserId: string }> } | null;
+  },
+  message: string,
+): void {
+  if (tenantContext.role === 'OWNER') return;
+  throw new ForbiddenException({ code: ErrorCode.FORBIDDEN, message });
+}
+
+/**
+ * K4 (owner decision 2026-11-16): money is recorded in the academy's own currency (`tenants.currency`, default EGP),
+ * never a fixed one. Read under the caller's tenant context.
+ */
+async function academyCurrency(
+  tx: {
+    tenant: {
+      findUnique: (args: {
+        where: { id: string };
+        select: { currency: true };
+      }) => Promise<{ currency: string } | null>;
+    };
+  },
+  tenantId: string,
+): Promise<string> {
+  const tenant = await tx.tenant.findUnique({
+    where: { id: tenantId },
+    select: { currency: true },
+  });
+  return tenant?.currency ?? 'EGP';
+}
+
+const RECEIPT_CODE_ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ'; // Crockford base 32
+
+/**
+ * K11: receipt / expense numbers. They used to be 4 random digits per year (REC-2026-1234), so collisions were likely
+ * and nothing prevented them. Now: prefix, UTC date and 8 Crockford base-32 characters from a CSPRNG (40 bits), e.g.
+ * REC-20261116-7K3M9QX2; the database enforces one number per academy (unique index), so a manual duplicate is a 409.
+ */
+export function generateReceiptNumber(prefix: 'REC' | 'EXP', now = new Date()): string {
+  const date = now.toISOString().slice(0, 10).replace(/-/g, '');
+  let code = '';
+  for (const byte of crypto.randomBytes(8)) code += RECEIPT_CODE_ALPHABET[byte & 31];
+  return `${prefix}-${date}-${code}`;
 }

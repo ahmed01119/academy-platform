@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { SportCodeSchema } from '../constants/sports';
+import { EmailProofSchema, PasswordSchema } from './auth';
 
 export const PlatformOverviewMetricsSchema = z.object({
   totalAcademies: z.number(),
@@ -214,7 +216,7 @@ export const CreateAcademyApplicationRequestSchema = z.object({
     .min(2)
     .max(50)
     .regex(/^[a-z0-9-]+$/, 'Slug must only contain lowercase letters, numbers, and dashes'),
-  sport: z.enum(['FOOTBALL']).default('FOOTBALL'),
+  sport: SportCodeSchema.default('FOOTBALL'),
   city: z.string().max(100).optional(),
   contactPhone: z.string().max(30).optional(),
   contactEmail: z.string().email(),
@@ -247,25 +249,112 @@ export const AcademyApplicationItemSchema = z.object({
   reviewedByUserId: z.string().uuid().nullable().optional(),
   reviewedAt: z.string().or(z.date()).nullable().optional(),
   provisionedTenantId: z.string().uuid().nullable().optional(),
+  /** The applicant's latest answer to a "more details" request, sent from the e-mailed reply link. */
+  applicantReply: z.string().nullable().optional(),
+  applicantRepliedAt: z.string().or(z.date()).nullable().optional(),
   createdAt: z.string().or(z.date()),
   updatedAt: z.string().or(z.date()),
 });
 
 export type AcademyApplicationItem = z.infer<typeof AcademyApplicationItemSchema>;
 
+/**
+ * Answering a "more details" request (MORE_INFO_REQUESTED) from the link in the e-mail. The applicant's account is
+ * still pending, so the signed `token` from the link is the only credential; it names the application and the request,
+ * and stops working once answered or when a newer request is made.
+ */
+export const ApplicationReplyTokenSchema = z.string().trim().min(1).max(512);
+
+export const AcademyApplicationReplyViewSchema = z.object({
+  academyName: z.string(),
+  sport: z.string(),
+  city: z.string().nullable(),
+  contactPhone: z.string().nullable(),
+  /** What the platform asked for. */
+  reviewNotes: z.string().nullable(),
+});
+export type AcademyApplicationReplyView = z.infer<typeof AcademyApplicationReplyViewSchema>;
+
+export const SubmitAcademyApplicationReplySchema = z.object({
+  token: ApplicationReplyTokenSchema,
+  reply: z.string().trim().min(2).max(2000),
+  /** Corrections, when the request asked for them; empty keeps the current value. */
+  city: z.string().trim().max(100).optional(),
+  contactPhone: z.string().trim().max(30).optional(),
+});
+export type SubmitAcademyApplicationReplyRequest = z.infer<
+  typeof SubmitAcademyApplicationReplySchema
+>;
+
 // ==========================================
 // Player Join Requests & Approvals
 // ==========================================
 
-export const CreatePlayerJoinRequestSchema = z.object({
-  tenantId: z.string().uuid(),
-  playerName: z.string().min(2).max(100),
-  contactEmail: z.string().email(),
-  contactPhone: z.string().max(30).optional(),
-  dateOfBirth: z.string().optional(),
-  guardianName: z.string().max(100).optional(),
-  branchId: z.string().uuid().optional(),
-});
+/**
+ * Who is asking to join an academy (K6). The platform has three kinds of applicant:
+ *  - COACH / academy owner: applies for a new academy with `RegisterRequestSchema` (reviewed by the platform);
+ *  - PLAYER: an athlete asking to join for themself (reviewed by the academy);
+ *  - GUARDIAN: a parent or guardian asking for their child (reviewed by the academy).
+ * PLAYER and GUARDIAN share this join request; `requesterType` tells them apart.
+ */
+export const JoinRequesterTypeSchema = z.enum(['PLAYER', 'GUARDIAN']);
+export type JoinRequesterType = z.infer<typeof JoinRequesterTypeSchema>;
+
+/**
+ * Public join request. The applicant always ends up with an account:
+ *  - signed in: the request is linked to the current account and `password` is ignored;
+ *  - not signed in: `password` is required and a new account is created for `contactEmail`
+ *    (name = the player for PLAYER, the guardian for GUARDIAN). The account stays pending (cannot sign in) until the
+ *    academy reviews the request.
+ * On approval the account is linked to the player record (PLAYER) or the child's guardian record (GUARDIAN).
+ */
+export const CreatePlayerJoinRequestSchema = z
+  .object({
+    tenantId: z.string().uuid(),
+    /** Defaults to PLAYER so older clients keep their meaning. */
+    requesterType: JoinRequesterTypeSchema.default('PLAYER'),
+    playerName: z.string().trim().min(2).max(100),
+    contactEmail: z.string().trim().toLowerCase().email().max(254),
+    contactPhone: z.string().trim().max(30).optional(),
+    dateOfBirth: z.string().optional(),
+    /** The guardian's full name. Required for GUARDIAN requests (it is the applicant's own name). */
+    guardianName: z.string().trim().max(100).optional(),
+    /**
+     * The guardian's own e-mail. For a PLAYER request `contactEmail` is the player's (it becomes their sign-in), so
+     * the guardian's e-mail is asked separately; for a GUARDIAN request the guardian is the applicant.
+     */
+    guardianEmail: z
+      .string()
+      .trim()
+      .toLowerCase()
+      .email()
+      .max(254)
+      .optional()
+      .or(z.literal('').transform(() => undefined)),
+    /** Password for the new account; only used when the applicant is not signed in. */
+    password: PasswordSchema.optional(),
+    /**
+     * Proof that `contactEmail` was confirmed with a code (POST /auth/email-code/verify). Required when the request
+     * creates a new account, i.e. the applicant is not signed in.
+     */
+    emailProof: EmailProofSchema.optional(),
+    branchId: z.string().uuid().optional(),
+    // The rest of the shared player form (owner decision 2026-11-25), stored with the request and copied to the player
+    // on approval. National ID and medical notes are shown only to staff with players.sensitive.read.
+    gender: z.enum(['MALE', 'FEMALE']).optional(),
+    jerseyNumber: z.number().int().min(1).max(99).optional(),
+    nationalId: z.string().trim().max(30).optional(),
+    medicalNotes: z.string().trim().max(500).optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.requesterType === 'GUARDIAN' && (value.guardianName?.length ?? 0) < 2) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['guardianName'],
+        message: 'Guardian name is required for a guardian request',
+      });
+    }
+  });
 
 export type CreatePlayerJoinRequest = z.infer<typeof CreatePlayerJoinRequestSchema>;
 
@@ -283,11 +372,19 @@ export const PlayerJoinRequestItemSchema = z.object({
   tenantId: z.string().uuid(),
   tenantName: z.string().optional(),
   applicantUserId: z.string().uuid().nullable().optional(),
+  requesterType: JoinRequesterTypeSchema.optional(),
   playerName: z.string(),
   contactEmail: z.string(),
   contactPhone: z.string().nullable().optional(),
   dateOfBirth: z.string().nullable().optional(),
   guardianName: z.string().nullable().optional(),
+  guardianEmail: z.string().nullable().optional(),
+  gender: z.enum(['MALE', 'FEMALE']).nullable().optional(),
+  jerseyNumber: z.number().nullable().optional(),
+  /** Only for staff with players.sensitive.read; otherwise left out. */
+  nationalId: z.string().nullable().optional(),
+  /** Only for staff with players.sensitive.read; otherwise left out. */
+  medicalNotes: z.string().nullable().optional(),
   status: ApplicationStatusSchema,
   reviewNotes: z.string().nullable().optional(),
   reviewedByUserId: z.string().uuid().nullable().optional(),
@@ -334,6 +431,8 @@ export const StorageMaintenanceDryRunResponseSchema = z.object({
   expiredSessionsCount: z.number(),
   expiredTokensCount: z.number(),
   purgeableAuditLogsCount: z.number(),
+  /** Aged operational audit logs (older than 90 days). Counted only: audit logs are append-only and retained (K5). */
+  agedOperationalLogsCount: z.number().optional(),
   estimatedReclaimableBytes: z.number(),
   formattedReclaimableSize: z.string(),
   protectedRecordsSummary: z.object({
@@ -387,17 +486,7 @@ export const PlatformInviteUserRequestSchema = z.object({
   email: z.string().email(),
   name: z.string().min(2).max(100),
   phone: z.string().max(30).optional(),
-  role: z.enum([
-    'SUPER_ADMIN',
-    'OWNER',
-    'MANAGER',
-    'BRANCH_MANAGER',
-    'COACH',
-    'RECEPTIONIST',
-    'ACCOUNTANT',
-    'PLAYER',
-    'GUARDIAN',
-  ]),
+  role: z.enum(['SUPER_ADMIN', 'OWNER', 'MANAGER', 'COACH', 'PLAYER', 'GUARDIAN']),
   tenantId: z.string().uuid().optional(),
   branchId: z.string().uuid().optional(),
 });

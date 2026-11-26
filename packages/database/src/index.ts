@@ -1,10 +1,11 @@
-export { PrismaClient, Prisma } from '@prisma/client';
+export * from '@prisma/client';
 export { createPrismaClient } from './client';
 export {
   withTenantTransaction,
   withAuthLookupTransaction,
   withPlatformAdminTransaction,
   withPortalUserTransaction,
+  withPaymentWebhookTransaction,
   type TenantTransactionOptions,
   type TenantTransactionClient,
   type AuthLookupOptions,

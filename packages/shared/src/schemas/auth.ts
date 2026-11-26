@@ -1,15 +1,58 @@
 import { z } from 'zod';
-import { TenantRoleSchema } from '../constants/roles-permissions';
+import { SportCodeSchema } from '../constants/sports';
+import { ActiveTenantRoleSchema, TenantRoleSchema } from '../constants/roles-permissions';
 
 export const PasswordSchema = z
-  .string()
+  .string({ required_error: 'Password is required' })
   .min(8, 'Password must be at least 8 characters long')
   .max(128, 'Password cannot exceed 128 characters')
   .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
   .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
-  .regex(/[0-9]/, 'Password must contain at least one number');
+  .regex(/[0-9]/, 'Password must contain at least one number')
+  .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character');
 
-export const EmailSchema = z.string().trim().email('Invalid email address').toLowerCase();
+export const EmailSchema = z
+  .string({ required_error: 'Email is required' })
+  .trim()
+  .min(1, 'Email is required')
+  .max(255, 'Email cannot exceed 255 characters')
+  .email('Invalid email address')
+  .toLowerCase();
+
+/**
+ * E-mail confirmation before an account is created (academy application, join request): the applicant asks for a
+ * 6-digit code, types it, and gets a short-lived proof that is sent with the form as `emailProof`.
+ */
+export const EMAIL_CODE_LENGTH = 6;
+
+export const SendEmailCodeRequestSchema = z.object({ email: EmailSchema });
+export type SendEmailCodeRequest = z.infer<typeof SendEmailCodeRequestSchema>;
+
+export const VerifyEmailCodeRequestSchema = z.object({
+  email: EmailSchema,
+  code: z
+    .string()
+    .trim()
+    .regex(/^\d{6}$/, 'The code is 6 digits'),
+});
+export type VerifyEmailCodeRequest = z.infer<typeof VerifyEmailCodeRequestSchema>;
+
+export const SendEmailCodeResponseSchema = z.object({
+  message: z.string(),
+  /** Seconds the code stays valid. */
+  expiresInSeconds: z.number().int(),
+});
+export type SendEmailCodeResponse = z.infer<typeof SendEmailCodeResponseSchema>;
+
+export const EmailCodeProofResponseSchema = z.object({
+  /** Opaque proof that the e-mail was confirmed. */
+  proof: z.string(),
+  expiresAt: z.string(),
+});
+export type EmailCodeProofResponse = z.infer<typeof EmailCodeProofResponseSchema>;
+
+/** The proof returned by POST /auth/email-code/verify. */
+export const EmailProofSchema = z.string().trim().min(1).max(512);
 
 export const RegisterRequestSchema = z.object({
   name: z.string().trim().min(2, 'Name must be at least 2 characters').max(100),
@@ -25,9 +68,9 @@ export const RegisterRequestSchema = z.object({
     .max(50)
     .regex(/^[a-z0-9-]+$/, 'Slug must be lowercase alphanumeric with hyphens')
     .optional(),
-  sport: z
-    .enum(['FOOTBALL', 'PADEL', 'SWIMMING', 'BASKETBALL', 'TENNIS', 'MARTIAL_ARTS', 'OTHER'])
-    .default('FOOTBALL'),
+  sport: SportCodeSchema.default('FOOTBALL'),
+  /** Proof that `email` was confirmed with a code (POST /auth/email-code/verify). */
+  emailProof: EmailProofSchema,
 });
 
 export type RegisterRequest = z.infer<typeof RegisterRequestSchema>;
@@ -50,8 +93,11 @@ export type RegisterResponse = z.infer<typeof RegisterResponseSchema>;
 
 export const LoginRequestSchema = z.object({
   email: EmailSchema,
-  password: z.string().min(1, 'Password is required'),
-  rememberMe: z.boolean().default(false),
+  password: z
+    .string({ required_error: 'Password is required' })
+    .min(1, 'Password is required')
+    .max(128, 'Password cannot exceed 128 characters'),
+  rememberMe: z.boolean().optional().default(false),
 });
 
 export type LoginRequest = z.input<typeof LoginRequestSchema>;
@@ -62,16 +108,33 @@ export const ForgotPasswordRequestSchema = z.object({
 
 export type ForgotPasswordRequest = z.infer<typeof ForgotPasswordRequestSchema>;
 
-export const ResetPasswordRequestSchema = z.object({
-  token: z.string().min(6, 'Reset token or verification code is required'),
-  newPassword: PasswordSchema,
-});
+/** 6-digit code typed by the user (K1): only valid together with the e-mail address it was sent to. */
+export const RESET_CODE_PATTERN = /^\d{6}$/;
+/** 256-bit link token from the e-mailed link, or a platform activation token: 64 hex characters. */
+export const RESET_LINK_TOKEN_PATTERN = /^[0-9a-f]{64}$/i;
+
+export const ResetPasswordRequestSchema = z
+  .object({
+    token: z
+      .string()
+      .trim()
+      .min(6, 'Reset token or verification code is required')
+      .max(128, 'Invalid reset token'),
+    /** Required with a 6-digit code; optional with a link token. */
+    email: EmailSchema.optional(),
+    newPassword: PasswordSchema,
+  })
+  .refine((value) => !RESET_CODE_PATTERN.test(value.token) || Boolean(value.email), {
+    message: 'Email address is required with the verification code',
+    path: ['email'],
+  });
 
 export type ResetPasswordRequest = z.infer<typeof ResetPasswordRequestSchema>;
 
 export const InviteStaffRequestSchema = z.object({
   email: EmailSchema,
-  role: TenantRoleSchema,
+  /** OWNER, MANAGER or COACH; the retired roles cannot be assigned. */
+  role: ActiveTenantRoleSchema,
   branchId: z.string().uuid().optional(),
 });
 
@@ -101,6 +164,8 @@ export const UserSummarySchema = z.object({
   isPlatformOwner: z.boolean().default(false),
   hasPlayerProfile: z.boolean().optional(),
   hasGuardianProfile: z.boolean().optional(),
+  /** A platform administrator requires a password change; the API refuses other requests until it is done. */
+  mustResetPassword: z.boolean().optional(),
   createdAt: z.string(),
 });
 
@@ -111,6 +176,8 @@ export const TenantMembershipSummarySchema = z.object({
   tenantId: z.string().uuid(),
   tenantName: z.string(),
   tenantSlug: z.string(),
+  /** ISO 4217 code of the academy's currency (K4); money in this academy is shown and recorded in it. */
+  tenantCurrency: z.string().length(3).optional(),
   role: TenantRoleSchema,
   status: z.enum(['INVITED', 'ACTIVE', 'SUSPENDED', 'REVOKED']),
   branchId: z.string().uuid().nullable().optional(),

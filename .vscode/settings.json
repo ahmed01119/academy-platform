@@ -5,5 +5,14 @@
     "source.fixAll.eslint": "explicit"
   },
   "typescript.tsdk": "node_modules/typescript/lib",
-  "eslint.workingDirectories": [{ "pattern": "apps/*" }, { "pattern": "packages/*" }]
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+  "eslint.workingDirectories": [
+    {
+      "pattern": "apps/*"
+    },
+    {
+      "pattern": "packages/*"
+    }
+  ],
+  "python.terminal.useEnvFile": true
 }

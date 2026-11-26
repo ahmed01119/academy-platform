@@ -1,9 +1,12 @@
 'use client';
 
+import { ListSkeleton, PageSkeleton } from '@/components/ui/skeleton';
+import { useAcademyCurrency } from '@/hooks/useAcademyCurrency';
 import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
+import { useAccessGuard } from '@/hooks/useAccessGuard';
 import { useLocale } from '@/contexts/locale-context';
 import {
   translateDataString,
@@ -15,7 +18,9 @@ import { PageHeader } from '../../../../components/ui/PageHeader';
 import { ErrorState } from '../../../../components/ui/ErrorState';
 import { StatusBadge } from '../../../../components/ui/StatusBadge';
 import { useToast } from '../../../../components/ui/Toast';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { api } from '@/api/client';
+import { QrCheckInSimulator } from '@/features/attendance/components/QrCheckInSimulator';
 import type {
   AttendanceEventSummary,
   AttendanceRosterItem,
@@ -24,6 +29,8 @@ import type {
   SessionDetails,
   SessionCashierSummary,
 } from '@academy/shared';
+import { Permission } from '@academy/shared';
+import { can } from '@/lib/auth/permissions';
 import {
   Calendar,
   Clock,
@@ -39,7 +46,6 @@ import {
   RefreshCw,
   Search,
   Check,
-  UserCheck,
   Timer,
   X,
   CreditCard,
@@ -52,12 +58,16 @@ import {
 } from 'lucide-react';
 
 export default function SessionAttendancePage() {
-  const router = useRouter();
   const params = useParams();
   const sessionId = params.id as string;
   const { user, activeTenant, isLoading } = useAuth();
+  // Cashier actions follow the permission matrix (the API checks the same permissions).
+  const canCloseCashier = can(user, activeTenant, Permission.SESSION_CASHIER_CLOSE);
+  const canClaimExpense = can(user, activeTenant, Permission.SESSION_EXPENSES_CREATE);
   const { locale, t } = useLocale();
+  const { label: currencyLabel } = useAcademyCurrency();
   const { toast } = useToast();
+  const requestConfirmation = useConfirm();
 
   const [session, setSession] = useState<SessionDetails | null>(null);
   const [isFetching, setIsFetching] = useState(true);
@@ -75,8 +85,6 @@ export default function SessionAttendancePage() {
   const [qrData, setQrData] = useState<GenerateQrResponse | null>(null);
   const [qrSecondsLeft, setQrSecondsLeft] = useState<number>(60);
   const [isGeneratingQr, setIsGeneratingQr] = useState(false);
-  const [qrCheckInPlayerId, setQrCheckInPlayerId] = useState('');
-  const [qrSimSuccess, setQrSimSuccess] = useState<string | null>(null);
 
   // Events / Audit Modal
   const [isEventsModalOpen, setIsEventsModalOpen] = useState(false);
@@ -116,23 +124,15 @@ export default function SessionAttendancePage() {
   const [isSubmittingRejectExpense, setIsSubmittingRejectExpense] = useState(false);
 
   const userRole = activeTenant?.role;
-  const canApproveExpenses =
-    Boolean(user?.isPlatformSuperAdmin) ||
-    userRole === 'OWNER' ||
-    userRole === 'MANAGER' ||
-    userRole === 'BRANCH_MANAGER' ||
-    userRole === 'ACCOUNTANT';
+  // Money is the owner's (owner decision 2026-11-24); the API enforces the same rule.
+  const canApproveExpenses = Boolean(user?.isPlatformSuperAdmin) || userRole === 'OWNER';
 
   // Close Cashier Modal
   const [isCloseCashierModalOpen, setIsCloseCashierModalOpen] = useState(false);
   const [closeCashierNotes, setCloseCashierNotes] = useState('');
   const [isSubmittingCloseCashier, setIsSubmittingCloseCashier] = useState(false);
 
-  useEffect(() => {
-    if (!isLoading && !user) {
-      router.push('/login');
-    }
-  }, [user, isLoading, router]);
+  useAccessGuard('authenticated');
 
   const loadCashierSummary = useCallback(async () => {
     if (!sessionId) return;
@@ -364,15 +364,10 @@ export default function SessionAttendancePage() {
   const handleOpenQrModal = async () => {
     setIsQrModalOpen(true);
     setIsGeneratingQr(true);
-    setQrSimSuccess(null);
     try {
       const res = await api.attendance.generateQr(sessionId, { expiresInSeconds: 120 });
       setQrData(res);
       setQrSecondsLeft(120);
-      const firstRosterItem = session?.roster?.[0];
-      if (firstRosterItem) {
-        setQrCheckInPlayerId(firstRosterItem.playerId);
-      }
     } catch (err) {
       toast.error(
         err instanceof Error
@@ -383,36 +378,6 @@ export default function SessionAttendancePage() {
       );
     } finally {
       setIsGeneratingQr(false);
-    }
-  };
-
-  // Simulate QR Check-In
-  const handleSimulateQrCheckIn = async () => {
-    if (!qrData || !qrCheckInPlayerId) return;
-    try {
-      await api.attendance.checkInViaQr(sessionId, {
-        token: qrData.token,
-        playerId: qrCheckInPlayerId,
-      });
-      toast.success(
-        locale === 'en'
-          ? 'Attendance recorded via QR code successfully!'
-          : 'تم تسجيل الحضور عبر رمز QR بنجاح!',
-      );
-      setQrSimSuccess(
-        locale === 'en'
-          ? 'Attendance recorded via QR successfully!'
-          : 'تم تسجيل الحضور عبر QR بنجاح!',
-      );
-      await loadSessionDetails();
-    } catch (err) {
-      toast.error(
-        err instanceof Error
-          ? err.message
-          : locale === 'en'
-            ? 'Failed to check in via QR'
-            : 'فشل التحضير بالرمز',
-      );
     }
   };
 
@@ -436,13 +401,11 @@ export default function SessionAttendancePage() {
       locale === 'en'
         ? 'Are you sure you want to close this training session? Attendance will be locked.'
         : 'هل أنت متأكد من إغلاق الحصة التدريبية؟ سيتم قفل التحضير.';
-    if (!confirm(confirmationMsg)) return;
+    if (!(await requestConfirmation({ message: confirmationMsg, isDestructive: true }))) return;
     try {
       await api.attendance.closeSession(sessionId);
       toast.success(
-        locale === 'en'
-          ? 'Training session closed successfully'
-          : 'تم إغلاق الحصة التدريبية بنجاح',
+        locale === 'en' ? 'Training session closed successfully' : 'تم إغلاق الحصة التدريبية بنجاح',
       );
       await loadSessionDetails();
     } catch (err) {
@@ -502,7 +465,7 @@ export default function SessionAttendancePage() {
 
     try {
       const idempotencyKey = crypto.randomUUID();
-      const updatedItem = await api.attendance.recordAttendance({
+      const { record: serverItem } = await api.attendance.recordAttendance({
         sessionId,
         playerId: item.playerId,
         status: newStatus,
@@ -510,12 +473,7 @@ export default function SessionAttendancePage() {
         expectedVersion: item.version,
       });
 
-      // Synchronize exact server version while safely preserving playerName and photoUrl
-      const rawRecord = (
-        updatedItem as { record?: Partial<AttendanceRosterItem> & { id?: string } }
-      )?.record;
-      const serverItem: Partial<AttendanceRosterItem> & { id?: string } =
-        rawRecord || (updatedItem as Partial<AttendanceRosterItem> & { id?: string });
+      // Synchronize the exact server version while preserving playerName and photoUrl (I1: typed contract).
       setSession((curr) => {
         if (!curr) return null;
         return {
@@ -525,7 +483,7 @@ export default function SessionAttendancePage() {
               ? {
                   ...r,
                   ...serverItem,
-                  recordId: serverItem.id || serverItem.recordId || r.recordId,
+                  recordId: serverItem.recordId || r.recordId,
                   playerName:
                     serverItem.playerName ||
                     r.playerName ||
@@ -564,9 +522,7 @@ export default function SessionAttendancePage() {
     const unmarkedPlayers = session.roster.filter((r) => r.status === 'UNMARKED');
     if (unmarkedPlayers.length === 0) {
       toast.info(
-        locale === 'en'
-          ? 'All players are already marked'
-          : 'جميع اللاعبين تم تسجيل حضورهم بالفعل',
+        locale === 'en' ? 'All players are already marked' : 'جميع اللاعبين تم تسجيل حضورهم بالفعل',
       );
       return;
     }
@@ -576,7 +532,7 @@ export default function SessionAttendancePage() {
         ? `Do you want to mark all unmarked players (${unmarkedPlayers.length}) as "Present" at once?`
         : `هل تريد تحضير جميع اللاعبين غير المحددين (${unmarkedPlayers.length} لاعب) كـ "حاضر" دفعة واحدة؟`;
 
-    if (!confirm(confirmMsg)) {
+    if (!(await requestConfirmation(confirmMsg))) {
       return;
     }
 
@@ -611,19 +567,11 @@ export default function SessionAttendancePage() {
     }
   };
 
-  if (isLoading || isFetching) {
+  // Skeleton until the session is first loaded; later refreshes keep the roster on screen (no blank flash).
+  if (isLoading || (isFetching && !session)) {
     return (
       <AppShell>
-        <div className="flex h-[60vh] items-center justify-center">
-          <div className="flex flex-col items-center gap-3">
-            <RefreshCw className="h-8 w-8 animate-spin text-()" />
-            <p className="text-sm font-medium text-()">
-              {locale === 'en'
-                ? 'Loading session attendance roster...'
-                : 'جارٍ تحميل كشف الحضور للحصة التدريبية...'}
-            </p>
-          </div>
-        </div>
+        <PageSkeleton variant="detail" />
       </AppShell>
     );
   }
@@ -667,7 +615,7 @@ export default function SessionAttendancePage() {
       <div className="space-y-6">
         <PageHeader
           breadcrumbs={[
-            { label: t('nav.home', 'الرئيسية'), href: '/dashboard' },
+            { label: t('nav.dashboard', 'لوحة التحكم'), href: '/dashboard' },
             { label: locale === 'en' ? 'Sessions' : 'الحصص التدريبية', href: '/sessions' },
             { label: translatedGroupName },
             { label: locale === 'en' ? 'Live Attendance Roster' : 'كشف الحضور المباشر' },
@@ -690,7 +638,7 @@ export default function SessionAttendancePage() {
                 <Link
                   href={`/attendance/scanner?sessionId=${sessionId}`}
                   id="btn-open-scanner"
-                  className="flex items-center gap-2 rounded-xl bg-() px-4 py-2 text-xs font-bold text-white shadow-sm hover:brightness-110 transition-all cursor-pointer"
+                  className="flex items-center gap-2 rounded-xl bg-(--accent-primary) px-4 py-2 text-xs font-bold text-white shadow-sm hover:brightness-110 transition-all cursor-pointer"
                 >
                   <QrCode className="h-4 w-4" />
                   <span>{locale === 'en' ? 'Camera Scanner' : 'ماسح الحضور بالكاميرا'}</span>
@@ -702,7 +650,7 @@ export default function SessionAttendancePage() {
                   type="button"
                   id="btn-open-qr-modal"
                   onClick={handleOpenQrModal}
-                  className="flex items-center gap-2 rounded-xl border border-() bg-() px-4 py-2 text-xs font-semibold text-() hover:border-() transition-all cursor-pointer"
+                  className="flex items-center gap-2 rounded-xl border border-(--border-subtle) bg-(--bg-surface) px-4 py-2 text-xs font-semibold text-(--accent-primary) hover:border-(--accent-primary) transition-all cursor-pointer"
                 >
                   <QrCode className="h-4 w-4" />
                   <span>{locale === 'en' ? 'Session QR Code' : 'رمز QR للحصة'}</span>
@@ -713,7 +661,7 @@ export default function SessionAttendancePage() {
                 type="button"
                 id="btn-open-events-modal"
                 onClick={handleOpenEventsModal}
-                className="flex items-center gap-2 rounded-xl border border-() bg-() px-4 py-2 text-xs font-semibold text-() hover:text-() hover:border-() transition-all cursor-pointer"
+                className="flex items-center gap-2 rounded-xl border border-(--border-subtle) bg-(--bg-surface) px-4 py-2 text-xs font-semibold text-(--text-muted) hover:text-(--text-main) hover:border-(--accent-primary) transition-all cursor-pointer"
               >
                 <History className="h-4 w-4" />
                 <span>{locale === 'en' ? 'Audit Log' : 'سجل العمليات (Audit)'}</span>
@@ -737,7 +685,7 @@ export default function SessionAttendancePage() {
         />
 
         {/* Session Meta & Live KPI Counters */}
-        <div className="rounded-2xl border border-() bg-() p-6 shadow-sm space-y-5">
+        <div className="rounded-2xl border border-(--border-subtle) bg-(--bg-surface) p-6 shadow-sm space-y-5">
           <div className="flex flex-wrap items-center gap-3">
             <span
               className={`rounded-full px-3 py-1 text-xs font-bold border ${
@@ -761,18 +709,18 @@ export default function SessionAttendancePage() {
                     : 'حصة مغلقة ومؤكدة'}
             </span>
 
-            <span className="flex items-center gap-1.5 text-xs text-()">
-              <Building2 className="h-3.5 w-3.5 text-()" />
+            <span className="flex items-center gap-1.5 text-xs text-(--text-muted)">
+              <Building2 className="h-3.5 w-3.5 text-(--accent-primary)" />
               <span>{translatedBranchName}</span>
             </span>
 
-            <span className="flex items-center gap-1.5 text-xs text-()">
-              <Calendar className="h-3.5 w-3.5 text-()" />
+            <span className="flex items-center gap-1.5 text-xs text-(--text-muted)">
+              <Calendar className="h-3.5 w-3.5 text-(--accent-primary)" />
               <span>{session.sessionDate}</span>
             </span>
 
-            <span className="flex items-center gap-1.5 text-xs text-()">
-              <Clock className="h-3.5 w-3.5 text-()" />
+            <span className="flex items-center gap-1.5 text-xs text-(--text-muted)">
+              <Clock className="h-3.5 w-3.5 text-(--accent-primary)" />
               <span>
                 {session.startTime} - {session.endTime}
               </span>
@@ -780,12 +728,12 @@ export default function SessionAttendancePage() {
           </div>
 
           {/* Live KPI Counters */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 pt-4 border-t border-()">
-            <div className="rounded-xl border border-() bg-() p-3 text-center">
-              <span className="text-[11px] text-() block mb-1">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 pt-4 border-t border-(--border-subtle)">
+            <div className="rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) p-3 text-center">
+              <span className="text-[11px] text-(--text-muted) block mb-1">
                 {locale === 'en' ? 'Total Roster' : 'إجمالي الكشف'}
               </span>
-              <span className="text-xl font-extrabold text-()">{totalRoster}</span>
+              <span className="text-xl font-extrabold text-(--text-main)">{totalRoster}</span>
             </div>
 
             <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3 text-center">
@@ -836,19 +784,19 @@ export default function SessionAttendancePage() {
         </div>
 
         {/* SESSION CASHIER & DAILY RECONCILIATION */}
-        <div className="rounded-2xl border border-() bg-() p-5 shadow-sm space-y-4">
+        <div className="rounded-2xl border border-(--border-subtle) bg-(--bg-surface) p-5 shadow-sm space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-2.5">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
                 <Wallet className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-()">
+                <h3 className="text-sm font-bold text-(--text-main)">
                   {locale === 'en'
                     ? 'Session Cashier & Reconciliation'
                     : 'صندوق الحصة التدريبية والإغلاق المالي (Session Cashier & Reconciliation)'}
                 </h3>
-                <p className="text-xs text-()">
+                <p className="text-xs text-(--text-muted)">
                   {locale === 'en'
                     ? 'Track on-pitch cash & electronic collections, session expenses, and accounting settlement.'
                     : 'متابعة التحصيلات الميدانية النقدية والإلكترونية ومصروفات الحصة والتسوية المحاسبية.'}
@@ -870,9 +818,7 @@ export default function SessionAttendancePage() {
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/15 px-3 py-1 text-xs font-bold text-blue-600 dark:text-blue-400 border border-blue-500/30">
                   <Clock className="h-3.5 w-3.5" />
                   <span>
-                    {locale === 'en'
-                      ? 'Drawer Open & Active'
-                      : 'الصندوق مفتوح وجارٍ التحصيل'}
+                    {locale === 'en' ? 'Drawer Open & Active' : 'الصندوق مفتوح وجارٍ التحصيل'}
                   </span>
                 </span>
               )}
@@ -880,7 +826,7 @@ export default function SessionAttendancePage() {
               <button
                 type="button"
                 onClick={() => setIsCashierExpanded(!isCashierExpanded)}
-                className="p-1.5 rounded-lg border border-() bg-() text-() hover:text-() transition-colors cursor-pointer"
+                className="p-1.5 rounded-lg border border-(--border-subtle) bg-(--bg-surface-subtle) text-(--text-muted) hover:text-(--text-main) transition-colors cursor-pointer"
               >
                 {isCashierExpanded ? (
                   <ChevronUp className="h-4 w-4" />
@@ -892,18 +838,16 @@ export default function SessionAttendancePage() {
           </div>
 
           {isCashierExpanded && (
-            <div className="space-y-4 pt-3 border-t border-()">
+            <div className="space-y-4 pt-3 border-t border-(--border-subtle)">
               {/* Cashier Metric Cards */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3">
                   <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold block mb-0.5">
                     {locale === 'en' ? 'Cash Collected' : 'التحصيل النقدي (كاش)'}
                   </span>
-                  <span className="text-lg font-extrabold text-()">
+                  <span className="text-lg font-extrabold text-(--text-main)">
                     {cashierSummary?.totalCashCollected ?? 0}{' '}
-                    <span className="text-xs font-normal">
-                      {locale === 'en' ? 'SAR' : 'ر.س'}
-                    </span>
+                    <span className="text-xs font-normal">{currencyLabel}</span>
                   </span>
                 </div>
 
@@ -913,11 +857,9 @@ export default function SessionAttendancePage() {
                       ? 'Electronic Collected (POS/Card)'
                       : 'التحصيل الإلكتروني (مدى/بطاقة)'}
                   </span>
-                  <span className="text-lg font-extrabold text-()">
+                  <span className="text-lg font-extrabold text-(--text-main)">
                     {cashierSummary?.totalElectronicCollected ?? 0}{' '}
-                    <span className="text-xs font-normal">
-                      {locale === 'en' ? 'SAR' : 'ر.س'}
-                    </span>
+                    <span className="text-xs font-normal">{currencyLabel}</span>
                   </span>
                 </div>
 
@@ -925,11 +867,9 @@ export default function SessionAttendancePage() {
                   <span className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold block mb-0.5">
                     {locale === 'en' ? 'Session Expenses' : 'مصروفات الحصة (ماء/تجهيز)'}
                   </span>
-                  <span className="text-lg font-extrabold text-()">
+                  <span className="text-lg font-extrabold text-(--text-main)">
                     {cashierSummary?.totalExpenses ?? 0}{' '}
-                    <span className="text-xs font-normal">
-                      {locale === 'en' ? 'SAR' : 'ر.س'}
-                    </span>
+                    <span className="text-xs font-normal">{currencyLabel}</span>
                   </span>
                 </div>
 
@@ -937,11 +877,9 @@ export default function SessionAttendancePage() {
                   <span className="text-[11px] text-violet-600 dark:text-violet-400 font-semibold block mb-0.5">
                     {locale === 'en' ? 'Net Cash Movement' : 'صافي الحركة النقدية'}
                   </span>
-                  <span className="text-lg font-extrabold text-()">
+                  <span className="text-lg font-extrabold text-(--text-main)">
                     {cashierSummary?.netCashMovement ?? 0}{' '}
-                    <span className="text-xs font-normal">
-                      {locale === 'en' ? 'SAR' : 'ر.س'}
-                    </span>
+                    <span className="text-xs font-normal">{currencyLabel}</span>
                   </span>
                 </div>
               </div>
@@ -949,20 +887,23 @@ export default function SessionAttendancePage() {
               {/* Cashier Actions */}
               <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
                 <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setIsExpenseModalOpen(true)}
-                    disabled={cashierSummary?.isReconciled}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-() bg-() px-3.5 py-2 text-xs font-bold text-() hover:border-() disabled:opacity-50 transition-all cursor-pointer"
-                  >
-                    <PlusCircle className="h-4 w-4 text-rose-500" />
-                    <span>
-                      {locale === 'en' ? 'Record Session Expense' : 'تسجيل مصروف للحصة'}
-                    </span>
-                  </button>
+                  {canClaimExpense && (
+                    <button
+                      type="button"
+                      onClick={() => setIsExpenseModalOpen(true)}
+                      disabled={cashierSummary?.isReconciled}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3.5 py-2 text-xs font-bold text-(--text-main) hover:border-(--accent-primary) disabled:opacity-50 transition-all cursor-pointer"
+                    >
+                      <PlusCircle className="h-4 w-4 text-rose-500" />
+                      <span>
+                        {locale === 'en' ? 'Record Session Expense' : 'تسجيل مصروف للحصة'}
+                      </span>
+                    </button>
+                  )}
                 </div>
 
-                {!cashierSummary?.isReconciled && (
+                {/* K8: only management and the accountant close the cashier, and only once */}
+                {canCloseCashier && !cashierSummary?.isReconciled && (
                   <button
                     type="button"
                     onClick={() => setIsCloseCashierModalOpen(true)}
@@ -980,28 +921,28 @@ export default function SessionAttendancePage() {
 
               {/* Session Transactions History */}
               {cashierSummary?.transactions && cashierSummary.transactions.length > 0 && (
-                <div className="rounded-xl border border-() bg-() overflow-hidden text-xs">
-                  <div className="px-3.5 py-2 font-bold text-() border-b border-() flex items-center justify-between">
+                <div className="rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) overflow-hidden text-xs">
+                  <div className="px-3.5 py-2 font-bold text-(--text-main) border-b border-(--border-subtle) flex items-center justify-between">
                     <span>
                       {locale === 'en'
                         ? `Session Transactions (${cashierSummary.transactions.length})`
                         : `حركات الصندوق المسجلة في هذه الحصة (${cashierSummary.transactions.length})`}
                     </span>
-                    <span className="text-[10px] text-() font-normal">
+                    <span className="text-[10px] text-(--text-muted) font-normal">
                       {locale === 'en'
                         ? 'Coach expenses require management approval to settle in drawer'
                         : 'تتطلب مصروفات المدربين اعتماد الإدارة لتسويتها في الصندوق'}
                     </span>
                   </div>
-                  <div className="divide-y divide-() max-h-72 overflow-y-auto">
+                  <div className="divide-y divide-(--border-subtle) max-h-72 overflow-y-auto">
                     {cashierSummary.transactions.map((tx) => (
                       <div
                         key={tx.id}
-                        className="p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-()/50 transition-colors"
+                        className="p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-(--bg-surface)/50 transition-colors"
                       >
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-bold text-()">
+                            <span className="font-bold text-(--text-main)">
                               {tx.type === 'SESSION_EXPENSE'
                                 ? locale === 'en'
                                   ? 'Session Expense'
@@ -1018,7 +959,7 @@ export default function SessionAttendancePage() {
                               </span>
                             )}
                           </div>
-                          <div className="text-[10px] text-() flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
+                          <div className="text-[10px] text-(--text-muted) flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
                             <span>
                               {locale === 'en' ? 'Receipt #' : 'رقم الإيصال:'}{' '}
                               {tx.receiptNumber || tx.id.slice(0, 8)}
@@ -1061,7 +1002,7 @@ export default function SessionAttendancePage() {
                             canApproveExpenses && (
                               <div className="flex items-center gap-1.5">
                                 {user?.id === tx.recordedByUserId && userRole !== 'OWNER' ? (
-                                  <span className="text-[10px] text-() italic bg-() px-2 py-0.5 rounded-md border border-()">
+                                  <span className="text-[10px] text-(--text-muted) italic bg-(--bg-surface) px-2 py-0.5 rounded-md border border-(--border-subtle)">
                                     {locale === 'en'
                                       ? 'Awaiting another admin'
                                       : 'فصل الصلاحيات (بانتظار مسؤول آخر)'}
@@ -1118,9 +1059,9 @@ export default function SessionAttendancePage() {
                               }`}
                             >
                               {tx.type === 'SESSION_EXPENSE' ? '-' : '+'}
-                              {tx.amount} {locale === 'en' ? 'SAR' : 'ر.س'}
+                              {tx.amount} {currencyLabel}
                             </span>
-                            <div className="text-[10px] text-()">
+                            <div className="text-[10px] text-(--text-muted)">
                               {tx.createdAt
                                 ? new Date(tx.createdAt).toLocaleTimeString(
                                     locale === 'en' ? 'en-US' : 'ar-EG',
@@ -1150,11 +1091,13 @@ export default function SessionAttendancePage() {
               onClick={() => setStatusFilter('ALL')}
               className={`rounded-xl px-3.5 py-2 text-xs font-semibold transition-all cursor-pointer ${
                 statusFilter === 'ALL'
-                  ? 'bg-() text-white shadow-sm'
-                  : 'bg-() text-() border border-() hover:text-()'
+                  ? 'bg-(--accent-primary) text-white shadow-sm'
+                  : 'bg-(--bg-surface) text-(--text-muted) border border-(--border-subtle) hover:text-(--text-main)'
               }`}
             >
-              {locale === 'en' ? `All (${session.roster.length})` : `الكل (${session.roster.length})`}
+              {locale === 'en'
+                ? `All (${session.roster.length})`
+                : `الكل (${session.roster.length})`}
             </button>
             <button
               type="button"
@@ -1162,7 +1105,7 @@ export default function SessionAttendancePage() {
               className={`rounded-xl px-3 py-2 text-xs font-semibold transition-all cursor-pointer ${
                 statusFilter === 'UNMARKED'
                   ? 'bg-slate-600 text-white shadow-sm'
-                  : 'bg-() text-() border border-() hover:text-()'
+                  : 'bg-(--bg-surface) text-(--text-muted) border border-(--border-subtle) hover:text-(--text-main)'
               }`}
             >
               {locale === 'en'
@@ -1175,7 +1118,7 @@ export default function SessionAttendancePage() {
               className={`rounded-xl px-3 py-2 text-xs font-semibold transition-all cursor-pointer ${
                 statusFilter === 'PRESENT'
                   ? 'bg-emerald-600 text-white shadow-sm'
-                  : 'bg-() text-emerald-600 dark:text-emerald-400 border border-() hover:bg-emerald-500/10'
+                  : 'bg-(--bg-surface) text-emerald-600 dark:text-emerald-400 border border-(--border-subtle) hover:bg-emerald-500/10'
               }`}
             >
               {locale === 'en'
@@ -1188,12 +1131,10 @@ export default function SessionAttendancePage() {
               className={`rounded-xl px-3 py-2 text-xs font-semibold transition-all cursor-pointer ${
                 statusFilter === 'LATE'
                   ? 'bg-amber-500 text-slate-900 shadow-sm'
-                  : 'bg-() text-amber-600 dark:text-amber-400 border border-() hover:bg-amber-500/10'
+                  : 'bg-(--bg-surface) text-amber-600 dark:text-amber-400 border border-(--border-subtle) hover:bg-amber-500/10'
               }`}
             >
-              {locale === 'en'
-                ? `Late (${session.totalLate})`
-                : `متأخر (${session.totalLate})`}
+              {locale === 'en' ? `Late (${session.totalLate})` : `متأخر (${session.totalLate})`}
             </button>
             <button
               type="button"
@@ -1201,7 +1142,7 @@ export default function SessionAttendancePage() {
               className={`rounded-xl px-3 py-2 text-xs font-semibold transition-all cursor-pointer ${
                 statusFilter === 'ABSENT'
                   ? 'bg-rose-600 text-white shadow-sm'
-                  : 'bg-() text-rose-600 dark:text-rose-400 border border-() hover:bg-rose-500/10'
+                  : 'bg-(--bg-surface) text-rose-600 dark:text-rose-400 border border-(--border-subtle) hover:bg-rose-500/10'
               }`}
             >
               {locale === 'en'
@@ -1214,7 +1155,7 @@ export default function SessionAttendancePage() {
               className={`rounded-xl px-3 py-2 text-xs font-semibold transition-all cursor-pointer ${
                 statusFilter === 'EXCUSED'
                   ? 'bg-sky-600 text-white shadow-sm'
-                  : 'bg-() text-sky-600 dark:text-sky-400 border border-() hover:bg-sky-500/10'
+                  : 'bg-(--bg-surface) text-sky-600 dark:text-sky-400 border border-(--border-subtle) hover:bg-sky-500/10'
               }`}
             >
               {locale === 'en'
@@ -1226,16 +1167,15 @@ export default function SessionAttendancePage() {
           <div className="flex items-center gap-3">
             {/* Search Input */}
             <div className="relative flex-1 md:w-64">
-              <Search className="absolute inset-s-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-()" />
+              <Search className="absolute inset-s-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-(--text-muted)" />
               <input
                 type="text"
                 id="input-search-roster"
+                aria-label={locale === 'ar' ? 'بحث في كشف الحضور' : 'Search roster'}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder={
-                  locale === 'en' ? 'Search by player name...' : 'البحث باسم اللاعب...'
-                }
-                className="w-full rounded-xl border border-() bg-() ps-10 pe-3 py-2 text-xs text-() placeholder:text-() focus:border-() focus:outline-none"
+                placeholder={locale === 'en' ? 'Search by player name...' : 'البحث باسم اللاعب...'}
+                className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface) ps-10 pe-3 py-2 text-xs text-(--text-main) placeholder:text-(--text-muted) focus:border-(--accent-primary) focus:outline-none"
               />
             </div>
 
@@ -1246,7 +1186,7 @@ export default function SessionAttendancePage() {
                 id="btn-bulk-mark-present"
                 disabled={isBulkMarking}
                 onClick={handleBulkMarkPresent}
-                className="flex items-center gap-1.5 rounded-xl bg-() px-4 py-2 text-xs font-bold text-white shadow hover:brightness-110 disabled:opacity-50 transition-all cursor-pointer whitespace-nowrap"
+                className="flex items-center gap-1.5 rounded-xl bg-(--accent-primary) px-4 py-2 text-xs font-bold text-white shadow hover:brightness-110 disabled:opacity-50 transition-all cursor-pointer whitespace-nowrap"
               >
                 <CheckCircle2 className="h-4 w-4" />
                 <span>
@@ -1273,9 +1213,9 @@ export default function SessionAttendancePage() {
 
         {/* ROSTER LIST: ONE-TAP ATTENDANCE MARKING */}
         {filteredRoster.length === 0 ? (
-          <div className="rounded-2xl border border-() bg-() p-12 text-center text-() space-y-2">
-            <Users className="h-8 w-8 mx-auto text-()" />
-            <p className="text-sm font-semibold text-()">
+          <div className="rounded-2xl border border-(--border-subtle) bg-(--bg-surface) p-12 text-center text-(--text-muted) space-y-2">
+            <Users className="h-8 w-8 mx-auto text-(--accent-primary)" />
+            <p className="text-sm font-semibold text-(--text-main)">
               {locale === 'en'
                 ? 'No players match the search or filter criteria'
                 : 'لا يوجد لاعبين مطابقين للبحث أو الفلتر'}
@@ -1291,7 +1231,7 @@ export default function SessionAttendancePage() {
                 <div
                   key={item.playerId}
                   id={`roster-row-${item.playerId}`}
-                  className={`rounded-2xl border p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all shadow-sm bg-() ${
+                  className={`rounded-2xl border p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all shadow-sm bg-(--bg-surface) ${
                     item.status === 'PRESENT'
                       ? 'border-emerald-500/40 ring-1 ring-emerald-500/20'
                       : item.status === 'LATE'
@@ -1300,7 +1240,7 @@ export default function SessionAttendancePage() {
                           ? 'border-rose-500/40 ring-1 ring-rose-500/20'
                           : item.status === 'EXCUSED'
                             ? 'border-sky-500/40 ring-1 ring-sky-500/20'
-                            : 'border-() hover:border-()/40'
+                            : 'border-(--border-subtle) hover:border-(--accent-primary)/40'
                   }`}
                 >
                   {/* Player Info */}
@@ -1315,7 +1255,7 @@ export default function SessionAttendancePage() {
                               ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400'
                               : item.status === 'EXCUSED'
                                 ? 'bg-sky-500/15 text-sky-600 dark:text-sky-400'
-                                : 'bg-() text-()'
+                                : 'bg-(--bg-surface-subtle) text-(--text-muted)'
                       }`}
                     >
                       {pName.slice(0, 2)}
@@ -1323,17 +1263,15 @@ export default function SessionAttendancePage() {
 
                     <div>
                       <div className="flex items-center gap-2">
-                        <h3 className="text-base font-bold text-()">
-                          {pName}
-                        </h3>
+                        <h3 className="text-base font-bold text-(--text-main)">{pName}</h3>
                         {item.jerseyNumber && (
-                          <span className="rounded-full bg-() px-2 py-0.5 text-[10px] font-bold text-() border border-()">
+                          <span className="rounded-full bg-(--bg-surface-subtle) px-2 py-0.5 text-[10px] font-bold text-(--accent-primary) border border-(--border-subtle)">
                             #{item.jerseyNumber}
                           </span>
                         )}
                       </div>
 
-                      <div className="flex items-center gap-2 text-xs text-() mt-0.5">
+                      <div className="flex items-center gap-2 text-xs text-(--text-muted) mt-0.5">
                         {item.status === 'PRESENT' && (
                           <span className="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
                             <CheckCircle2 className="h-3.5 w-3.5" />
@@ -1361,12 +1299,12 @@ export default function SessionAttendancePage() {
                           </span>
                         )}
                         {item.status === 'UNMARKED' && (
-                          <span className="text-() italic">
+                          <span className="text-(--text-muted) italic">
                             {locale === 'en' ? 'Not recorded yet' : 'لم يسجل بعد'}
                           </span>
                         )}
                         {item.remarks && (
-                          <span className="text-()">
+                          <span className="text-(--text-muted)">
                             • {translateDataString(item.remarks, locale)}
                           </span>
                         )}
@@ -1389,8 +1327,8 @@ export default function SessionAttendancePage() {
                             <AlertTriangle className="h-3 w-3" />
                             <span>
                               {locale === 'en'
-                                ? `Remaining: ${item.outstandingBalance ?? 0} SAR`
-                                : `متبقي: ${item.outstandingBalance ?? 0} ر.س`}
+                                ? `Remaining: ${item.outstandingBalance ?? 0} ${currencyLabel}`
+                                : `متبقي: ${item.outstandingBalance ?? 0} ${currencyLabel}`}
                             </span>
                           </span>
                         )}
@@ -1399,8 +1337,8 @@ export default function SessionAttendancePage() {
                             <XCircle className="h-3 w-3" />
                             <span>
                               {locale === 'en'
-                                ? `Overdue: ${item.outstandingBalance || item.amountDue || 0} SAR`
-                                : `متأخر: ${item.outstandingBalance || item.amountDue || 0} ر.س`}
+                                ? `Overdue: ${item.outstandingBalance || item.amountDue || 0} ${currencyLabel}`
+                                : `متأخر: ${item.outstandingBalance || item.amountDue || 0} ${currencyLabel}`}
                             </span>
                           </span>
                         )}
@@ -1433,7 +1371,7 @@ export default function SessionAttendancePage() {
                           type="button"
                           id={`btn-collect-payment-${item.playerId}`}
                           onClick={() => handleOpenPaymentModal(item)}
-                          className="inline-flex items-center gap-1 rounded-lg bg-() hover:bg-() px-2 py-0.5 text-[10px] font-semibold text-() border border-() hover:border-()/40 transition-colors cursor-pointer"
+                          className="inline-flex items-center gap-1 rounded-lg bg-(--bg-surface-subtle) hover:bg-(--brand-surface) px-2 py-0.5 text-[10px] font-semibold text-(--accent-primary) border border-(--border-subtle) hover:border-(--accent-primary)/40 transition-colors cursor-pointer"
                           title={
                             locale === 'en'
                               ? 'Record cash or electronic payment for player'
@@ -1458,7 +1396,7 @@ export default function SessionAttendancePage() {
                       className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                         item.status === 'PRESENT'
                           ? 'bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-400'
-                          : 'bg-() text-() hover:text-emerald-600 hover:bg-emerald-500/10 border border-()'
+                          : 'bg-(--bg-surface-subtle) text-(--text-muted) hover:text-emerald-600 hover:bg-emerald-500/10 border border-(--border-subtle)'
                       }`}
                     >
                       <Check className="h-4 w-4" />
@@ -1474,7 +1412,7 @@ export default function SessionAttendancePage() {
                       className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                         item.status === 'LATE'
                           ? 'bg-amber-500 text-slate-900 shadow-sm ring-2 ring-amber-300'
-                          : 'bg-() text-() hover:text-amber-500 hover:bg-amber-500/10 border border-()'
+                          : 'bg-(--bg-surface-subtle) text-(--text-muted) hover:text-amber-500 hover:bg-amber-500/10 border border-(--border-subtle)'
                       }`}
                     >
                       <Clock4 className="h-3.5 w-3.5" />
@@ -1490,7 +1428,7 @@ export default function SessionAttendancePage() {
                       className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                         item.status === 'ABSENT'
                           ? 'bg-rose-600 text-white shadow-sm ring-2 ring-rose-400'
-                          : 'bg-() text-() hover:text-rose-500 hover:bg-rose-500/10 border border-()'
+                          : 'bg-(--bg-surface-subtle) text-(--text-muted) hover:text-rose-500 hover:bg-rose-500/10 border border-(--border-subtle)'
                       }`}
                     >
                       <XCircle className="h-3.5 w-3.5" />
@@ -1506,7 +1444,7 @@ export default function SessionAttendancePage() {
                       className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                         item.status === 'EXCUSED'
                           ? 'bg-sky-600 text-white shadow-sm ring-2 ring-sky-300'
-                          : 'bg-() text-() hover:text-sky-500 hover:bg-sky-500/10 border border-()'
+                          : 'bg-(--bg-surface-subtle) text-(--text-muted) hover:text-sky-500 hover:bg-sky-500/10 border border-(--border-subtle)'
                       }`}
                     >
                       <HelpCircle className="h-3.5 w-3.5" />
@@ -1523,40 +1461,40 @@ export default function SessionAttendancePage() {
       {/* QR MODAL */}
       {isQrModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="w-full max-w-md rounded-2xl border border-() bg-() p-6 shadow-2xl relative space-y-5 animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between border-b border-() pb-4">
+          <div className="w-full max-w-md rounded-2xl border border-(--border-subtle) bg-(--bg-surface) p-6 shadow-2xl relative space-y-5 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-(--border-subtle) pb-4">
               <div className="flex items-center gap-2">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-() text-()">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-(--brand-surface) text-(--accent-primary)">
                   <QrCode className="h-5 w-5" />
                 </div>
-                <h3 className="text-base font-bold text-()">
+                <h3 className="text-base font-bold text-(--text-main)">
                   {locale === 'en' ? 'Temporary Check-in QR Code' : 'رمز QR المؤقت للتحضير'}
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setIsQrModalOpen(false)}
-                className="p-1 text-() hover:text-()"
+                className="p-1 text-(--text-muted) hover:text-(--text-main)"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
             {/* Timer countdown */}
-            <div className="flex items-center justify-between rounded-xl bg-() border border-() px-4 py-2.5 text-xs">
-              <span className="text-() flex items-center gap-1.5">
+            <div className="flex items-center justify-between rounded-xl bg-(--bg-surface-subtle) border border-(--border-subtle) px-4 py-2.5 text-xs">
+              <span className="text-(--text-muted) flex items-center gap-1.5">
                 <Timer className="h-4 w-4 text-amber-500" />
                 {locale === 'en' ? 'Code expires in:' : 'صلاحية الرمز تنتهي خلال:'}
               </span>
               <span
-                className={`font-mono font-bold text-sm ${qrSecondsLeft < 15 ? 'text-rose-500 animate-pulse' : 'text-()'}`}
+                className={`font-mono font-bold text-sm ${qrSecondsLeft < 15 ? 'text-rose-500 animate-pulse' : 'text-(--accent-primary)'}`}
               >
                 {qrSecondsLeft} {locale === 'en' ? 'seconds' : 'ثانية'}
               </span>
             </div>
 
             {/* QR Visual Card */}
-            <div className="rounded-2xl border border-() bg-white p-6 flex flex-col items-center justify-center text-center shadow-inner">
+            <div className="rounded-2xl border border-(--border-subtle) bg-white p-6 flex flex-col items-center justify-center text-center shadow-inner">
               {isGeneratingQr ? (
                 <RefreshCw className="h-12 w-12 animate-spin text-slate-800" />
               ) : (
@@ -1593,60 +1531,25 @@ export default function SessionAttendancePage() {
                 type="button"
                 id="btn-refresh-qr"
                 onClick={handleOpenQrModal}
-                className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-() bg-() py-2 text-xs font-semibold text-() hover:border-() transition-colors"
+                className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) py-2 text-xs font-semibold text-(--accent-primary) hover:border-(--accent-primary) transition-colors"
               >
                 <RefreshCw className="h-3.5 w-3.5" />
                 <span>{locale === 'en' ? 'Refresh Code' : 'تجديد الرمز فوراً'}</span>
               </button>
             </div>
 
-            {/* Quick QR Check-in Simulator */}
-            <div className="rounded-xl border border-() bg-() p-4 space-y-3">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-()">
-                <UserCheck className="h-4 w-4 text-()" />
-                <span>
-                  {locale === 'en'
-                    ? 'Player Check-in Simulator (Quick QR)'
-                    : 'محاكي المسح للاعب (Quick QR Scanner)'}
-                </span>
-              </div>
-              <p className="text-[11px] text-()">
-                {locale === 'en'
-                  ? 'For testing without a camera, select a player and simulate scan with current token:'
-                  : 'للاختبار دون ماسح ضوئي كاميرا، اختر لاعباً وانقر لتسجيل حضوره بالرمز الحالي:'}
-              </p>
-
-              {qrSimSuccess && (
-                <div className="rounded-lg bg-emerald-500/15 border border-emerald-500/30 p-2 text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
-                  <CheckCircle2 className="h-4 w-4" />
-                  <span>{qrSimSuccess}</span>
-                </div>
-              )}
-
-              <div className="flex items-center gap-2">
-                <select
-                  value={qrCheckInPlayerId}
-                  onChange={(e) => setQrCheckInPlayerId(e.target.value)}
-                  className="flex-1 rounded-xl border border-() bg-() px-3 py-2 text-xs text-() focus:outline-none"
-                >
-                  {session.roster.map((r) => (
-                    <option key={r.playerId} value={r.playerId}>
-                      {translateDataString(r.playerName, locale)} ({translateStatus(r.status, locale)})
-                    </option>
-                  ))}
-                </select>
-
-                <button
-                  type="button"
-                  id="btn-simulate-qr-checkin"
-                  disabled={!qrData || qrSecondsLeft <= 0}
-                  onClick={handleSimulateQrCheckIn}
-                  className="rounded-xl bg-() px-3.5 py-2 text-xs font-bold text-white hover:brightness-110 disabled:opacity-50"
-                >
-                  {locale === 'en' ? 'Check In' : 'تسجيل بالرمز'}
-                </button>
-              </div>
-            </div>
+            {/* Quick QR Check-in Simulator — development builds only.
+                `process.env.NODE_ENV` must stay inline here: Next.js replaces it with a literal,
+                so the branch and the component are removed from production bundles. */}
+            {process.env.NODE_ENV === 'development' && (
+              <QrCheckInSimulator
+                sessionId={sessionId}
+                token={qrData?.token ?? null}
+                isTokenValid={qrSecondsLeft > 0}
+                roster={session.roster}
+                onCheckedIn={loadSessionDetails}
+              />
+            )}
           </div>
         </div>
       )}
@@ -1654,19 +1557,19 @@ export default function SessionAttendancePage() {
       {/* EVENTS AUDIT MODAL */}
       {isEventsModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="w-full max-w-2xl rounded-2xl border border-() bg-() p-6 shadow-2xl relative space-y-5 animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between border-b border-() pb-4">
+          <div className="w-full max-w-2xl rounded-2xl border border-(--border-subtle) bg-(--bg-surface) p-6 shadow-2xl relative space-y-5 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-(--border-subtle) pb-4">
               <div className="flex items-center gap-2">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-() text-()">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-(--brand-surface) text-(--accent-primary)">
                   <History className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-()">
+                  <h3 className="text-base font-bold text-(--text-main)">
                     {locale === 'en'
                       ? 'Audit Log & Event Stream'
                       : 'سجل العمليات والتدقيق التراكمي'}
                   </h3>
-                  <p className="text-xs text-()">
+                  <p className="text-xs text-(--text-muted)">
                     {locale === 'en'
                       ? 'Immutable append-only event stream for all attendance records and corrections.'
                       : 'سجل غير قابل للتعديل (Append-Only Event Stream) لجميع حركات التحضير والتصحيح.'}
@@ -1676,21 +1579,18 @@ export default function SessionAttendancePage() {
               <button
                 type="button"
                 onClick={() => setIsEventsModalOpen(false)}
-                className="p-1 text-() hover:text-()"
+                className="p-1 text-(--text-muted) hover:text-(--text-main)"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
             {isLoadingEvents ? (
-              <div className="p-8 text-center text-()">
-                <RefreshCw className="h-8 w-8 animate-spin mx-auto text-() mb-2" />
-                <p className="text-xs">
-                  {locale === 'en' ? 'Loading events log...' : 'جارٍ جلب سجل الأحداث...'}
-                </p>
+              <div className="p-4">
+                <ListSkeleton rows={5} />
               </div>
             ) : events.length === 0 ? (
-              <div className="p-8 text-center text-()">
+              <div className="p-8 text-center text-(--text-muted)">
                 <p className="text-xs">
                   {locale === 'en'
                     ? 'No recorded events in this session yet.'
@@ -1702,14 +1602,14 @@ export default function SessionAttendancePage() {
                 {events.map((ev) => (
                   <div
                     key={ev.id}
-                    className="rounded-xl border border-() bg-() p-3 text-xs flex items-center justify-between gap-3"
+                    className="rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) p-3 text-xs flex items-center justify-between gap-3"
                   >
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-()">
+                        <span className="font-bold text-(--text-main)">
                           {translateDataString(ev.playerName, locale)}
                         </span>
-                        <span className="text-()">→</span>
+                        <span className="text-(--text-muted)">→</span>
                         <span
                           className={`font-bold px-2 py-0.5 rounded text-[10px] ${
                             ev.newStatus === 'PRESENT'
@@ -1723,21 +1623,21 @@ export default function SessionAttendancePage() {
                         >
                           {translateStatus(ev.newStatus, locale)}
                         </span>
-                        <span className="text-[10px] text-()">
+                        <span className="text-[10px] text-(--text-muted)">
                           ({locale === 'en' ? 'Source:' : 'المصدر:'} {ev.source})
                         </span>
                       </div>
                       {ev.reason && (
-                        <p className="text-[11px] text-()">
+                        <p className="text-[11px] text-(--text-muted)">
                           {locale === 'en' ? 'Reason:' : 'السبب:'}{' '}
                           {translateDataString(ev.reason, locale)}
                         </p>
                       )}
                     </div>
 
-                    <div className="text-end text-[10px] text-()">
+                    <div className="text-end text-[10px] text-(--text-muted)">
                       <div>{ev.eventAt.slice(0, 10)}</div>
-                      <div className="font-mono text-()">
+                      <div className="font-mono text-(--text-muted)">
                         {ev.eventAt.slice(11, 19)}
                       </div>
                     </div>
@@ -1752,17 +1652,17 @@ export default function SessionAttendancePage() {
       {/* 1. PAYMENT COLLECTION MODAL */}
       {isPaymentModalOpen && selectedPlayerForPayment && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="w-full max-w-md rounded-2xl border border-() bg-() p-6 shadow-2xl relative space-y-5 animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between border-b border-() pb-4">
+          <div className="w-full max-w-md rounded-2xl border border-(--border-subtle) bg-(--bg-surface) p-6 shadow-2xl relative space-y-5 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-(--border-subtle) pb-4">
               <div className="flex items-center gap-2">
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
                   <CreditCard className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-()">
+                  <h3 className="text-base font-bold text-(--text-main)">
                     {locale === 'en' ? 'Collect Player Payment' : 'تحصيل دفعة مالية للاعب'}
                   </h3>
-                  <p className="text-xs text-()">
+                  <p className="text-xs text-(--text-muted)">
                     {translateDataString(selectedPlayerForPayment.playerName, locale)}
                   </p>
                 </div>
@@ -1770,30 +1670,30 @@ export default function SessionAttendancePage() {
               <button
                 type="button"
                 onClick={() => setIsPaymentModalOpen(false)}
-                className="p-1 text-() hover:text-()"
+                className="p-1 text-(--text-muted) hover:text-(--text-main)"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
             <form onSubmit={handleSubmitPayment} className="space-y-4">
-              <div className="rounded-xl border border-() bg-() p-3 text-xs flex justify-between items-center">
-                <span className="text-()">
+              <div className="rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) p-3 text-xs flex justify-between items-center">
+                <span className="text-(--text-muted)">
                   {locale === 'en' ? 'Outstanding Balance:' : 'المتبقي على الاشتراك:'}
                 </span>
-                <span className="font-extrabold text-()">
+                <span className="font-extrabold text-(--accent-primary)">
                   {selectedPlayerForPayment.outstandingBalance ??
                     selectedPlayerForPayment.amountDue ??
                     0}{' '}
-                  {locale === 'en' ? 'SAR' : 'ر.س'}
+                  {currencyLabel}
                 </span>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-() mb-1.5">
+                <label className="block text-xs font-semibold text-(--text-main) mb-1.5">
                   {locale === 'en'
-                    ? 'Amount Collected (SAR) *'
-                    : 'المبلغ المحصل (ر.س) *'}
+                    ? `Amount Collected (${currencyLabel}) *`
+                    : `المبلغ المحصل (${currencyLabel}) *`}
                 </label>
                 <input
                   type="number"
@@ -1802,12 +1702,12 @@ export default function SessionAttendancePage() {
                   required
                   value={paymentAmount}
                   onChange={(e) => setPaymentAmount(parseFloat(e.target.value) || 0)}
-                  className="w-full rounded-xl border border-() bg-() px-3.5 py-2.5 text-sm font-bold text-() focus:border-() focus:outline-none"
+                  className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3.5 py-2.5 text-sm font-bold text-(--text-main) focus:border-(--accent-primary) focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-() mb-1.5">
+                <label className="block text-xs font-semibold text-(--text-main) mb-1.5">
                   {locale === 'en' ? 'Payment Method *' : 'طريقة التحصيل *'}
                 </label>
                 <select
@@ -1815,7 +1715,7 @@ export default function SessionAttendancePage() {
                   onChange={(e) =>
                     setPaymentMethod(e.target.value as 'CASH' | 'CARD' | 'POS' | 'BANK_TRANSFER')
                   }
-                  className="w-full rounded-xl border border-() bg-() px-3.5 py-2.5 text-xs font-semibold text-() focus:border-() focus:outline-none cursor-pointer"
+                  className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3.5 py-2.5 text-xs font-semibold text-(--text-main) focus:border-(--accent-primary) focus:outline-none cursor-pointer"
                 >
                   <option value="CASH">
                     {locale === 'en' ? 'Cash (On-pitch)' : 'نقدي (كاش بالملعب)'}
@@ -1835,7 +1735,7 @@ export default function SessionAttendancePage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-() mb-1.5">
+                <label className="block text-xs font-semibold text-(--text-main) mb-1.5">
                   {locale === 'en'
                     ? 'Receipt / Reference Number (Optional)'
                     : 'رقم الإيصال أو المرجع (اختياري)'}
@@ -1849,15 +1749,13 @@ export default function SessionAttendancePage() {
                   }
                   value={paymentRefNumber}
                   onChange={(e) => setPaymentRefNumber(e.target.value)}
-                  className="w-full rounded-xl border border-() bg-() px-3.5 py-2 text-xs text-() placeholder-() focus:border-() focus:outline-none"
+                  className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3.5 py-2 text-xs text-(--text-main) placeholder-(--text-muted) focus:border-(--accent-primary) focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-() mb-1.5">
-                  {locale === 'en'
-                    ? 'Payment Notes (Optional)'
-                    : 'ملاحظات الدفعة (اختياري)'}
+                <label className="block text-xs font-semibold text-(--text-main) mb-1.5">
+                  {locale === 'en' ? 'Payment Notes (Optional)' : 'ملاحظات الدفعة (اختياري)'}
                 </label>
                 <input
                   type="text"
@@ -1868,15 +1766,15 @@ export default function SessionAttendancePage() {
                   }
                   value={paymentNotes}
                   onChange={(e) => setPaymentNotes(e.target.value)}
-                  className="w-full rounded-xl border border-() bg-() px-3.5 py-2 text-xs text-() placeholder-() focus:border-() focus:outline-none"
+                  className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3.5 py-2 text-xs text-(--text-main) placeholder-(--text-muted) focus:border-(--accent-primary) focus:outline-none"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-()">
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-(--border-subtle)">
                 <button
                   type="button"
                   onClick={() => setIsPaymentModalOpen(false)}
-                  className="rounded-xl border border-() px-4 py-2 text-xs font-semibold text-() hover:bg-() transition-colors cursor-pointer"
+                  className="rounded-xl border border-(--border-subtle) px-4 py-2 text-xs font-semibold text-(--text-muted) hover:bg-(--bg-surface-subtle) transition-colors cursor-pointer"
                 >
                   {locale === 'en' ? 'Cancel' : 'إلغاء'}
                 </button>
@@ -1897,19 +1795,17 @@ export default function SessionAttendancePage() {
       {/* 2. RECORD SESSION EXPENSE MODAL */}
       {isExpenseModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="w-full max-w-md rounded-2xl border border-() bg-() p-6 shadow-2xl relative space-y-5 animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between border-b border-() pb-4">
+          <div className="w-full max-w-md rounded-2xl border border-(--border-subtle) bg-(--bg-surface) p-6 shadow-2xl relative space-y-5 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-(--border-subtle) pb-4">
               <div className="flex items-center gap-2">
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400">
                   <PlusCircle className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-()">
-                    {locale === 'en'
-                      ? 'Record Session Expense'
-                      : 'تسجيل مصروف للحصة التدريبية'}
+                  <h3 className="text-base font-bold text-(--text-main)">
+                    {locale === 'en' ? 'Record Session Expense' : 'تسجيل مصروف للحصة التدريبية'}
                   </h3>
-                  <p className="text-xs text-()">
+                  <p className="text-xs text-(--text-muted)">
                     {locale === 'en'
                       ? 'Deducted from the on-pitch session cash drawer'
                       : 'يتم خصم هذا المبلغ من كاش الصندوق الميداني للحصة'}
@@ -1919,7 +1815,7 @@ export default function SessionAttendancePage() {
               <button
                 type="button"
                 onClick={() => setIsExpenseModalOpen(false)}
-                className="p-1 text-() hover:text-()"
+                className="p-1 text-(--text-muted) hover:text-(--text-main)"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -1927,10 +1823,10 @@ export default function SessionAttendancePage() {
 
             <form onSubmit={handleSubmitExpense} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-() mb-1.5">
+                <label className="block text-xs font-semibold text-(--text-main) mb-1.5">
                   {locale === 'en'
-                    ? 'Expense Amount (SAR) *'
-                    : 'قيمة المصروف (ر.س) *'}
+                    ? `Expense Amount (${currencyLabel}) *`
+                    : `قيمة المصروف (${currencyLabel}) *`}
                 </label>
                 <input
                   type="number"
@@ -1940,15 +1836,13 @@ export default function SessionAttendancePage() {
                   value={expenseAmount || ''}
                   onChange={(e) => setExpenseAmount(parseFloat(e.target.value) || 0)}
                   placeholder="50"
-                  className="w-full rounded-xl border border-() bg-() px-3.5 py-2.5 text-sm font-bold text-() focus:border-() focus:outline-none"
+                  className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-3.5 py-2.5 text-sm font-bold text-(--text-main) focus:border-(--accent-primary) focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-() mb-1.5">
-                  {locale === 'en'
-                    ? 'Expense Reason & Item *'
-                    : 'بيان وسبب المصروف *'}
+                <label className="block text-xs font-semibold text-(--text-main) mb-1.5">
+                  {locale === 'en' ? 'Expense Reason & Item *' : 'بيان وسبب المصروف *'}
                 </label>
                 <textarea
                   required
@@ -1960,15 +1854,15 @@ export default function SessionAttendancePage() {
                       ? 'e.g. Bottled water for players, first aid supplies...'
                       : 'مثال: شراء مياه معدنية وعصيرات للاعبين، أو أدوات تدريب طارئة...'
                   }
-                  className="w-full rounded-xl border border-() bg-() p-3 text-xs text-() placeholder-() focus:border-() focus:outline-none resize-none"
+                  className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) p-3 text-xs text-(--text-main) placeholder-(--text-muted) focus:border-(--accent-primary) focus:outline-none resize-none"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-()">
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-(--border-subtle)">
                 <button
                   type="button"
                   onClick={() => setIsExpenseModalOpen(false)}
-                  className="rounded-xl border border-() px-4 py-2 text-xs font-semibold text-() hover:bg-() transition-colors cursor-pointer"
+                  className="rounded-xl border border-(--border-subtle) px-4 py-2 text-xs font-semibold text-(--text-muted) hover:bg-(--bg-surface-subtle) transition-colors cursor-pointer"
                 >
                   {locale === 'en' ? 'Cancel' : 'إلغاء'}
                 </button>
@@ -1989,19 +1883,19 @@ export default function SessionAttendancePage() {
       {/* 3. RECONCILE & CLOSE CASHIER MODAL */}
       {isCloseCashierModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="w-full max-w-md rounded-2xl border border-() bg-() p-6 shadow-2xl relative space-y-5 animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between border-b border-() pb-4">
+          <div className="w-full max-w-md rounded-2xl border border-(--border-subtle) bg-(--bg-surface) p-6 shadow-2xl relative space-y-5 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-(--border-subtle) pb-4">
               <div className="flex items-center gap-2">
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
                   <Receipt className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-()">
+                  <h3 className="text-base font-bold text-(--text-main)">
                     {locale === 'en'
                       ? 'Reconcile & Close Cash Drawer'
                       : 'مطابقة وإغلاق الصندوق المالي'}
                   </h3>
-                  <p className="text-xs text-()">
+                  <p className="text-xs text-(--text-muted)">
                     {locale === 'en'
                       ? 'Close drawer and confirm session financial transactions'
                       : 'إغلاق الصندوق وتثبيت الحركة المحاسبية للحصة'}
@@ -2011,42 +1905,42 @@ export default function SessionAttendancePage() {
               <button
                 type="button"
                 onClick={() => setIsCloseCashierModalOpen(false)}
-                className="p-1 text-() hover:text-()"
+                className="p-1 text-(--text-muted) hover:text-(--text-main)"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
             <div className="space-y-3">
-              <div className="rounded-xl border border-() bg-() p-4 space-y-2 text-xs">
+              <div className="rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) p-4 space-y-2 text-xs">
                 <div className="flex justify-between">
-                  <span className="text-()">
+                  <span className="text-(--text-muted)">
                     {locale === 'en' ? 'Cash Collected:' : 'الكاش المحصل:'}
                   </span>
                   <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                    +{cashierSummary?.totalCashCollected ?? 0} {locale === 'en' ? 'SAR' : 'ر.س'}
+                    +{cashierSummary?.totalCashCollected ?? 0} {currencyLabel}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-()">
+                  <span className="text-(--text-muted)">
                     {locale === 'en' ? 'Expenses:' : 'المصروفات:'}
                   </span>
                   <span className="font-bold text-rose-600 dark:text-rose-400">
-                    -{cashierSummary?.totalExpenses ?? 0} {locale === 'en' ? 'SAR' : 'ر.س'}
+                    -{cashierSummary?.totalExpenses ?? 0} {currencyLabel}
                   </span>
                 </div>
-                <div className="flex justify-between border-t border-() pt-2 font-bold text-()">
+                <div className="flex justify-between border-t border-(--border-subtle) pt-2 font-bold text-(--text-main)">
                   <span>
                     {locale === 'en' ? 'Net Cash to Hand Over:' : 'صافي النقد المطلوب تسليمه:'}
                   </span>
                   <span>
-                    {cashierSummary?.netCashMovement ?? 0} {locale === 'en' ? 'SAR' : 'ر.س'}
+                    {cashierSummary?.netCashMovement ?? 0} {currencyLabel}
                   </span>
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-() mb-1.5">
+                <label className="block text-xs font-semibold text-(--text-main) mb-1.5">
                   {locale === 'en'
                     ? 'Settlement Notes (Optional)'
                     : 'ملاحظات التسوية الختامية (اختياري)'}
@@ -2060,7 +1954,7 @@ export default function SessionAttendancePage() {
                       ? 'Notes on cash custody or handover to accountant...'
                       : 'ملاحظات حول عهدة الكاش أو التسليم للمحاسب...'
                   }
-                  className="w-full rounded-xl border border-() bg-() p-3 text-xs text-() placeholder-() focus:border-() focus:outline-none resize-none"
+                  className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) p-3 text-xs text-(--text-main) placeholder-(--text-muted) focus:border-(--accent-primary) focus:outline-none resize-none"
                 />
               </div>
 
@@ -2071,11 +1965,11 @@ export default function SessionAttendancePage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-()">
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-(--border-subtle)">
               <button
                 type="button"
                 onClick={() => setIsCloseCashierModalOpen(false)}
-                className="rounded-xl border border-() px-4 py-2 text-xs font-semibold text-() hover:bg-() transition-colors cursor-pointer"
+                className="rounded-xl border border-(--border-subtle) px-4 py-2 text-xs font-semibold text-(--text-muted) hover:bg-(--bg-surface-subtle) transition-colors cursor-pointer"
               >
                 {locale === 'en' ? 'Cancel' : 'تراجع'}
               </button>
@@ -2087,9 +1981,7 @@ export default function SessionAttendancePage() {
               >
                 {isSubmittingCloseCashier && <RefreshCw className="h-3.5 w-3.5 animate-spin" />}
                 <span>
-                  {locale === 'en'
-                    ? 'Confirm & Close Drawer'
-                    : 'تأكيد المطابقة وإغلاق الصندوق'}
+                  {locale === 'en' ? 'Confirm & Close Drawer' : 'تأكيد المطابقة وإغلاق الصندوق'}
                 </span>
               </button>
             </div>
@@ -2100,17 +1992,17 @@ export default function SessionAttendancePage() {
       {/* 4. REJECT EXPENSE MODAL */}
       {rejectingExpenseId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="w-full max-w-md rounded-2xl border border-() bg-() p-6 shadow-2xl relative space-y-4 animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between border-b border-() pb-3">
+          <div className="w-full max-w-md rounded-2xl border border-(--border-subtle) bg-(--bg-surface) p-6 shadow-2xl relative space-y-4 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-(--border-subtle) pb-3">
               <div className="flex items-center gap-2">
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400">
                   <XCircle className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-()">
+                  <h3 className="text-base font-bold text-(--text-main)">
                     {locale === 'en' ? 'Reject Field Expense' : 'رفض المصروف الميداني'}
                   </h3>
-                  <p className="text-xs text-()">
+                  <p className="text-xs text-(--text-muted)">
                     {locale === 'en'
                       ? 'Document rejection reason in financial audit log'
                       : 'توثيق سبب الرفض في سجل التدقيق المالي'}
@@ -2120,14 +2012,14 @@ export default function SessionAttendancePage() {
               <button
                 type="button"
                 onClick={() => setRejectingExpenseId(null)}
-                className="p-1 text-() hover:text-()"
+                className="p-1 text-(--text-muted) hover:text-(--text-main)"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
             <div className="space-y-3">
-              <p className="text-xs text-()">
+              <p className="text-xs text-(--text-muted)">
                 {locale === 'en' ? (
                   <>
                     The expense will be marked as{' '}
@@ -2143,7 +2035,7 @@ export default function SessionAttendancePage() {
               </p>
 
               <div>
-                <label className="block text-xs font-semibold text-() mb-1.5">
+                <label className="block text-xs font-semibold text-(--text-main) mb-1.5">
                   {locale === 'en' ? 'Rejection Reason ' : 'سبب الرفض '}
                   <span className="text-rose-500">*</span>
                 </label>
@@ -2156,16 +2048,16 @@ export default function SessionAttendancePage() {
                       ? 'e.g. Not permitted under academy policy, missing invoice...'
                       : 'مثال: المصروف غير مشمول بسياسة الأكاديمية، أو لم يتم إرفاق فاتورة رسمية...'
                   }
-                  className="w-full rounded-xl border border-() bg-() p-3 text-xs text-() placeholder-() focus:border-rose-500 focus:outline-none resize-none"
+                  className="w-full rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) p-3 text-xs text-(--text-main) placeholder-(--text-muted) focus:border-rose-500 focus:outline-none resize-none"
                 />
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-()">
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-(--border-subtle)">
               <button
                 type="button"
                 onClick={() => setRejectingExpenseId(null)}
-                className="rounded-xl border border-() px-4 py-2 text-xs font-semibold text-() hover:bg-() transition-colors cursor-pointer"
+                className="rounded-xl border border-(--border-subtle) px-4 py-2 text-xs font-semibold text-(--text-muted) hover:bg-(--bg-surface-subtle) transition-colors cursor-pointer"
               >
                 {locale === 'en' ? 'Cancel' : 'إلغاء'}
               </button>

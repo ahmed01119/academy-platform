@@ -49,26 +49,64 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 const BROADCAST_CHANNEL_NAME = 'sportexus_auth_sync';
 const LOCAL_STORAGE_SYNC_KEY = 'sportexus_auth_sync_event';
+const TAB_ID =
+  typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : Math.random().toString(36).substring(2);
+
+function getInitialStoredSession(): {
+  hasSession: boolean;
+  cachedUser: UserSummary | null;
+} {
+  if (typeof window === 'undefined') {
+    return { hasSession: false, cachedUser: null };
+  }
+  try {
+    const isAuthRoute =
+      window.location.pathname === '/login' ||
+      window.location.pathname === '/register' ||
+      window.location.pathname === '/reset-password';
+
+    if (isAuthRoute) {
+      return { hasSession: false, cachedUser: null };
+    }
+
+    // The access token lasts 15 minutes and is renewed by the refresh cookie on the next request, so its expiry
+    // says nothing about the session: only the server decides (GET /auth/me, refreshed on 401).
+    const hasSession = localStorage.getItem('sportexus_has_session') === 'true';
+    if (!hasSession) {
+      return { hasSession: false, cachedUser: null };
+    }
+
+    const cachedUserStr = localStorage.getItem('sportexus_auth_user');
+    const cachedUser = cachedUserStr ? (JSON.parse(cachedUserStr) as UserSummary) : null;
+    return { hasSession: true, cachedUser };
+  } catch {
+    return { hasSession: false, cachedUser: null };
+  }
+}
 
 interface AuthSyncPayload {
   type: 'LOGIN' | 'LOGOUT' | 'TENANT_SWITCH';
   tenantId?: string;
+  sourceTabId?: string;
   timestamp: number;
 }
 
 function broadcastAuthSync(payload: AuthSyncPayload): void {
   if (typeof window === 'undefined') return;
+  const enriched: AuthSyncPayload = { ...payload, sourceTabId: TAB_ID };
   try {
     if ('BroadcastChannel' in window) {
       const channel = new BroadcastChannel(BROADCAST_CHANNEL_NAME);
-      channel.postMessage(payload);
+      channel.postMessage(enriched);
       channel.close();
     }
   } catch {
     // Ignore channel broadcast error
   }
   try {
-    localStorage.setItem(LOCAL_STORAGE_SYNC_KEY, JSON.stringify(payload));
+    localStorage.setItem(LOCAL_STORAGE_SYNC_KEY, JSON.stringify(enriched));
   } catch {
     // Ignore storage write error
   }
@@ -110,6 +148,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setAuthState('AUTHENTICATED');
       setError(null);
 
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('sportexus_has_session', 'true');
+          localStorage.setItem('sportexus_auth_user', JSON.stringify(data.user));
+        } catch {
+          // Ignore
+        }
+      }
+
       if (resolvedActive?.tenantId) {
         setActiveTenantIdHeader(resolvedActive.tenantId);
       } else {
@@ -127,11 +174,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const data = await api.auth.getMe();
       applyAuthState(data);
     } catch (err: unknown) {
+      const sessionRefused =
+        err instanceof ApiError && (err.statusCode === 401 || err.statusCode === 403);
+      if (!sessionRefused) {
+        // Offline, a slow database or a server error: keep the user signed in; the next request retries.
+        setAuthState((prev) => (prev === 'REFRESHING' ? 'AUTHENTICATED' : prev));
+        if (err instanceof ApiError) setError(err.message);
+        return;
+      }
       setUser(null);
       setActiveTenant(null);
       setMemberships([]);
       setActiveTenantIdHeader(null);
       setAuthState('UNAUTHENTICATED');
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.removeItem('sportexus_has_session');
+          localStorage.removeItem('sportexus_auth_expiry');
+          localStorage.removeItem('sportexus_auth_user');
+        } catch {
+          // Ignore
+        }
+      }
       if (err instanceof ApiError && err.statusCode !== 401) {
         setError(err.message);
       }
@@ -141,7 +205,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [applyAuthState]);
 
   useEffect(() => {
-    void refreshUser();
+    const session = getInitialStoredSession();
+    if (session.hasSession && session.cachedUser) {
+      setUser(session.cachedUser);
+      setAuthState('AUTHENTICATED');
+      void refreshUser();
+    } else {
+      setAuthState('UNAUTHENTICATED');
+    }
   }, [refreshUser]);
 
   // Cross-tab synchronization and session-expiration listeners
@@ -149,6 +220,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (typeof window === 'undefined') return;
 
     const handleSyncPayload = (payload: AuthSyncPayload) => {
+      // Ignore broadcast events originating from the current tab to prevent duplicate requests
+      if (payload.sourceTabId === TAB_ID) return;
+
       if (payload.type === 'LOGOUT') {
         setUser(null);
         setActiveTenant(null);
@@ -156,6 +230,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setActiveTenantIdHeader(null);
         setAuthState('UNAUTHENTICATED');
         setError(null);
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.removeItem('sportexus_has_session');
+            localStorage.removeItem('sportexus_auth_expiry');
+            localStorage.removeItem('sportexus_auth_user');
+          } catch {
+            // Ignore
+          }
+        }
         void offlineEngine.purgeAll().catch(() => undefined);
       } else if (payload.type === 'LOGIN' || payload.type === 'TENANT_SWITCH') {
         void refreshUser();
@@ -212,6 +295,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (data: LoginRequest) => {
     setActiveTenantIdHeader(null);
     const res = await api.auth.login(data);
+
+    // Save token duration and session flags in storage
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('sportexus_has_session', 'true');
+        localStorage.removeItem('sportexus_auth_expiry');
+        localStorage.setItem('sportexus_auth_user', JSON.stringify(res.user));
+      } catch {
+        // Ignore storage error
+      }
+    }
+
     applyAuthState(res);
 
     const activeMemberships = res.memberships.filter((m) => m.status === 'ACTIVE');
@@ -255,6 +350,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         localStorage.removeItem('academy_active_tenant_id');
         localStorage.removeItem('sportexus_auth_user');
+        localStorage.removeItem('sportexus_has_session');
+        localStorage.removeItem('sportexus_auth_expiry');
         sessionStorage.clear();
       } catch {
         // Ignore storage access errors

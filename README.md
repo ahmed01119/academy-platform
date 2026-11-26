@@ -19,7 +19,8 @@ docs/             Architecture, ADRs, database design, security boundaries
 
 ## Prerequisites
 
-- Node.js 22+ (`nvm use` / see `.nvmrc`)
+- Node.js **22 LTS** (22.x, see `.nvmrc`; the same major is used by CI, the Dockerfiles and Render). Newer majors are not
+  supported yet: install 22 with nvm / nvm-windows / fnm / Volta (`nvm use` reads `.nvmrc`).
 - pnpm 11+ (`corepack enable` then `corepack prepare pnpm@11.13.1 --activate`)
 - Docker Desktop or local PostgreSQL 16+ & Redis 7+
 

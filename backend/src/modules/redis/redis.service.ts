@@ -18,6 +18,7 @@ export class RedisService implements OnModuleDestroy {
   private readonly logger = new Logger(RedisService.name);
   private client: Redis | null = null;
   private memoryStore = new Map<string, MemoryRateLimitEntry>();
+  private valueStore = new Map<string, { value: string; expiresAt: number }>();
 
   private get requiresRedis(): boolean {
     return this.config.nodeEnv === 'production' && !this.config.allowInMemoryRateLimit;
@@ -121,6 +122,7 @@ export class RedisService implements OnModuleDestroy {
       await this.client.quit().catch(() => {});
     }
     this.memoryStore.clear();
+    this.valueStore.clear();
   }
 
   /**
@@ -161,6 +163,72 @@ export class RedisService implements OnModuleDestroy {
     entry.count += 1;
     const remainingTime = Math.max(0, Math.ceil((entry.resetAt - now) / 1000));
     return { count: entry.count, remainingTime };
+  }
+
+  /**
+   * Reads a rate-limit counter without incrementing it (0 when absent or expired). Same fail-closed rule as
+   * {@link incrementRateLimit}: in production without Redis the call throws instead of returning a guess.
+   */
+  async peekRateLimit(key: string): Promise<number> {
+    if (this.client) {
+      try {
+        const value = await this.client.get(key);
+        return value ? Number.parseInt(value, 10) || 0 : 0;
+      } catch (err) {
+        this.logger.warn(`Redis get error: ${(err as Error).message}.`);
+        this.assertFallbackAllowed();
+      }
+    } else {
+      this.assertFallbackAllowed();
+    }
+    const entry = this.memoryStore.get(key);
+    return entry && Date.now() <= entry.resetAt ? entry.count : 0;
+  }
+
+  /**
+   * Stores a short-lived string value (for example a hashed one-time code). Same fail-closed rule as the rate limiter:
+   * in production without Redis the call throws instead of keeping the value in this process only.
+   */
+  async setValue(key: string, value: string, ttlSeconds: number): Promise<void> {
+    if (this.client) {
+      try {
+        await this.client.set(key, value, 'EX', ttlSeconds);
+        return;
+      } catch (err) {
+        this.logger.warn(`Redis set error: ${(err as Error).message}.`);
+        this.assertFallbackAllowed();
+      }
+    } else {
+      this.assertFallbackAllowed();
+    }
+    this.valueStore.set(key, { value, expiresAt: Date.now() + ttlSeconds * 1000 });
+  }
+
+  /** Reads a value stored with {@link setValue}; null when absent or expired. */
+  async getValue(key: string): Promise<string | null> {
+    if (this.client) {
+      try {
+        return await this.client.get(key);
+      } catch (err) {
+        this.logger.warn(`Redis get error: ${(err as Error).message}.`);
+        this.assertFallbackAllowed();
+      }
+    } else {
+      this.assertFallbackAllowed();
+    }
+    const entry = this.valueStore.get(key);
+    if (!entry) return null;
+    if (Date.now() > entry.expiresAt) {
+      this.valueStore.delete(key);
+      return null;
+    }
+    return entry.value;
+  }
+
+  /** Removes a value stored with {@link setValue}. */
+  async deleteValue(key: string): Promise<void> {
+    this.valueStore.delete(key);
+    await this.resetRateLimit(key);
   }
 
   async resetRateLimit(key: string): Promise<void> {

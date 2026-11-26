@@ -7,7 +7,7 @@ import { PrismaService } from '../../database/prisma.service';
 import type { JwtPayload } from '../token.service';
 import { ErrorCode } from '@academy/shared';
 
-function cookieOrBearerExtractor(req: Request): string | null {
+export function cookieOrBearerExtractor(req: Request): string | null {
   if (req && req.cookies && req.cookies.access_token) {
     return req.cookies.access_token;
   }
@@ -38,7 +38,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       tx.user.findUnique({
         where: { id: payload.sub },
         include: {
+          // Only ACTIVE memberships: the academy of any other membership is hidden by RLS (tenants_auth_discovery), so
+          // including it made the whole lookup fail (500) for anyone with a suspended, invited or revoked membership.
           memberships: {
+            where: { status: 'ACTIVE' },
             include: { tenant: true, branch: true },
           },
         },
@@ -52,6 +55,16 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       });
     }
 
+    // K13b: every protected request passes here (all guarded routes use JwtAuthGuard -> this strategy, and the
+    // user row is loaded on each request). Tokens issued before the user's last password change/reset, suspension or
+    // session revocation carry an older version and are rejected immediately. Pre-K13b tokens have no `sv` (= 0).
+    if ((payload.sv ?? 0) !== user.sessionVersion) {
+      throw new UnauthorizedException({
+        code: ErrorCode.TOKEN_INVALID,
+        message: 'Session is no longer valid. Please sign in again.',
+      });
+    }
+
     return {
       id: user.id,
       email: user.email,
@@ -60,6 +73,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       isEmailVerified: user.isEmailVerified,
       isPlatformSuperAdmin: user.isPlatformSuperAdmin ?? false,
       isPlatformOwner: user.isPlatformOwner ?? false,
+      mustResetPassword: user.mustResetPassword ?? false,
       memberships: user.memberships,
       activeTenantId: payload.tenantId,
     };

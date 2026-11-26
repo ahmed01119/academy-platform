@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import type { PrismaService } from '../database/prisma.service';
 import type { AuditService } from '../audit/audit.service';
+import type { NotificationsService } from '../notifications/notifications.service';
 import { Permission, type TenantContext } from '@academy/shared';
 
 type MockFn = ReturnType<typeof vi.fn>;
@@ -27,6 +28,12 @@ interface MockPrisma {
   playerEnrollment: {
     create: MockFn;
     count: MockFn;
+    updateMany: MockFn;
+  };
+  groupMember: {
+    create: MockFn;
+    findFirst: MockFn;
+    updateMany: MockFn;
   };
   branch: {
     findUnique: MockFn;
@@ -86,6 +93,7 @@ describe('PlayersService', () => {
     service = new PlayersService(
       mockPrisma as unknown as PrismaService,
       mockAudit as unknown as AuditService,
+      { createNotification: vi.fn() } as unknown as NotificationsService,
     );
   });
 
@@ -328,6 +336,7 @@ describe('PlayersService', () => {
       const restrictedContext: TenantContext = {
         tenantId: mockTenantContext.tenantId,
         actorUserId: 'coach-user-id',
+        locale: mockTenantContext.locale,
         permissions: [],
       };
 
@@ -384,6 +393,7 @@ describe('PlayersService', () => {
         tenantId: mockTenantContext.tenantId,
         actorUserId: 'staff-branch-1',
         branchId: 'branch-1',
+        locale: mockTenantContext.locale,
         permissions: [],
       };
 
@@ -423,6 +433,7 @@ describe('PlayersService', () => {
       const restrictedContext: TenantContext = {
         tenantId: mockTenantContext.tenantId,
         actorUserId: 'staff-user',
+        locale: mockTenantContext.locale,
         permissions: [],
       };
 
@@ -457,6 +468,57 @@ describe('PlayersService', () => {
           nationalId: '22222222222222',
         }),
       ).rejects.toThrow(ConflictException);
+    });
+
+    it('2026-11-25: edits the shared form fields; the guardian is also the emergency contact', async () => {
+      mockPrisma.player.findUnique.mockResolvedValue({
+        id: 'player-1',
+        tenantId: mockTenantContext.tenantId,
+        nationalId: null,
+        enrollments: [],
+      });
+      const guardian = {
+        findFirst: vi.fn().mockResolvedValue({ id: 'g-1' }),
+        update: vi.fn().mockResolvedValue({}),
+        create: vi.fn(),
+      };
+      (mockPrisma as unknown as { guardian: typeof guardian }).guardian = guardian;
+      mockPrisma.player.update.mockResolvedValue({
+        id: 'player-1',
+        tenantId: mockTenantContext.tenantId,
+        firstName: 'Omar',
+        lastName: 'Ali',
+        gender: 'MALE',
+        dateOfBirth: new Date('2013-01-01'),
+        jerseyNumber: 9,
+        emergencyContactName: 'Ali Hassan Omar',
+        emergencyContactPhone: '01000000002',
+        status: 'ACTIVE',
+        guardians: [],
+        enrollments: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      const result = await service.updatePlayer(mockTenantContext, 'player-1', {
+        birthYear: 2013,
+        jerseyNumber: 9,
+        guardianName: 'Ali Hassan Omar',
+        guardianPhone: '01000000002',
+      });
+
+      expect(mockPrisma.player.update.mock.calls[0]?.[0].data).toMatchObject({
+        dateOfBirth: new Date('2013-01-01'),
+        jerseyNumber: 9,
+        emergencyContactName: 'Ali Hassan Omar',
+        emergencyContactPhone: '01000000002',
+      });
+      expect(guardian.update.mock.calls[0]?.[0].data).toEqual({
+        firstName: 'Ali',
+        lastName: 'Hassan Omar',
+        phone: '01000000002',
+      });
+      expect(result.jerseyNumber).toBe(9);
     });
   });
 

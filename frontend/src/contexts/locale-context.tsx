@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback } fr
 import { DEFAULT_LOCALE, LOCALE_DIRECTION, type SupportedLocale } from '@academy/shared';
 import { translations } from '../locales/translations';
 import { ARABIC_DATA_FALLBACKS } from '../utils/data-translator';
+import { LOCALE_COOKIE, LOCALE_STORAGE_KEY } from '@/lib/preferences/init-scripts';
 
 interface LocaleContextValue {
   locale: SupportedLocale;
@@ -19,10 +20,10 @@ interface LocaleContextValue {
 
 const LocaleContext = createContext<LocaleContextValue | undefined>(undefined);
 
-const LOCALE_STORAGE_KEY = 'academy_locale';
 const DEFAULT_TIMEZONE = 'Africa/Cairo';
 
-const CURRENCY_ARABIC_SYMBOLS: Record<string, string> = {
+/** Arabic symbols of the currencies an academy can use (English shows the ISO code). */
+export const CURRENCY_ARABIC_SYMBOLS: Record<string, string> = {
   EGP: 'ج.م',
   SAR: 'ر.س',
   USD: '$',
@@ -34,20 +35,15 @@ const CURRENCY_ARABIC_SYMBOLS: Record<string, string> = {
   OMR: 'ر.ع',
 };
 
-export const localeInitScript = `
-(function() {
-  try {
-    var stored = localStorage.getItem('${LOCALE_STORAGE_KEY}') || 'ar';
-    var dir = stored === 'en' ? 'ltr' : 'rtl';
-    document.documentElement.lang = stored;
-    document.documentElement.dir = dir;
-    document.documentElement.setAttribute('data-locale', stored);
-  } catch (e) {}
-})();
-`;
-
-export function LocaleProvider({ children }: { children: React.ReactNode }) {
-  const [locale, setLocaleState] = useState<SupportedLocale>(DEFAULT_LOCALE);
+export function LocaleProvider({
+  children,
+  initialLocale = DEFAULT_LOCALE,
+}: {
+  children: React.ReactNode;
+  /** Locale the server rendered with (from the cookie); the first client render must match it. */
+  initialLocale?: SupportedLocale;
+}) {
+  const [locale, setLocaleState] = useState<SupportedLocale>(initialLocale);
 
   const applyLocale = useCallback((newLocale: SupportedLocale) => {
     const dir = LOCALE_DIRECTION[newLocale];
@@ -56,12 +52,13 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
       document.documentElement.dir = dir;
       document.documentElement.setAttribute('data-locale', newLocale);
       // Also update cookies for SSR compatibility
-      document.cookie = `NEXT_LOCALE=${newLocale}; path=/; max-age=31536000; SameSite=Lax`;
+      document.cookie = `${LOCALE_COOKIE}=${newLocale}; path=/; max-age=31536000; SameSite=Lax`;
     }
   }, []);
 
   useEffect(() => {
-    let saved: SupportedLocale = DEFAULT_LOCALE;
+    // localStorage stays the source of truth; without it, keep what the server rendered.
+    let saved: SupportedLocale = initialLocale;
     try {
       const item = localStorage.getItem(LOCALE_STORAGE_KEY);
       if (item === 'ar' || item === 'en') {
@@ -73,7 +70,7 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
 
     setLocaleState(saved);
     applyLocale(saved);
-  }, [applyLocale]);
+  }, [applyLocale, initialLocale]);
 
   const setLocale = useCallback(
     (newLocale: SupportedLocale) => {

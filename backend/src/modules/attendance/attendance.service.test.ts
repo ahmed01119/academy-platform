@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { AttendanceService } from './attendance.service';
+import { AttendanceRosterService } from './attendance-roster.service';
 import {
   BadRequestException,
   ConflictException,
@@ -50,6 +51,10 @@ interface MockPrisma {
     findMany: MockFn;
   };
   playerEnrollment: {
+    findFirst: MockFn;
+  };
+  playerSubscription: {
+    findMany: MockFn;
     findFirst: MockFn;
   };
   tenant: {
@@ -142,6 +147,7 @@ describe('AttendanceService', () => {
     service = new AttendanceService(
       mockPrisma as unknown as PrismaService,
       mockAudit as unknown as AuditService,
+      new AttendanceRosterService(mockPrisma as unknown as PrismaService),
     );
   });
 
@@ -796,30 +802,62 @@ describe('AttendanceService', () => {
       tenantId: tenantContext.tenantId,
       branchId: tenantContext.branchId,
       actorUserId: 'coach-user-123',
+      locale: tenantContext.locale,
       role: 'COACH',
     };
 
-    it('strictly prohibits coaches from recording player attendance', async () => {
+    it('refuses a coach on a session they are not assigned to', async () => {
       mockPrisma.attendanceSession.findUnique.mockResolvedValue({
-        id: 'session-assigned',
+        id: 'session-other',
         tenantId: tenantContext.tenantId,
         branchId: tenantContext.branchId,
-        coachUserId: coachContext.actorUserId,
-        groupId: null,
+        coachUserId: 'another-coach',
+        groupId: 'group-1',
         sessionDate: new Date(),
         status: 'SCHEDULED',
       });
+      mockPrisma.groupCoach.findFirst.mockResolvedValue(null);
 
       await expect(
         service.recordAttendance(coachContext, {
-          sessionId: 'session-assigned',
+          sessionId: 'session-other',
           playerId: 'player-1',
           status: 'PRESENT',
           idempotencyKey: 'idem-coach-1',
         }),
-      ).rejects.toThrow(
-        'Coaches are not permitted to record player attendance through QR or manual entry',
-      );
+      ).rejects.toThrow('Coaches can only record attendance for sessions they are assigned to');
+    });
+
+    it.each([
+      ['the session coach', { coachUserId: 'SELF', groupId: null }, null],
+      [
+        'a coach of the session group',
+        { coachUserId: 'another-coach', groupId: 'group-1' },
+        { id: 'gc-1' },
+      ],
+    ])('lets %s past the coach rule', async (_label, sessionPatch, groupCoachRow) => {
+      mockPrisma.attendanceSession.findUnique.mockResolvedValue({
+        id: 'session-assigned',
+        tenantId: tenantContext.tenantId,
+        branchId: tenantContext.branchId,
+        sessionDate: new Date(),
+        status: 'SCHEDULED',
+        ...sessionPatch,
+        coachUserId:
+          sessionPatch.coachUserId === 'SELF' ? coachContext.actorUserId : sessionPatch.coachUserId,
+      });
+      mockPrisma.groupCoach.findFirst.mockResolvedValue(groupCoachRow);
+
+      const outcome = await service
+        .recordAttendance(coachContext, {
+          sessionId: 'session-assigned',
+          playerId: 'player-1',
+          status: 'PRESENT',
+          idempotencyKey: 'idem-coach-2',
+        })
+        .catch((e: Error) => e);
+      // Later steps may still fail on the minimal mocks; the coach rule itself must not refuse.
+      expect(String((outcome as Error)?.message ?? '')).not.toContain('assigned to');
     });
 
     it('rejects recording attendance on future sessions beyond valid window for managers', async () => {
@@ -842,6 +880,26 @@ describe('AttendanceService', () => {
           idempotencyKey: 'idem-future',
         }),
       ).rejects.toThrow('Cannot mark attendance for future sessions in advance');
+    });
+  });
+
+  describe('listSessions (delegated to AttendanceRosterService)', () => {
+    it('returns the roster page shape; an empty result reports totalPages 0', async () => {
+      mockPrisma.attendanceSession.count.mockResolvedValue(0);
+      mockPrisma.attendanceSession.findMany.mockResolvedValue([]);
+
+      const result = await service.listSessions(tenantContext, { page: 2, limit: 10 });
+
+      // Pins the behaviour of the code that runs in production. The removed fallback copy
+      // returned totalPages 1 here; the extracted service has always returned 0.
+      expect(result).toEqual({ items: [], total: 0, page: 2, limit: 10, totalPages: 0 });
+      expect(mockPrisma.attendanceSession.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ tenantId: tenantContext.tenantId }),
+          skip: 10,
+          take: 10,
+        }),
+      );
     });
   });
 });

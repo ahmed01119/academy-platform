@@ -5,13 +5,7 @@ import { useLocale } from '@/contexts/locale-context';
 import { translateStatus, translateDataString } from '@/utils/data-translator';
 
 export type BadgeVariant =
-  | 'success'
-  | 'warning'
-  | 'danger'
-  | 'info'
-  | 'neutral'
-  | 'emerald'
-  | 'purple';
+  'success' | 'warning' | 'danger' | 'info' | 'neutral' | 'emerald' | 'purple';
 
 interface StatusBadgeProps {
   label?: string;
@@ -101,8 +95,8 @@ export function StatusBadge({
     warning: 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30',
     danger: 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30',
     info: 'bg-sky-500/15 text-sky-600 dark:text-sky-400 border-sky-500/30',
-    neutral: 'bg-[var(--bg-surface-subtle)] text-[var(--text-muted)] border-[var(--border-subtle)]',
-    emerald: 'bg-[var(--badge-bg)] text-[var(--badge-fg)] border-[var(--badge-border)]',
+    neutral: 'bg-(--bg-surface-subtle) text-(--text-muted) border-(--border-subtle)',
+    emerald: 'bg-(--badge-bg) text-(--badge-fg) border-(--badge-border)',
     purple: 'bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30',
   };
 

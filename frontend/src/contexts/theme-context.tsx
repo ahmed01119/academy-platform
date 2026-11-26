@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { THEME_STORAGE_KEY } from '@/lib/preferences/init-scripts';
 
 export type ThemeMode = 'light' | 'dark' | 'system';
 export type ResolvedTheme = 'light' | 'dark';
@@ -12,8 +13,6 @@ interface ThemeContextValue {
 }
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
-
-const THEME_STORAGE_KEY = 'academy_theme';
 
 function getSystemTheme(): ResolvedTheme {
   if (typeof window === 'undefined') return 'dark';
@@ -97,18 +96,3 @@ export function useTheme(): ThemeContextValue {
   }
   return context;
 }
-
-export const themeInitScript = `
-(function() {
-  try {
-    var stored = localStorage.getItem('${THEME_STORAGE_KEY}') || 'system';
-    var isDark = stored === 'dark' || (stored === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
-    if (isDark) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  } catch (e) {}
-})();
-`;

@@ -21,6 +21,22 @@ const EnvSchema = z.object({
     .union([z.boolean(), z.enum(['true', 'false'])])
     .transform((value) => value === true || value === 'true')
     .default(false),
+  /**
+   * Development convenience: return the password-reset code in the forgot-password response. Off unless set to true,
+   * and ignored outside NODE_ENV=development. With it on, anyone who can reach the API can reset any account, so
+   * never enable it on a server reachable from the internet (e.g. behind the laptop tunnel).
+   */
+  AUTH_EXPOSE_DEBUG_OTP: z
+    .union([z.boolean(), z.enum(['true', 'false'])])
+    .transform((value) => value === true || value === 'true')
+    .default(false),
+  /**
+   * Shared secret that authenticates the Next.js /v1 proxy to the API (S1). Server-side only; never exposed to
+   * browsers or logs. Required (>= 32 chars) in production, which includes staging.
+   */
+  INTERNAL_PROXY_SECRET: z.string().optional(),
+  /** Number of trusted reverse proxies directly in front of the API (Express `trust proxy`). 0 = socket address. */
+  TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(3).default(0),
 });
 
 export type AppEnv = z.infer<typeof EnvSchema>;
@@ -59,6 +75,13 @@ export function validateEnv(config: Record<string, unknown>): AppEnv & Record<st
     if (!username || ['postgres', 'academy', 'root'].includes(username)) {
       throw new Error(
         `Production DATABASE_URL must use a dedicated unprivileged runtime role (e.g. 'sportexus_app'). Administrative role '${username}' is not permitted.`,
+      );
+    }
+
+    const proxySecret = parsed.data.INTERNAL_PROXY_SECRET?.trim() ?? '';
+    if (proxySecret.length < 32) {
+      throw new Error(
+        'INTERNAL_PROXY_SECRET (at least 32 characters) is required in production to trust client IPs from the web proxy',
       );
     }
   }

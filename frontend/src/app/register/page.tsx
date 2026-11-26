@@ -1,19 +1,34 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { SPORT_CODES } from '@academy/shared';
+import { SPORT_ICONS, SPORT_TRANSLATIONS } from '@/utils/data-translator';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { useLocale } from '@/contexts/locale-context';
+import { PasswordStrengthMeter } from '@/components/ui/PasswordStrengthMeter';
+import {
+  firstInvalidField,
+  resolveRegisterError,
+  validateRegisterForm,
+  type RegisterField,
+  type RegisterFieldErrors,
+} from '@/features/auth/register-form';
+import { PasswordVisibilityToggle } from '@/features/auth/components/PasswordVisibilityToggle';
+import { EmailCodeVerification } from '@/features/auth/components/EmailCodeVerification';
+import { emailNotConfirmedMessage } from '@/features/auth/email-code';
+import { EGYPT_GOVERNORATES, governorateLabel } from '@/features/auth/egypt-governorates';
+import { readReturnPath, withReturnPath } from '@/lib/auth/safe-return-path';
+import { useSafeReturnPath } from '@/hooks/useSafeReturnPath';
 import { Navbar } from '../../components/Navbar';
 import { SportexusLogo } from '../../components/brand/SportexusLogo';
 import {
   Building,
   User,
   Mail,
+  Lock,
   Phone,
-  Eye,
-  EyeOff,
   AlertCircle,
   ArrowRight,
   ShieldCheck,
@@ -24,18 +39,15 @@ import {
   Clock,
   Home,
   LogIn,
-  Check,
 } from 'lucide-react';
 
-const SPORTS_OPTIONS = [
-  { value: 'FOOTBALL', labelAr: 'كرة قدم', labelEn: 'Football', icon: '⚽' },
-  { value: 'PADEL', labelAr: 'بادل', labelEn: 'Padel', icon: '🎾' },
-  { value: 'SWIMMING', labelAr: 'سباحة', labelEn: 'Swimming', icon: '🏊' },
-  { value: 'BASKETBALL', labelAr: 'كرة سلة', labelEn: 'Basketball', icon: '🏀' },
-  { value: 'TENNIS', labelAr: 'تنس أرضي', labelEn: 'Tennis', icon: '🎾' },
-  { value: 'MARTIAL_ARTS', labelAr: 'فنون قتالية', labelEn: 'Martial Arts', icon: '🥋' },
-  { value: 'OTHER', labelAr: 'رياضة أخرى', labelEn: 'Other', icon: '🏆' },
-];
+// Every sport the platform supports (one list for the whole product: @academy/shared SPORT_CODES).
+const SPORTS_OPTIONS = SPORT_CODES.map((code) => ({
+  value: code,
+  labelAr: SPORT_TRANSLATIONS.ar[code] ?? code,
+  labelEn: SPORT_TRANSLATIONS.en[code] ?? code,
+  icon: SPORT_ICONS[code] ?? '🏅',
+}));
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -51,8 +63,10 @@ export default function RegisterPage() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  // Proof that the e-mail was confirmed with a code (POST /auth/email-code/verify).
+  const [emailProof, setEmailProof] = useState<string | null>(null);
 
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [fieldErrors, setFieldErrors] = useState<RegisterFieldErrors>({});
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -69,103 +83,37 @@ export default function RegisterPage() {
     city: string;
   } | null>(null);
 
+  // Validated `?redirect=` for links; redirects below re-read it at call time to avoid a
+  // race with the initial render (a signed-in user may already be present on mount).
+  const returnPath = useSafeReturnPath();
+
   useEffect(() => {
     if (user) {
-      router.push('/dashboard');
+      router.push(readReturnPath(window.location.search) ?? '/dashboard');
     }
   }, [user, router]);
 
+  const fieldRefs: Record<RegisterField, React.RefObject<HTMLInputElement | null>> = {
+    academyName: academyNameRef,
+    ownerName: ownerNameRef,
+    email: emailRef,
+    phone: phoneRef,
+    password: passwordRef,
+    confirmPassword: confirmPasswordRef,
+  };
+
   const validateForm = (): boolean => {
-    const errors: Record<string, string> = {};
-    const isAr = locale === 'ar';
-
-    // 1. Academy Name
-    if (!academyName.trim()) {
-      errors.academyName = isAr ? 'يرجى إدخال اسم الأكاديمية.' : 'Academy name is required.';
-    } else if (academyName.trim().length < 3) {
-      errors.academyName = isAr
-        ? 'اسم الأكاديمية يجب أن يحتوي على 3 أحرف على الأقل.'
-        : 'Academy name must contain at least 3 characters.';
-    } else if (academyName.trim().length > 100) {
-      errors.academyName = isAr ? 'اسم الأكاديمية طويل جدًا.' : 'Academy name is too long.';
-    }
-
-    // 2. Owner Name
-    if (!ownerName.trim()) {
-      errors.ownerName = isAr ? 'يرجى إدخال اسم مالك الأكاديمية.' : 'Owner name is required.';
-    } else if (ownerName.trim().length < 3) {
-      errors.ownerName = isAr
-        ? 'اسم المالك يجب أن يحتوي على 3 أحرف على الأقل.'
-        : 'Owner name must contain at least 3 characters.';
-    } else if (ownerName.trim().length > 100) {
-      errors.ownerName = isAr ? 'اسم المالك طويل جدًا.' : 'Owner name is too long.';
-    }
-
-    // 3. Email
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!email.trim()) {
-      errors.email = isAr ? 'يرجى إدخال البريد الإلكتروني.' : 'Email address is required.';
-    } else if (!emailRegex.test(email.trim())) {
-      errors.email = isAr ? 'البريد الإلكتروني غير صحيح.' : 'Enter a valid email address.';
-    }
-
-    // 4. Phone
-    if (phone.trim()) {
-      const phoneClean = phone.trim().replace(/[\s-]/g, '');
-      const phoneRegex = /^\+?[0-9]{8,18}$/;
-      if (!phoneRegex.test(phoneClean)) {
-        errors.phone = isAr ? 'رقم الهاتف غير صحيح.' : 'Enter a valid phone number.';
-      }
-    }
-
-    // 5. Password
-    if (!password) {
-      errors.password = isAr ? 'يرجى إدخال كلمة المرور.' : 'Password is required.';
-    } else if (password.length < 8) {
-      errors.password = isAr
-        ? 'كلمة المرور يجب أن تحتوي على 8 أحرف على الأقل.'
-        : 'Password must contain at least 8 characters.';
-    } else if (password.length > 100) {
-      errors.password = isAr ? 'كلمة المرور طويلة جدًا.' : 'Password is too long.';
-    } else if (!/[A-Z]/.test(password)) {
-      errors.password = isAr
-        ? 'كلمة المرور يجب أن تحتوي على حرف كبير واحد على الأقل (A-Z).'
-        : 'Password must contain at least one uppercase letter (A-Z).';
-    } else if (!/[a-z]/.test(password)) {
-      errors.password = isAr
-        ? 'كلمة المرور يجب أن تحتوي على حرف صغير واحد على الأقل (a-z).'
-        : 'Password must contain at least one lowercase letter (a-z).';
-    } else if (!/[0-9]/.test(password)) {
-      errors.password = isAr
-        ? 'كلمة المرور يجب أن تحتوي على رقم واحد على الأقل (0-9).'
-        : 'Password must contain at least one number (0-9).';
-    }
-
-    // 6. Confirm Password
-    if (!confirmPassword) {
-      errors.confirmPassword = isAr ? 'يرجى تأكيد كلمة المرور.' : 'Please confirm your password.';
-    } else if (password !== confirmPassword) {
-      errors.confirmPassword = isAr ? 'كلمتا المرور غير متطابقتين.' : 'Passwords do not match.';
-    }
-
+    const errors = validateRegisterForm(
+      { academyName, sport, city, ownerName, email, phone, password, confirmPassword },
+      locale,
+    );
     setFieldErrors(errors);
 
     // Auto-focus the first invalid field
-    if (errors.academyName) {
-      academyNameRef.current?.focus();
-    } else if (errors.ownerName) {
-      ownerNameRef.current?.focus();
-    } else if (errors.email) {
-      emailRef.current?.focus();
-    } else if (errors.phone) {
-      phoneRef.current?.focus();
-    } else if (errors.password) {
-      passwordRef.current?.focus();
-    } else if (errors.confirmPassword) {
-      confirmPasswordRef.current?.focus();
-    }
+    const first = firstInvalidField(errors);
+    if (first) fieldRefs[first].current?.focus();
 
-    return Object.keys(errors).length === 0;
+    return first === null;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -173,6 +121,11 @@ export default function RegisterPage() {
     setError(null);
 
     if (!validateForm()) {
+      return;
+    }
+    if (!emailProof) {
+      setFieldErrors((prev) => ({ ...prev, email: emailNotConfirmedMessage(locale) }));
+      emailRef.current?.focus();
       return;
     }
 
@@ -187,6 +140,7 @@ export default function RegisterPage() {
         email: email.trim().toLowerCase(),
         phone: phone.trim() ? phone.trim() : undefined,
         password,
+        emailProof,
       });
 
       if (res.status === 'PENDING_REVIEW') {
@@ -197,39 +151,15 @@ export default function RegisterPage() {
           city: city.trim() || (locale === 'ar' ? 'غير محددة' : 'Unspecified'),
         });
       } else {
-        router.push('/dashboard');
+        router.push(readReturnPath(window.location.search) ?? '/dashboard');
       }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : '';
-      const isAr = locale === 'ar';
-
-      if (
-        message.includes('already exists') ||
-        message.includes('already registered') ||
-        message.includes('Email')
-      ) {
-        setFieldErrors((prev) => ({
-          ...prev,
-          email: isAr
-            ? 'هذا البريد الإلكتروني مسجل بالفعل لدى أكاديمية أخرى أو مستخدم.'
-            : 'This email address is already registered.',
-        }));
-        emailRef.current?.focus();
-      } else if (message.includes('slug') || message.includes('Academy name')) {
-        setFieldErrors((prev) => ({
-          ...prev,
-          academyName: isAr
-            ? 'اسم الأكاديمية هذا مسجل بالفعل، يرجى اختيار اسم آخر.'
-            : 'An academy with this name already exists.',
-        }));
-        academyNameRef.current?.focus();
+      const resolution = resolveRegisterError(err, locale);
+      if (resolution.kind === 'field') {
+        setFieldErrors((prev) => ({ ...prev, [resolution.field]: resolution.message }));
+        fieldRefs[resolution.field].current?.focus();
       } else {
-        setError(
-          message ||
-            (isAr
-              ? 'فشل تسجيل الأكاديمية. يرجى مراجعة البيانات والمحاولة مجدداً.'
-              : 'Registration failed. Please review your details and try again.'),
-        );
+        setError(resolution.message);
       }
     } finally {
       setIsSubmitting(false);
@@ -237,15 +167,15 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[var(--bg-base)] text-[var(--text-main)] flex flex-col transition-colors overflow-x-hidden animate-fade-in">
+    <div className="min-h-screen bg-(--bg-base) text-(--text-main) flex flex-col transition-colors overflow-x-hidden animate-fade-in">
       <Navbar />
 
       <main className="flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-8">
         <div className="w-full max-w-2xl">
           {/* Card container — unified navy/blue Sportexus theme */}
-          <div className="rounded-3xl border border-[var(--border-app)] bg-[var(--bg-surface)]/95 p-6 sm:p-8 shadow-float backdrop-blur-xl relative overflow-hidden animate-scale-up">
-            <div className="absolute -top-16 -right-16 h-40 w-40 rounded-full bg-[var(--accent-blue)]/20 blur-3xl pointer-events-none" />
-            <div className="absolute -bottom-16 -left-16 h-40 w-40 rounded-full bg-[var(--accent-primary)]/10 blur-3xl pointer-events-none" />
+          <div className="rounded-3xl border border-(--border-app) bg-(--bg-surface)/95 p-6 sm:p-8 shadow-float backdrop-blur-xl relative overflow-hidden animate-scale-up">
+            <div className="absolute -top-16 -right-16 h-40 w-40 rounded-full bg-(--accent-blue)/20 blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-16 -left-16 h-40 w-40 rounded-full bg-(--accent-primary)/10 blur-3xl pointer-events-none" />
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-48 w-48 rounded-full bg-[#22C55E]/10 blur-3xl pointer-events-none" />
 
             {/* Confirmation State if registration application was submitted */}
@@ -269,7 +199,7 @@ export default function RegisterPage() {
                       ? 'تم تقديم طلب التسجيل بنجاح!'
                       : 'Application Submitted Successfully!'}
                   </h1>
-                  <p className="text-sm text-slate-300 max-w-lg mx-auto leading-relaxed">
+                  <p className="text-sm text-(--text-sub) max-w-lg mx-auto leading-relaxed">
                     {locale === 'ar'
                       ? `شكراً لك! تم استلام طلب تسجيل أكاديمية "${submittedData.academyName}" بنجاح. يقوم فريق إدارة منصة سبورتكسس حالياً بمراجعة البيانات واعتماد المنظومة.`
                       : `Thank you! Your registration application for "${submittedData.academyName}" has been received. Our platform administrators are reviewing your submission.`}
@@ -277,35 +207,45 @@ export default function RegisterPage() {
                 </div>
 
                 {/* Details Summary Card */}
-                <div className="rounded-xl border border-slate-700 bg-slate-900/60 p-4 max-w-md mx-auto text-start space-y-3 text-xs sm:text-sm">
-                  <div className="flex justify-between items-center border-b border-slate-800 pb-2">
-                    <span className="text-slate-400">
+                <div className="rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) p-4 max-w-md mx-auto text-start space-y-3 text-xs sm:text-sm">
+                  <div className="flex justify-between items-center border-b border-(--border-subtle) pb-2">
+                    <span className="text-(--text-muted)">
                       {locale === 'ar' ? 'اسم الأكاديمية' : 'Academy Name'}
                     </span>
-                    <span className="font-bold text-white">{submittedData.academyName}</span>
+                    <span className="font-bold text-(--text-main)">
+                      {submittedData.academyName}
+                    </span>
                   </div>
-                  <div className="flex justify-between items-center border-b border-slate-800 pb-2">
-                    <span className="text-slate-400">
+                  <div className="flex justify-between items-center border-b border-(--border-subtle) pb-2">
+                    <span className="text-(--text-muted)">
                       {locale === 'ar' ? 'البريد الإلكتروني للإدارة' : 'Admin Email'}
                     </span>
                     <span className="font-semibold text-[var(--accent-primary)]">
                       {submittedData.email}
                     </span>
                   </div>
-                  <div className="flex justify-between items-center border-b border-slate-800 pb-2">
-                    <span className="text-slate-400">
+                  <div className="flex justify-between items-center border-b border-(--border-subtle) pb-2">
+                    <span className="text-(--text-muted)">
                       {locale === 'ar' ? 'الرياضة الأساسية' : 'Sport'}
                     </span>
-                    <span className="text-slate-200">
+                    <span className="text-(--text-main)">
                       {(() => {
                         const opt = SPORTS_OPTIONS.find((s) => s.value === submittedData.sport);
-                        return opt ? (locale === 'ar' ? opt.labelAr : opt.labelEn) : submittedData.sport;
+                        return opt
+                          ? locale === 'ar'
+                            ? opt.labelAr
+                            : opt.labelEn
+                          : submittedData.sport;
                       })()}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-slate-400">{locale === 'ar' ? 'المدينة' : 'City'}</span>
-                    <span className="text-slate-200">{submittedData.city}</span>
+                    <span className="text-(--text-muted)">
+                      {locale === 'ar' ? 'المدينة' : 'City'}
+                    </span>
+                    <span className="text-(--text-main)">
+                      {governorateLabel(submittedData.city, locale)}
+                    </span>
                   </div>
                 </div>
 
@@ -318,7 +258,7 @@ export default function RegisterPage() {
                 {/* Actions */}
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-4">
                   <Link
-                    href="/login"
+                    href={withReturnPath('/login', returnPath)}
                     className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#0A3BFF] to-[#00D6FF] px-6 py-3 text-sm font-bold text-white shadow-lg shadow-blue-600/20 hover:brightness-110 transition-all"
                   >
                     <LogIn className="h-4 w-4" />
@@ -326,7 +266,7 @@ export default function RegisterPage() {
                   </Link>
                   <Link
                     href="/"
-                    className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-900/80 px-6 py-3 text-sm font-semibold text-slate-300 hover:border-slate-500 hover:text-white transition-all"
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) px-6 py-3 text-sm font-semibold text-(--text-sub) hover:border-[var(--accent-primary)] hover:text-(--text-main) transition-all"
                   >
                     <Home className="h-4 w-4" />
                     <span>{locale === 'ar' ? 'العودة للصفحة الرئيسية' : 'Return to Home'}</span>
@@ -338,12 +278,12 @@ export default function RegisterPage() {
                 {/* Header with Sportexus Logo */}
                 <div className="text-center mb-8 relative z-10 flex flex-col items-center">
                   <SportexusLogo size="lg" className="mb-4" />
-                  <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+                  <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-(--text-main)">
                     {locale === 'ar'
                       ? 'تسجيل أكاديمية رياضية جديدة'
                       : 'Register a New Sports Academy'}
                   </h1>
-                  <p className="mt-2 text-sm text-slate-400">
+                  <p className="mt-2 text-sm text-(--text-muted)">
                     {locale === 'ar'
                       ? 'ابدأ بإدارة فروعك، مدربيك، لاعبيك وحضورهم بنظام عزل بيانات متعدد المستأجرين'
                       : 'Manage branches, coaches, players, and attendance with multi-tenant data isolation'}
@@ -352,7 +292,10 @@ export default function RegisterPage() {
 
                 {/* Error Message */}
                 {error && (
-                  <div className="mb-6 flex items-start gap-3 rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-xs text-rose-300">
+                  <div
+                    role="alert"
+                    className="mb-6 flex items-start gap-3 rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-xs text-rose-300"
+                  >
                     <AlertCircle className="h-5 w-5 shrink-0 text-rose-400 mt-0.5" />
                     <div className="leading-relaxed">{error}</div>
                   </div>
@@ -361,7 +304,7 @@ export default function RegisterPage() {
                 {/* Form */}
                 <form onSubmit={handleSubmit} className="space-y-6 relative z-10">
                   {/* Section 1: Academy Info */}
-                  <div className="rounded-xl border border-slate-700 bg-slate-900/50 p-4 space-y-4">
+                  <div className="rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) p-4 space-y-4">
                     <div className="flex items-center gap-2 text-xs font-bold text-[var(--accent-primary)] tracking-wider uppercase">
                       <Building className="h-4 w-4" />
                       <span>
@@ -372,7 +315,7 @@ export default function RegisterPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <label
-                          className="block text-xs font-semibold text-slate-300 mb-1.5"
+                          className="block text-xs font-semibold text-(--text-sub) mb-1.5"
                           htmlFor="academyName"
                         >
                           {locale === 'ar' ? 'اسم الأكاديمية *' : 'Academy Name *'}
@@ -390,13 +333,13 @@ export default function RegisterPage() {
                           }}
                           placeholder={
                             locale === 'ar'
-                              ? 'مثال: أكاديمية النجوم لكرة القدم'
-                              : 'e.g. Stars Football Academy'
+                              ? 'مثال: أكاديمية النجوم الرياضية'
+                              : 'e.g. Stars Sports Academy'
                           }
-                          className={`w-full rounded-xl border py-2.5 px-3 text-sm text-white placeholder-slate-500 outline-none transition-all ${
+                          className={`w-full rounded-xl border py-2.5 px-3 text-sm text-(--text-main) placeholder-(--text-muted) outline-none transition-all ${
                             fieldErrors.academyName
                               ? 'border-rose-500 bg-rose-500/10 focus:border-rose-500 focus:ring-1 focus:ring-rose-500'
-                              : 'border-[var(--border-app)] bg-[var(--bg-surface-subtle)] text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:ring-1 focus:ring-[var(--accent-primary)]'
+                              : 'border-(--border-app) bg-(--bg-surface-subtle) text-(--text-main) placeholder-(--text-muted) focus:border-(--accent-primary) focus:ring-1 focus:ring-(--accent-primary)'
                           }`}
                         />
                         {fieldErrors.academyName && (
@@ -409,7 +352,7 @@ export default function RegisterPage() {
 
                       <div>
                         <label
-                          className="block text-xs font-semibold text-slate-300 mb-1.5"
+                          className="block text-xs font-semibold text-(--text-sub) mb-1.5"
                           htmlFor="sport"
                         >
                           {locale === 'ar' ? 'نوع الرياضة الأساسية *' : 'Primary Sport *'}
@@ -418,10 +361,14 @@ export default function RegisterPage() {
                           id="sport"
                           value={sport}
                           onChange={(e) => setSport(e.target.value)}
-                          className="w-full rounded-xl border border-[var(--border-app)] bg-[var(--bg-surface-subtle)] py-2.5 px-3 text-sm text-[var(--text-main)] focus:border-[var(--accent-primary)] focus:ring-1 focus:ring-[var(--accent-primary)] outline-none transition-all cursor-pointer"
+                          className="w-full rounded-xl border border-(--border-app) bg-(--bg-surface-subtle) py-2.5 px-3 text-sm text-(--text-main) focus:border-(--accent-primary) focus:ring-1 focus:ring-(--accent-primary) outline-none transition-all cursor-pointer"
                         >
                           {SPORTS_OPTIONS.map((opt) => (
-                            <option key={opt.value} value={opt.value} className="bg-slate-900">
+                            <option
+                              key={opt.value}
+                              value={opt.value}
+                              className="bg-[var(--bg-surface)]"
+                            >
                               {opt.icon} {locale === 'ar' ? opt.labelAr : opt.labelEn}
                             </option>
                           ))}
@@ -431,31 +378,40 @@ export default function RegisterPage() {
 
                     <div>
                       <label
-                        className="block text-xs font-semibold text-slate-300 mb-1.5"
+                        className="block text-xs font-semibold text-(--text-sub) mb-1.5"
                         htmlFor="city"
                       >
-                        {locale === 'ar'
-                          ? 'المدينة / الدولة (اختياري)'
-                          : 'City / Country (optional)'}
+                        {locale === 'ar' ? 'المحافظة (اختياري)' : 'Governorate (optional)'}
                       </label>
                       <div className="relative">
-                        <input
+                        <select
                           id="city"
-                          type="text"
                           value={city}
                           onChange={(e) => setCity(e.target.value)}
-                          placeholder={
-                            locale === 'ar' ? 'مثال: الرياض، السعودية' : 'e.g. Riyadh, KSA'
-                          }
-                          className="w-full rounded-xl border border-[var(--border-app)] bg-[var(--bg-surface-subtle)] py-2.5 pr-3 pl-9 text-sm text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:ring-1 focus:ring-[var(--accent-primary)] outline-none transition-all"
-                        />
-                        <MapPin className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
+                          className={`w-full rounded-xl border border-(--border-app) bg-(--bg-surface-subtle) py-2.5 ps-9 pe-3 text-sm focus:border-(--accent-primary) focus:ring-1 focus:ring-(--accent-primary) outline-none transition-all cursor-pointer ${
+                            city ? 'text-(--text-main)' : 'text-(--text-muted)'
+                          }`}
+                        >
+                          <option value="" className="bg-[var(--bg-surface)]">
+                            {locale === 'ar' ? 'اختر المحافظة' : 'Select a governorate'}
+                          </option>
+                          {EGYPT_GOVERNORATES.map((g) => (
+                            <option
+                              key={g.value}
+                              value={g.value}
+                              className="bg-[var(--bg-surface)] text-(--text-main)"
+                            >
+                              {locale === 'ar' ? g.ar : g.en}
+                            </option>
+                          ))}
+                        </select>
+                        <MapPin className="pointer-events-none absolute start-3 top-3 h-4 w-4 text-(--text-muted)" />
                       </div>
                     </div>
                   </div>
 
                   {/* Section 2: Owner Info */}
-                  <div className="rounded-xl border border-slate-700 bg-slate-900/50 p-4 space-y-4">
+                  <div className="rounded-xl border border-(--border-subtle) bg-(--bg-surface-subtle) p-4 space-y-4">
                     <div className="flex items-center gap-2 text-xs font-bold text-[var(--accent-primary)] tracking-wider uppercase">
                       <User className="h-4 w-4" />
                       <span>
@@ -466,7 +422,7 @@ export default function RegisterPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <label
-                          className="block text-xs font-semibold text-slate-300 mb-1.5"
+                          className="block text-xs font-semibold text-(--text-sub) mb-1.5"
                           htmlFor="ownerName"
                         >
                           {locale === 'ar' ? 'اسم مالك الأكاديمية *' : 'Academy Owner Name *'}
@@ -482,11 +438,11 @@ export default function RegisterPage() {
                               setFieldErrors((prev) => ({ ...prev, ownerName: '' }));
                             }
                           }}
-                          placeholder={locale === 'ar' ? 'الكابتن أحمد محمود' : 'Captain Ahmed'}
-                          className={`w-full rounded-xl border py-2.5 px-3 text-sm text-white placeholder-slate-500 outline-none transition-all ${
+                          placeholder={locale === 'ar' ? 'الاسم بالكامل' : 'Full name'}
+                          className={`w-full rounded-xl border py-2.5 px-3 text-sm text-(--text-main) placeholder-(--text-muted) outline-none transition-all ${
                             fieldErrors.ownerName
                               ? 'border-rose-500 bg-rose-500/10 focus:border-rose-500 focus:ring-1 focus:ring-rose-500'
-                              : 'border-[var(--border-app)] bg-[var(--bg-surface-subtle)] text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:ring-1 focus:ring-[var(--accent-primary)]'
+                              : 'border-(--border-app) bg-(--bg-surface-subtle) text-(--text-main) placeholder-(--text-muted) focus:border-(--accent-primary) focus:ring-1 focus:ring-(--accent-primary)'
                           }`}
                         />
                         {fieldErrors.ownerName && (
@@ -499,7 +455,7 @@ export default function RegisterPage() {
 
                       <div>
                         <label
-                          className="block text-xs font-semibold text-slate-300 mb-1.5"
+                          className="block text-xs font-semibold text-(--text-sub) mb-1.5"
                           htmlFor="phone"
                         >
                           {locale === 'ar' ? 'رقم الهاتف (اختياري)' : 'Phone (optional)'}
@@ -516,15 +472,15 @@ export default function RegisterPage() {
                                 setFieldErrors((prev) => ({ ...prev, phone: '' }));
                               }
                             }}
-                            placeholder="+20 10 1234 5678"
+                            placeholder="01XXXXXXXXX"
                             dir="ltr"
-                            className={`w-full rounded-xl border py-2.5 pr-3 pl-9 text-sm text-white placeholder-slate-500 outline-none transition-all ${
+                            className={`w-full rounded-xl border py-2.5 pr-3 pl-9 text-sm text-(--text-main) placeholder-(--text-muted) outline-none transition-all ${
                               fieldErrors.phone
                                 ? 'border-rose-500 bg-rose-500/10 focus:border-rose-500 focus:ring-1 focus:ring-rose-500'
-                                : 'border-[var(--border-app)] bg-[var(--bg-surface-subtle)] text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:ring-1 focus:ring-[var(--accent-primary)]'
+                                : 'border-(--border-app) bg-(--bg-surface-subtle) text-(--text-main) placeholder-(--text-muted) focus:border-(--accent-primary) focus:ring-1 focus:ring-(--accent-primary)'
                             }`}
                           />
-                          <Phone className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
+                          <Phone className="absolute left-3 top-3 h-4 w-4 text-(--text-muted)" />
                         </div>
                         {fieldErrors.phone && (
                           <p className="mt-1.5 text-xs text-rose-400 flex items-center gap-1 animate-in fade-in duration-150">
@@ -537,7 +493,7 @@ export default function RegisterPage() {
 
                     <div>
                       <label
-                        className="block text-xs font-semibold text-slate-300 mb-1.5"
+                        className="block text-xs font-semibold text-(--text-sub) mb-1.5"
                         htmlFor="email"
                       >
                         {locale === 'ar' ? 'البريد الإلكتروني للإدارة *' : 'Admin Email *'}
@@ -554,15 +510,15 @@ export default function RegisterPage() {
                               setFieldErrors((prev) => ({ ...prev, email: '' }));
                             }
                           }}
-                          placeholder="owner@academy.com"
+                          placeholder="name@example.com"
                           dir="ltr"
-                          className={`w-full rounded-xl border py-2.5 pr-3 pl-9 text-sm text-white placeholder-slate-500 outline-none transition-all ${
+                          className={`w-full rounded-xl border py-2.5 pr-3 pl-9 text-sm text-(--text-main) placeholder-(--text-muted) outline-none transition-all ${
                             fieldErrors.email
                               ? 'border-rose-500 bg-rose-500/10 focus:border-rose-500 focus:ring-1 focus:ring-rose-500'
-                              : 'border-[var(--border-app)] bg-[var(--bg-surface-subtle)] text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:ring-1 focus:ring-[var(--accent-primary)]'
+                              : 'border-(--border-app) bg-(--bg-surface-subtle) text-(--text-main) placeholder-(--text-muted) focus:border-(--accent-primary) focus:ring-1 focus:ring-(--accent-primary)'
                           }`}
                         />
-                        <Mail className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
+                        <Mail className="absolute left-3 top-3 h-4 w-4 text-(--text-muted)" />
                       </div>
                       {fieldErrors.email && (
                         <p className="mt-1.5 text-xs text-rose-400 flex items-center gap-1 animate-in fade-in duration-150">
@@ -570,12 +526,22 @@ export default function RegisterPage() {
                           <span>{fieldErrors.email}</span>
                         </p>
                       )}
+                      <EmailCodeVerification
+                        email={email}
+                        locale={locale}
+                        onProofChange={(proof) => {
+                          setEmailProof(proof);
+                          if (proof) setFieldErrors((prev) => ({ ...prev, email: '' }));
+                        }}
+                        disabled={isSubmitting}
+                        idPrefix="register"
+                      />
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <label
-                          className="block text-xs font-semibold text-slate-300 mb-1.5"
+                          className="block text-xs font-semibold text-(--text-sub) mb-1.5"
                           htmlFor="password"
                         >
                           {locale === 'ar' ? 'كلمة المرور *' : 'Password *'}
@@ -594,23 +560,19 @@ export default function RegisterPage() {
                             }}
                             placeholder="••••••••••••"
                             dir="ltr"
-                            className={`w-full rounded-xl border py-2.5 pr-3 pl-9 text-sm text-white placeholder-slate-500 outline-none transition-all ${
+                            className={`w-full rounded-xl border py-2.5 pr-10 pl-10 text-sm text-(--text-main) placeholder-(--text-muted) outline-none transition-all ${
                               fieldErrors.password
                                 ? 'border-rose-500 bg-rose-500/10 focus:border-rose-500 focus:ring-1 focus:ring-rose-500'
-                                : 'border-[var(--border-app)] bg-[var(--bg-surface-subtle)] text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:ring-1 focus:ring-[var(--accent-primary)]'
+                                : 'border-(--border-app) bg-(--bg-surface-subtle) text-(--text-main) placeholder-(--text-muted) focus:border-(--accent-primary) focus:ring-1 focus:ring-(--accent-primary)'
                             }`}
                           />
-                          <button
-                            type="button"
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="absolute left-3 top-3 text-slate-500 hover:text-slate-300"
-                          >
-                            {showPassword ? (
-                              <EyeOff className="h-4 w-4" />
-                            ) : (
-                              <Eye className="h-4 w-4" />
-                            )}
-                          </button>
+                          <Lock className="absolute left-3 top-3 h-4 w-4 text-(--text-muted)" />
+                          <PasswordVisibilityToggle
+                            visible={showPassword}
+                            onToggle={() => setShowPassword(!showPassword)}
+                            controls="password"
+                            className="absolute right-3 top-3 text-(--text-muted) hover:text-(--text-main) transition-colors p-0.5 focus:outline-none"
+                          />
                         </div>
                         {fieldErrors.password && (
                           <p className="mt-1.5 text-xs text-rose-400 flex items-center gap-1 animate-in fade-in duration-150">
@@ -622,7 +584,7 @@ export default function RegisterPage() {
 
                       <div>
                         <label
-                          className="block text-xs font-semibold text-slate-300 mb-1.5"
+                          className="block text-xs font-semibold text-(--text-sub) mb-1.5"
                           htmlFor="confirmPassword"
                         >
                           {locale === 'ar' ? 'تأكيد كلمة المرور *' : 'Confirm Password *'}
@@ -640,10 +602,10 @@ export default function RegisterPage() {
                           }}
                           placeholder="••••••••••••"
                           dir="ltr"
-                          className={`w-full rounded-xl border py-2.5 px-3 text-sm text-white placeholder-slate-500 outline-none transition-all ${
+                          className={`w-full rounded-xl border py-2.5 px-3 text-sm text-(--text-main) placeholder-(--text-muted) outline-none transition-all ${
                             fieldErrors.confirmPassword
                               ? 'border-rose-500 bg-rose-500/10 focus:border-rose-500 focus:ring-1 focus:ring-rose-500'
-                              : 'border-[var(--border-app)] bg-[var(--bg-surface-subtle)] text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:ring-1 focus:ring-[var(--accent-primary)]'
+                              : 'border-(--border-app) bg-(--bg-surface-subtle) text-(--text-main) placeholder-(--text-muted) focus:border-(--accent-primary) focus:ring-1 focus:ring-(--accent-primary)'
                           }`}
                         />
                         {fieldErrors.confirmPassword && (
@@ -656,68 +618,11 @@ export default function RegisterPage() {
                     </div>
 
                     {/* Real-time Password Strength Criteria Checklist */}
-                    <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 text-[11px] space-y-1.5">
-                      <div className="font-semibold text-slate-400">
-                        {locale === 'ar'
-                          ? 'متطلبات كلمة المرور الآمنة:'
-                          : 'Password Security Requirements:'}
-                      </div>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                        <span
-                          className={`flex items-center gap-1 ${
-                            password.length >= 8 && password.length <= 100
-                              ? 'text-emerald-400'
-                              : 'text-slate-500'
-                          }`}
-                        >
-                          {password.length >= 8 && password.length <= 100 ? (
-                            <Check className="h-3 w-3" />
-                          ) : (
-                            <span className="w-3 h-3 rounded-full border border-slate-600 inline-block" />
-                          )}
-                          <span>{locale === 'ar' ? '8+ أحرف' : '8+ chars'}</span>
-                        </span>
-
-                        <span
-                          className={`flex items-center gap-1 ${
-                            /[A-Z]/.test(password) ? 'text-emerald-400' : 'text-slate-500'
-                          }`}
-                        >
-                          {/[A-Z]/.test(password) ? (
-                            <Check className="h-3 w-3" />
-                          ) : (
-                            <span className="w-3 h-3 rounded-full border border-slate-600 inline-block" />
-                          )}
-                          <span>{locale === 'ar' ? 'حرف كبير (A-Z)' : 'Uppercase (A-Z)'}</span>
-                        </span>
-
-                        <span
-                          className={`flex items-center gap-1 ${
-                            /[a-z]/.test(password) ? 'text-emerald-400' : 'text-slate-500'
-                          }`}
-                        >
-                          {/[a-z]/.test(password) ? (
-                            <Check className="h-3 w-3" />
-                          ) : (
-                            <span className="w-3 h-3 rounded-full border border-slate-600 inline-block" />
-                          )}
-                          <span>{locale === 'ar' ? 'حرف صغير (a-z)' : 'Lowercase (a-z)'}</span>
-                        </span>
-
-                        <span
-                          className={`flex items-center gap-1 ${
-                            /[0-9]/.test(password) ? 'text-emerald-400' : 'text-slate-500'
-                          }`}
-                        >
-                          {/[0-9]/.test(password) ? (
-                            <Check className="h-3 w-3" />
-                          ) : (
-                            <span className="w-3 h-3 rounded-full border border-slate-600 inline-block" />
-                          )}
-                          <span>{locale === 'ar' ? 'رقم (0-9)' : 'Number (0-9)'}</span>
-                        </span>
-                      </div>
-                    </div>
+                    <PasswordStrengthMeter
+                      password={password}
+                      locale={locale}
+                      showChecklist={true}
+                    />
                   </div>
 
                   <button
@@ -749,14 +654,14 @@ export default function RegisterPage() {
                 </form>
 
                 {/* Footer link */}
-                <div className="mt-8 border-t border-slate-800 pt-6 text-center text-xs text-slate-400 relative z-10">
+                <div className="mt-8 border-t border-(--border-subtle) pt-6 text-center text-xs text-(--text-muted) relative z-10">
                   <span>
                     {locale === 'ar'
                       ? 'لديك حساب بالفعل وتريد تسجيل الدخول؟ '
                       : 'Already have an account? '}
                   </span>
                   <Link
-                    href="/login"
+                    href={withReturnPath('/login', returnPath)}
                     className="font-semibold text-[var(--accent-primary)] hover:underline transition-colors"
                   >
                     {locale === 'ar' ? 'تسجيل الدخول إلى حسابك' : 'Sign in to your account'}
@@ -766,7 +671,7 @@ export default function RegisterPage() {
             )}
           </div>
 
-          <div className="mt-6 flex items-center justify-center gap-2 text-xs text-slate-400">
+          <div className="mt-6 flex items-center justify-center gap-2 text-xs text-(--text-muted)">
             <ShieldCheck className="h-4 w-4 text-[#22C55E]" />
             <span>
               {locale === 'ar'

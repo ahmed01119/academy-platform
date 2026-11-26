@@ -37,9 +37,7 @@ export function GovernanceTab({
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [userName, setUserName] = useState('');
   const [userEmail, setUserEmail] = useState('');
-  const [userRole, setUserRole] = useState<
-    'OWNER' | 'MANAGER' | 'BRANCH_MANAGER' | 'RECEPTIONIST' | 'COACH' | 'ACCOUNTANT'
-  >('MANAGER');
+  const [userRole, setUserRole] = useState<'OWNER' | 'MANAGER' | 'COACH'>('MANAGER');
   const [userTenantId, setUserTenantId] = useState<string>(academies[0]?.id || '');
   const [isSubmittingUser, setIsSubmittingUser] = useState(false);
 
@@ -153,14 +151,14 @@ export function GovernanceTab({
   return (
     <div className="space-y-6">
       {/* Governance Banner */}
-      <div className="p-5 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div className="p-5 rounded-2xl border border-(--border-subtle) bg-[var(--bg-surface)] flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="p-3 rounded-xl bg-amber-500/10 text-amber-400">
             <Crown className="w-6 h-6" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="text-sm font-bold text-[var(--text-main)]">
+              <h3 className="text-sm font-bold text-(--text-main)">
                 {locale === 'ar'
                   ? 'حوكمة ملاك المنصة (Platform Governance)'
                   : 'Platform Owner Governance'}
@@ -171,7 +169,7 @@ export function GovernanceTab({
                 </span>
               )}
             </div>
-            <p className="text-xs text-[var(--text-muted)] mt-0.5">
+            <p className="text-xs text-(--text-muted) mt-0.5">
               {locale === 'ar'
                 ? 'إدارة الحسابات السيادية للمنصة، دعوة مدراء النظام، وتعيين أعضاء الأكاديميات مركزياً.'
                 : 'Sovereign platform control: invite super admins, manage delegates, and assign academy users.'}
@@ -203,9 +201,9 @@ export function GovernanceTab({
       </div>
 
       {/* Super Admins & Owners Table */}
-      <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] overflow-hidden">
-        <div className="p-4 border-b border-[var(--border-subtle)]">
-          <h4 className="text-sm font-bold text-[var(--text-main)] flex items-center gap-2">
+      <div className="rounded-2xl border border-(--border-subtle) bg-[var(--bg-surface)] overflow-hidden">
+        <div className="p-4 border-b border-(--border-subtle)">
+          <h4 className="text-sm font-bold text-(--text-main) flex items-center gap-2">
             <Shield className="w-4 h-4 text-amber-400" />
             {locale === 'ar' ? 'مسؤولو المنصة وملاك النظام' : 'Super Admins & Platform Owners'}
           </h4>
@@ -213,7 +211,7 @@ export function GovernanceTab({
 
         <div className="overflow-x-auto">
           <table className="w-full text-xs text-start">
-            <thead className="bg-[var(--bg-surface-subtle)] border-b border-[var(--border-subtle)] text-[var(--text-muted)] font-semibold uppercase">
+            <thead className="bg-(--bg-surface-subtle) border-b border-(--border-subtle) text-(--text-muted) font-semibold uppercase">
               <tr>
                 <th className="px-4 py-3 text-start">{locale === 'ar' ? 'المسؤول' : 'Admin'}</th>
                 <th className="px-4 py-3 text-start">
@@ -226,15 +224,10 @@ export function GovernanceTab({
             </thead>
             <tbody className="divide-y divide-[var(--border-subtle)]">
               {superAdmins.map((adm) => (
-                <tr
-                  key={adm.id}
-                  className="hover:bg-[var(--bg-surface-subtle)]/50 transition-colors"
-                >
+                <tr key={adm.id} className="hover:bg-(--bg-surface-subtle)/50 transition-colors">
                   <td className="px-4 py-3">
-                    <div className="font-bold text-[var(--text-main)]">{adm.name}</div>
-                    <div className="text-[11px] font-mono text-[var(--text-muted)]">
-                      {adm.email}
-                    </div>
+                    <div className="font-bold text-(--text-main)">{adm.name}</div>
+                    <div className="text-[11px] font-mono text-(--text-muted)">{adm.email}</div>
                   </td>
                   <td className="px-4 py-3">
                     {adm.isPlatformOwner ? (
@@ -260,14 +253,14 @@ export function GovernanceTab({
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-3 font-mono text-[var(--text-muted)]">
+                  <td className="px-4 py-3 font-mono text-(--text-muted)">
                     {adm.activeSessionsCount} {locale === 'ar' ? 'أجهزة' : 'devices'}
                   </td>
                   <td className="px-4 py-3 text-end space-x-2 rtl:space-x-reverse">
                     <button
                       type="button"
                       onClick={() => handleRevokeSessions(adm)}
-                      className="px-2.5 py-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-card)] hover:bg-[var(--bg-surface-subtle)] text-[11px] text-[var(--text-muted)] hover:text-rose-400 transition-colors"
+                      className="px-2.5 py-1 rounded-lg border border-(--border-subtle) bg-[var(--bg-card)] hover:bg-(--bg-surface-subtle) text-[11px] text-(--text-muted) hover:text-rose-400 transition-colors"
                       title={locale === 'ar' ? 'إنهاء كافة الجلسات' : 'Revoke sessions'}
                     >
                       <LogOut className="w-3 h-3 inline me-1" />
@@ -311,17 +304,17 @@ export function GovernanceTab({
           onClick={() => setIsSuperAdminModalOpen(false)}
         >
           <div
-            className="w-full max-w-md rounded-2xl border border-[var(--border-app)] bg-[var(--bg-card)] p-6 shadow-2xl space-y-4"
+            className="w-full max-w-md rounded-2xl border border-(--border-app) bg-[var(--bg-card)] p-6 shadow-2xl space-y-4"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="border-b border-[var(--border-subtle)] pb-3">
-              <h3 className="text-base font-bold text-[var(--text-main)] flex items-center gap-2">
+            <div className="border-b border-(--border-subtle) pb-3">
+              <h3 className="text-base font-bold text-(--text-main) flex items-center gap-2">
                 <Crown className="w-5 h-5 text-amber-400" />
                 {locale === 'ar'
                   ? 'دعوة مسؤول منصة Super Admin جديد'
                   : 'Invite Platform Super Admin'}
               </h3>
-              <p className="text-xs text-[var(--text-muted)] mt-0.5">
+              <p className="text-xs text-(--text-muted) mt-0.5">
                 {locale === 'ar'
                   ? 'يتم إصدار حساب إداري سيادي مع تفعيل شرط إعادة تعيين كلمة المرور فور الدخول.'
                   : 'Provisions administrative platform credentials with required first-sign-in password change.'}
@@ -330,7 +323,7 @@ export function GovernanceTab({
 
             <form onSubmit={handleInviteSuperAdmin} className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-[var(--text-main)]">
+                <label className="text-xs font-semibold text-(--text-main)">
                   {locale === 'ar' ? 'اسم المسؤول' : 'Full Name'}
                 </label>
                 <input
@@ -338,13 +331,13 @@ export function GovernanceTab({
                   required
                   value={saName}
                   onChange={(e) => setSaName(e.target.value)}
-                  placeholder="e.g. Captain Ahmed"
-                  className="w-full px-3 py-2 rounded-xl bg-[var(--bg-surface-subtle)] border border-[var(--border-subtle)] text-xs text-[var(--text-main)] focus:outline-none focus:border-amber-500"
+                  placeholder="Full name"
+                  className="w-full px-3 py-2 rounded-xl bg-(--bg-surface-subtle) border border-(--border-subtle) text-xs text-(--text-main) focus:outline-none focus:border-amber-500"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-[var(--text-main)]">
+                <label className="text-xs font-semibold text-(--text-main)">
                   {locale === 'ar' ? 'البريد الإلكتروني' : 'Email Address'}
                 </label>
                 <input
@@ -352,8 +345,8 @@ export function GovernanceTab({
                   required
                   value={saEmail}
                   onChange={(e) => setSaEmail(e.target.value)}
-                  placeholder="admin@platform.com"
-                  className="w-full px-3 py-2 rounded-xl bg-[var(--bg-surface-subtle)] border border-[var(--border-subtle)] text-xs text-[var(--text-main)] focus:outline-none focus:border-amber-500"
+                  placeholder="name@example.com"
+                  className="w-full px-3 py-2 rounded-xl bg-(--bg-surface-subtle) border border-(--border-subtle) text-xs text-(--text-main) focus:outline-none focus:border-amber-500"
                 />
               </div>
 
@@ -363,12 +356,12 @@ export function GovernanceTab({
                   : 'Per sovereign platform policy, delegated super admins cannot remove or self-promote to Platform Owner.'}
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-[var(--border-subtle)]">
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-(--border-subtle)">
                 <button
                   type="button"
                   onClick={() => setIsSuperAdminModalOpen(false)}
                   disabled={isSubmittingSa}
-                  className="px-4 py-2 text-xs font-semibold rounded-xl bg-[var(--bg-card-hover)] text-[var(--text-muted)]"
+                  className="px-4 py-2 text-xs font-semibold rounded-xl bg-[var(--bg-card-hover)] text-(--text-muted)"
                 >
                   {locale === 'ar' ? 'إلغاء' : 'Cancel'}
                 </button>
@@ -400,15 +393,15 @@ export function GovernanceTab({
           onClick={() => setIsUserModalOpen(false)}
         >
           <div
-            className="w-full max-w-md rounded-2xl border border-[var(--border-app)] bg-[var(--bg-card)] p-6 shadow-2xl space-y-4"
+            className="w-full max-w-md rounded-2xl border border-(--border-app) bg-[var(--bg-card)] p-6 shadow-2xl space-y-4"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="border-b border-[var(--border-subtle)] pb-3">
-              <h3 className="text-base font-bold text-[var(--text-main)] flex items-center gap-2">
+            <div className="border-b border-(--border-subtle) pb-3">
+              <h3 className="text-base font-bold text-(--text-main) flex items-center gap-2">
                 <UserPlus className="w-5 h-5 text-emerald-400" />
                 {locale === 'ar' ? 'دعوة مستخدم للأكاديمية' : 'Invite Academy Member'}
               </h3>
-              <p className="text-xs text-[var(--text-muted)] mt-0.5">
+              <p className="text-xs text-(--text-muted) mt-0.5">
                 {locale === 'ar'
                   ? 'تعيين مستخدم جديد أو قائم بدور محدد داخل الأكاديمية المستهدفة.'
                   : 'Assign new or existing user to a role in the target academy.'}
@@ -417,13 +410,13 @@ export function GovernanceTab({
 
             <form onSubmit={handleInviteUser} className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-[var(--text-main)]">
+                <label className="text-xs font-semibold text-(--text-main)">
                   {locale === 'ar' ? 'الأكاديمية المستهدفة' : 'Target Academy'}
                 </label>
                 <select
                   value={userTenantId}
                   onChange={(e) => setUserTenantId(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-[var(--bg-surface-subtle)] border border-[var(--border-subtle)] text-xs text-[var(--text-main)]"
+                  className="w-full px-3 py-2 rounded-xl bg-(--bg-surface-subtle) border border-(--border-subtle) text-xs text-(--text-main)"
                 >
                   {academies.map((a) => (
                     <option key={a.id} value={a.id}>
@@ -434,7 +427,7 @@ export function GovernanceTab({
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-[var(--text-main)]">
+                <label className="text-xs font-semibold text-(--text-main)">
                   {locale === 'ar' ? 'الاسم الكامل' : 'Full Name'}
                 </label>
                 <input
@@ -442,13 +435,13 @@ export function GovernanceTab({
                   required
                   value={userName}
                   onChange={(e) => setUserName(e.target.value)}
-                  placeholder="e.g. Coach Tarek"
-                  className="w-full px-3 py-2 rounded-xl bg-[var(--bg-surface-subtle)] border border-[var(--border-subtle)] text-xs text-[var(--text-main)] focus:outline-none focus:border-emerald-500"
+                  placeholder="Full name"
+                  className="w-full px-3 py-2 rounded-xl bg-(--bg-surface-subtle) border border-(--border-subtle) text-xs text-(--text-main) focus:outline-none focus:border-emerald-500"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-[var(--text-main)]">
+                <label className="text-xs font-semibold text-(--text-main)">
                   {locale === 'ar' ? 'البريد الإلكتروني' : 'Email Address'}
                 </label>
                 <input
@@ -456,53 +449,32 @@ export function GovernanceTab({
                   required
                   value={userEmail}
                   onChange={(e) => setUserEmail(e.target.value)}
-                  placeholder="user@example.com"
-                  className="w-full px-3 py-2 rounded-xl bg-[var(--bg-surface-subtle)] border border-[var(--border-subtle)] text-xs text-[var(--text-main)] focus:outline-none focus:border-emerald-500"
+                  placeholder="name@example.com"
+                  className="w-full px-3 py-2 rounded-xl bg-(--bg-surface-subtle) border border-(--border-subtle) text-xs text-(--text-main) focus:outline-none focus:border-emerald-500"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-[var(--text-main)]">
+                <label className="text-xs font-semibold text-(--text-main)">
                   {locale === 'ar' ? 'الدور الوظيفي' : 'Role'}
                 </label>
                 <select
                   value={userRole}
-                  onChange={(e) =>
-                    setUserRole(
-                      e.target.value as
-                        | 'OWNER'
-                        | 'MANAGER'
-                        | 'BRANCH_MANAGER'
-                        | 'RECEPTIONIST'
-                        | 'COACH'
-                        | 'ACCOUNTANT',
-                    )
-                  }
-                  className="w-full px-3 py-2 rounded-xl bg-[var(--bg-surface-subtle)] border border-[var(--border-subtle)] text-xs text-[var(--text-main)]"
+                  onChange={(e) => setUserRole(e.target.value as 'OWNER' | 'MANAGER' | 'COACH')}
+                  className="w-full px-3 py-2 rounded-xl bg-(--bg-surface-subtle) border border-(--border-subtle) text-xs text-(--text-main)"
                 >
                   <option value="COACH">{locale === 'ar' ? 'مدرب (COACH)' : 'Coach'}</option>
-                  <option value="BRANCH_MANAGER">
-                    {locale === 'ar' ? 'مدير فرع (BRANCH_MANAGER)' : 'Branch Manager'}
-                  </option>
-                  <option value="RECEPTIONIST">
-                    {locale === 'ar' ? 'استقبال (RECEPTIONIST)' : 'Receptionist'}
-                  </option>
-                  <option value="ACCOUNTANT">
-                    {locale === 'ar' ? 'محاسب (ACCOUNTANT)' : 'Accountant'}
-                  </option>
-                  <option value="MANAGER">
-                    {locale === 'ar' ? 'مدير عام (MANAGER)' : 'Manager'}
-                  </option>
+                  <option value="MANAGER">{locale === 'ar' ? 'إداري (MANAGER)' : 'Admin'}</option>
                   <option value="OWNER">{locale === 'ar' ? 'مالك (OWNER)' : 'Owner'}</option>
                 </select>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-[var(--border-subtle)]">
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-(--border-subtle)">
                 <button
                   type="button"
                   onClick={() => setIsUserModalOpen(false)}
                   disabled={isSubmittingUser}
-                  className="px-4 py-2 text-xs font-semibold rounded-xl bg-[var(--bg-card-hover)] text-[var(--text-muted)]"
+                  className="px-4 py-2 text-xs font-semibold rounded-xl bg-[var(--bg-card-hover)] text-(--text-muted)"
                 >
                   {locale === 'ar' ? 'إلغاء' : 'Cancel'}
                 </button>

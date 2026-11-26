@@ -7,6 +7,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
+import { assertCoachCanSee, coachGroupWhere, isCoachContext } from '../../common/coach-scope';
 import { AuditService } from '../audit/audit.service';
 import {
   ErrorCode,
@@ -163,6 +164,11 @@ export class GroupsService {
             message: 'Training group not found',
           });
         }
+        assertCoachCanSee(
+          tenantContext,
+          group.coaches.some((c) => c.coachUserId === tenantContext.actorUserId),
+          'Group',
+        );
 
         if (tenantContext.branchId && group.branchId !== tenantContext.branchId) {
           throw new ForbiddenException({
@@ -235,6 +241,7 @@ export class GroupsService {
         const whereClause = {
           tenantId: tenantContext.tenantId,
           ...(effectiveBranchId ? { branchId: effectiveBranchId } : {}),
+          ...(isCoachContext(tenantContext) ? coachGroupWhere(tenantContext.actorUserId) : {}),
           ...(query.status ? { status: query.status } : {}),
           ...(query.search
             ? {

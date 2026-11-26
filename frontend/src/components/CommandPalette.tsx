@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { useLocale } from '@/contexts/locale-context';
 import api from '@/api/client';
+import { Permission } from '@academy/shared';
+import { canAny } from '@/lib/auth/permissions';
+import { canAccessAdminRoutes } from '@/utils/role-routing';
 import {
   Search,
   Users,
@@ -29,7 +32,10 @@ interface CommandItem {
   href?: string;
   icon: React.ReactNode;
   onSelect?: () => void;
-  requiredRole?: string[];
+  /** Shown only to users holding at least one of these permissions (same rule as the target page). */
+  anyOf?: readonly Permission[];
+  /** Shown only to academy staff with admin pages (dashboard, settings), like the pages' 'admin' rule. */
+  adminOnly?: boolean;
   superAdminOnly?: boolean;
 }
 
@@ -108,9 +114,11 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
     }
   }, [isOpen]);
 
+  const canSearchPlayers = canAny(user, activeTenant, [Permission.PLAYERS_READ]);
+
   // Debounced search for players if tenant active and has permissions
   useEffect(() => {
-    if (!query.trim() || !activeTenant || query.length < 2) {
+    if (!query.trim() || !activeTenant || !canSearchPlayers || query.length < 2) {
       setPlayerResults([]);
       return;
     }
@@ -134,7 +142,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
     }, 250);
 
     return () => clearTimeout(timer);
-  }, [query, activeTenant]);
+  }, [query, activeTenant, canSearchPlayers]);
 
   const isSuperAdmin = Boolean(user?.isPlatformSuperAdmin || user?.isPlatformOwner);
 
@@ -146,6 +154,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       title: locale === 'ar' ? 'لوحة التحكم الرئيسية' : 'Dashboard Overview',
       subtitle: locale === 'ar' ? 'مؤشرات الأداء والملخص اليومي' : 'Key metrics and daily overview',
       href: '/dashboard',
+      adminOnly: true,
       icon: <Layers className="w-4 h-4 text-emerald-400" />,
     },
     {
@@ -157,6 +166,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
           ? 'إدارة اللاعبين والعضويات وبطاقات QR'
           : 'Manage players, memberships & QR',
       href: '/players',
+      anyOf: [Permission.PLAYERS_READ],
       icon: <Users className="w-4 h-4 text-blue-400" />,
     },
     {
@@ -166,6 +176,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       subtitle:
         locale === 'ar' ? 'الجداول والتحضير الفوري' : 'Schedules and live attendance check-in',
       href: '/sessions',
+      anyOf: [Permission.SESSIONS_READ],
       icon: <Calendar className="w-4 h-4 text-amber-400" />,
     },
     {
@@ -177,6 +188,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
           ? 'مسح فوري بالكاميرا حتى دون اتصال'
           : 'Instant camera check-in, works offline',
       href: '/attendance/scanner',
+      anyOf: [Permission.ATTENDANCE_MARK],
       icon: <QrCode className="w-4 h-4 text-teal-400" />,
     },
     {
@@ -186,6 +198,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       subtitle:
         locale === 'ar' ? 'توزيع الفئات السنية والمدربين' : 'Age categories and coaching staff',
       href: '/groups',
+      anyOf: [Permission.GROUPS_READ],
       icon: <Building className="w-4 h-4 text-purple-400" />,
     },
     {
@@ -197,6 +210,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
           ? 'التقييمات الفنية والبدنية والتطوير'
           : 'Technical & physical progress metrics',
       href: '/evaluations',
+      anyOf: [Permission.EVALUATIONS_READ],
       icon: <Award className="w-4 h-4 text-rose-400" />,
     },
     {
@@ -208,6 +222,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
           ? 'الاشتراكات والمدفوعات وإغلاق الخزينة'
           : 'Player billing, expenses & cashier closing',
       href: '/finance',
+      anyOf: [Permission.PAYMENTS_READ],
       icon: <DollarSign className="w-4 h-4 text-emerald-400" />,
     },
     {
@@ -217,6 +232,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       subtitle:
         locale === 'ar' ? 'إدارة فروع ومقرات الأكاديمية' : 'Manage academy branches & facilities',
       href: '/branches',
+      anyOf: [Permission.BRANCHES_READ],
       icon: <Building className="w-4 h-4 text-indigo-400" />,
     },
     {
@@ -226,6 +242,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       subtitle:
         locale === 'ar' ? 'الهوية وسياسات الحضور والاشتراك' : 'Identity, grace period & policies',
       href: '/settings',
+      adminOnly: true,
       icon: <Settings className="w-4 h-4 text-slate-400" />,
     },
   ];
@@ -257,6 +274,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
           ? 'إضافة لاعب مع إصدار بطاقة QR فورية'
           : 'Enroll player with instant QR code',
       href: '/players/new',
+      anyOf: [Permission.PLAYERS_CREATE],
       icon: <Users className="w-4 h-4 text-emerald-400" />,
     },
     {
@@ -266,24 +284,30 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       subtitle:
         locale === 'ar' ? 'بدء تسجيل حضور الحصة التدريبية' : 'Start scanning session attendance',
       href: '/attendance/scanner',
+      anyOf: [Permission.ATTENDANCE_MARK],
       icon: <QrCode className="w-4 h-4 text-teal-400" />,
     },
   ];
 
-  // Filter items based on query
+  // Only what this user may open, then what matches the query
+  const permitted = (item: CommandItem) =>
+    (!item.anyOf || canAny(user, activeTenant, item.anyOf)) &&
+    (!item.adminOnly || canAccessAdminRoutes(user, activeTenant));
   const q = query.toLowerCase().trim();
   const filteredNav = baseNavigation.filter(
     (item) =>
-      !q ||
-      item.title.toLowerCase().includes(q) ||
-      (item.subtitle && item.subtitle.toLowerCase().includes(q)),
+      permitted(item) &&
+      (!q ||
+        item.title.toLowerCase().includes(q) ||
+        (item.subtitle && item.subtitle.toLowerCase().includes(q))),
   );
 
   const filteredActions = quickActions.filter(
     (item) =>
-      !q ||
-      item.title.toLowerCase().includes(q) ||
-      (item.subtitle && item.subtitle.toLowerCase().includes(q)),
+      permitted(item) &&
+      (!q ||
+        item.title.toLowerCase().includes(q) ||
+        (item.subtitle && item.subtitle.toLowerCase().includes(q))),
   );
 
   const playerItems: CommandItem[] = playerResults.map((p) => ({
@@ -337,12 +361,12 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       onClick={onClose}
     >
       <div
-        className="w-full max-w-2xl overflow-hidden rounded-2xl border border-[var(--border-app)] bg-[var(--bg-surface)] shadow-2xl transition-all"
+        className="w-full max-w-2xl overflow-hidden rounded-2xl border border-(--border-app) bg-[var(--bg-surface)] shadow-2xl transition-all"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={handleKeyDown}
       >
         {/* Search Input Bar */}
-        <div className="flex items-center gap-3 border-b border-[var(--border-subtle)] px-4 py-3 bg-[var(--bg-base)]/50">
+        <div className="flex items-center gap-3 border-b border-(--border-subtle) px-4 py-3 bg-[var(--bg-base)]/50">
           <Search className="h-5 w-5 text-emerald-400 shrink-0" />
           <input
             ref={inputRef}
@@ -357,18 +381,18 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
                 ? 'ابحث عن صفحة، إجراء، أو لاعب... (Ctrl+K)'
                 : 'Search page, action, or player... (Ctrl+K)'
             }
-            className="flex-1 bg-transparent text-sm text-[var(--text-main)] placeholder-[var(--text-muted)] focus:outline-none"
+            className="flex-1 bg-transparent text-sm text-(--text-main) placeholder-(--text-muted) focus:outline-none"
           />
           {query && (
             <button
               type="button"
               onClick={() => setQuery('')}
-              className="text-xs text-[var(--text-muted)] hover:text-[var(--text-main)]"
+              className="text-xs text-(--text-muted) hover:text-(--text-main)"
             >
               <X className="w-4 h-4" />
             </button>
           )}
-          <span className="hidden sm:inline-flex rounded-md bg-[var(--bg-surface-subtle)] px-2 py-0.5 text-[10px] font-mono text-[var(--text-muted)] border border-[var(--border-subtle)]">
+          <span className="hidden sm:inline-flex rounded-md bg-(--bg-surface-subtle) px-2 py-0.5 text-[10px] font-mono text-(--text-muted) border border-(--border-subtle)">
             ESC
           </span>
         </div>
@@ -395,19 +419,15 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
                       className={`w-full flex items-center justify-between rounded-xl px-3 py-2 text-start transition-colors ${
                         isSelected
                           ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-                          : 'text-[var(--text-main)] hover:bg-[var(--bg-surface-subtle)]'
+                          : 'text-(--text-main) hover:bg-(--bg-surface-subtle)'
                       }`}
                     >
                       <div className="flex items-center gap-3">
-                        <div className="p-1.5 rounded-lg bg-[var(--bg-surface-subtle)]">
-                          {item.icon}
-                        </div>
+                        <div className="p-1.5 rounded-lg bg-(--bg-surface-subtle)">{item.icon}</div>
                         <div>
                           <div className="text-xs font-semibold">{item.title}</div>
                           {item.subtitle && (
-                            <div className="text-[11px] text-[var(--text-muted)]">
-                              {item.subtitle}
-                            </div>
+                            <div className="text-[11px] text-(--text-muted)">{item.subtitle}</div>
                           )}
                         </div>
                       </div>
@@ -424,7 +444,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
           {/* Quick Actions */}
           {filteredActions.length > 0 && (
             <div>
-              <div className="px-3 py-1.5 text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider flex items-center gap-1.5">
+              <div className="px-3 py-1.5 text-[11px] font-bold text-(--text-muted) uppercase tracking-wider flex items-center gap-1.5">
                 <Sparkles className="w-3 h-3 text-amber-400" />
                 {locale === 'ar' ? 'إجراءات سريعة' : 'Quick Actions'}
               </div>
@@ -441,19 +461,15 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
                       className={`w-full flex items-center justify-between rounded-xl px-3 py-2 text-start transition-colors ${
                         isSelected
                           ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-                          : 'text-[var(--text-main)] hover:bg-[var(--bg-surface-subtle)]'
+                          : 'text-(--text-main) hover:bg-(--bg-surface-subtle)'
                       }`}
                     >
                       <div className="flex items-center gap-3">
-                        <div className="p-1.5 rounded-lg bg-[var(--bg-surface-subtle)]">
-                          {item.icon}
-                        </div>
+                        <div className="p-1.5 rounded-lg bg-(--bg-surface-subtle)">{item.icon}</div>
                         <div>
                           <div className="text-xs font-semibold">{item.title}</div>
                           {item.subtitle && (
-                            <div className="text-[11px] text-[var(--text-muted)]">
-                              {item.subtitle}
-                            </div>
+                            <div className="text-[11px] text-(--text-muted)">{item.subtitle}</div>
                           )}
                         </div>
                       </div>
@@ -470,7 +486,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
           {/* Navigation Items */}
           {filteredNav.length > 0 && (
             <div>
-              <div className="px-3 py-1.5 text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider flex items-center gap-1.5">
+              <div className="px-3 py-1.5 text-[11px] font-bold text-(--text-muted) uppercase tracking-wider flex items-center gap-1.5">
                 <Layers className="w-3 h-3 text-emerald-400" />
                 {locale === 'ar' ? 'صفحات التطبيق' : 'Navigation'}
               </div>
@@ -487,19 +503,15 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
                       className={`w-full flex items-center justify-between rounded-xl px-3 py-2 text-start transition-colors ${
                         isSelected
                           ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-                          : 'text-[var(--text-main)] hover:bg-[var(--bg-surface-subtle)]'
+                          : 'text-(--text-main) hover:bg-(--bg-surface-subtle)'
                       }`}
                     >
                       <div className="flex items-center gap-3">
-                        <div className="p-1.5 rounded-lg bg-[var(--bg-surface-subtle)]">
-                          {item.icon}
-                        </div>
+                        <div className="p-1.5 rounded-lg bg-(--bg-surface-subtle)">{item.icon}</div>
                         <div>
                           <div className="text-xs font-semibold">{item.title}</div>
                           {item.subtitle && (
-                            <div className="text-[11px] text-[var(--text-muted)]">
-                              {item.subtitle}
-                            </div>
+                            <div className="text-[11px] text-(--text-muted)">{item.subtitle}</div>
                           )}
                         </div>
                       </div>
@@ -515,23 +527,23 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
 
           {/* Empty state when no matches */}
           {allItems.length === 0 && (
-            <div className="py-12 text-center text-xs text-[var(--text-muted)]">
+            <div className="py-12 text-center text-xs text-(--text-muted)">
               {locale === 'ar' ? 'لا توجد نتائج مطابقة لبحثك' : 'No matching results found'}
             </div>
           )}
         </div>
 
         {/* Footer shortcuts */}
-        <div className="flex items-center justify-between border-t border-[var(--border-subtle)] px-4 py-2 text-[10px] text-[var(--text-muted)] bg-[var(--bg-base)]/50">
+        <div className="flex items-center justify-between border-t border-(--border-subtle) px-4 py-2 text-[10px] text-(--text-muted) bg-[var(--bg-base)]/50">
           <div className="flex items-center gap-3">
             <span>
-              <kbd className="font-mono bg-[var(--bg-surface-subtle)] px-1 py-0.5 rounded border border-[var(--border-subtle)]">
+              <kbd className="font-mono bg-(--bg-surface-subtle) px-1 py-0.5 rounded border border-(--border-subtle)">
                 ↑↓
               </kbd>{' '}
               {locale === 'ar' ? 'للتنقل' : 'to navigate'}
             </span>
             <span>
-              <kbd className="font-mono bg-[var(--bg-surface-subtle)] px-1 py-0.5 rounded border border-[var(--border-subtle)]">
+              <kbd className="font-mono bg-(--bg-surface-subtle) px-1 py-0.5 rounded border border-(--border-subtle)">
                 ↵
               </kbd>{' '}
               {locale === 'ar' ? 'للاختيار' : 'to select'}

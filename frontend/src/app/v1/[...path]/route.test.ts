@@ -11,6 +11,7 @@ describe('V1 API Proxy Runtime Route Handler', () => {
   });
 
   afterEach(() => {
+    vi.unstubAllEnvs();
     process.env = originalEnv;
     vi.restoreAllMocks();
   });
@@ -18,7 +19,7 @@ describe('V1 API Proxy Runtime Route Handler', () => {
   describe('resolveBackendBaseUrl() security and configuration invariants', () => {
     it('uses INTERNAL_API_URL when provided', () => {
       process.env.INTERNAL_API_URL = 'https://sportexus-backend-staging.hostless.app/v1';
-      process.env.NODE_ENV = 'production';
+      vi.stubEnv('NODE_ENV', 'production');
       expect(resolveBackendBaseUrl()).toBe('https://sportexus-backend-staging.hostless.app');
     });
 
@@ -36,7 +37,7 @@ describe('V1 API Proxy Runtime Route Handler', () => {
     it('NEVER proxies to localhost or 127.0.0.1 in production when URL is missing', () => {
       delete process.env.INTERNAL_API_URL;
       delete process.env.NEXT_PUBLIC_API_BASE_URL;
-      process.env.NODE_ENV = 'production';
+      vi.stubEnv('NODE_ENV', 'production');
 
       expect(() => resolveBackendBaseUrl()).toThrowError(
         /INTERNAL_API_URL is required in production mode\. Refusing to proxy to localhost\./,
@@ -46,7 +47,7 @@ describe('V1 API Proxy Runtime Route Handler', () => {
     it('allows 127.0.0.1:3001 ONLY in development mode', () => {
       delete process.env.INTERNAL_API_URL;
       delete process.env.NEXT_PUBLIC_API_BASE_URL;
-      process.env.NODE_ENV = 'development';
+      vi.stubEnv('NODE_ENV', 'development');
       expect(resolveBackendBaseUrl()).toBe('http://127.0.0.1:3001');
     });
   });
@@ -55,7 +56,7 @@ describe('V1 API Proxy Runtime Route Handler', () => {
     it('returns HTTP 500 with clear message when backend URL is missing in production', async () => {
       delete process.env.INTERNAL_API_URL;
       delete process.env.NEXT_PUBLIC_API_BASE_URL;
-      process.env.NODE_ENV = 'production';
+      vi.stubEnv('NODE_ENV', 'production');
 
       const req = new NextRequest('http://localhost:3000/v1/auth/login', {
         method: 'POST',
@@ -73,7 +74,9 @@ describe('V1 API Proxy Runtime Route Handler', () => {
 
     it('successfully forwards POST request, body, and captures Set-Cookie headers', async () => {
       process.env.INTERNAL_API_URL = 'https://sportexus-backend-staging.hostless.app';
-      process.env.NODE_ENV = 'production';
+      vi.stubEnv('NODE_ENV', 'production');
+      vi.stubEnv('INTERNAL_PROXY_SECRET', 'test-only-proxy-secret-0123456789abcdef');
+      vi.stubEnv('WEB_TRUSTED_PROXY_HOPS', '1');
 
       const mockSetCookies = [
         'access_token=jwt.token.here; Path=/; HttpOnly; SameSite=Lax; Secure; Domain=sportexus-backend-staging.hostless.app',
@@ -131,7 +134,9 @@ describe('V1 API Proxy Runtime Route Handler', () => {
 
     it('returns HTTP 502 Bad Gateway when upstream fetch fails', async () => {
       process.env.INTERNAL_API_URL = 'https://sportexus-backend-staging.hostless.app';
-      process.env.NODE_ENV = 'production';
+      vi.stubEnv('NODE_ENV', 'production');
+      vi.stubEnv('INTERNAL_PROXY_SECRET', 'test-only-proxy-secret-0123456789abcdef');
+      vi.stubEnv('WEB_TRUSTED_PROXY_HOPS', '1');
 
       global.fetch = vi.fn().mockRejectedValue(new Error('Connection timeout to backend'));
 
