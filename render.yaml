@@ -12,7 +12,9 @@
 #                  DATABASE_ADMIN_URL  Neon owner connection (direct endpoint); used ONLY by `prisma migrate deploy`
 #                  CORS_ORIGIN         https://<web service>.onrender.com   (exact origin, no wildcard - S2)
 #                  NEXT_PUBLIC_APP_URL https://<web service>.onrender.com   (links in e-mails)
-#                  RESEND_API_KEY      e-mail provider key (or SMTP_* instead)
+#                  SMTP_USER           the academy Gmail address
+#                  SMTP_PASS           a Google app password for that account (not the normal password)
+#                  MAIL_FROM_EMAIL     the same Gmail address (Gmail rewrites any other sender)
 #   sportexus-web  INTERNAL_API_URL    https://<api service>.onrender.com
 # INTERNAL_PROXY_SECRET is generated once on the API and copied to the web app by Render (fromService).
 #
@@ -62,12 +64,22 @@ services:
           type: keyvalue
           name: sportexus-redis
           property: connectionString
+      # E-mail through the academy's Gmail account (SMTP with a Google app password). To switch to Resend later:
+      # MAIL_PROVIDER=resend plus RESEND_API_KEY, and MAIL_FROM_EMAIL on a verified domain.
       - key: MAIL_PROVIDER
-        value: resend
-      - key: RESEND_API_KEY
+        value: smtp
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: '465'
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
         sync: false
       - key: MAIL_FROM_EMAIL
         sync: false
+      - key: MAIL_FROM_NAME
+        value: Sportexus
 
   # ------------------------------------------------------------------------------------------------------------ Web
   - type: web
