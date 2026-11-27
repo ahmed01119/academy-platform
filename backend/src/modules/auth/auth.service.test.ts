@@ -78,6 +78,7 @@ describe('AuthService', () => {
   let mockRedis: MockRedis;
   let mockAudit: MockAudit;
   let mockConfig: { nodeEnv: string; exposeDebugOtp: boolean };
+  let mockEmail: Record<string, ReturnType<typeof vi.fn>>;
   let mockEmailCode: {
     assertProof: ReturnType<typeof vi.fn>;
     markVerifiedInTx: ReturnType<typeof vi.fn>;
@@ -162,7 +163,8 @@ describe('AuthService', () => {
       exposeDebugOtp: false,
     };
 
-    const mockEmail = {
+    mockEmail = {
+      sendPasswordChangedNotification: vi.fn().mockResolvedValue(true),
       sendAcademyApplicationReceived: vi.fn().mockResolvedValue(true),
       sendAcademyApproved: vi.fn().mockResolvedValue(true),
       sendPasswordReset: vi.fn().mockResolvedValue(true),
@@ -791,6 +793,71 @@ describe('AuthService', () => {
 
         const sql = (mockPrisma.$queryRaw.mock.calls[1]?.[0] as TemplateStringsArray).join('?');
         expect(sql).toContain('public.complete_password_reset(');
+      });
+
+      describe('activation from an invitation link (owner request 2026-11-27)', () => {
+        const invited = {
+          id: 'u-staff',
+          email: 'new.admin@example.com',
+          passwordHash: 'argon2id$mock$hash',
+          name: 'New Admin',
+          phone: null,
+          isEmailVerified: false,
+          isPlatformSuperAdmin: true,
+          isPlatformOwner: false,
+          isSuspended: false,
+          mustResetPassword: false,
+          createdAt: new Date(),
+        };
+
+        it('sets the password and signs the device in, without the "password changed" alert', async () => {
+          mockPrisma.$queryRaw.mockResolvedValueOnce([
+            { complete_password_reset_by_link: 'u-staff' },
+          ]);
+          mockPrisma.user.findUnique.mockResolvedValue(invited);
+          mockPrisma.tenantMembership.findMany.mockResolvedValue([]);
+
+          const result = await authService.resetPassword(
+            { token: LINK, newPassword: 'NewPassword123!', signIn: true },
+            '203.0.113.7',
+          );
+
+          expect(result.session?.rawTokens).toBeDefined();
+          expect(result.session?.response.user).toMatchObject({
+            id: 'u-staff',
+            isPlatformSuperAdmin: true,
+          });
+          expect(mockAudit.logEvent).toHaveBeenCalledWith(
+            expect.objectContaining({ actorUserId: 'u-staff', action: 'AUTH_ACCOUNT_ACTIVATED' }),
+          );
+          expect(mockEmail.sendPasswordChangedNotification).not.toHaveBeenCalled();
+        });
+
+        it('gives no session to a suspended account (the password is still set)', async () => {
+          mockPrisma.$queryRaw.mockResolvedValueOnce([
+            { complete_password_reset_by_link: 'u-staff' },
+          ]);
+          mockPrisma.user.findUnique.mockResolvedValue({ ...invited, isSuspended: true });
+
+          const result = await authService.resetPassword(
+            { token: LINK, newPassword: 'NewPassword123!', signIn: true },
+            '203.0.113.7',
+          );
+
+          expect(result.session).toBeUndefined();
+          expect(result.message).toContain('successfully reset');
+        });
+
+        it('ignores signIn with a 6-digit code (only the e-mailed link signs in)', async () => {
+          mockPrisma.$queryRaw.mockResolvedValue([{ complete_password_reset_for_email: 'u-1' }]);
+
+          const result = await authService.resetPassword(
+            { ...withCode('123456', 'user@example.com'), signIn: true },
+            '203.0.113.7',
+          );
+
+          expect(result.session).toBeUndefined();
+        });
       });
 
       it('refuses malformed tokens and codes without an e-mail before touching the database', async () => {

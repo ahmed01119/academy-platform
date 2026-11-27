@@ -1,7 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { PostLoginSkeleton } from '@/features/auth/components/PostLoginSkeleton';
+import { SIGNED_IN_HINT_ATTR } from '@/lib/preferences/init-scripts';
+import { getRoleHomeRoute, hasSignedInHome } from '@/utils/role-routing';
 import { Navbar } from '@/components/Navbar';
 import { SportexusLogo } from '@/components/brand/SportexusLogo';
 import { useAuth } from '@/contexts/auth-context';
@@ -28,8 +32,34 @@ import {
 } from 'lucide-react';
 import { PlayerJoinRequestModal } from '@/features/landing/components/PlayerJoinRequestModal';
 
+/**
+ * Where a signed-in visitor of the landing page belongs (owner decision 2026-11-27: a signed-in user never sees the
+ * landing page; a second tab opens their app exactly like the first). `deciding` while the session is being confirmed.
+ */
+function useSignedInHome(): { home: string | null; deciding: boolean } {
+  const { user, activeTenant, memberships, isLoading, isSessionVerified } = useAuth();
+  if (!user) return { home: null, deciding: false };
+  if (isLoading) return { home: null, deciding: true };
+  // Confirmed by the server, or (after a temporary failure) judged from the cached profile flags alone.
+  const hasHome = hasSignedInHome(user, isSessionVerified ? memberships : []);
+  return { home: hasHome ? getRoleHomeRoute(user, activeTenant) : null, deciding: false };
+}
+
 export default function HomePage() {
-  const { user, activeTenant } = useAuth();
+  const { user, activeTenant, authState } = useAuth();
+  const router = useRouter();
+  const { home: signedInHome, deciding } = useSignedInHome();
+  const showLanding = !signedInHome && !deciding && authState !== 'INITIALIZING';
+
+  useEffect(() => {
+    if (signedInHome) router.replace(signedInHome);
+  }, [signedInHome, router]);
+
+  useEffect(() => {
+    // Signed out, or signed in without a page of their own: the landing page is theirs.
+    if (showLanding) document.documentElement.removeAttribute(SIGNED_IN_HINT_ATTR);
+  }, [showLanding]);
+
   const { t, locale, isRtl } = useLocale();
   const [activePreviewTab, setActivePreviewTab] = useState<
     'attendance' | 'evaluations' | 'portals' | 'finance'
@@ -71,8 +101,13 @@ export default function HomePage() {
 
   const ChevronIcon = isRtl ? ChevronLeft : ChevronRight;
 
+  if (user && (signedInHome || deciding)) {
+    // The skeleton of the page they are going to, never the landing page.
+    return <PostLoginSkeleton destination={signedInHome ?? getRoleHomeRoute(user, activeTenant)} />;
+  }
+
   return (
-    <div className="min-h-screen bg-(--bg-base) text-(--text-main) flex flex-col transition-colors">
+    <div className="landing-page min-h-screen bg-(--bg-base) text-(--text-main) flex flex-col transition-colors">
       <Navbar />
 
       <main className="flex-1 animate-fade-in">

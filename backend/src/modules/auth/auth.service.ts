@@ -8,6 +8,7 @@ import {
   Logger,
   UnauthorizedException,
 } from '@nestjs/common';
+import type { User } from '@academy/database';
 import { PrismaService } from '../database/prisma.service';
 import { PasswordService } from './password.service';
 import { TokenService, type GeneratedTokens } from './token.service';
@@ -417,6 +418,20 @@ export class AuthService {
       });
     }
 
+    return this.startSession(user, ipAddress, userAgent, activeTenantId, 'AUTH_LOGIN_SUCCESS');
+  }
+
+  /**
+   * Opens a session for a user whose identity was just proven (password at sign-in, or an e-mailed activation link):
+   * loads the memberships the user may use, applies the applicant rule and issues the tokens.
+   */
+  private async startSession(
+    user: User,
+    ipAddress: string | undefined,
+    userAgent: string | undefined,
+    activeTenantId: string | undefined,
+    auditAction: 'AUTH_LOGIN_SUCCESS' | 'AUTH_ACCOUNT_ACTIVATED',
+  ): Promise<{ response: AuthResponse; rawTokens: GeneratedTokens }> {
     // Only discover tenant memberships AFTER successful password verification.
     // Actor-bound, transaction-local context keeps unrelated tenants invisible.
     const userMemberships = await this.prisma.withAuthLookupTransaction(
@@ -477,7 +492,7 @@ export class AuthService {
       .logEvent({
         tenantId: activeTenant?.tenantId,
         actorUserId: user.id,
-        action: 'AUTH_LOGIN_SUCCESS',
+        action: auditAction,
         resourceType: 'Auth',
         resourceId: user.id,
         ipAddress,
@@ -723,7 +738,11 @@ export class AuthService {
     dto: ResetPasswordRequest,
     ipAddress?: string,
     userAgent?: string,
-  ): Promise<{ message: string }> {
+  ): Promise<{
+    message: string;
+    /** Activation (`signIn` with a link token): the session this device is signed in with. */
+    session?: { response: AuthResponse; rawTokens: GeneratedTokens };
+  }> {
     const perIp = await this.redisService.incrementRateLimit(
       `ratelimit:reset-password-ip:${rateLimitIpKey(ipAddress)}`,
       15 * 60,
@@ -737,10 +756,12 @@ export class AuthService {
 
     const token = dto.token.trim();
     let userId: string;
+    let viaLink = false;
     if (RESET_CODE_PATTERN.test(token) && dto.email) {
       userId = await this.resetWithCode(dto.email.toLowerCase().trim(), token, dto.newPassword);
     } else if (RESET_LINK_TOKEN_PATTERN.test(token)) {
       userId = await this.resetWithLink(token, dto.newPassword);
+      viaLink = true;
     } else {
       throw invalidResetError();
     }
@@ -753,6 +774,30 @@ export class AuthService {
       ipAddress,
       userAgent,
     });
+
+    // Activation from an invitation link (owner request 2026-11-27): the e-mailed link proved the address and the
+    // password was just chosen, so this device is signed in and the user lands in the app. The usual sign-in rules
+    // still apply (suspended accounts and applicants under review get no session and sign in later as usual).
+    if (dto.signIn && viaLink) {
+      const user = await this.prisma.user.findUnique({ where: { id: userId } });
+      if (user && !user.isSuspended) {
+        try {
+          const session = await this.startSession(
+            user,
+            ipAddress,
+            userAgent,
+            undefined,
+            'AUTH_ACCOUNT_ACTIVATED',
+          );
+          return { message: 'Your password is set and you are signed in.', session };
+        } catch (err) {
+          this.logger.warn(`Activation sign-in refused: ${(err as Error)?.message}`);
+        }
+      }
+      return {
+        message: 'Password has been successfully reset. You may now log in with your new password.',
+      };
+    }
 
     try {
       const userRecord = await this.prisma.user.findUnique({

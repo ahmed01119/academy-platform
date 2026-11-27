@@ -27,6 +27,23 @@ export const themeInitScript = `
 })();
 `;
 
+/** Attribute on <html> while this browser holds a session hint; the landing page stays hidden until the app decides. */
+export const SIGNED_IN_HINT_ATTR = 'data-signed-in';
+
+/**
+ * Marks <html> before the first paint when this browser was signed in, so a signed-in visitor opening the site in a
+ * new tab never sees the landing page flash before being sent to their home (globals.css hides .landing-page).
+ */
+export const signedInHintScript = `
+(function() {
+  try {
+    if (localStorage.getItem('sportexus_has_session') === 'true') {
+      document.documentElement.setAttribute('${SIGNED_IN_HINT_ATTR}', '');
+    }
+  } catch (e) {}
+})();
+`;
+
 /**
  * Applies the saved language before the first paint and keeps the cookie in step with it, so the next server render
  * already uses it. Without a saved choice it keeps what the server rendered.

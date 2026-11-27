@@ -39,6 +39,7 @@ import {
   type RegisterRequest,
   type RegisterResponse,
   type ResetPasswordRequest,
+  type ResetPasswordResponse,
   type ChangePasswordRequest,
   type UpdateUserProfileRequest,
 } from '@academy/shared';
@@ -264,12 +265,20 @@ export class AuthController {
   @UseGuards(CsrfGuard)
   @Post('reset-password')
   @HttpCode(HttpStatus.OK)
-  async resetPassword(@Body() body: unknown, @Req() req: Request): Promise<{ message: string }> {
+  async resetPassword(
+    @Body() body: unknown,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<ResetPasswordResponse> {
     const dto: ResetPasswordRequest = ResetPasswordRequestSchema.parse(body);
     const ipAddress = req.clientIp;
     const userAgent = req.headers['user-agent'];
 
-    return this.authService.resetPassword(dto, ipAddress, userAgent);
+    const { message, session } = await this.authService.resetPassword(dto, ipAddress, userAgent);
+    if (!session) return { message };
+    // Activation link: this device is signed in (a session, not "remember me").
+    this.setAuthCookies(res, session.rawTokens, false);
+    return { message, signedIn: true };
   }
 
   @Public()

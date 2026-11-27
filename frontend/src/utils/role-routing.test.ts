@@ -5,6 +5,7 @@ import {
   canAccessCoachRoutes,
   canAccessPlayerPortal,
   canAccessGuardianPortal,
+  hasSignedInHome,
 } from './role-routing';
 import type { TenantMembershipSummary, UserSummary } from '@academy/shared';
 
@@ -106,6 +107,24 @@ describe('role-routing', () => {
       expect(canAccessGuardianPortal(guardianUser)).toBe(true);
       expect(canAccessGuardianPortal(playerUser)).toBe(false);
       expect(canAccessGuardianPortal(superAdmin)).toBe(true);
+    });
+  });
+  describe('hasSignedInHome (owner decision 2026-11-27: signed-in users never see the landing page)', () => {
+    it('is true for platform staff, academy staff, players and guardians', () => {
+      expect(hasSignedInHome({ ...baseUser, isPlatformSuperAdmin: true }, [])).toBe(true);
+      expect(hasSignedInHome({ ...baseUser, isPlatformOwner: true }, [])).toBe(true);
+      expect(hasSignedInHome(baseUser, [createTenant('OWNER')])).toBe(true);
+      expect(hasSignedInHome(baseUser, [createTenant('COACH')])).toBe(true);
+      expect(hasSignedInHome({ ...baseUser, hasPlayerProfile: true }, [])).toBe(true);
+      expect(hasSignedInHome({ ...baseUser, hasGuardianProfile: true }, [])).toBe(true);
+    });
+
+    it('is false for an account without any role yet (it applies from the landing page) and when signed out', () => {
+      expect(hasSignedInHome(baseUser, [])).toBe(false);
+      expect(hasSignedInHome(baseUser, [{ ...createTenant('MANAGER'), status: 'SUSPENDED' }])).toBe(
+        false,
+      );
+      expect(hasSignedInHome(null, [createTenant('OWNER')])).toBe(false);
     });
   });
 });

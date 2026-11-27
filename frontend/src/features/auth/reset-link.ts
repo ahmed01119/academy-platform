@@ -17,6 +17,8 @@ export interface ResetLinkParams {
   /** 6-digit code from an older e-mail link. */
   code?: string;
   email?: string;
+  /** Activation link of an invited account: the page sets the first password and signs the device in. */
+  activate?: boolean;
 }
 
 export function readResetLinkParams(hash: string, search: string): ResetLinkParams {
@@ -31,8 +33,11 @@ export function readResetLinkParams(hash: string, search: string): ResetLinkPara
     ''
   ).trim();
   const email = (fragment.get('email') ?? query.get('email') ?? '').trim() || undefined;
+  const activate = (fragment.get('activate') ?? query.get('activate')) === '1';
 
-  if (RESET_LINK_TOKEN_PATTERN.test(rawToken)) return { linkToken: rawToken, email };
+  if (RESET_LINK_TOKEN_PATTERN.test(rawToken)) {
+    return activate ? { linkToken: rawToken, email, activate } : { linkToken: rawToken, email };
+  }
   if (RESET_CODE_PATTERN.test(rawToken)) return { code: rawToken, email };
   return { email };
 }
@@ -47,10 +52,14 @@ export function buildResetPasswordPayload(input: {
   code: string;
   email: string;
   newPassword: string;
+  /** Activation: ask the server to sign this device in as well. */
+  activate?: boolean;
 }): ResetPasswordRequest {
   const email = input.email.trim().toLowerCase() || undefined;
   if (input.linkToken) {
-    return { token: input.linkToken, email, newPassword: input.newPassword };
+    return input.activate
+      ? { token: input.linkToken, email, newPassword: input.newPassword, signIn: true }
+      : { token: input.linkToken, email, newPassword: input.newPassword };
   }
   return { token: input.code.trim(), email, newPassword: input.newPassword };
 }

@@ -19,6 +19,13 @@ export class RedisService implements OnModuleDestroy {
   private client: Redis | null = null;
   private memoryStore = new Map<string, MemoryRateLimitEntry>();
   private valueStore = new Map<string, { value: string; expiresAt: number }>();
+  /** Logs only connection state changes, so a Redis outage logs once rather than on every retry. */
+  private connectionHealthy = true;
+
+  /** Reconnect backoff: 200 ms growing to at most 5 s, retried for as long as the process runs. */
+  static reconnectDelay(attempt: number): number {
+    return Math.min(attempt * 200, 5_000);
+  }
 
   private get requiresRedis(): boolean {
     return this.config.nodeEnv === 'production' && !this.config.allowInMemoryRateLimit;
@@ -36,23 +43,33 @@ export class RedisService implements OnModuleDestroy {
     const redisUrl = this.config.redisUrl;
     if (redisUrl) {
       try {
+        // The client is kept for the life of the process and reconnects on its own. Hosted Redis (Upstash) closes
+        // idle connections, so a single dropped socket must not disable rate limiting until the next restart; while
+        // disconnected, commands fail fast (no offline queue) and production fails closed as before.
         this.client = new Redis(redisUrl, {
           lazyConnect: true,
           enableOfflineQueue: false,
           maxRetriesPerRequest: 1,
-          retryStrategy: () => null,
+          connectTimeout: 5_000,
+          keepAlive: 30_000,
+          retryStrategy: RedisService.reconnectDelay,
         });
         this.client.on('error', (err) => {
-          this.logger.warn(
-            `Redis client error (${err.message}). Shared rate limiting may be unavailable.`,
-          );
-          this.client = null;
+          if (this.connectionHealthy) {
+            this.logger.warn(
+              `Redis client error (${err.message}). Shared rate limiting is unavailable until it reconnects.`,
+            );
+          }
+          this.connectionHealthy = false;
+        });
+        this.client.on('ready', () => {
+          if (!this.connectionHealthy) {
+            this.logger.log('Redis connection ready.');
+          }
+          this.connectionHealthy = true;
         });
         this.client.connect().catch((err) => {
-          this.logger.warn(
-            `Redis connection failed (${err.message}). Shared rate limiting may be unavailable.`,
-          );
-          this.client = null;
+          this.logger.warn(`Redis connection failed (${err.message}). Retrying in the background.`);
         });
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);

@@ -1,7 +1,11 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/auth-context';
 import { useLocale } from '@/contexts/locale-context';
+import { PostLoginSkeleton } from '@/features/auth/components/PostLoginSkeleton';
+import { getRoleHomeRoute } from '@/utils/role-routing';
 import { api, getErrorMessage } from '@/api/client';
 import { PasswordStrengthMeter } from '@/components/ui/PasswordStrengthMeter';
 import { useDelayedRedirect } from '@/hooks/useDelayedRedirect';
@@ -21,10 +25,16 @@ import { KeyRound, ArrowRight, Loader2, Mail } from 'lucide-react';
 
 function ResetPasswordForm() {
   const { locale, isRtl } = useLocale();
+  const router = useRouter();
+  const { user, activeTenant, refreshUser } = useAuth();
 
   const [token, setToken] = useState('');
   /** 64-hex token from the e-mailed link (or an activation link); never shown or editable. */
   const [linkToken, setLinkToken] = useState<string | undefined>(undefined);
+  /** Invitation link: set the first password and go straight into the app (owner request 2026-11-27). */
+  const [activate, setActivate] = useState(false);
+  /** The server signed this device in with the new password; the app opens instead of the sign-in page. */
+  const [signedIn, setSignedIn] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -35,7 +45,12 @@ function ResetPasswordForm() {
   const [success, setSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useDelayedRedirect(success, '/login', 3000);
+  useDelayedRedirect(success && !signedIn, '/login', 3000);
+
+  useEffect(() => {
+    if (!signedIn) return;
+    router.replace(user ? getRoleHomeRoute(user, activeTenant) : '/login');
+  }, [signedIn, user, activeTenant, router]);
 
   useEffect(() => {
     // K1: the link carries its token in the URL fragment (never sent to servers). Read it once, then remove it
@@ -44,6 +59,7 @@ function ResetPasswordForm() {
     if (params.linkToken) setLinkToken(params.linkToken);
     if (params.code) setToken(params.code);
     if (params.email) setEmail(params.email);
+    if (params.activate) setActivate(true);
     if (hasResetSecret(params)) {
       window.history.replaceState(null, '', window.location.pathname);
     }
@@ -64,9 +80,26 @@ function ResetPasswordForm() {
 
     setIsSubmitting(true);
     try {
-      await api.auth.resetPassword(
-        buildResetPasswordPayload({ linkToken, code: token, email, newPassword: password }),
+      const result = await api.auth.resetPassword(
+        buildResetPasswordPayload({
+          linkToken,
+          code: token,
+          email,
+          newPassword: password,
+          activate,
+        }),
       );
+      if (result.signedIn) {
+        try {
+          localStorage.setItem('sportexus_has_session', 'true');
+        } catch {
+          // Storage unavailable: the session cookies alone keep the user signed in.
+        }
+        // Load the new session; the effect above then opens the user's home. If it cannot be loaded the user stays
+        // signed out and the page falls back to the usual "sign in" redirect (the password is set either way).
+        await refreshUser();
+        setSignedIn(true);
+      }
       setSuccess(true);
     } catch (err: unknown) {
       setError(
@@ -82,15 +115,33 @@ function ResetPasswordForm() {
     }
   };
 
+  if (signedIn) {
+    return (
+      <PostLoginSkeleton destination={user ? getRoleHomeRoute(user, activeTenant) : '/dashboard'} />
+    );
+  }
+
   return (
     <AuthCard
       icon={KeyRound}
       stackHeader
-      title={locale === 'ar' ? 'إعادة تعيين كلمة المرور' : 'Reset Password'}
+      title={
+        activate
+          ? locale === 'ar'
+            ? 'تفعيل حسابك'
+            : 'Activate your account'
+          : locale === 'ar'
+            ? 'إعادة تعيين كلمة المرور'
+            : 'Reset Password'
+      }
       subtitle={
-        locale === 'ar'
-          ? 'أدخل رمز التحقق (OTP) المكوّن من 6 أرقام وكلمة المرور الجديدة'
-          : 'Enter your 6-digit verification code (OTP) and new password'
+        activate
+          ? locale === 'ar'
+            ? 'اختر كلمة المرور الخاصة بك، وبعدها تفتح لوحة التحكم مباشرة'
+            : 'Choose your password, then your dashboard opens right away'
+          : locale === 'ar'
+            ? 'أدخل رمز التحقق (OTP) المكوّن من 6 أرقام وكلمة المرور الجديدة'
+            : 'Enter your 6-digit verification code (OTP) and new password'
       }
       headerExtra={
         email && (
@@ -122,9 +173,13 @@ function ResetPasswordForm() {
         <form onSubmit={handleSubmit} className="space-y-5 relative z-10">
           {linkToken ? (
             <AuthAlert tone="success" size="compact">
-              {locale === 'ar'
-                ? 'تم التعرف على رابط إعادة التعيين. اختر كلمة مرور جديدة.'
-                : 'Reset link recognised. Choose a new password.'}
+              {activate
+                ? locale === 'ar'
+                  ? 'تم التعرف على رابط الدعوة. اختر كلمة المرور الخاصة بك.'
+                  : 'Invitation link recognised. Choose your password.'
+                : locale === 'ar'
+                  ? 'تم التعرف على رابط إعادة التعيين. اختر كلمة مرور جديدة.'
+                  : 'Reset link recognised. Choose a new password.'}
             </AuthAlert>
           ) : (
             <>
@@ -195,7 +250,13 @@ function ResetPasswordForm() {
             ) : (
               <>
                 <span>
-                  {locale === 'ar' ? 'تأكيد كلمة المرور الجديدة' : 'Confirm New Password'}
+                  {activate
+                    ? locale === 'ar'
+                      ? 'تم، افتح لوحة التحكم'
+                      : 'Done, open my dashboard'
+                    : locale === 'ar'
+                      ? 'تأكيد كلمة المرور الجديدة'
+                      : 'Confirm New Password'}
                 </span>
                 <ArrowRight aria-hidden="true" className={`h-4 w-4 ${isRtl ? 'rotate-180' : ''}`} />
               </>

@@ -361,3 +361,9 @@ input[type='password']::-ms-reveal,
 input[type='password']::-ms-clear {
   display: none;
 }
+
+/* A browser that was signed in does not paint the landing page while the app decides where to send it
+   (init-scripts.ts signedInHintScript; the landing page removes the attribute when it is meant to show). */
+html[data-signed-in] .landing-page {
+  display: none;
+}

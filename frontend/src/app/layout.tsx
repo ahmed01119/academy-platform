@@ -5,7 +5,12 @@ import { DEFAULT_LOCALE, LOCALE_DIRECTION, type SupportedLocale } from '@academy
 import { AuthProvider } from '@/contexts/auth-context';
 import { ThemeProvider } from '@/contexts/theme-context';
 import { LocaleProvider } from '@/contexts/locale-context';
-import { LOCALE_COOKIE, localeInitScript, themeInitScript } from '@/lib/preferences/init-scripts';
+import {
+  LOCALE_COOKIE,
+  localeInitScript,
+  signedInHintScript,
+  themeInitScript,
+} from '@/lib/preferences/init-scripts';
 import { ToastProvider } from '../components/ui/Toast';
 import { ConfirmProvider } from '../components/ui/ConfirmDialog';
 import { ServiceWorkerRegistrar } from '../components/pwa/ServiceWorkerRegistrar';
@@ -79,6 +84,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <script dangerouslySetInnerHTML={{ __html: localeInitScript }} />
+        <script dangerouslySetInnerHTML={{ __html: signedInHintScript }} />
       </head>
       <body>
         <ThemeProvider>

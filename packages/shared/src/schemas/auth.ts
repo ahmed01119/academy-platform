@@ -123,6 +123,11 @@ export const ResetPasswordRequestSchema = z
     /** Required with a 6-digit code; optional with a link token. */
     email: EmailSchema.optional(),
     newPassword: PasswordSchema,
+    /**
+     * Account activation (invitation link): also sign this device in, so the new user lands in the app without a
+     * separate sign-in (owner request 2026-11-27). Honoured for link tokens only.
+     */
+    signIn: z.boolean().optional(),
   })
   .refine((value) => !RESET_CODE_PATTERN.test(value.token) || Boolean(value.email), {
     message: 'Email address is required with the verification code',
@@ -130,6 +135,12 @@ export const ResetPasswordRequestSchema = z
   });
 
 export type ResetPasswordRequest = z.infer<typeof ResetPasswordRequestSchema>;
+
+/** Answer of POST /auth/reset-password; `signedIn` when an activation signed the device in (cookies set). */
+export interface ResetPasswordResponse {
+  message: string;
+  signedIn?: boolean;
+}
 
 export const InviteStaffRequestSchema = z.object({
   email: EmailSchema,

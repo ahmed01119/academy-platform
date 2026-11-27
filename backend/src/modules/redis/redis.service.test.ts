@@ -31,6 +31,28 @@ describe('RedisService', () => {
     });
   });
 
+  describe('Connection recovery', () => {
+    it('keeps the client after a connection error so it can reconnect', async () => {
+      mockConfig = { nodeEnv: 'production', redisUrl: 'redis://127.0.0.1:1' };
+      service = new RedisService(mockConfig as unknown as AppConfigService);
+      const internals = service as unknown as {
+        client: { emit: (e: string, x?: unknown) => void; disconnect: () => void } | null;
+      };
+      const client = internals.client;
+      expect(client).not.toBeNull();
+
+      client!.emit('error', new Error('read ECONNRESET'));
+      expect(internals.client).toBe(client);
+      client!.disconnect();
+    });
+
+    it('retries for as long as the process runs, with a capped delay', () => {
+      expect(RedisService.reconnectDelay(1)).toBe(200);
+      expect(RedisService.reconnectDelay(10)).toBe(2_000);
+      expect(RedisService.reconnectDelay(10_000)).toBe(5_000);
+    });
+  });
+
   describe('Production fail-closed behavior', () => {
     it('throws ServiceUnavailableException when Redis is not connected in production', async () => {
       mockConfig = { nodeEnv: 'production', redisUrl: undefined };
