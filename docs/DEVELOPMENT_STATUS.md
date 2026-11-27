@@ -970,6 +970,23 @@ cancelled session notified the coach and the child's guardian, showed in the gua
 bell. Test request, player, change and notifications were removed afterwards; the test player "يوسف سنة 7325" keeps
 the edited values.
 
+## 9q. Merged to main for the first Render deployment (2026-11-27)
+
+- **E-mail on Render** goes through the academy Gmail account (SMTP, Google app password): `render.yaml` sets
+  `MAIL_PROVIDER=smtp`, `SMTP_HOST=smtp.gmail.com`, `SMTP_PORT=465`; the owner enters `SMTP_USER`, `SMTP_PASS` and
+  `MAIL_FROM_EMAIL`. Resend stays supported for when a domain is bought (docs/deployment/RENDER.md).
+- **Security SQL review** of every migration on develop but not on main (19 migrations, 23 SECURITY DEFINER
+  functions): each definer pins `search_path`, has EXECUTE revoked from PUBLIC and granted only to the runtime roles;
+  the platform functions check the caller (super admin / platform owner); the public flows (join request, application
+  reply, guardian link, password reset) validate their input and act only on the row the API's signed token or hash
+  names. No blocker. Residual, accepted: `fulfil_platform_subscription_payment` trusts `app.auth_context`, which only
+  the API sets after verifying the webhook signature; join-request and guardian-link notifications still list the
+  retired `BRANCH_MANAGER` role (grants nothing, harmless).
+- **Merge**: develop merged into main (`f6e3740`, tree identical to develop) after API 463 / web 404 / shared 56
+  passed and both production builds succeeded. Render deploys from main.
+- **Pending (owner)**: Neon production project in Frankfurt with `sportexus_app` created before the first deploy,
+  Render Blueprint with the secrets, then the first platform owner via `scripts/create-superadmin.js`.
+
 ## 10. Backend requirements (recorded by owner decisions)
 
 **Workflow (owner direction 2026-11-15):** frontend issues whose root cause is in the backend are now fixed across both

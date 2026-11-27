@@ -27,10 +27,19 @@ DECLARE
     'platform_set_user_platform_role(uuid,text)', 'platform_update_user_security(uuid,boolean,boolean,text)',
     'platform_revoke_user_sessions(uuid)', 'platform_approve_academy_application(uuid,text,text)',
     'platform_delete_academy(uuid,text)',
-    -- K6 (replaces the M2 six-argument version)
-    'submit_player_join_request(uuid,text,text,text,date,text,text)',
+    -- Join request: K6 replaced the M2 six-argument version; the current one also carries the guardian e-mail
+    -- (20261122150000) and the profile fields (20261125090000)
+    'submit_player_join_request(uuid,text,text,text,date,text,text,text,text,integer,text,text)',
     -- account links (item 5)
-    'link_join_request_account(uuid,uuid)'
+    'link_join_request_account(uuid,uuid)',
+    -- platform subscription paid online (20261122130000)
+    'fulfil_platform_subscription_payment(uuid)',
+    -- academy applicant answers a "more details" request (20261124090000)
+    'academy_application_for_reply(uuid,timestamp with time zone)',
+    'submit_academy_application_reply(uuid,timestamp with time zone,text,text,text)',
+    -- guardian links to a child who has an account (20261124100000)
+    'find_guardian_link_candidates(text,text)', 'guardian_link_request_view(uuid,uuid)',
+    'approve_guardian_link(uuid,uuid)'
   ];
   f text;
 BEGIN
@@ -135,6 +144,11 @@ BEGIN
   -- K6: the M2 six-argument join request function is gone (no stale overload with the old checks).
   IF to_regprocedure('public.submit_player_join_request(uuid,text,text,text,date,text)') IS NOT NULL THEN
     RAISE EXCEPTION 'FAIL 06 the old submit_player_join_request(6 arguments) still exists';
+  END IF;
+  -- ...and so are the 7- and 8-argument versions it was replaced by.
+  IF to_regprocedure('public.submit_player_join_request(uuid,text,text,text,date,text,text)') IS NOT NULL
+     OR to_regprocedure('public.submit_player_join_request(uuid,text,text,text,date,text,text,text)') IS NOT NULL THEN
+    RAISE EXCEPTION 'FAIL 06 an older submit_player_join_request overload still exists';
   END IF;
   -- RLS helpers stay invoker (inlinable) and executable; trigger functions pin search_path.
   IF EXISTS (SELECT 1 FROM pg_proc WHERE oid IN ('public.current_app_tenant_id()'::regprocedure,
