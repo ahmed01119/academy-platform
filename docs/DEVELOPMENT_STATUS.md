@@ -1002,6 +1002,14 @@ the edited values.
   (browsers failed with ERR_CONTENT_DECODING_FAILED behind Railway's compressing edge).
 - **Password change kept signed in**: a refresh that starts while the change is answering waits for its new cookies;
   a refused refresh checks `/auth/me` before ending the session (the owner was signed out right after the change).
+- **Redis reconnects (production sign-in 503)**: after a while every sign-in answered 503 "Authentication rate
+  limiting is temporarily unavailable". The Redis client was dropped for good on its first connection error
+  (`retryStrategy: () => null`), and Upstash closes idle connections, so one dropped socket disabled sign-in until the
+  API restarted. The client is now kept and reconnects with a capped backoff (200 ms up to 5 s); while it is
+  disconnected production still fails closed. Verified by restarting a real Redis mid-run. Files:
+  `backend/src/modules/redis/redis.service.ts` (+ test).
+- **Still open**: Railway blocks outbound SMTP on Free/Trial/Hobby, so no e-mail leaves the deployment until an HTTPS
+  e-mail API is chosen (proposed: Brevo).
 
 ## 10. Backend requirements (recorded by owner decisions)
 
