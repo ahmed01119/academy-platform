@@ -149,6 +149,86 @@ describe('EmailService', () => {
     });
   });
 
+  describe('Brevo Provider Integration', () => {
+    const brevoService = (extra: Record<string, string> = {}) => {
+      const values: Record<string, string | number | boolean> = {
+        ...mockConfigValues,
+        BREVO_API_KEY: 'xkeysib-test-key',
+        ...extra,
+      };
+      return new EmailService({
+        get: vi.fn((key: string) => values[key]),
+      } as unknown as ConfigService);
+    };
+
+    it('selects brevo when BREVO_API_KEY is configured and sends through its HTTPS API', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ messageId: '<brevo-msg-1@smtp-relay.mailin.fr>' }),
+      } as Response);
+
+      emailService = brevoService();
+      const status = emailService.getEmailStatus();
+      expect(status.activeProvider).toBe('brevo');
+      expect(status.brevoConfigured).toBe(true);
+
+      const result = await emailService.sendEmailDetailed({
+        to: 'Invitee@Example.com',
+        subject: 'Invitation',
+        html: '<p>Hi</p>',
+        text: 'Hi',
+      });
+
+      expect(result).toMatchObject({
+        delivered: true,
+        status: 'SENT',
+        provider: 'brevo',
+        messageId: '<brevo-msg-1@smtp-relay.mailin.fr>',
+      });
+      const [url, init] = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0] as [
+        string,
+        { method: string; headers: Record<string, string>; signal: AbortSignal; body: string },
+      ];
+      expect(url).toBe('https://api.brevo.com/v3/smtp/email');
+      expect(init.method).toBe('POST');
+      expect(init.headers['api-key']).toBe('xkeysib-test-key');
+      expect(init.signal).toBeInstanceOf(AbortSignal);
+      expect(JSON.parse(init.body)).toEqual({
+        sender: { name: 'Sportexus Test', email: 'support@sportexus.com' },
+        to: [{ email: 'invitee@example.com' }],
+        subject: 'Invitation',
+        htmlContent: '<p>Hi</p>',
+        textContent: 'Hi',
+      });
+    });
+
+    it('MAIL_PROVIDER=brevo wins over SMTP settings left in place', () => {
+      emailService = brevoService({ MAIL_PROVIDER: 'brevo', SMTP_HOST: 'smtp.gmail.com' });
+      expect(emailService.getEmailStatus().activeProvider).toBe('brevo');
+    });
+
+    it('reports a failed delivery with the API error (an unverified sender, for example)', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 400,
+        text: async () => '{"code":"invalid_parameter","message":"sender is not valid"}',
+      } as Response);
+
+      emailService = brevoService();
+      const result = await emailService.sendEmailDetailed({
+        to: 'someone@example.com',
+        subject: 'Code',
+        html: '<p>1</p>',
+        text: '1',
+      });
+
+      expect(result.delivered).toBe(false);
+      expect(result.status).toBe('FAILED');
+      expect(result.error).toContain('Brevo API error (400)');
+      expect(result.error).toContain('sender is not valid');
+    });
+  });
+
   describe('Resend Provider Integration', () => {
     it('selects resend when RESEND_API_KEY is configured and handles API dispatch', async () => {
       const resendConfig: Record<string, string> = {

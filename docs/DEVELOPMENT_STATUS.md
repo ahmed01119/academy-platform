@@ -1014,8 +1014,13 @@ the edited values.
   (`request(..., { replacesSession: true })`), so the change refreshes and retries like any request; it marks the
   rotation only on a successful answer. Tests reproduce the hang on the old code. Note: on 2026-11-27 the Railway web
   service was still serving a build from before the first password fix (`6542e19`); deploy the latest commit.
-- **Still open**: Railway blocks outbound SMTP on Free/Trial/Hobby, so no e-mail leaves the deployment until an HTTPS
-  e-mail API is chosen (proposed: Brevo).
+- **E-mail through Brevo (owner decision 2026-11-27)**: Railway blocks outbound SMTP on Free/Trial/Hobby, so Gmail
+  SMTP cannot send from there. New provider `brevo` (`MAIL_PROVIDER=brevo`, `BREVO_API_KEY`; auto-selected when only
+  the key is set): HTTPS `POST https://api.brevo.com/v3/smtp/email`; the sender (`MAIL_FROM_EMAIL`, the academy Gmail)
+  must be a verified Brevo sender, no domain needed; free tier 300 e-mails/day. Every HTTPS send now has a 10 s time
+  limit. Files: `backend/src/modules/email/email.service.ts` (+ tests), `.env.example`, `backend/.env.example`,
+  `render.yaml` (comment), TECHNOLOGY_STACK, SYSTEM_ARCHITECTURE. Railway variables to set: `MAIL_PROVIDER=brevo`,
+  `BREVO_API_KEY`, keep `MAIL_FROM_EMAIL` / `MAIL_FROM_NAME`; the `SMTP_*` variables can stay (unused).
 
 ## 10. Backend requirements (recorded by owner decisions)
 
