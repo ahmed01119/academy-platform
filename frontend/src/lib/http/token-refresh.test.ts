@@ -151,3 +151,81 @@ describe('executeSingleFlightTokenRefresh on temporary failures (owner report: s
     expect(seen).toContain('SESSION_EXPIRED');
   });
 });
+
+/**
+ * Owner report 2026-11-27: changing the password signed the owner out right after "password changed". The server
+ * revokes every older token and answers the change with new cookies; a request already on its way with the old
+ * cookie came back 401, its refresh sent the revoked refresh token, and the app ended the session it had just renewed.
+ */
+describe('executeSingleFlightTokenRefresh during a password change', () => {
+  function createServer(changeLatencyMs: number) {
+    let cookie = 'old';
+    const fetchMock = vi.fn(async (url: string) => {
+      const sent = cookie;
+      if (url.endsWith('/auth/change-password')) {
+        await new Promise((r) => setTimeout(r, changeLatencyMs));
+        cookie = 'new';
+        return Response.json({ message: 'ok' });
+      }
+      await new Promise((r) => setTimeout(r, 5));
+      if (url.endsWith('/auth/refresh')) {
+        // The old token was revoked by the change (not reuse): refused, the new session is left alone.
+        return sent === 'new'
+          ? Response.json({ accessToken: '', user: { id: 'u1' } })
+          : new Response('{}', { status: 401 });
+      }
+      if (url.endsWith('/auth/me')) {
+        return sent === 'new'
+          ? Response.json({ user: { id: 'u1' } })
+          : new Response('{}', { status: 401 });
+      }
+      return new Response('{}', { status: 404 });
+    });
+    return { fetchMock };
+  }
+
+  async function openTabWith(fetchMock: ReturnType<typeof vi.fn>) {
+    const storage = new Map<string, string>();
+    vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal('localStorage', {
+      getItem: (k: string) => storage.get(k) ?? null,
+      setItem: (k: string, v: string) => void storage.set(k, v),
+      removeItem: (k: string) => void storage.delete(k),
+    });
+    vi.stubGlobal('navigator', {});
+    vi.resetModules();
+    const tab = await import('./token-refresh');
+    const events = await import('./auth-events');
+    const seen: string[] = [];
+    events.onAuthEvent((e) => seen.push(e));
+    return { tab, seen };
+  }
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('a refresh started while the change is answering waits for it and keeps the new session', async () => {
+    const { fetchMock } = createServer(40);
+    const { tab, seen } = await openTabWith(fetchMock);
+
+    const change = tab.runSessionReplacement(() => fetch('/v1/auth/change-password'));
+    const refresh = tab.executeSingleFlightTokenRefresh(); // the 401 of a request sent with the old cookie
+    await change;
+
+    await expect(refresh).resolves.not.toBeNull();
+    expect(seen).not.toContain('SESSION_EXPIRED');
+  });
+
+  it('a refused refresh is not the end when the browser already holds newer cookies', async () => {
+    const { fetchMock } = createServer(0);
+    const { tab, seen } = await openTabWith(fetchMock);
+
+    // The old refresh token leaves before the new cookies arrive; by the time it is refused they are there.
+    const refresh = tab.executeSingleFlightTokenRefresh();
+    await fetch('/v1/auth/change-password');
+
+    await expect(refresh).resolves.not.toBeNull();
+    expect(seen).not.toContain('SESSION_EXPIRED');
+  });
+});

@@ -987,6 +987,22 @@ the edited values.
 - **Pending (owner)**: Neon production project in Frankfurt with `sportexus_app` created before the first deploy,
   Render Blueprint with the secrets, then the first platform owner via `scripts/create-superadmin.js`.
 
+## 9r. First deployment on Railway (2026-11-27)
+
+- **Platform**: Render asked for a card, so the owner deployed on **Railway** instead (render.yaml kept). Two services
+  from branch `main`, both built from the repository Dockerfiles: `sportexus-api` (`Dockerfile`; migrations run at
+  start-up from `docker-entrypoint.sh` with `DATABASE_ADMIN_URL`; port 3001) and `sportexus-web` (`Dockerfile.web` via
+  `RAILWAY_DOCKERFILE_PATH`; port 8000). Redis on Upstash, e-mail through the academy Gmail (SMTP). The variables are
+  in the owner's private file outside the repository. Auto-deploy needs the Railway GitHub app on the repository
+  owner's account; without it, deploy with "Deploy Latest Commit".
+- **CI fixes**: Prisma datamodel declares the database default of `schedule_exceptions.id`; the security catalog
+  test knows the current definer functions (12-argument join request, reply, guardian link, subscription payment).
+  All CI database steps were re-run on a fresh postgres:16.
+- **Web proxy**: no longer forwards `content-encoding` / `content-length` of a body `fetch()` already decoded
+  (browsers failed with ERR_CONTENT_DECODING_FAILED behind Railway's compressing edge).
+- **Password change kept signed in**: a refresh that starts while the change is answering waits for its new cookies;
+  a refused refresh checks `/auth/me` before ending the session (the owner was signed out right after the change).
+
 ## 10. Backend requirements (recorded by owner decisions)
 
 **Workflow (owner direction 2026-11-15):** frontend issues whose root cause is in the backend are now fixed across both
