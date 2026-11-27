@@ -4,6 +4,29 @@ import { setActiveTenantIdHeader } from './active-tenant';
 import { emitAuthEvent } from './auth-events';
 
 let refreshPromise: Promise<AuthResponse | null> | null = null;
+/** A request that replaces this device's session cookies (password change) and has not answered yet. */
+let pendingSessionReplacement: Promise<unknown> | null = null;
+
+/**
+ * Runs a request that replaces the session cookies of this device, such as a password change: the server revokes
+ * every older token and sets new cookies in its answer. Requests that were already on their way with the old cookies
+ * come back 401 meanwhile; their refresh waits for this answer and then continues with the new cookies instead of
+ * sending the revoked refresh token (which would end the session the change just created).
+ */
+export async function runSessionReplacement<T>(task: () => Promise<T>): Promise<T> {
+  const running = task();
+  const marker = running.then(
+    () => markRotated(),
+    () => undefined,
+  );
+  pendingSessionReplacement = marker;
+  try {
+    return await running;
+  } finally {
+    await marker;
+    if (pendingSessionReplacement === marker) pendingSessionReplacement = null;
+  }
+}
 
 /**
  * The refresh could not be completed for a temporary reason (offline, server error, rate limit, slow database). The
@@ -103,12 +126,20 @@ export async function executeSingleFlightTokenRefresh(
 
   const task = (async (): Promise<AuthResponse | null> => {
     try {
+      // A password change on this device is answering: wait for its new cookies (markRotated makes us adopt them).
+      if (!explicitRefreshToken && pendingSessionReplacement) {
+        await pendingSessionReplacement;
+      }
       const resData = await withCrossTabLock(async () => {
         if (!explicitRefreshToken && Date.now() - readLastRotation() < RECENT_ROTATION_MS) {
           const adopted = await adoptSessionFromOtherTab();
           if (adopted) return adopted;
         }
-        return rotate(explicitRefreshToken);
+        const rotated = await rotate(explicitRefreshToken);
+        if (rotated || explicitRefreshToken) return rotated;
+        // The refresh token we sent was refused, but the browser may hold newer cookies by now (a password change
+        // or another tab replaced them while it was on its way): the session is over only if those fail too.
+        return adoptSessionFromOtherTab();
       });
 
       if (!resData) {
