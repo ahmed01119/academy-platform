@@ -132,6 +132,37 @@ describe('V1 API Proxy Runtime Route Handler', () => {
       expect(responseCookies[1]).toContain('refresh_token=refresh.token.here');
     });
 
+    it('does not pass on the encoding of a body fetch() already decompressed', async () => {
+      process.env.INTERNAL_API_URL = 'https://api.example.test';
+      vi.stubEnv('NODE_ENV', 'production');
+      vi.stubEnv('INTERNAL_PROXY_SECRET', 'test-only-proxy-secret-0123456789abcdef');
+      vi.stubEnv('WEB_TRUSTED_PROXY_HOPS', '1');
+      const body = new TextEncoder().encode('{"ok":true}');
+      const upstreamHeaders = new Headers({
+        'content-type': 'application/json',
+        'content-encoding': 'gzip',
+        'content-length': '31',
+        etag: 'W/"abc"',
+      });
+      global.fetch = vi.fn().mockResolvedValue({
+        status: 200,
+        statusText: 'OK',
+        headers: upstreamHeaders,
+        arrayBuffer: async () => body,
+      });
+
+      const res = await POST(
+        new NextRequest('https://web.example.test/v1/auth/login', { method: 'POST', body: '{}' }),
+        { params: Promise.resolve({ path: ['auth', 'login'] }) },
+      );
+
+      expect(res.headers.get('content-encoding')).toBeNull();
+      expect(res.headers.get('content-length')).not.toBe('31');
+      expect(res.headers.get('content-type')).toBe('application/json');
+      expect(res.headers.get('etag')).toBe('W/"abc"');
+      expect(await res.text()).toBe('{"ok":true}');
+    });
+
     it('returns HTTP 502 Bad Gateway when upstream fetch fails', async () => {
       process.env.INTERNAL_API_URL = 'https://sportexus-backend-staging.hostless.app';
       vi.stubEnv('NODE_ENV', 'production');
