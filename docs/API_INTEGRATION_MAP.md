@@ -113,7 +113,9 @@ Phase 5 builds approved screens on the shared data-loading and error states from
 Contract changes in Phase 3A.1 (2026-11-15):
 
 - `POST /auth/reset-password` takes `{ token, newPassword, email? }`. A 6-digit code requires `email`; a 64-hex link
-  token does not. Every failure returns the same `400 TOKEN_INVALID` message.
+  token does not. Every failure returns the same `400 TOKEN_INVALID` message. Optional `signIn: true` (activation
+  links of invited platform admins, 2026-11-27; additive): with a link token the answer also sets the auth cookies
+  and returns `{ message, signedIn: true }`; suspended accounts and applicants under review get no session.
 - `POST /auth/change-password` now also sets fresh auth cookies: the call ends every other session, including the
   caller's previous tokens.
 - Access tokens carry a session version (`sv`). After a password reset, a password change, a platform "revoke sessions"

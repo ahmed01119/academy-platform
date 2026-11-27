@@ -271,6 +271,10 @@ Pre-2026-11-16 code:
   the same app; nothing of the landing page is painted meanwhile. Players and guardians send further join requests
   from "My requests" in their portal. Exception: an account without any role yet (e.g. its first request is under
   review) keeps the landing page, its only place to apply from.
+- **Platform admin invitations (2026-11-27)**: a new invitee gets an e-mail whose button opens "Activate your account"
+  (`/reset-password#token=…&activate=1`, valid 48 h, single use). Choosing the password and pressing "Done, open my
+  dashboard" also signs that device in (`POST /auth/reset-password` with `signIn: true`, honoured for link tokens
+  only; the usual sign-in rules apply), so the dashboard opens without a separate sign-in; later sign-ins are as usual.
 
 ### 2.6 Enrollments
 

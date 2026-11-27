@@ -1202,8 +1202,10 @@ export class PlatformService {
 
     const appUrl =
       process.env.NEXT_PUBLIC_APP_URL || process.env.APP_PUBLIC_URL || 'http://localhost:3000';
+    // New accounts get an activation link: the page sets the first password and signs the device in (owner request
+    // 2026-11-27). The token travels in the URL fragment, which browsers never send to servers (K1).
     const actionUrl = isNewUser
-      ? `${appUrl}/reset-password?token=${rawToken}`
+      ? `${appUrl}/reset-password#token=${rawToken}&activate=1&email=${encodeURIComponent(email)}`
       : `${appUrl}/platform`;
 
     await this.auditService.logEvent({

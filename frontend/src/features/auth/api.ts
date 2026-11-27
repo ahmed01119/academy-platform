@@ -10,6 +10,7 @@ import type {
   RegisterRequest,
   RegisterResponse,
   ResetPasswordRequest,
+  ResetPasswordResponse,
   TenantMembershipSummary,
   UserSummary,
   ChangePasswordRequest,
@@ -68,7 +69,7 @@ export const authApi = {
     });
   },
 
-  async resetPassword(data: ResetPasswordRequest): Promise<{ message: string }> {
+  async resetPassword(data: ResetPasswordRequest): Promise<ResetPasswordResponse> {
     return request('/auth/reset-password', {
       method: 'POST',
       body: JSON.stringify(data),

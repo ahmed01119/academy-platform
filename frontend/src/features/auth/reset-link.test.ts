@@ -49,6 +49,33 @@ describe('buildResetPasswordPayload', () => {
     expect(ResetPasswordRequestSchema.safeParse(payload).success).toBe(true);
   });
 
+  it('an invitation (activation) link asks the server to sign the device in', () => {
+    const params = readResetLinkParams(
+      `#token=${LINK}&activate=1&email=new.admin%40example.com`,
+      '',
+    );
+    expect(params).toEqual({ linkToken: LINK, email: 'new.admin@example.com', activate: true });
+    const payload = buildResetPasswordPayload({
+      linkToken: params.linkToken,
+      code: '',
+      email: params.email ?? '',
+      newPassword: STRONG,
+      activate: params.activate,
+    });
+    expect(payload.signIn).toBe(true);
+    expect(ResetPasswordRequestSchema.safeParse(payload).success).toBe(true);
+  });
+
+  it('a plain reset link does not sign in', () => {
+    const payload = buildResetPasswordPayload({
+      linkToken: LINK,
+      code: '',
+      email: '',
+      newPassword: STRONG,
+    });
+    expect(payload.signIn).toBeUndefined();
+  });
+
   it('sends a code together with the normalised e-mail', () => {
     const payload = buildResetPasswordPayload({
       code: ' 123456 ',
