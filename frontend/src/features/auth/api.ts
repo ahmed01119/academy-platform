@@ -18,7 +18,7 @@ import type {
 } from '@academy/shared';
 import { request } from '@/lib/http/request';
 import { setActiveTenantIdHeader } from '@/lib/http/active-tenant';
-import { executeSingleFlightTokenRefresh, runSessionReplacement } from '@/lib/http/token-refresh';
+import { executeSingleFlightTokenRefresh } from '@/lib/http/token-refresh';
 import { ApiError } from '@/lib/http/api-error';
 
 export const authApi = {
@@ -118,12 +118,11 @@ export const authApi = {
 
   /** The answer replaces this device's session cookies; requests in flight meanwhile continue with the new ones. */
   async changePassword(data: ChangePasswordRequest): Promise<{ message: string }> {
-    return runSessionReplacement(() =>
-      request<{ message: string }>('/auth/change-password', {
-        method: 'POST',
-        body: JSON.stringify(data),
-      }),
-    );
+    return request<{ message: string }>('/auth/change-password', {
+      method: 'POST',
+      body: JSON.stringify(data),
+      replacesSession: true,
+    });
   },
 
   async updateProfile(

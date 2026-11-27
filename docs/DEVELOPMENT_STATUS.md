@@ -1008,6 +1008,12 @@ the edited values.
   API restarted. The client is now kept and reconnects with a capped backoff (200 ms up to 5 s); while it is
   disconnected production still fails closed. Verified by restarting a real Redis mid-run. Files:
   `backend/src/modules/redis/redis.service.ts` (+ test).
+- **Password change with an expired access token**: when the page sat open until the access token expired, "Change
+  Password" spun forever and the app then signed out. The change itself came back 401, and its refresh waited for the
+  change to answer, which was waiting for that refresh. `runSessionReplacement` now covers only the network exchange
+  (`request(..., { replacesSession: true })`), so the change refreshes and retries like any request; it marks the
+  rotation only on a successful answer. Tests reproduce the hang on the old code. Note: on 2026-11-27 the Railway web
+  service was still serving a build from before the first password fix (`6542e19`); deploy the latest commit.
 - **Still open**: Railway blocks outbound SMTP on Free/Trial/Hobby, so no e-mail leaves the deployment until an HTTPS
   e-mail API is chosen (proposed: Brevo).
 
