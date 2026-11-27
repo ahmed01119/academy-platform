@@ -6,6 +6,9 @@ import {
   resolveProxyConfig,
 } from '@/lib/http/proxy-forwarding';
 
+/** Response headers that describe the upstream body as sent, not the decoded body fetch() hands us. */
+const DECODED_BODY_HEADERS = new Set(['content-encoding', 'content-length']);
+
 /**
  * Resolves the backend base URL at RUNTIME.
  * In production, it strictly requires INTERNAL_API_URL (or NEXT_PUBLIC_API_BASE_URL).
@@ -98,8 +101,14 @@ async function handleProxy(
     const resHeaders = new Headers();
     upstreamRes.headers.forEach((val, key) => {
       const lower = key.toLowerCase();
-      // Skip set-cookie here as we handle it with getSetCookie()
-      if (lower !== 'set-cookie' && !HOP_BY_HOP_HEADERS.has(lower)) {
+      // Skip set-cookie here as we handle it with getSetCookie(). fetch() has already decompressed the body, so the
+      // upstream content-encoding / content-length describe bytes we are not sending: forwarding them makes the
+      // browser fail with ERR_CONTENT_DECODING_FAILED (seen behind Railway's compressing edge).
+      if (
+        lower !== 'set-cookie' &&
+        !HOP_BY_HOP_HEADERS.has(lower) &&
+        !DECODED_BODY_HEADERS.has(lower)
+      ) {
         resHeaders.set(key, val);
       }
     });
