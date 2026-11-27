@@ -772,7 +772,7 @@ model TrainingSchedule {
 /// One-off change to a group's weekly timetable: a cancelled or moved occurrence, or an extra session.
 /// CANCELLED / MOVED name the occurrence (scheduleId + originalDate); MOVED / EXTRA give the new date and times.
 model ScheduleException {
-  id              String                @id @default(uuid()) @db.Uuid
+  id              String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   tenantId        String                @map("tenant_id") @db.Uuid
   groupId         String                @map("group_id") @db.Uuid
   scheduleId      String?               @map("schedule_id") @db.Uuid
