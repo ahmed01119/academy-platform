@@ -31,6 +31,8 @@ export type AuthState =
 export interface AuthContextValue {
   authState: AuthState;
   isLoading: boolean;
+  /** Signed in, and the server has confirmed the session with its memberships (not only the cached user). */
+  isSessionVerified: boolean;
   user: UserSummary | null;
   activeTenant: TenantMembershipSummary | null;
   memberships: TenantMembershipSummary[];
@@ -118,6 +120,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [activeTenant, setActiveTenant] = useState<TenantMembershipSummary | null>(null);
   const [memberships, setMemberships] = useState<TenantMembershipSummary[]>([]);
   const [error, setError] = useState<string | null>(null);
+  /** The server has answered for this session at least once (the cached user alone carries no memberships). */
+  const [serverConfirmed, setServerConfirmed] = useState(false);
 
   const isRefreshingRef = useRef(false);
 
@@ -146,6 +150,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setActiveTenant(resolvedActive);
       setMemberships(activeMemberships);
       setAuthState('AUTHENTICATED');
+      setServerConfirmed(true);
       setError(null);
 
       if (typeof window !== 'undefined') {
@@ -390,11 +395,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const isLoading = authState === 'INITIALIZING' || authState === 'REFRESHING';
+  const isSessionVerified = serverConfirmed && user !== null && !isLoading;
 
   const value = useMemo(
     () => ({
       authState,
       isLoading,
+      isSessionVerified,
       user,
       activeTenant,
       memberships,
@@ -407,7 +414,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       refreshUser,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [authState, isLoading, user, activeTenant, memberships, error, refreshUser],
+    [authState, isLoading, isSessionVerified, user, activeTenant, memberships, error, refreshUser],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -41,6 +41,26 @@ export function getRoleHomeRoute(
 }
 
 /**
+ * Whether a signed-in user has a page of their own inside the app (platform staff, an active academy role, a player
+ * or guardian profile). Such users never see the landing page: it sends them to their home (owner decision
+ * 2026-11-27). A user with none of these (e.g. a join request still under review) keeps the landing page, the only
+ * place they can apply from.
+ */
+export function hasSignedInHome(
+  user: UserSummary | null | undefined,
+  memberships: readonly TenantMembershipSummary[],
+): boolean {
+  if (!user) return false;
+  return Boolean(
+    user.isPlatformSuperAdmin ||
+    user.isPlatformOwner ||
+    user.hasPlayerProfile ||
+    user.hasGuardianProfile ||
+    memberships.some((m) => m.status === 'ACTIVE'),
+  );
+}
+
+/**
  * Checks whether the current user is authorized to view administrative academy pages
  * (such as /players, /branches, /settings, /attendance/reports).
  * Strictly forbids Player, Guardian, and non-administrative Coach accounts from viewing admin controls.

@@ -266,6 +266,11 @@ Pre-2026-11-16 code:
   e-mail is separate and optional (`guardianEmail`, must differ) and goes on the guardian record at approval. In a
   GUARDIAN request `contactEmail` is the guardian's sign-in.
 - The landing page offers two separate entry points: "join as a player" and "register my child (guardian)".
+- **Signed-in users never see the landing page (2026-11-27)**: opening `/` or `/landing` while signed in goes
+  straight to the user's home (platform, dashboard, coach workspace, player or guardian portal), so every tab shows
+  the same app; nothing of the landing page is painted meanwhile. Players and guardians send further join requests
+  from "My requests" in their portal. Exception: an account without any role yet (e.g. its first request is under
+  review) keeps the landing page, its only place to apply from.
 
 ### 2.6 Enrollments
 
