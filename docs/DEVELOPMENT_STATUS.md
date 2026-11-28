@@ -1021,6 +1021,16 @@ the edited values.
   limit. Files: `backend/src/modules/email/email.service.ts` (+ tests), `.env.example`, `backend/.env.example`,
   `render.yaml` (comment), TECHNOLOGY_STACK, SYSTEM_ARCHITECTURE. Railway variables to set: `MAIL_PROVIDER=brevo`,
   `BREVO_API_KEY`, keep `MAIL_FROM_EMAIL` / `MAIL_FROM_NAME`; the `SMTP_*` variables can stay (unused).
+- **E-mail through the Gmail API (owner decision 2026-11-28, replaces Brevo as the plan)**: the owner preferred not to
+  use Brevo. New provider `gmail` (`MAIL_PROVIDER=gmail`, `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`,
+  `GMAIL_REFRESH_TOKEN`): OAuth refresh token (scope `gmail.send` only) exchanged for an access token (cached, renewed
+  on 401), message sent as base64url MIME (multipart text + HTML, RFC 2047 headers, line breaks stripped from header
+  values) to `users/me/messages/send`. Mail leaves from the academy Gmail itself (about 500/day for a personal
+  account). One-time token: `node scripts/gmail-refresh-token.cjs <CLIENT_ID> <CLIENT_SECRET>` (local loopback +
+  PKCE, prints the token only in the terminal). The Google OAuth consent screen must be **published (In production)**:
+  in "Testing" Google expires refresh tokens after 7 days. The Brevo provider stays available but unused. Files:
+  `backend/src/modules/email/gmail-api.ts` (+ test), `email.service.ts` (+ test), `scripts/gmail-refresh-token.cjs`,
+  env examples, `render.yaml` comment, TECHNOLOGY_STACK, SYSTEM_ARCHITECTURE.
 
 ## 10. Backend requirements (recorded by owner decisions)
 

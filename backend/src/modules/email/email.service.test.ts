@@ -149,6 +149,68 @@ describe('EmailService', () => {
     });
   });
 
+  describe('Gmail API Provider Selection', () => {
+    const gmailValues = {
+      GMAIL_CLIENT_ID: 'cid.apps.googleusercontent.com',
+      GMAIL_CLIENT_SECRET: 'secret',
+      GMAIL_REFRESH_TOKEN: 'refresh',
+    };
+    const serviceWith = (values: Record<string, string>) =>
+      new EmailService({
+        get: vi.fn((key: string) => ({ ...mockConfigValues, ...values })[key]),
+      } as unknown as ConfigService);
+
+    it('MAIL_PROVIDER=gmail with the three Gmail values sends through the Gmail API', async () => {
+      global.fetch = vi
+        .fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: async () => ({ access_token: 'at', expires_in: 3600 }),
+        } as Response)
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: async () => ({ id: 'gmail-msg-9' }),
+        } as Response);
+
+      emailService = serviceWith({
+        ...gmailValues,
+        MAIL_PROVIDER: 'gmail',
+        SMTP_HOST: 'smtp.gmail.com',
+      });
+      expect(emailService.getEmailStatus()).toMatchObject({
+        activeProvider: 'gmail',
+        gmailConfigured: true,
+      });
+
+      const result = await emailService.sendEmailDetailed({
+        to: 'someone@example.com',
+        subject: 'Hello',
+        html: '<p>Hi</p>',
+        text: 'Hi',
+      });
+      expect(result).toMatchObject({
+        delivered: true,
+        status: 'SENT',
+        provider: 'gmail',
+        messageId: 'gmail-msg-9',
+      });
+    });
+
+    it('is picked automatically when only the Gmail values are set', () => {
+      expect(serviceWith(gmailValues).getEmailStatus().activeProvider).toBe('gmail');
+    });
+
+    it('a missing Gmail value never sends: e-mails are only logged', () => {
+      const status = serviceWith({
+        MAIL_PROVIDER: 'gmail',
+        GMAIL_CLIENT_ID: 'cid',
+      }).getEmailStatus();
+      expect(status.gmailConfigured).toBe(false);
+    });
+  });
+
   describe('Brevo Provider Integration', () => {
     const brevoService = (extra: Record<string, string> = {}) => {
       const values: Record<string, string | number | boolean> = {
