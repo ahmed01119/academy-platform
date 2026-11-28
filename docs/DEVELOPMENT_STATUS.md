@@ -1031,6 +1031,9 @@ the edited values.
   in "Testing" Google expires refresh tokens after 7 days. The Brevo provider stays available but unused. Files:
   `backend/src/modules/email/gmail-api.ts` (+ test), `email.service.ts` (+ test), `scripts/gmail-refresh-token.cjs`,
   env examples, `render.yaml` comment, TECHNOLOGY_STACK, SYSTEM_ARCHITECTURE.
+- **Public privacy policy `/privacy`** (Arabic/English, linked from the landing footer): Google requires a homepage and
+  a privacy policy URL before the OAuth consent screen can be published. Contact address: the academy Gmail. Files:
+  `frontend/src/app/privacy/page.tsx` (+ test), `frontend/src/app/landing/page.tsx`.
 
 ## 10. Backend requirements (recorded by owner decisions)
 
