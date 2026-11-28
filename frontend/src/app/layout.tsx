@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from 'next';
-import { IBM_Plex_Sans, IBM_Plex_Sans_Arabic } from 'next/font/google';
 import { cookies } from 'next/headers';
 import { DEFAULT_LOCALE, LOCALE_DIRECTION, type SupportedLocale } from '@academy/shared';
 import { AuthProvider } from '@/contexts/auth-context';
@@ -15,22 +14,25 @@ import { ToastProvider } from '../components/ui/Toast';
 import { ConfirmProvider } from '../components/ui/ConfirmDialog';
 import { ServiceWorkerRegistrar } from '../components/pwa/ServiceWorkerRegistrar';
 import { SyncStatus } from '../components/pwa/SyncStatus';
+// Fonts ship with the app (@fontsource): the build never downloads from Google, whose font requests intermittently
+// failed on the deployment builders ("Cannot read properties of null" in next/font/google) and broke the build.
+// Same families, weights and subsets as before; globals.css points --font-plex-sans / --font-plex-arabic at them.
+import '@fontsource/ibm-plex-sans/latin-300.css';
+import '@fontsource/ibm-plex-sans/latin-400.css';
+import '@fontsource/ibm-plex-sans/latin-500.css';
+import '@fontsource/ibm-plex-sans/latin-600.css';
+import '@fontsource/ibm-plex-sans/latin-700.css';
+import '@fontsource/ibm-plex-sans-arabic/arabic-300.css';
+import '@fontsource/ibm-plex-sans-arabic/latin-300.css';
+import '@fontsource/ibm-plex-sans-arabic/arabic-400.css';
+import '@fontsource/ibm-plex-sans-arabic/latin-400.css';
+import '@fontsource/ibm-plex-sans-arabic/arabic-500.css';
+import '@fontsource/ibm-plex-sans-arabic/latin-500.css';
+import '@fontsource/ibm-plex-sans-arabic/arabic-600.css';
+import '@fontsource/ibm-plex-sans-arabic/latin-600.css';
+import '@fontsource/ibm-plex-sans-arabic/arabic-700.css';
+import '@fontsource/ibm-plex-sans-arabic/latin-700.css';
 import './globals.css';
-
-// Fonts are downloaded at build time and served by this app (next/font): no request to Google from the browser and
-// no layout shift. globals.css uses the two CSS variables.
-const plexSans = IBM_Plex_Sans({
-  subsets: ['latin'],
-  weight: ['300', '400', '500', '600', '700'],
-  display: 'swap',
-  variable: '--font-plex-sans',
-});
-const plexSansArabic = IBM_Plex_Sans_Arabic({
-  subsets: ['arabic', 'latin'],
-  weight: ['300', '400', '500', '600', '700'],
-  display: 'swap',
-  variable: '--font-plex-arabic',
-});
 
 export const metadata: Metadata = {
   title: 'SPORTEXUS | سبورتكسس — One Platform. Every Academy.',
@@ -75,12 +77,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   const dir = LOCALE_DIRECTION[locale];
 
   return (
-    <html
-      lang={locale}
-      dir={dir}
-      className={`${plexSans.variable} ${plexSansArabic.variable}`}
-      suppressHydrationWarning
-    >
+    <html lang={locale} dir={dir} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <script dangerouslySetInnerHTML={{ __html: localeInitScript }} />

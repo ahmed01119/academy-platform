@@ -126,6 +126,12 @@ importers:
       '@academy/shared':
         specifier: workspace:*
         version: link:../packages/shared
+      '@fontsource/ibm-plex-sans':
+        specifier: ^5.3.0
+        version: 5.3.0
+      '@fontsource/ibm-plex-sans-arabic':
+        specifier: ^5.3.0
+        version: 5.3.0
       jsqr:
         specifier: ^1.4.0
         version: 1.4.0
@@ -588,6 +594,12 @@ packages:
   '@eslint/plugin-kit@0.4.1':
     resolution: {integrity: sha512-43/qtrDUokr7LJqoF2c3+RInu/t4zfrpYdoSDfYyhg52rwLV6TnOvdG4fXm7IkSB3wErkcmJS9iEhjVtOSEjjA==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+
+  '@fontsource/ibm-plex-sans-arabic@5.3.0':
+    resolution: {integrity: sha512-ZZ4g+JDgQY0NqSh4o0MNWU1sHQmtcee1g++aKAwyJvZxnT5y51JXsN1cIXnaQaMd40dcbK6QFYa+Z1LbaiNuqA==}
+
+  '@fontsource/ibm-plex-sans@5.3.0':
+    resolution: {integrity: sha512-CbE4CbbEEZJX860XyUiRpsksXIQR8Rp2XDva2VO53NJox9tVNtusrysd2x5YkUEY3ErQ66W1IiiQL8/wihhw5w==}
 
   '@humanfs/core@0.19.2':
     resolution: {integrity: sha512-UhXNm+CFMWcbChXywFwkmhqjs3PRCmcSa/hfBgLIb7oQ5HNb1wS0icWsGtSAUNgefHeI+eBrA8I1fxmbHsGdvA==}
@@ -1690,6 +1702,7 @@ packages:
   argon2@0.45.1:
     resolution: {integrity: sha512-skm+/WCjkGqCQxF7FG1LuZXM5yvbFjgbfiCGsud2oLgaDhh6b6dbH0b1EkghbM+xx4Bj8Ape+KKgixoIlWZicQ==}
     engines: {node: '>=16.17.0'}
+    deprecated: This version has a bug in hash encoding and generates invalid hashes, please update to v0.45.2 or later
 
   argparse@2.0.1:
     resolution: {integrity: sha512-8+9WqebbFzpX9OR+Wa6O29asIogeRMzcGtAINdpMHHyAg10f05aSFVBbcEqGf/PXw1EjAZ+q2/bEBg3DvurK3Q==}
@@ -3782,6 +3795,10 @@ snapshots:
     dependencies:
       '@eslint/core': 0.17.0
       levn: 0.4.1
+
+  '@fontsource/ibm-plex-sans-arabic@5.3.0': {}
+
+  '@fontsource/ibm-plex-sans@5.3.0': {}
 
   '@humanfs/core@0.19.2':
     dependencies:
