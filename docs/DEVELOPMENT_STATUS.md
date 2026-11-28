@@ -1034,6 +1034,12 @@ the edited values.
 - **Public privacy policy `/privacy`** (Arabic/English, linked from the landing footer): Google requires a homepage and
   a privacy policy URL before the OAuth consent screen can be published. Contact address: the academy Gmail. Files:
   `frontend/src/app/privacy/page.tsx` (+ test), `frontend/src/app/landing/page.tsx`.
+- **Fonts bundled with the app**: the Railway web build failed in `next/font/google` ("Cannot read properties of null
+  (reading '1')") when Google's font request failed on the builder; it had also failed once locally. The IBM Plex
+  fonts now come from `@fontsource/ibm-plex-sans` and `@fontsource/ibm-plex-sans-arabic` (same weights 300-700 and
+  subsets: Latin; Arabic + Latin), imported in `app/layout.tsx`; `globals.css` sets `--font-plex-sans` /
+  `--font-plex-arabic`. The build makes no network request for fonts; verified with a production build and a browser
+  (both languages load their font, zero requests to Google).
 
 ## 10. Backend requirements (recorded by owner decisions)
 

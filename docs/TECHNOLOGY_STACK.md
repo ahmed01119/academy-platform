@@ -62,6 +62,7 @@ with Zod schemas; global `/v1` prefix; unified error filter.
 | react / react-dom                  | 19.3.1   | UI                                                                      |
 | tailwindcss + @tailwindcss/postcss | 4.3.3    | Styling (v4 CSS-first, design tokens as CSS variables in `globals.css`) |
 | lucide-react                       | 1.57.0   | Icons                                                                   |
+| @fontsource/ibm-plex-sans(-arabic) | 5.3.0    | IBM Plex fonts bundled with the app (no Google download at build time)  |
 | qrcode                             | 1.5.4    | Render player QR cards                                                  |
 | jsqr                               | 1.4.0    | Decode QR from camera frames (scanner)                                  |
 | fake-indexeddb (dev)               | ^6.2.6   | Tests for offline store                                                 |
