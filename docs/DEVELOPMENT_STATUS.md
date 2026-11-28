@@ -1008,8 +1008,32 @@ the edited values.
   API restarted. The client is now kept and reconnects with a capped backoff (200 ms up to 5 s); while it is
   disconnected production still fails closed. Verified by restarting a real Redis mid-run. Files:
   `backend/src/modules/redis/redis.service.ts` (+ test).
-- **Still open**: Railway blocks outbound SMTP on Free/Trial/Hobby, so no e-mail leaves the deployment until an HTTPS
-  e-mail API is chosen (proposed: Brevo).
+- **Password change with an expired access token**: when the page sat open until the access token expired, "Change
+  Password" spun forever and the app then signed out. The change itself came back 401, and its refresh waited for the
+  change to answer, which was waiting for that refresh. `runSessionReplacement` now covers only the network exchange
+  (`request(..., { replacesSession: true })`), so the change refreshes and retries like any request; it marks the
+  rotation only on a successful answer. Tests reproduce the hang on the old code. Note: on 2026-11-27 the Railway web
+  service was still serving a build from before the first password fix (`6542e19`); deploy the latest commit.
+- **E-mail through Brevo (owner decision 2026-11-27)**: Railway blocks outbound SMTP on Free/Trial/Hobby, so Gmail
+  SMTP cannot send from there. New provider `brevo` (`MAIL_PROVIDER=brevo`, `BREVO_API_KEY`; auto-selected when only
+  the key is set): HTTPS `POST https://api.brevo.com/v3/smtp/email`; the sender (`MAIL_FROM_EMAIL`, the academy Gmail)
+  must be a verified Brevo sender, no domain needed; free tier 300 e-mails/day. Every HTTPS send now has a 10 s time
+  limit. Files: `backend/src/modules/email/email.service.ts` (+ tests), `.env.example`, `backend/.env.example`,
+  `render.yaml` (comment), TECHNOLOGY_STACK, SYSTEM_ARCHITECTURE. Railway variables to set: `MAIL_PROVIDER=brevo`,
+  `BREVO_API_KEY`, keep `MAIL_FROM_EMAIL` / `MAIL_FROM_NAME`; the `SMTP_*` variables can stay (unused).
+- **E-mail through the Gmail API (owner decision 2026-11-28, replaces Brevo as the plan)**: the owner preferred not to
+  use Brevo. New provider `gmail` (`MAIL_PROVIDER=gmail`, `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`,
+  `GMAIL_REFRESH_TOKEN`): OAuth refresh token (scope `gmail.send` only) exchanged for an access token (cached, renewed
+  on 401), message sent as base64url MIME (multipart text + HTML, RFC 2047 headers, line breaks stripped from header
+  values) to `users/me/messages/send`. Mail leaves from the academy Gmail itself (about 500/day for a personal
+  account). One-time token: `node scripts/gmail-refresh-token.cjs <CLIENT_ID> <CLIENT_SECRET>` (local loopback +
+  PKCE, prints the token only in the terminal). The Google OAuth consent screen must be **published (In production)**:
+  in "Testing" Google expires refresh tokens after 7 days. The Brevo provider stays available but unused. Files:
+  `backend/src/modules/email/gmail-api.ts` (+ test), `email.service.ts` (+ test), `scripts/gmail-refresh-token.cjs`,
+  env examples, `render.yaml` comment, TECHNOLOGY_STACK, SYSTEM_ARCHITECTURE.
+- **Public privacy policy `/privacy`** (Arabic/English, linked from the landing footer): Google requires a homepage and
+  a privacy policy URL before the OAuth consent screen can be published. Contact address: the academy Gmail. Files:
+  `frontend/src/app/privacy/page.tsx` (+ test), `frontend/src/app/landing/page.tsx`.
 
 ## 10. Backend requirements (recorded by owner decisions)
 

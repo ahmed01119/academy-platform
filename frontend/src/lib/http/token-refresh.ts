@@ -8,15 +8,20 @@ let refreshPromise: Promise<AuthResponse | null> | null = null;
 let pendingSessionReplacement: Promise<unknown> | null = null;
 
 /**
- * Runs a request that replaces the session cookies of this device, such as a password change: the server revokes
- * every older token and sets new cookies in its answer. Requests that were already on their way with the old cookies
- * come back 401 meanwhile; their refresh waits for this answer and then continues with the new cookies instead of
- * sending the revoked refresh token (which would end the session the change just created).
+ * Sends a request that replaces the session cookies of this device, such as a password change: the server revokes
+ * every older token and sets new cookies in a successful answer. Requests that were already on their way with the old
+ * cookies come back 401 meanwhile; their refresh waits for this answer and then continues with the new cookies instead
+ * of sending the revoked refresh token (which would end the session the change just created).
+ *
+ * Only the network exchange itself is covered: if the request needs a refresh of its own (its access token expired),
+ * the caller refreshes after this returns, so that refresh never waits for the very request that is waiting on it.
  */
-export async function runSessionReplacement<T>(task: () => Promise<T>): Promise<T> {
-  const running = task();
+export async function runSessionReplacement(send: () => Promise<Response>): Promise<Response> {
+  const running = send();
   const marker = running.then(
-    () => markRotated(),
+    (response) => {
+      if (response.ok) markRotated();
+    },
     () => undefined,
   );
   pendingSessionReplacement = marker;

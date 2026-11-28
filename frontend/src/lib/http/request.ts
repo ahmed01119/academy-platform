@@ -2,7 +2,11 @@ import { API_BASE_URL } from '@/config/env';
 import { API_CACHE_TTL_MS } from '@/config/constants';
 import { ApiError } from './api-error';
 import { getActiveTenantIdHeader } from './active-tenant';
-import { executeSingleFlightTokenRefresh, TransientRefreshError } from './token-refresh';
+import {
+  executeSingleFlightTokenRefresh,
+  runSessionReplacement,
+  TransientRefreshError,
+} from './token-refresh';
 
 /** Auth endpoints that must never carry an `x-tenant-id` header. */
 const AUTH_ENDPOINTS_WITHOUT_TENANT_HEADER = [
@@ -31,6 +35,8 @@ const NO_AUTO_REFRESH_PATHS = [
 export interface RequestOptions extends RequestInit {
   _retry?: boolean;
   skipCache?: boolean;
+  /** A successful answer replaces this device's session cookies (password change); see runSessionReplacement. */
+  replacesSession?: boolean;
 }
 
 interface CacheItem {
@@ -84,11 +90,16 @@ export async function request<T>(endpoint: string, options: RequestOptions = {})
       headers.set('x-tenant-id', activeTenantId);
     }
 
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      ...options,
-      headers,
-      credentials: 'include',
-    });
+    const { _retry, skipCache, replacesSession, ...fetchOptions } = options;
+    void _retry;
+    void skipCache;
+    const send = () =>
+      fetch(`${API_BASE_URL}${endpoint}`, {
+        ...fetchOptions,
+        headers,
+        credentials: 'include',
+      });
+    const response = replacesSession ? await runSessionReplacement(send) : await send();
 
     const shouldTryRefresh =
       response.status === 401 &&

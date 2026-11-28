@@ -3,6 +3,13 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 import type { Transporter } from 'nodemailer';
+import { GmailApiSender } from './gmail-api';
+
+/** Where e-mail goes: an HTTPS API (Gmail, Resend, Brevo), an SMTP server, or the in-memory dev log. */
+export type EmailProvider = 'gmail' | 'resend' | 'brevo' | 'smtp' | 'dev';
+
+/** Longest wait for one delivery attempt, so a slow or blocked provider never holds the request that sends. */
+const SEND_TIMEOUT_MS = 10_000;
 
 export interface SentEmailRecord {
   to: string;
@@ -11,7 +18,7 @@ export interface SentEmailRecord {
   text: string;
   sentAt: Date;
   actionUrl?: string;
-  provider: 'resend' | 'smtp' | 'dev';
+  provider: EmailProvider;
   status: 'SENT' | 'DEV_LOGGED' | 'FAILED';
   messageId?: string;
   error?: string;
@@ -22,7 +29,7 @@ export interface SentEmailRecord {
 export interface SendEmailResult {
   delivered: boolean;
   status: 'SENT' | 'DEV_LOGGED' | 'FAILED';
-  provider: 'resend' | 'smtp' | 'dev';
+  provider: EmailProvider;
   messageId?: string;
   error?: string;
   sentAt: Date;
@@ -30,10 +37,12 @@ export interface SendEmailResult {
 }
 
 export interface EmailSystemStatus {
-  activeProvider: 'resend' | 'smtp' | 'dev';
+  activeProvider: EmailProvider;
   fromEmail: string;
   fromName: string;
   resendConfigured: boolean;
+  brevoConfigured: boolean;
+  gmailConfigured: boolean;
   smtpConfigured: boolean;
   queueLength: number;
   totalDispatched: number;
@@ -101,6 +110,8 @@ export class EmailService {
   private readonly fromEmail: string;
   private readonly fromName: string;
   private readonly resendApiKey?: string;
+  private readonly brevoApiKey?: string;
+  private readonly gmailSender: GmailApiSender | null;
   private readonly appPublicUrl: string;
   /** Language of every e-mail the platform sends (MAIL_LOCALE: 'en' default, or 'ar'). */
   private readonly emailLocale: 'ar' | 'en';
@@ -111,7 +122,7 @@ export class EmailService {
   private readonly smtpPass?: string;
   private readonly smtpSecure: boolean;
 
-  private readonly configuredProvider: 'resend' | 'smtp' | 'dev';
+  private readonly configuredProvider: EmailProvider;
   private smtpTransporter: Transporter | null = null;
   private readonly initializedAt = Date.now();
   private totalDispatched = 0;
@@ -124,6 +135,21 @@ export class EmailService {
       'no-reply@sportexus.com';
     this.fromName = this.configService.get<string>('MAIL_FROM_NAME') || 'Sportexus Platform';
     this.resendApiKey = this.configService.get<string>('RESEND_API_KEY');
+    this.brevoApiKey = this.configService.get<string>('BREVO_API_KEY')?.trim() || undefined;
+    const gmailClientId = this.configService.get<string>('GMAIL_CLIENT_ID')?.trim();
+    const gmailClientSecret = this.configService.get<string>('GMAIL_CLIENT_SECRET')?.trim();
+    const gmailRefreshToken = this.configService.get<string>('GMAIL_REFRESH_TOKEN')?.trim();
+    this.gmailSender =
+      gmailClientId && gmailClientSecret && gmailRefreshToken
+        ? new GmailApiSender(
+            {
+              clientId: gmailClientId,
+              clientSecret: gmailClientSecret,
+              refreshToken: gmailRefreshToken,
+            },
+            SEND_TIMEOUT_MS,
+          )
+        : null;
     this.appPublicUrl =
       this.configService.get<string>('NEXT_PUBLIC_APP_URL') ||
       this.configService.get<string>('APP_PUBLIC_URL') ||
@@ -142,13 +168,19 @@ export class EmailService {
     // Determine provider
     const explicitProvider = this.configService.get<string>('MAIL_PROVIDER')?.toLowerCase();
     if (
+      explicitProvider === 'gmail' ||
       explicitProvider === 'resend' ||
+      explicitProvider === 'brevo' ||
       explicitProvider === 'smtp' ||
       explicitProvider === 'dev'
     ) {
       this.configuredProvider = explicitProvider;
     } else if (this.resendApiKey && !this.resendApiKey.includes('placeholder')) {
       this.configuredProvider = 'resend';
+    } else if (this.brevoApiKey) {
+      this.configuredProvider = 'brevo';
+    } else if (this.gmailSender) {
+      this.configuredProvider = 'gmail';
     } else if (this.smtpHost && this.smtpHost.trim() !== '') {
       this.configuredProvider = 'smtp';
     } else {
@@ -157,6 +189,11 @@ export class EmailService {
 
     if (this.configuredProvider === 'smtp') {
       this.initSmtpTransporter();
+    }
+    if (this.configuredProvider === 'gmail' && !this.gmailSender) {
+      this.logger.error(
+        'MAIL_PROVIDER=gmail needs GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET and GMAIL_REFRESH_TOKEN; e-mails are only logged.',
+      );
     }
 
     this.logger.log(
@@ -190,6 +227,38 @@ export class EmailService {
       this.logger.error(`Failed to initialize SMTP transporter: ${(err as Error)?.message}`);
       this.smtpTransporter = null;
     }
+  }
+
+  /**
+   * Sends through Brevo's transactional e-mail API (HTTPS, so it works where outbound SMTP is blocked, e.g. Railway).
+   * The sender address must be verified in Brevo (a single verified sender is enough; no domain needed).
+   */
+  private async sendViaBrevo(
+    to: string,
+    message: { subject: string; html: string; text: string },
+  ): Promise<string | undefined> {
+    const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      signal: AbortSignal.timeout(SEND_TIMEOUT_MS),
+      headers: {
+        'api-key': this.brevoApiKey ?? '',
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({
+        sender: { name: this.fromName, email: this.fromEmail },
+        to: [{ email: to }],
+        subject: message.subject,
+        htmlContent: message.html,
+        textContent: message.text,
+      }),
+    });
+    if (!res.ok) {
+      const errBody = (await res.text()).slice(0, 300);
+      throw new Error(`Brevo API error (${res.status}): ${errBody}`);
+    }
+    const data = (await res.json().catch(() => ({}))) as { messageId?: string };
+    return data.messageId;
   }
 
   /**
@@ -261,6 +330,7 @@ export class EmailService {
         if (provider === 'resend' && this.resendApiKey) {
           const res = await fetch('https://api.resend.com/emails', {
             method: 'POST',
+            signal: AbortSignal.timeout(SEND_TIMEOUT_MS),
             headers: {
               Authorization: `Bearer ${this.resendApiKey}`,
               'Content-Type': 'application/json',
@@ -286,6 +356,7 @@ export class EmailService {
               );
               const fallbackRes = await fetch('https://api.resend.com/emails', {
                 method: 'POST',
+                signal: AbortSignal.timeout(SEND_TIMEOUT_MS),
                 headers: {
                   Authorization: `Bearer ${this.resendApiKey}`,
                   'Content-Type': 'application/json',
@@ -311,6 +382,21 @@ export class EmailService {
 
           const data = (await res.json()) as { id?: string };
           messageId = data?.id;
+          delivered = true;
+          status = 'SENT';
+        } else if (provider === 'gmail' && this.gmailSender) {
+          messageId = await this.gmailSender.send({
+            fromEmail: this.fromEmail,
+            fromName: this.fromName,
+            to: normalizedTo,
+            subject: options.subject,
+            html: options.html,
+            text: options.text,
+          });
+          delivered = true;
+          status = 'SENT';
+        } else if (provider === 'brevo' && this.brevoApiKey) {
+          messageId = await this.sendViaBrevo(normalizedTo, options);
           delivered = true;
           status = 'SENT';
         } else if (provider === 'smtp' && this.smtpTransporter) {
@@ -447,6 +533,8 @@ export class EmailService {
       fromEmail: this.fromEmail,
       fromName: this.fromName,
       resendConfigured: Boolean(this.resendApiKey && !this.resendApiKey.includes('placeholder')),
+      brevoConfigured: Boolean(this.brevoApiKey),
+      gmailConfigured: Boolean(this.gmailSender),
       smtpConfigured: Boolean(this.smtpHost && this.smtpHost.trim() !== ''),
       queueLength: this.sentEmailsQueue.length,
       totalDispatched: this.totalDispatched,

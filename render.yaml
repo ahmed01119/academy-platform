@@ -64,7 +64,9 @@ services:
           type: keyvalue
           name: sportexus-redis
           property: connectionString
-      # E-mail through the academy's Gmail account (SMTP with a Google app password). To switch to Resend later:
+      # E-mail through the academy's Gmail account (SMTP with a Google app password). Where outbound SMTP is blocked
+      # (Railway), use MAIL_PROVIDER=gmail plus GMAIL_CLIENT_ID / GMAIL_CLIENT_SECRET / GMAIL_REFRESH_TOKEN (same Gmail
+      # over HTTPS), or MAIL_PROVIDER=brevo plus BREVO_API_KEY, with MAIL_FROM_EMAIL verified as a Brevo sender; or
       # MAIL_PROVIDER=resend plus RESEND_API_KEY, and MAIL_FROM_EMAIL on a verified domain.
       - key: MAIL_PROVIDER
         value: smtp

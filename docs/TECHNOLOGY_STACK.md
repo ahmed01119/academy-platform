@@ -46,7 +46,7 @@
 | zod                                      | 3.25.76        | Request validation (schemas from `@academy/shared`)                   |
 | argon2                                   | 0.45.1         | Password hashing (Argon2id)                                           |
 | ioredis                                  | 6.0.0          | Rate limiting / cache (in-memory fallback allowed outside production) |
-| nodemailer                               | 10.2.1         | SMTP email; Resend used via HTTP API (no SDK)                         |
+| nodemailer                               | 10.2.1         | SMTP email; Gmail API, Resend and Brevo used via HTTP API (no SDK)    |
 | cookie-parser                            | ^1.4.7         | Auth cookies                                                          |
 | rxjs, reflect-metadata                   | —              | Nest requirements                                                     |
 

@@ -21,7 +21,7 @@ NestJS API  /v1   (Express; cookie-parser; correlation id; security headers; COR
    ▼
 PostgreSQL 16  (RLS FORCE on tenant tables, append-only triggers, SECURITY DEFINER functions)
 Redis 7        (rate limits; in-memory fallback outside production)
-Email          (Resend HTTP API | SMTP | dev in-memory logger)
+Email          (Gmail API, Resend or Brevo over HTTPS | SMTP | dev in-memory logger)
 ```
 
 ## 2. Repository layout

@@ -805,6 +805,10 @@ export default function HomePage() {
             <Link href="/login" className="hover:text-(--text-main) transition-colors">
               {t('common.login')}
             </Link>
+            <span>•</span>
+            <Link href="/privacy" className="hover:text-(--text-main) transition-colors">
+              {locale === 'ar' ? 'سياسة الخصوصية' : 'Privacy'}
+            </Link>
           </div>
         </div>
       </footer>
